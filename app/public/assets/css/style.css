@@ -511,6 +511,7 @@ body.colorful-page {
 .short-link-badge {
   display: inline-block;
   margin: 0 auto 12px;
+  max-width: calc(100vw - 40px);
   background: #ffffff;
   color: #22223b;
   border-radius: 999px;
@@ -518,7 +519,7 @@ body.colorful-page {
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
-  white-space: nowrap;
+  text-align: center;
   animation: badge-attention-shake 6s ease-in-out infinite;
 }
 .short-link-badge:hover, .short-link-badge:visited, .short-link-badge:active { color: #22223b; }
@@ -1151,16 +1152,21 @@ body.circuit-page {
 }
 .menu-item-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 4px 12px;
   padding: 8px 0;
   border-bottom: 1px dashed rgba(var(--text-rgb, 34,34,59), 0.2);
 }
-.menu-item-name { font-weight: 700; }
+/* min-width:0 è necessario perché un elemento flex, di default, non si restringe mai sotto la
+   larghezza "naturale" del proprio contenuto — con testo più grande (es. accessibilità mobile)
+   questo mandava il prezzo fuori schermo invece di andare a capo. flex-basis dà comunque una
+   larghezza di partenza ragionevole quando c'è spazio. */
+.menu-item-name { font-weight: 700; flex: 1 1 200px; min-width: 0; }
 .menu-item-name sup { color: var(--accent); font-weight: 700; margin-left: 2px; cursor: help; }
 .menu-item-desc { font-weight: 400; font-style: italic; font-size: 13px; color: rgba(var(--text-rgb, 34,34,59), 0.65); margin-top: 2px; }
-.menu-item-price { font-weight: 700; white-space: nowrap; }
+.menu-item-price { font-weight: 700; white-space: nowrap; flex: 0 0 auto; }
 .menu-allergen-legend { font-size: 11.5px; color: rgba(var(--text-rgb, 34,34,59), 0.55); margin-top: 20px; line-height: 1.6; }
 
 /* ===== Selezionatore tema a schermo intero (dashboard_theme.php) — griglia animata ispirata
