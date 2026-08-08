@@ -260,6 +260,25 @@ CREATE TABLE IF NOT EXISTS admin_action_logs (
     FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Visibilità dei tab standard (Home/Timeline/Blog/Brani/Menù/Eventi/Contatti) nel menu di
+-- navigazione pubblico di ciascun profilo. Righe create automaticamente al primo accesso a
+-- "Menu di Navigazione" in dashboard (vedi getAllProfileNavigationMenu() in functions.php) —
+-- un profilo senza righe qui non ha nulla di nascosto, comportamento identico a prima di questa
+-- funzionalità.
+CREATE TABLE IF NOT EXISTS profile_navigation_menu (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    icon VARCHAR(50) NULL,
+    url VARCHAR(255) NOT NULL,
+    is_visible TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_name (user_id, name),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS band_reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     band_user_id INT NOT NULL,

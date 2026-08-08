@@ -6,12 +6,33 @@
 
 require_once __DIR__ . '/../src/db.php';
 
-// Controlla se l'installazione è già stata completata
+// Il DB irraggiungibile (credenziali sbagliate, host non risolvibile) è un problema diverso da
+// "schema vuoto, prima installazione": nel primo caso mostrare comunque il wizard rischia di far
+// credere che non ci sia nessun dato, e un eventuale nuovo invio del form andrebbe comunque in
+// errore (o peggio, creerebbe un secondo admin) una volta che la connessione torna disponibile.
 try {
     $pdo = getDB();
+} catch (Exception $e) {
+    die('
+        <html>
+        <head><title>Database non raggiungibile</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #f5f5f5;">
+            <h1>⚠️ Database non raggiungibile</h1>
+            <p style="font-size: 16px; color: #666; max-width: 480px; margin: 0 auto;">
+                Controlla le variabili d\'ambiente del container (DB_HOST, DB_NAME, DB_USER, DB_PASS).
+                Se hai appena ricreato lo stack, assicurati che corrispondano esattamente a quelle usate
+                in precedenza — i dati non vengono toccati da questo errore, sono solo irraggiungibili.
+            </p>
+        </body>
+        </html>
+    ');
+}
+
+// Controlla se l'installazione è già stata completata
+try {
     $stmt = $pdo->query("SELECT COUNT(*) FROM users");
     $user_count = $stmt->fetchColumn();
-    
+
     if ($user_count > 0) {
         // Installazione già completata
         die('
@@ -26,7 +47,7 @@ try {
         ');
     }
 } catch (Exception $e) {
-    // Database non inizializzato - mostra wizard
+    // Tabella users non ancora creata (schema non importato) - mostra wizard
 }
 
 // Processo il form di setup

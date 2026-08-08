@@ -14,18 +14,36 @@ function checkInstallation(): void {
         return; // Non fare controlli su queste pagine
     }
     
+    // Il database irraggiungibile (credenziali sbagliate, host non risolvibile, container non
+    // ancora pronto) è un problema diverso da "schema non ancora importato": confonderli mandava
+    // al wizard di reinstallazione anche quando i dati esistevano già ma erano temporaneamente
+    // irraggiungibili — con il rischio, completando di nuovo il wizard, di sembrare "ripartiti da
+    // zero" mentre i dati originali erano solo nascosti da un errore di connessione.
     try {
         $pdo = getDB();
+    } catch (Exception $e) {
+        http_response_code(500);
+        die('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Database non raggiungibile</title></head>'
+            . '<body style="font-family:sans-serif;text-align:center;padding:60px 20px;background:#f5f5f5;">'
+            . '<h1>⚠️ Database non raggiungibile</h1>'
+            . '<p style="color:#666;max-width:480px;margin:0 auto;">Controlla le variabili d\'ambiente del '
+            . 'container (<code>DB_HOST</code>, <code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASS</code>) — '
+            . 'se hai appena ricreato lo stack, assicurati che corrispondano esattamente a quelle usate in '
+            . 'precedenza. I tuoi dati non sono stati toccati da questo errore, sono solo temporaneamente '
+            . 'irraggiungibili.</p></body></html>');
+    }
+
+    try {
         $stmt = $pdo->query("SELECT COUNT(*) FROM users");
         $user_count = $stmt->fetchColumn();
-        
+
         if ($user_count === 0) {
-            // Nessun utente — reindirizza al wizard
+            // Connessione riuscita ma nessun utente — schema vuoto, wizard genuinamente necessario
             header('Location: /install.php');
             exit;
         }
     } catch (Exception $e) {
-        // Database non inizializzato — reindirizza al wizard
+        // Connessione riuscita ma la tabella users non esiste — schema non ancora importato
         header('Location: /install.php');
         exit;
     }
@@ -541,23 +559,11 @@ function menuHasItems(int $userId): bool {
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
 function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
-    
-    // Cerca se ci sono voci di menu personalizzate nel database
-    $customMenuItems = $ownerId ? getVisibleProfileNavigation($ownerId) : [];
-    
-    // Se ci sono voci personalizzate, usale
-    if (!empty($customMenuItems)) {
-        $parts = [];
-        foreach ($customMenuItems as $item) {
-            $isActive = strpos('/' . $slug . $item['url'], '/' . $slug . $active) === 0 ? ' style="font-weight:900;color:#fff;"' : '';
-            $parts[] = '<a href="' . e($item['url']) . '"' . $isActive . '>'
-                . (!empty($item['icon']) ? '<i class="' . e($item['icon']) . '"></i> ' : '')
-                . e($item['name']) . '</a>';
-        }
-        return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>';
-    }
-    
-    // Altrimenti usa il menu di default
+    // Tab standard che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in
+    // dashboard (Home/Timeline/Blog/Brani/Menù/Eventi/Contatti) — i tab "integrazione"
+    // (Spotify/Podcast/Video/Segui) non sono coperti, restano governati dalla loro logica.
+    $hiddenKeys = $ownerId ? getHiddenNavKeys($ownerId) : [];
+
     $viewerId = $_SESSION['user_id'] ?? null;
     $seguiLabel = '✨ Segui';
     if ($viewerId && $ownerId && (int) $viewerId !== (int) $ownerId) {
@@ -587,6 +593,14 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
     }
     $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+
+    // Non nasconde mai il tab attualmente attivo, anche se marcato nascosto: chi ci arriva
+    // comunque tramite link diretto deve continuare a vedersi orientato nel menu, non sparire.
+    foreach ($hiddenKeys as $hk) {
+        if ($hk !== $active) {
+            unset($tabs[$hk]);
+        }
+    }
 
     $parts = [];
     foreach ($tabs as $key => $t) {
@@ -1322,180 +1336,41 @@ function textExcerpt(string $text, int $length = 160): string {
 }
 
 // ============================================
-// NAVIGATION MENU FUNCTIONS
-// ============================================
-
-/**
- * Ottiene le voci di menu attive per un utente
- */
-function getNavigationMenu(int $userId): array {
-    $stmt = getDB()->prepare('
-        SELECT id, label, url, icon, is_active, sort_order 
-        FROM navigation_menu_items 
-        WHERE user_id = ? AND is_active = 1 
-        ORDER BY sort_order ASC, id ASC
-    ');
-    $stmt->execute([$userId]);
-    return $stmt->fetchAll() ?: [];
-}
-
-/**
- * Ottiene TUTTE le voci di menu per un utente (incluse inattive)
- */
-function getAllNavigationMenuItems(int $userId): array {
-    $stmt = getDB()->prepare('
-        SELECT id, label, url, icon, is_active, sort_order 
-        FROM navigation_menu_items 
-        WHERE user_id = ? 
-        ORDER BY sort_order ASC, id ASC
-    ');
-    $stmt->execute([$userId]);
-    return $stmt->fetchAll() ?: [];
-}
-
-/**
- * Salva una voce di menu
- */
-function saveNavigationMenuItem(int $userId, array $data): bool {
-    $stmt = getDB()->prepare('
-        INSERT INTO navigation_menu_items (user_id, label, url, icon, is_active, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ');
-    return $stmt->execute([
-        $userId,
-        trim($data['label'] ?? ''),
-        trim($data['url'] ?? ''),
-        trim($data['icon'] ?? null) ?: null,
-        isset($data['is_active']) ? 1 : 0,
-        (int)($data['sort_order'] ?? 999)
-    ]);
-}
-
-/**
- * Aggiorna una voce di menu
- */
-function updateNavigationMenuItem(int $itemId, int $userId, array $data): bool {
-    $stmt = getDB()->prepare('
-        UPDATE navigation_menu_items 
-        SET label = ?, url = ?, icon = ?, is_active = ?, sort_order = ?
-        WHERE id = ? AND user_id = ?
-    ');
-    return $stmt->execute([
-        trim($data['label'] ?? ''),
-        trim($data['url'] ?? ''),
-        trim($data['icon'] ?? null) ?: null,
-        isset($data['is_active']) ? 1 : 0,
-        (int)($data['sort_order'] ?? 999),
-        $itemId,
-        $userId
-    ]);
-}
-
-/**
- * Cancella una voce di menu
- */
-function deleteNavigationMenuItem(int $itemId, int $userId): bool {
-    $stmt = getDB()->prepare('DELETE FROM navigation_menu_items WHERE id = ? AND user_id = ?');
-    return $stmt->execute([$itemId, $userId]);
-}
-
-/**
- * Aggiorna l'ordine delle voci di menu
- */
-function updateNavigationMenuOrder(int $userId, array $itemIds): bool {
-    foreach ($itemIds as $index => $itemId) {
-        $stmt = getDB()->prepare('
-            UPDATE navigation_menu_items 
-            SET sort_order = ? 
-            WHERE id = ? AND user_id = ?
-        ');
-        if (!$stmt->execute([$index, (int)$itemId, $userId])) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Renderizza il menu di navigazione pubblico
- */
-function renderNavigationMenu(array $items): string {
-    if (empty($items)) {
-        return '';
-    }
-    
-    $html = '<nav class="navigation-menu"><ul>';
-    foreach ($items as $item) {
-        $icon = !empty($item['icon']) ? '<i class="' . e($item['icon']) . '"></i> ' : '';
-        $html .= sprintf(
-            '<li><a href="%s">%s%s</a></li>',
-            e($item['url']),
-            $icon,
-            e($item['label'])
-        );
-    }
-    $html .= '</ul></nav>';
-    return $html;
-}
-
-// ============================================
 // PROFILE NAVIGATION MENU FUNCTIONS
 // ============================================
+// Permette a ogni profilo di nascondere singoli tab standard (Home, Timeline, Blog, Brani,
+// Menù, Eventi, Contatti) dal proprio menu di navigazione pubblico. Non copre i tab
+// "integrazione" (Spotify/Podcast/Video/Segui), che restano governati dalla loro logica
+// esistente (compaiono solo se effettivamente collegati).
+
+// Mappa tra il "name" salvato in profile_navigation_menu e la chiave interna usata da
+// publicNav() per identificare ciascun tab — tenerle distinte evita di legare lo schema del
+// database ai nomi visualizzati (che potrebbero cambiare) o a caratteri accentati nelle chiavi.
+const PUBLIC_NAV_ITEM_KEYS = [
+    'Home' => 'home',
+    'Timeline' => 'timeline',
+    'Blog' => 'blog',
+    'Brani' => 'brani',
+    'Menù' => 'menu',
+    'Eventi' => 'eventi',
+    'Contatti' => 'contatti',
+];
 
 /**
- * Ottiene le voci di menu visibili per un profilo
+ * Crea le voci di menu di default per un profilo, con URL basati sul suo slug reale
+ * (idempotente: INSERT IGNORE, non duplica se già esistenti).
  */
-function getVisibleProfileNavigation(int $userId): array {
-    $stmt = getDB()->prepare('
-        SELECT name, icon, url 
-        FROM profile_navigation_menu 
-        WHERE user_id = ? AND is_visible = 1 
-        ORDER BY sort_order ASC
-    ');
-    $stmt->execute([$userId]);
-    return $stmt->fetchAll() ?: [];
-}
-
-/**
- * Ottiene TUTTE le voci di menu per un profilo (incluse nascoste)
- */
-function getAllProfileNavigationMenu(int $userId): array {
-    $stmt = getDB()->prepare('
-        SELECT id, name, icon, url, is_visible, sort_order 
-        FROM profile_navigation_menu 
-        WHERE user_id = ? 
-        ORDER BY sort_order ASC
-    ');
-    $stmt->execute([$userId]);
-    return $stmt->fetchAll() ?: [];
-}
-
-/**
- * Aggiorna la visibilità di una voce di menu
- */
-function updateProfileNavMenuVisibility(int $userId, string $name, bool $isVisible): bool {
-    $stmt = getDB()->prepare('
-        UPDATE profile_navigation_menu 
-        SET is_visible = ? 
-        WHERE user_id = ? AND name = ?
-    ');
-    return $stmt->execute([$isVisible ? 1 : 0, $userId, $name]);
-}
-
-/**
- * Crea le voci di menu di default per un nuovo utente
- */
-function createDefaultProfileNavMenu(int $userId): bool {
+function createDefaultProfileNavMenu(int $userId, string $slug): bool {
     $defaults = [
-        ['Home', 'fas fa-home', '/home', 1],
-        ['Timeline', 'fas fa-stream', '/home/timeline', 2],
-        ['Blog', 'fas fa-newspaper', '/home/blog', 3],
-        ['Brani', 'fas fa-music', '/home/brani', 4],
-        ['Menù', 'fas fa-utensils', '/home/menu', 5],
-        ['Eventi', 'fas fa-calendar', '/home/eventi', 6],
-        ['Contatti', 'fas fa-envelope', '/home/contatti', 7]
+        ['Home', 'fas fa-home', '/' . $slug, 1],
+        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
+        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 3],
+        ['Brani', 'fas fa-music', '/' . $slug . '/brani', 4],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 5],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 6],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 7],
     ];
-    
+
     foreach ($defaults as [$name, $icon, $url, $order]) {
         $stmt = getDB()->prepare('
             INSERT IGNORE INTO profile_navigation_menu (user_id, name, icon, url, sort_order)
@@ -1506,4 +1381,54 @@ function createDefaultProfileNavMenu(int $userId): bool {
         }
     }
     return true;
+}
+
+/**
+ * Ottiene TUTTE le voci di menu per un profilo (incluse nascoste), creando i default al primo
+ * accesso se il profilo non le ha ancora (es. account creati prima di questa funzionalità).
+ */
+function getAllProfileNavigationMenu(int $userId, string $slug): array {
+    $stmt = getDB()->prepare('
+        SELECT id, name, icon, url, is_visible, sort_order
+        FROM profile_navigation_menu
+        WHERE user_id = ?
+        ORDER BY sort_order ASC
+    ');
+    $stmt->execute([$userId]);
+    $items = $stmt->fetchAll() ?: [];
+    if (!$items) {
+        createDefaultProfileNavMenu($userId, $slug);
+        $stmt->execute([$userId]);
+        $items = $stmt->fetchAll() ?: [];
+    }
+    return $items;
+}
+
+/**
+ * Aggiorna la visibilità di una voce di menu.
+ */
+function updateProfileNavMenuVisibility(int $userId, string $name, bool $isVisible): bool {
+    $stmt = getDB()->prepare('
+        UPDATE profile_navigation_menu
+        SET is_visible = ?
+        WHERE user_id = ? AND name = ?
+    ');
+    return $stmt->execute([$isVisible ? 1 : 0, $userId, $name]);
+}
+
+// Chiavi dei tab standard che questo profilo ha esplicitamente nascosto — usata da
+// publicProfileHeader()/publicNav() per filtrare il menu pubblico. Un profilo che non ha mai
+// aperto "Menu di Navigazione" in dashboard non ha righe in tabella: nessuna riga nascosta,
+// nessun filtro, comportamento identico a prima di questa funzionalità (nessun bisogno di
+// seedare i default solo per calcolare questo elenco).
+function getHiddenNavKeys(int $userId): array {
+    $stmt = getDB()->prepare('SELECT name FROM profile_navigation_menu WHERE user_id = ? AND is_visible = 0');
+    $stmt->execute([$userId]);
+    $hidden = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if (isset(PUBLIC_NAV_ITEM_KEYS[$row['name']])) {
+            $hidden[] = PUBLIC_NAV_ITEM_KEYS[$row['name']];
+        }
+    }
+    return $hidden;
 }

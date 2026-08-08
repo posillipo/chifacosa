@@ -1,226 +1,63 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
-requireLogin();
-
-$user = currentUser();
-$message = '';
+$user = requireLogin();
+$activeTab = 'nav_menu';
+$pageTitle = 'Menu di Navigazione';
+$success = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    
-    $items = getAllProfileNavigationMenu($user['id']);
+    $items = getAllProfileNavigationMenu((int) $user['id'], $user['slug']);
     foreach ($items as $item) {
-        $isVisible = isset($_POST['visibility'][$item['id']]) ? 1 : 0;
+        $isVisible = isset($_POST['visibility'][$item['id']]);
         getDB()->prepare('UPDATE profile_navigation_menu SET is_visible = ? WHERE id = ? AND user_id = ?')
-            ->execute([$isVisible, $item['id'], $user['id']]);
+            ->execute([$isVisible ? 1 : 0, $item['id'], $user['id']]);
     }
-    
-    $message = 'Menu aggiornato!';
+    $success = 'Menu aggiornato.';
 }
 
-$items = getAllProfileNavigationMenu($user['id']);
-$visibleItems = getVisibleProfileNavigation($user['id']);
-$activeTab = 'nav_menu';
-?><!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Menu di Navigazione — Dashboard</title>
-<link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
-<style>
-.nav-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
-}
+$items = getAllProfileNavigationMenu((int) $user['id'], $user['slug']);
+$visibleItems = array_values(array_filter($items, fn($it) => (bool) $it['is_visible']));
 
-.nav-menu-card {
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+include __DIR__ . '/_dash_header.php';
+?>
+  <details class="help-box">
+    <summary>ℹ️ Come funziona</summary>
+    <p style="color:var(--text-muted)">
+      Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica. Le
+      integrazioni (Spotify, Podcast, Video, il pulsante "Segui") non sono elencate qui: compaiono
+      automaticamente solo quando le colleghi dalla loro sezione dedicata.
+    </p>
+  </details>
+  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
 
-.nav-menu-card-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <?php foreach ($items as $it): ?>
+      <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-weight:normal;">
+        <input type="checkbox" name="visibility[<?= (int) $it['id'] ?>]" value="1" style="width:auto;" <?= $it['is_visible'] ? 'checked' : '' ?>>
+        <?php if ($it['icon']): ?><i class="<?= e($it['icon']) ?>" style="width:20px;text-align:center;color:var(--text-muted);"></i><?php endif; ?>
+        <strong><?= e($it['name']) ?></strong>
+        <small style="color:var(--text-muted)"><?= e($it['url']) ?></small>
+      </label>
+    <?php endforeach; ?>
+    <button type="submit" class="btn">Salva</button>
+  </form>
 
-.nav-menu-icon {
-    width: 40px;
-    height: 40px;
-    background: #f5f5f5;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: #6c5ce7;
-}
-
-.nav-menu-info h4 {
-    margin: 0;
-    font-size: 15px;
-    color: #1a1a1a;
-}
-
-.nav-menu-info p {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: #999;
-}
-
-.checkbox-toggle {
-    position: relative;
-    width: 50px;
-    height: 26px;
-    background: #ddd;
-    border-radius: 13px;
-    cursor: pointer;
-    border: none;
-    padding: 0;
-    transition: background 0.3s;
-}
-
-.checkbox-toggle.active {
-    background: #6c5ce7;
-}
-
-.checkbox-toggle::before {
-    content: '';
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    background: white;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: left 0.3s;
-}
-
-.checkbox-toggle.active::before {
-    left: 26px;
-}
-
-.preview-menu {
-    background: #f9f9f9;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 30px;
-}
-
-.preview-menu h4 {
-    margin: 0 0 15px;
-    font-size: 15px;
-    color: #333;
-}
-
-.preview-menu nav {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.preview-menu a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    background: #6c5ce7;
-    color: white;
-    text-decoration: none;
-    border-radius: 20px;
-    font-weight: 500;
-    font-size: 13px;
-}
-
-.preview-menu a:hover {
-    background: #5a4fb8;
-}
-
-.preview-empty {
-    color: #999;
-    text-align: center;
-    padding: 20px;
-}
-</style>
-</head>
-<body>
-<?php require __DIR__ . '/_dash_header.php'; ?>
-
-<div class="dashboard-content">
-    <h2>Menu di Navigazione</h2>
-    
-    <?php if (!empty($message)): ?>
-        <div class="card" style="background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32;">
-            <?= e($message) ?>
-        </div>
+  <div class="section-title">Anteprima menu pubblico</div>
+  <div class="card">
+    <?php if ($visibleItems): ?>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <?php foreach ($visibleItems as $it): ?>
+          <span class="icon-btn" style="width:auto;padding:0 14px;gap:8px;display:inline-flex;">
+            <?php if ($it['icon']): ?><i class="<?= e($it['icon']) ?>"></i><?php endif; ?>
+            <?= e($it['name']) ?>
+          </span>
+        <?php endforeach; ?>
+      </div>
+    <?php else: ?>
+      <span style="color:var(--text-muted)">Nessuna voce di menu visibile.</span>
     <?php endif; ?>
-    
-    <p style="color: #666; margin-bottom: 20px;">Seleziona quali voci mostrare nel menu pubblico del tuo profilo.</p>
-    
-    <form method="POST">
-        <?= csrfField() ?>
-        
-        <div class="nav-menu-grid">
-            <?php foreach ($items as $item): ?>
-                <div class="nav-menu-card">
-                    <div class="nav-menu-card-content">
-                        <div class="nav-menu-icon">
-                            <i class="<?= e($item['icon']) ?>"></i>
-                        </div>
-                        <div class="nav-menu-info">
-                            <h4><?= e($item['name']) ?></h4>
-                            <p><?= e($item['url']) ?></p>
-                        </div>
-                    </div>
-                    <label class="checkbox-toggle <?= $item['is_visible'] ? 'active' : '' ?>">
-                        <input type="checkbox" name="visibility[<?= $item['id'] ?>]" value="1" 
-                               <?= $item['is_visible'] ? 'checked' : '' ?> 
-                               onchange="this.form.submit()" style="display: none;">
-                    </label>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </form>
-    
-    <!-- Anteprima -->
-    <div class="preview-menu">
-        <h4>Anteprima Menu Pubblico</h4>
-        <?php if (!empty($visibleItems)): ?>
-            <nav>
-                <?php foreach ($visibleItems as $item): ?>
-                    <a href="<?= e($item['url']) ?>">
-                        <i class="<?= e($item['icon']) ?>"></i>
-                        <?= e($item['name']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
-        <?php else: ?>
-            <div class="preview-empty">Nessuna voce di menu visibile</div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<script>
-document.querySelectorAll('.checkbox-toggle').forEach(btn => {
-    const checkbox = btn.querySelector('input[type="checkbox"]');
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        checkbox.checked = !checkbox.checked;
-        btn.classList.toggle('active');
-        checkbox.form.submit();
-    });
-});
-</script>
-</body>
-</html>
+  </div>
+<?php include __DIR__ . '/_dash_footer.php'; ?>

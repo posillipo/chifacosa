@@ -272,6 +272,30 @@ CREATE TABLE IF NOT EXISTS menu_items (
 `dashboard_menu.php`, pagina pubblica `/slug/menu`. Il tab "Menù" compare sulla pagina pubblica
 solo se esiste almeno un piatto attivo.
 
+## 25. Menu di Navigazione (nascondi singoli tab standard dal menu pubblico)
+```sql
+CREATE TABLE IF NOT EXISTS profile_navigation_menu (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    icon VARCHAR(50) NULL,
+    url VARCHAR(255) NOT NULL,
+    is_visible TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_name (user_id, name),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+Pagina dashboard `dashboard_nav_menu.php`: permette di nascondere i tab standard (Home,
+Timeline, Blog, Brani, Menù, Eventi, Contatti) dal menu pubblico del proprio profilo. Le righe
+per un profilo si creano automaticamente al primo accesso alla pagina (nessun bisogno di
+popolarle a mano) — un profilo che non l'ha mai aperta non ha righe qui, e quindi nessun tab
+nascosto, esattamente come prima di questa funzionalità. Le integrazioni (Spotify, Podcast,
+Video, il pulsante "Segui") non sono coperte, restano sempre governate dalla loro logica
+esistente.
+
 ---
 
 ## Come aggiungere una nuova voce
