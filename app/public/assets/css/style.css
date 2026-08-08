@@ -1,0 +1,1045 @@
+:root {
+  --accent: #6C5CE7;
+  --bg: #0f0f14;
+  --card-bg: #17171f;
+  --text: #f2f2f5;
+  --text-muted: #a0a0ad;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* Pagina di accesso a due colonne, ispirata al layout IKEA: pannello colorato a sinistra con
+   il marchio, form bianco a destra. Su mobile la colonna colorata si riduce a una fascia in
+   cima, il form resta a piena larghezza sotto. */
+.auth-split { display: flex; min-height: 100vh; }
+.auth-split-brand {
+  flex: 0 0 42%;
+  background: #FAF5EE;
+  color: #17172b;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid #eee;
+}
+.auth-split-brand .logo { font-size: 22px; font-weight: 800; margin-bottom: 60px; color: #17172b; }
+.auth-split-brand .logo span { color: rgb(108,92,231); }
+.auth-split-brand h1 { font-size: 32px; line-height: 1.25; margin: 0; color: #17172b; }
+.auth-split-brand h1 .highlight { color: rgb(108,92,231); }
+.auth-split-form {
+  flex: 1;
+  background: #fff;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+.auth-split-form-inner { width: 100%; max-width: 380px; }
+.auth-split-form-inner label { color: #444; font-size: 13px; font-weight: 600; }
+.auth-split-form-inner input[type=text],
+.auth-split-form-inner input[type=email],
+.auth-split-form-inner input[type=password] {
+  background: #fff; color: #1a1a1a; border: 1px solid #ccc;
+}
+.auth-split-form-inner .btn-dark {
+  display: block; width: 100%; text-align: center; background: #17172b; color: #fff;
+  padding: 14px; border-radius: 999px; border: none; font-weight: 700; font-size: 15px; cursor: pointer;
+}
+.auth-split-form-inner .btn-outline {
+  display: block; width: 100%; text-align: center; background: #fff; color: #1a1a1a;
+  padding: 12px; border-radius: 999px; border: 1px solid #ccc; font-weight: 700; font-size: 14px;
+  text-decoration: none; margin-bottom: 12px;
+}
+.auth-divider { display: flex; align-items: center; gap: 12px; color: #999; font-size: 13px; margin: 22px 0; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #ddd; }
+@media (max-width: 760px) {
+  .auth-split { flex-direction: column; min-height: auto; }
+  .auth-split-brand { flex: none; padding: 30px 24px; }
+  .auth-split-brand h1 { font-size: 24px; }
+  .auth-split-brand .logo { margin-bottom: 24px; }
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #26262f;
+}
+.navbar .brand { font-weight: 700; font-size: 20px; }
+.navbar .brand span { color: var(--accent); }
+.navbar nav a { margin-left: 16px; color: var(--text-muted); }
+.navbar nav a:hover { color: var(--text); }
+
+.hero { text-align: center; padding: 60px 20px; }
+.hero h1 { font-size: 40px; margin-bottom: 12px; }
+.hero p { color: var(--text-muted); font-size: 18px; max-width: 480px; margin: 0 auto 28px; }
+
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+.btn:hover { opacity: 0.9; }
+.btn.secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+.btn.danger { background: #e74c3c; }
+.btn.small { padding: 6px 14px; font-size: 13px; }
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #26262f;
+}
+
+/* Card di scelta del tipo di account (Band/Fan/Etichetta), stesso linguaggio visivo delle
+   card standard del sito, cliccabili come un pulsante */
+.account-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid #26262f;
+  padding: 20px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.account-type-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+.account-type-card strong { font-size: 17px; }
+.account-type-card span { color: var(--text-muted); font-size: 14px; }
+
+form input[type=text],
+form input[type=email],
+form input[type=password],
+form input[type=url],
+form input[type=date],
+form input[type=datetime-local],
+form input[type=color],
+form textarea,
+form select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #33333f;
+  background: #0f0f14;
+  color: var(--text);
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 14px; }
+
+.tabs { display: flex; gap: 3px; margin-bottom: 20px; flex-wrap: wrap; }
+.tabs a {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 14px;
+  border: 1px solid #26262f;
+}
+.tabs a.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Solo su mobile: il menu scorre orizzontalmente invece di andare a capo. Il desktop resta
+   invariato (va a capo in modo ordinato). */
+@media (max-width: 760px) {
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a { flex-shrink: 0; }
+}
+
+/* Barra laterale "Account e impostazioni" (Profilo, password, integrazioni) */
+/* Menu a comparsa "Stai gestendo" (switch tra profili), ancorato all'avatar in alto a destra —
+   stile simile allo switcher account di Facebook. Usa <details>/<summary>, nessun JS. */
+.profile-switcher { position: relative; }
+.profile-switcher summary::-webkit-details-marker { display: none; }
+.profile-switcher-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -8px;
+  width: 260px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.18);
+  border: 1px solid #eee;
+  z-index: 400;
+  overflow: hidden;
+  padding-bottom: 6px;
+}
+.profile-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+}
+.profile-switcher-item:hover { background: #f5f5f7; }
+.profile-switcher-item.active { color: var(--accent); background: rgba(108,92,231,0.08); }
+.profile-switcher-item img,
+.profile-switcher-item .fallback-avatar {
+  width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+}
+.profile-switcher-item .fallback-avatar {
+  background: var(--accent); color: #fff; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 700;
+}
+.profile-switcher-divider { height: 1px; background: #eee; margin: 6px 0; }
+
+.account-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  color: #22223b;
+  text-decoration: none;
+  font-size: 14px;
+}
+.account-sidebar-link:hover { background: #f5f5f8; }
+.account-sidebar-link.active { background: #ece9fd; font-weight: 700; color: var(--accent); }
+.account-sidebar-link i { width: 18px; text-align: center; color: var(--text-muted); }
+.account-sidebar-link.active i { color: var(--accent); }
+.account-sidebar-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#1DB954; margin-left:auto; }
+
+/* Box "Come funziona": discreto, come un help online — una riga cliccabile, si apre solo su
+   richiesta invece di occupare sempre spazio in cima alla pagina */
+.help-box {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid #26262f;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.help-box summary {
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  list-style: none;
+}
+.help-box summary::-webkit-details-marker { display: none; }
+.help-box[open] summary { border-bottom: 1px solid #26262f; color: inherit; font-weight: 600; }
+.help-box p { padding: 0 16px; margin: 10px 0; }
+
+.alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+.alert.error { background: #3a1e1e; color: #ff8a8a; border: 1px solid #5c2b2b; }
+.alert.success { background: #1e3a24; color: #8affa0; border: 1px solid #2b5c37; }
+
+.link-item, .list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border: 1px solid #26262f;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+/* Pagina pubblica profilo */
+.profile-header { text-align: center; margin-bottom: 28px; }
+.avatar {
+  width: 96px; height: 96px; border-radius: 50%;
+  object-fit: cover; margin-bottom: 12px;
+  border: 3px solid var(--accent);
+}
+.profile-header h1 { margin: 8px 0 4px; font-size: 24px; }
+.profile-header p { color: var(--text-muted); font-size: 15px; }
+
+.public-link {
+  display: block;
+  background: var(--card-bg);
+  border: 1px solid #26262f;
+  border-radius: 999px;
+  padding: 14px 20px;
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: 600;
+  transition: transform 0.1s ease;
+}
+.public-link:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+.section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 28px 0 12px; }
+
+audio { width: 100%; margin-bottom: 10px; }
+
+.event-item, .blog-item { padding: 14px 0; border-bottom: 1px solid #26262f; }
+.event-item .date { color: var(--accent); font-size: 13px; font-weight: 600; }
+
+footer.site { text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px; }
+
+/* ===== Tema chiaro per la dashboard del band manager (alternativa al tema scuro di default) ===== */
+body.light-theme {
+  --bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #5f5f66;
+}
+body.light-theme .navbar { border-bottom-color: #e2e2e7; }
+body.light-theme .card { border-color: #e2e2e7; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+body.light-theme .tabs a { background: var(--card-bg); border-color: #e2e2e7; }
+/* Fix: senza questa regola più specifica, il tab attivo ereditava lo sfondo chiaro dalla riga
+   sopra ma manteneva il testo bianco previsto per il tema scuro, diventando illeggibile
+   (testo bianco su sfondo bianco). */
+body.light-theme .tabs a.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+body.light-theme form input, body.light-theme form textarea, body.light-theme form select {
+  background: #fff; border-color: #d5d5da; color: var(--text);
+}
+body.light-theme .link-item, body.light-theme .list-item {
+  background: var(--card-bg); border-color: #e2e2e7;
+}
+
+/* Pulsanti a sola icona (frecce, modifica, mostra/nascondi, elimina) nelle liste della dashboard */
+.icon-btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.icon-btn {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid #33333f;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn.danger { color: #e74c3c; }
+.icon-btn.danger:hover { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+.icon-btn:disabled { opacity: .3; cursor: default; }
+body.light-theme .icon-btn { border-color: #d5d5da; }
+
+/* ===== Tema "Colorful" per la pagina pubblica del profilo artista ===== */
+body.colorful-page {
+  background: linear-gradient(160deg, var(--cf-1, #FFD6A5) 0%, var(--cf-2, #A0C4FF) 55%, var(--cf-3, #BDB2FF) 100%);
+  color: #22223b;
+  --text-rgb: 34,34,59; /* usata da tutti i testi secondari (rgba(var(--text-rgb), X)), così si adatta automaticamente a qualsiasi tema */
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden; /* la pagina intera non deve mai scorrere in orizzontale, solo elementi interni contenuti apposta (es. il menu su mobile) */
+  /* Colonna verticale a tutta altezza: il footer (ultimo figlio diretto del body) viene
+     spinto naturalmente in fondo alla pagina quando il contenuto è poco, ma scorre insieme
+     al resto quando il contenuto è tanto — non "galleggia" mai sopra nulla, è parte
+     integrante del flusso della pagina. */
+  display: flex;
+  flex-direction: column;
+}
+.colorful-page .container { flex: 1 0 auto; max-width: 100%; }
+/* Il limite di larghezza (uguale alla Home) si applica SOLO da desktop in su — su mobile e
+   tablet il contenitore resta al 100% della larghezza dello schermo, pienamente responsive,
+   esattamente come prima. */
+@media (min-width: 761px) {
+  .colorful-page .container { max-width: 720px; }
+}
+.colorful-page footer.site { color: rgba(34,34,59,0.6); }
+.colorful-page .profile-header { padding-top: 20px; }
+.colorful-page .avatar {
+  width: 128px; height: 128px;
+  border: 5px solid #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.colorful-page .profile-header h1 { color: #22223b; font-size: 28px; font-weight: 800; }
+.colorful-page .profile-header p { color: rgba(34,34,59,0.75); }
+.profile-meta { font-size: 13.5px; color: rgba(34,34,59,0.55); margin: -6px 0 4px; }
+
+/* Vignetta con la bio, visibile passando il mouse sull'avatar */
+.avatar-wrap { position: relative; display: inline-block; }
+.avatar-bio-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 12px;
+  width: 280px;
+  max-width: 80vw;
+  background: #fff;
+  color: #22223b;
+  padding: 14px 16px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  font-size: 14px;
+  line-height: 1.5;
+  z-index: 20;
+  text-align: left;
+}
+.avatar-bio-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom-color: #fff;
+}
+.avatar-wrap:hover .avatar-bio-tooltip,
+.avatar-wrap:focus-within .avatar-bio-tooltip { display: block; }
+
+/* Footer di tutte le pagine pubbliche: link Cookie/Privacy/CHI FA COSA + pulsante promozionale
+   "CHI FA COSA/tu". È un blocco normale nel flusso della pagina (non "fixed"), quindi non copre
+   mai il contenuto sopra di esso — resta comunque sempre visibile in fondo alla pagina anche a
+   contenuto vuoto, grazie al layout flessibile impostato su body.colorful-page. */
+.site-footer-fixed {
+  text-align: center;
+  padding: 16px 20px 20px;
+  background: transparent;
+}
+
+/* Riga di link orizzontali (cookie, privacy, home/dashboard) — si adatta al tema attivo tramite
+   la stessa variabile --text-rgb usata per gli altri testi secondari, non più nero fisso */
+.site-footer-fixed .footer-links {
+  background: transparent;
+  text-align: center;
+  margin-bottom: 0;
+}
+.site-footer-fixed .footer-links a,
+.site-footer-fixed .footer-links a:link,
+.site-footer-fixed .footer-links a:visited,
+.site-footer-fixed .footer-links a:hover,
+.site-footer-fixed .footer-links a:active,
+.site-footer-fixed .footer-links a:focus {
+  color: rgba(var(--text-rgb, 34,34,59), 0.9) !important;
+  text-decoration: underline;
+}
+.site-footer-fixed .footer-links span { opacity: 0.6; color: rgba(var(--text-rgb, 34,34,59), 0.9); }
+
+/* Pulsante "CHI FA COSA/tu", posizionato sopra la riga Cookie/Privacy, con un piccolo richiamo
+   visivo periodico (una breve vibrazione ogni pochi secondi, non continua) */
+/* Pulsanti flottanti: torna su + link alla dashboard (se loggato). Sempre sopra a tutto il
+   resto, incluso il badge/footer, e sopra alla barra fissa "Unisciti" se presente. */
+/* Pillola "Segui" compatta e discreta, con un piccolo luccichio che scorre periodicamente
+   per attirare l'attenzione senza essere invadente */
+/* Il modulo Segui vero e proprio resta nascosto di default — compare solo quando lo si apre
+   cliccando il tab "Segui" nel menu (che porta a questa stessa pagina con #segui-widget
+   nell'URL), evitando così un doppio pulsante "Segui" visibile insieme sulla stessa pagina. */
+#segui-widget { display: none; }
+#segui-widget:target { display: block; }
+
+.segui-pill {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  background: rgb(108,92,231);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  list-style: none;
+}
+.segui-pill::-webkit-details-marker { display: none; }
+.segui-pill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -75%;
+  width: 40%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  animation: segui-shimmer 3.5s ease-in-out infinite;
+}
+@keyframes segui-shimmer {
+  0% { left: -75%; }
+  35% { left: 125%; }
+  100% { left: 125%; }
+}
+.segui-pill-details summary { cursor: pointer; }
+.segui-pill-details[open] summary { border-radius: 999px; margin-bottom: 6px; }
+
+.floating-btn {
+  position: fixed;
+  right: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgb(108,92,231);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  text-decoration: none;
+  font-size: 18px;
+  cursor: pointer;
+  border: none;
+  z-index: 200;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.floating-btn:hover { transform: translateY(-2px); opacity: 0.92; }
+#back-to-top-btn { bottom: 18px; display: none; }
+#to-dashboard-btn { bottom: 74px; background: #22223b; }
+
+.short-link-badge {
+  display: inline-block;
+  margin: 0 auto 12px;
+  background: #ffffff;
+  color: #22223b;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  animation: badge-attention-shake 6s ease-in-out infinite;
+}
+.short-link-badge:hover, .short-link-badge:visited, .short-link-badge:active { color: #22223b; }
+
+@keyframes badge-attention-shake {
+  0%, 90%, 100% { transform: translateX(0) rotate(0deg); }
+  91% { transform: translateX(-3px) rotate(-3deg); }
+  92% { transform: translateX(3px) rotate(3deg); }
+  93% { transform: translateX(-3px) rotate(-3deg); }
+  94% { transform: translateX(3px) rotate(3deg); }
+  95% { transform: translateX(-2px) rotate(-2deg); }
+  96%, 100% { transform: translateX(0) rotate(0deg); }
+}
+
+/* Menu di navigazione della pagina pubblica: ogni voce è una piccola "pillola" arrotondata,
+   va a capo in modo ordinato quando lo spazio non basta (nessuno scorrimento). */
+.colorful-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 2px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 100%;
+}
+.colorful-nav a {
+  display: inline-block;
+  color: #22223b;
+  font-weight: 700;
+  font-size: 13.5px;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.45);
+  transition: background 0.15s ease;
+}
+.colorful-nav a:hover { background: rgba(255,255,255,0.65); }
+/* Colore fisso della voce attiva nel menu, identico su tutti i profili — non più legato al
+   colore tema di ciascuno, per coerenza visiva su tutta la piattaforma */
+.colorful-nav a[style*="color:#fff"] { background: rgb(108,92,231); }
+
+/* Tab "Segui": sempre acceso, ben distinto dagli altri, indipendentemente dal fatto che sia
+   la pagina attiva o meno */
+.colorful-nav a.nav-segui-tab {
+  background: rgb(108,92,231) !important;
+  color: #fff !important;
+}
+.colorful-nav a.nav-segui-tab:hover { opacity: 0.9; background: rgb(108,92,231) !important; }
+
+@media (max-width: 400px) {
+  .colorful-nav a { font-size: 13.5px; padding: 4px 10px; }
+}
+
+/* Solo su mobile: il menu scorre orizzontalmente invece di andare a capo (come richiesto),
+   contenuto correttamente dentro il proprio contenitore. Il desktop resta invariato (va a
+   capo in modo ordinato). */
+@media (max-width: 760px) {
+  .colorful-nav {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .colorful-nav::-webkit-scrollbar { display: none; }
+  .colorful-nav a { flex-shrink: 0; }
+}
+
+.colorful-nav-wrap { position: relative; }
+.colorful-nav-arrow { display: none; }
+
+.social-icons-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 26px;
+}
+.social-icon-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  transition: transform 0.15s ease;
+}
+.social-icon-btn:hover { transform: translateY(-3px) scale(1.05); }
+
+.color-link-btn {
+  position: relative;
+  display: block;
+  border-radius: 20px;
+  padding: 18px 22px;
+  text-align: center;
+  margin-bottom: 14px;
+  font-weight: 700;
+  color: #22223b;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.color-link-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.16); }
+
+/* Copertina/icona del pulsante ancorata a sinistra, il testo resta sempre centrato nel
+   pulsante indipendentemente dalla presenza dell'immagine (stile Linktree) */
+.color-link-btn .btn-cover-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.colorful-page .card {
+  background: rgba(255,255,255,0.6);
+  border: none;
+  color: #22223b;
+  backdrop-filter: blur(4px);
+}
+.colorful-page .section-title { color: rgba(34,34,59,0.6); }
+.colorful-page .event-item, .colorful-page .blog-item { border-bottom-color: rgba(34,34,59,0.15); }
+.colorful-page .event-item .date { color: #6a4c93; }
+.colorful-page a { color: #6a4c93; }
+.colorful-page form textarea,
+.colorful-page form input {
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(34,34,59,0.35);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+  color: #22223b;
+}
+.colorful-page form label { color: rgba(34,34,59,0.65); }
+
+/* ===== Tema "Rock": sfondo scuro, angoli netti, tono più deciso — pensato per generi come
+   rock/metal/punk, in alternativa al tema Colorful. Riusa la stessa struttura HTML, cambia
+   solo l'aspetto. ===== */
+body.rock-page {
+  background: #131313;
+  color: #eaeaea;
+  --text-rgb: 234,234,234; /* chiara invece che scura, il contrario del tema Colorful */
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.rock-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) {
+  .rock-page .container { max-width: 720px; }
+}
+.rock-page footer.site { color: rgba(234,234,234,0.5); }
+.rock-page .profile-header { padding-top: 20px; }
+.rock-page .avatar {
+  width: 128px; height: 128px;
+  border: 3px solid var(--accent, #6C5CE7);
+  border-radius: 8px; /* angoli netti anche per l'avatar, non un cerchio morbido */
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.rock-page .profile-header h1 {
+  color: #fff; font-size: 30px; font-weight: 800; letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.rock-page .profile-header p { color: rgba(234,234,234,0.6); }
+.rock-page .profile-meta { color: rgba(234,234,234,0.45); }
+
+.rock-page .colorful-nav a {
+  background: #202020; color: #eaeaea; border: 1px solid #2c2c2c; border-radius: 4px;
+}
+.rock-page .colorful-nav a:hover { background: #262626; }
+.rock-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; border-color: var(--accent, #6C5CE7); }
+.rock-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; border-color: rgb(108,92,231); }
+
+.rock-page .social-icon-btn {
+  background: #202020; border: 1px solid #2c2c2c; border-radius: 6px; color: #eaeaea;
+}
+.rock-page .color-link-btn {
+  background: #1c1c1c !important; /* sovrascrive il colore pastello passato inline dal PHP */
+  border: 1px solid #2a2a2a;
+  border-left: 4px solid var(--accent, #6C5CE7);
+  border-radius: 4px;
+  color: #f2f2f2;
+  box-shadow: none;
+}
+.rock-page .color-link-btn:hover { background: #232323 !important; transform: translateY(-2px); }
+
+.rock-page .card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #eaeaea;
+}
+.rock-page .section-title { color: rgba(234,234,234,0.55); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; }
+.rock-page .event-item, .rock-page .blog-item { border-bottom-color: rgba(234,234,234,0.12); }
+.rock-page .event-item .date { color: var(--accent, #6C5CE7); }
+.rock-page a { color: var(--accent, #6C5CE7); }
+.rock-page form textarea,
+.rock-page form input {
+  background: #1c1c1c;
+  border: 1px solid #333;
+  color: #eaeaea;
+  border-radius: 4px;
+}
+.rock-page form label { color: rgba(234,234,234,0.6); }
+.rock-page .segui-pill { border-radius: 4px; }
+.rock-page .help-box { background: #1a1a1a; border-color: #2a2a2a; color: #eaeaea; }
+
+/* ===== Tema "Wave": sfondo 3D animato (Three.js), contenuto in card semitrasparenti sopra.
+   Stessa struttura HTML degli altri temi, cambia solo l'aspetto. ===== */
+body.wave-page {
+  background: #0b0b12;
+  color: #f2f2f5;
+  --text-rgb: 242,242,245;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#wave-bg-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  display: block;
+}
+.wave-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) {
+  .wave-page .container { max-width: 720px; }
+}
+.wave-page footer.site { color: rgba(242,242,245,0.5); position: relative; z-index: 1; }
+.wave-page .profile-header h1 { color: #fff; font-size: 30px; font-weight: 800; }
+.wave-page .profile-header p { color: rgba(242,242,245,0.65); }
+.wave-page .profile-meta { color: rgba(242,242,245,0.5); }
+.wave-page .avatar { box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+
+.wave-page .colorful-nav a {
+  background: rgba(20,20,30,0.7); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(6px);
+}
+.wave-page .colorful-nav a:hover { background: rgba(30,30,45,0.8); }
+.wave-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.wave-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+
+.wave-page .social-icon-btn { background: rgba(20,20,30,0.7); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(6px); }
+.wave-page .color-link-btn {
+  background: rgba(18,18,28,0.75) !important; /* sovrascrive il colore pastello passato inline dal PHP */
+  border: 1px solid rgba(255,255,255,0.12);
+  border-left: 4px solid var(--accent, #6C5CE7);
+  backdrop-filter: blur(6px);
+  color: #f2f2f5 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.wave-page .color-link-btn:hover { background: rgba(28,28,42,0.8) !important; transform: translateY(-2px); }
+.wave-page .card {
+  background: rgba(18,18,28,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+  color: #f2f2f5;
+}
+.wave-page .section-title { color: rgba(242,242,245,0.55); }
+.wave-page .event-item, .wave-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.wave-page a { color: var(--accent, #6C5CE7); }
+.wave-page form textarea,
+.wave-page form input {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #f2f2f5;
+}
+.wave-page form label { color: rgba(242,242,245,0.6); }
+.wave-page .help-box { background: rgba(18,18,28,0.72); border-color: rgba(255,255,255,0.08); color: #f2f2f5; }
+@media (max-width: 760px) {
+  #wave-bg-canvas { opacity: 0.6; } /* più discreto su mobile, dove pesa di più sulle prestazioni */
+}
+
+/* ===== Tema "Wave Neon": stessa struttura del tema Wave (scuro), la griglia usa colonne
+   invece di cubi e i colori sono più notturni/saturi — il CSS del contenuto è identico al
+   tema Wave, basta condividere la stessa classe per i dettagli, cambia solo lo sfondo 3D. ===== */
+body.wave-neon-page {
+  background: #060609;
+  color: #f2f2f5;
+  --text-rgb: 242,242,245;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wave-neon-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .wave-neon-page .container { max-width: 720px; } }
+.wave-neon-page footer.site { color: rgba(242,242,245,0.5); position: relative; z-index: 1; }
+.wave-neon-page .profile-header h1 { color: #fff; font-size: 30px; font-weight: 800; }
+.wave-neon-page .profile-header p { color: rgba(242,242,245,0.65); }
+.wave-neon-page .profile-meta { color: rgba(242,242,245,0.5); }
+.wave-neon-page .avatar { box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+.wave-neon-page .colorful-nav a { background: rgba(15,15,22,0.75); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
+.wave-neon-page .colorful-nav a:hover { background: rgba(25,25,36,0.85); }
+.wave-neon-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.wave-neon-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.wave-neon-page .social-icon-btn { background: rgba(15,15,22,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
+.wave-neon-page .color-link-btn {
+  background: rgba(12,12,18,0.8) !important;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-left: 4px solid var(--accent, #6C5CE7);
+  backdrop-filter: blur(6px);
+  color: #f2f2f5 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.wave-neon-page .color-link-btn:hover { background: rgba(20,20,30,0.85) !important; transform: translateY(-2px); }
+.wave-neon-page .card { background: rgba(12,12,18,0.78); border: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(8px); color: #f2f2f5; }
+.wave-neon-page .section-title { color: rgba(242,242,245,0.5); }
+.wave-neon-page .event-item, .wave-neon-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.wave-neon-page a { color: var(--accent, #6C5CE7); }
+.wave-neon-page form textarea, .wave-neon-page form input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #f2f2f5; }
+.wave-neon-page form label { color: rgba(242,242,245,0.55); }
+.wave-neon-page .help-box { background: rgba(12,12,18,0.78); border-color: rgba(255,255,255,0.07); color: #f2f2f5; }
+
+/* ===== Tema "Wave Chiaro": stesso principio del tema Wave, ma su sfondo chiaro — cubi più
+   grandi e distanziati, atmosfera più ariosa. Testo e card scuri per contrasto. ===== */
+body.wave-light-page {
+  background: #f3f2f8;
+  color: #22223b;
+  --text-rgb: 34,34,59;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wave-light-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .wave-light-page .container { max-width: 720px; } }
+.wave-light-page footer.site { color: rgba(34,34,59,0.55); position: relative; z-index: 1; }
+.wave-light-page .profile-header h1 { color: #22223b; font-size: 30px; font-weight: 800; }
+.wave-light-page .profile-header p { color: rgba(34,34,59,0.65); }
+.wave-light-page .profile-meta { color: rgba(34,34,59,0.5); }
+.wave-light-page .avatar { box-shadow: 0 10px 32px rgba(34,34,59,0.25); }
+.wave-light-page .colorful-nav a { background: rgba(255,255,255,0.75); color: #22223b; border: 1px solid rgba(34,34,59,0.1); backdrop-filter: blur(6px); }
+.wave-light-page .colorful-nav a:hover { background: rgba(255,255,255,0.9); }
+.wave-light-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.wave-light-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.wave-light-page .social-icon-btn { background: rgba(255,255,255,0.75); border: 1px solid rgba(34,34,59,0.1); backdrop-filter: blur(6px); }
+.wave-light-page .color-link-btn {
+  background: rgba(255,255,255,0.8) !important;
+  border: 1px solid rgba(34,34,59,0.08);
+  border-left: 4px solid var(--accent, #6C5CE7);
+  backdrop-filter: blur(6px);
+  color: #22223b !important;
+  box-shadow: 0 8px 20px rgba(34,34,59,0.12);
+}
+.wave-light-page .color-link-btn:hover { background: rgba(255,255,255,0.95) !important; transform: translateY(-2px); }
+.wave-light-page .card { background: rgba(255,255,255,0.78); border: 1px solid rgba(34,34,59,0.08); backdrop-filter: blur(8px); color: #22223b; }
+.wave-light-page .section-title { color: rgba(34,34,59,0.55); }
+.wave-light-page .event-item, .wave-light-page .blog-item { border-bottom-color: rgba(34,34,59,0.12); }
+.wave-light-page a { color: var(--accent, #6C5CE7); }
+.wave-light-page form textarea, .wave-light-page form input { background: rgba(255,255,255,0.9); border: 1px solid rgba(34,34,59,0.15); color: #22223b; }
+.wave-light-page form label { color: rgba(34,34,59,0.6); }
+.wave-light-page .help-box { background: rgba(255,255,255,0.78); border-color: rgba(34,34,59,0.08); color: #22223b; }
+@media (max-width: 760px) {
+  body.wave-neon-page #wave-bg-canvas, body.wave-light-page #wave-bg-canvas { opacity: 0.6; }
+}
+
+
+
+
+/* ===== Tema "Aurora": cielo notturno stellato che sfuma verso il tramonto corallo. Pulsanti
+   corallo con ombra a doppio strato (effetto "profondità"), angoli moderatamente arrotondati
+   (non pillola perfetta, non spigolo netto). ===== */
+body.aurora-page {
+  background:
+    radial-gradient(1.5px 1.5px at 20% 15%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 70% 8%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 45% 25%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 85% 30%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 10% 40%, rgba(255,255,255,0.7), transparent),
+    linear-gradient(180deg, #131b2e 0%, #1c2540 22%, #4a3157 48%, #a24657 70%, #d97a52 100%);
+  background-attachment: fixed;
+  color: #fff;
+  --text-rgb: 255,255,255;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.aurora-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .aurora-page .container { max-width: 720px; } }
+.aurora-page footer.site { color: rgba(255,255,255,0.55); }
+.aurora-page .avatar { border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.aurora-page .profile-header h1 { color: #fff; font-size: 29px; font-weight: 800; }
+.aurora-page .profile-header p { color: rgba(255,255,255,0.7); }
+.aurora-page .profile-meta { color: rgba(255,255,255,0.55); }
+.aurora-page .colorful-nav a { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.18); }
+.aurora-page .colorful-nav a:hover { background: rgba(255,255,255,0.22); }
+.aurora-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.aurora-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.aurora-page .social-icon-btn { background: #fff; color: #1c2540; }
+.aurora-page .color-link-btn {
+  background: #e0654f !important;
+  border: none;
+  border-radius: 14px;
+  color: #fff !important;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.22), 0 10px 20px rgba(0,0,0,0.25);
+}
+.aurora-page .color-link-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(0,0,0,0.22), 0 14px 24px rgba(0,0,0,0.28); }
+.aurora-page .card { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(6px); color: #fff; }
+.aurora-page .section-title { color: rgba(255,255,255,0.6); }
+.aurora-page .event-item, .aurora-page .blog-item { border-bottom-color: rgba(255,255,255,0.15); }
+.aurora-page a { color: #ffb199; }
+.aurora-page form textarea, .aurora-page form input { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; }
+.aurora-page form label { color: rgba(255,255,255,0.65); }
+.aurora-page .help-box { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: #fff; }
+
+/* ===== Tema "Plasma": sfumatura viola-magenta-blu satura e mossa. Pulsanti arancioni pieni,
+   pillole perfettamente tonde, piatti (nessuna ombra). ===== */
+body.plasma-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, #ff2fb0 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 85% 25%, #7b2ff7 0%, transparent 55%),
+    radial-gradient(ellipse 80% 70% at 30% 85%, #2f6bff 0%, transparent 55%),
+    linear-gradient(160deg, #2a1157 0%, #4b1266 45%, #23124f 100%);
+  background-attachment: fixed;
+  color: #fff;
+  --text-rgb: 255,255,255;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.plasma-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .plasma-page .container { max-width: 720px; } }
+.plasma-page footer.site { color: rgba(255,255,255,0.55); }
+.plasma-page .avatar { border: 3px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.plasma-page .profile-header h1 { color: #fff; font-size: 29px; font-weight: 800; }
+.plasma-page .profile-header p { color: rgba(255,255,255,0.75); }
+.plasma-page .profile-meta { color: rgba(255,255,255,0.55); }
+.plasma-page .colorful-nav a { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+.plasma-page .colorful-nav a:hover { background: rgba(255,255,255,0.26); }
+.plasma-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.plasma-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.plasma-page .social-icon-btn { background: #fff; color: #4b1266; }
+.plasma-page .color-link-btn {
+  background: #ff8a3d !important;
+  border: none;
+  border-radius: 999px;
+  color: #fff !important;
+  box-shadow: none;
+}
+.plasma-page .color-link-btn:hover { background: #ff9c5c !important; transform: translateY(-2px); }
+.plasma-page .card { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(6px); color: #fff; }
+.plasma-page .section-title { color: rgba(255,255,255,0.6); }
+.plasma-page .event-item, .plasma-page .blog-item { border-bottom-color: rgba(255,255,255,0.16); }
+.plasma-page a { color: #ffb27a; }
+.plasma-page form textarea, .plasma-page form input { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; }
+.plasma-page form label { color: rgba(255,255,255,0.65); }
+.plasma-page .help-box { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.16); color: #fff; }
+
+/* ===== Tema "Golden": tramonto caldo che scende verso lo scuro, atmosfera quieta. Pulsanti
+   bianchi puliti con testo scuro, angoli a pillola. ===== */
+body.golden-page {
+  background: linear-gradient(180deg, #f3a35a 0%, #d97a3f 25%, #8a4a3a 55%, #2b1a1f 100%);
+  background-attachment: fixed;
+  color: #fff;
+  --text-rgb: 255,255,255;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.golden-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .golden-page .container { max-width: 720px; } }
+.golden-page footer.site { color: rgba(255,255,255,0.55); }
+.golden-page .avatar { border: 3px solid #fff; box-shadow: 0 10px 26px rgba(0,0,0,0.3); }
+.golden-page .profile-header h1 { color: #fff; font-size: 28px; font-weight: 800; }
+.golden-page .profile-header p { color: rgba(255,255,255,0.75); }
+.golden-page .profile-meta { color: rgba(255,255,255,0.55); }
+.golden-page .colorful-nav a { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+.golden-page .colorful-nav a:hover { background: rgba(255,255,255,0.26); }
+.golden-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.golden-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.golden-page .social-icon-btn { background: rgba(0,0,0,0.35); color: #fff; }
+.golden-page .color-link-btn {
+  background: #fff !important;
+  border: none;
+  border-radius: 999px;
+  color: #2b1a1f !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+.golden-page .color-link-btn:hover { background: #fff !important; transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.3); }
+.golden-page .card { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(6px); color: #fff; }
+.golden-page .section-title { color: rgba(255,255,255,0.6); }
+.golden-page .event-item, .golden-page .blog-item { border-bottom-color: rgba(255,255,255,0.15); }
+.golden-page a { color: #ffd9a8; }
+.golden-page form textarea, .golden-page form input { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3); color: #fff; }
+.golden-page form label { color: rgba(255,255,255,0.65); }
+.golden-page .help-box { background: rgba(0,0,0,0.25); border-color: rgba(255,255,255,0.12); color: #fff; }
+
+/* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
+.menu-category { margin-bottom: 28px; }
+.menu-category-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  text-align: center;
+  color: var(--accent);
+}
+.menu-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(var(--text-rgb, 34,34,59), 0.2);
+}
+.menu-item-name { font-weight: 700; }
+.menu-item-name sup { color: var(--accent); font-weight: 700; margin-left: 2px; cursor: help; }
+.menu-item-desc { font-weight: 400; font-style: italic; font-size: 13px; color: rgba(var(--text-rgb, 34,34,59), 0.65); margin-top: 2px; }
+.menu-item-price { font-weight: 700; white-space: nowrap; }
+.menu-allergen-legend { font-size: 11.5px; color: rgba(var(--text-rgb, 34,34,59), 0.55); margin-top: 20px; line-height: 1.6; }

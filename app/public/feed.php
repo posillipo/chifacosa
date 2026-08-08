@@ -1,0 +1,52 @@
+<?php
+require_once __DIR__ . '/../src/functions.php';
+
+header('Content-Type: application/rss+xml; charset=UTF-8');
+
+$slug = $_GET['slug'] ?? '';
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio
+                          FROM users u JOIN profiles p ON p.user_id = u.id
+                          WHERE u.slug = ? AND u.is_active = 1');
+$stmt->execute([$slug]);
+$artist = $stmt->fetch();
+
+if (!$artist) {
+    http_response_code(404);
+    exit;
+}
+
+// Stesso feed della Timeline, ma senza i Brani (link a Spotify, non a un contenuto editoriale
+// con la propria immagine di anteprima — vedi analisi di fattibilità).
+$feed = getTimelineFeedForUsers([$artist['id']], 30);
+$feed = array_values(array_filter($feed, fn($item) => $item['tipo'] !== 'brano'));
+
+$channelUrl = siteUrl('/' . $slug);
+$feedUrl = siteUrl('/' . $slug . '/feed');
+$channelTitle = htmlspecialchars($artist['display_name'] . ' — ' . siteName(), ENT_XML1, 'UTF-8');
+$channelDesc = htmlspecialchars($artist['bio'] ? textExcerpt($artist['bio'], 200) : ('Ultimi aggiornamenti di ' . $artist['display_name']), ENT_XML1, 'UTF-8');
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title><?= $channelTitle ?></title>
+<link><?= e($channelUrl) ?></link>
+<atom:link href="<?= e($feedUrl) ?>" rel="self" type="application/rss+xml" />
+<description><?= $channelDesc ?></description>
+<language>it-it</language>
+<lastBuildDate><?= date(DATE_RSS) ?></lastBuildDate>
+<?php foreach ($feed as $item): ?>
+<item>
+<title><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></title>
+<link><?= e(siteUrl($item['url'])) ?></link>
+<guid isPermaLink="true"><?= e(siteUrl($item['url'])) ?></guid>
+<pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
+<description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>
+<?php if ($item['cover']): ?>
+<?php $coverUrl = str_starts_with($item['cover'], 'http') ? $item['cover'] : siteUrl($item['cover']); ?>
+<enclosure url="<?= e($coverUrl) ?>" type="image/jpeg" />
+<?php endif; ?>
+</item>
+<?php endforeach; ?>
+</channel>
+</rss>

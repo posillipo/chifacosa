@@ -1,0 +1,5 @@
+.env
+app/public/uploads/audio/*
+app/public/uploads/images/*
+!app/public/uploads/audio/.gitkeep
+!app/public/uploads/images/.gitkeep

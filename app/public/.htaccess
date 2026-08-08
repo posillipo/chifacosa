@@ -1,0 +1,60 @@
+RewriteEngine On
+
+# Non toccare file/cartelle esistenti (assets, uploads, script .php reali)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# /nomeartista/blog/anno.mese.giorno.slug-articolo -> singolo articolo (permalink SEO)
+RewriteRule ^([a-zA-Z0-9_-]+)/blog/([0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[a-zA-Z0-9-]+)/?$ blog_post.php?slug=$1&post=$2 [L,QSA]
+
+# /nomeartista/blog -> elenco articoli
+RewriteRule ^([a-zA-Z0-9_-]+)/blog/?$ blog_index.php?slug=$1 [L,QSA]
+
+# /nomeartista/brani/ID -> pagina dedicata al singolo brano (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/?$ track.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/brani -> pagina brani musicali
+RewriteRule ^([a-zA-Z0-9_-]+)/brani/?$ brani.php?slug=$1 [L,QSA]
+
+# /nomeartista/eventi/ID -> pagina dedicata al singolo evento (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/eventi/([0-9]+)/?$ evento.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/feed -> feed RSS/XML (per Metricool e altri strumenti di pianificazione social)
+RewriteRule ^([a-zA-Z0-9_-]+)/feed/?$ feed.php?slug=$1 [L,QSA]
+
+# /nomeartista/brani/ID/votazioni -> pagina dedicata al voto del brano
+RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/votazioni/?$ track_review.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/brani/ID/testo -> pagina dedicata al testo/ascolto del brano
+RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/testo/?$ track_lyrics.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/timeline/ID -> pagina dedicata al singolo aggiornamento (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/timeline/([0-9]+)/?$ timeline_post.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/timeline -> timeline unificata blog+brani+eventi+aggiornamenti
+RewriteRule ^([a-zA-Z0-9_-]+)/timeline/?$ timeline.php?slug=$1 [L,QSA]
+
+# /nomeartista/eventi -> pagina concerti
+RewriteRule ^([a-zA-Z0-9_-]+)/eventi/?$ eventi.php?slug=$1 [L,QSA]
+
+# /nomeartista/band-che-amo -> elenco completo band preferite
+RewriteRule ^([a-zA-Z0-9_-]+)/band-che-amo/?$ band_che_amo.php?slug=$1 [L,QSA]
+
+# /nomeartista/contatti -> form di contatto
+RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
+
+# /nomeartista/spotify -> pagina discografia Spotify
+RewriteRule ^([a-zA-Z0-9_-]+)/spotify/?$ artist_spotify.php?slug=$1 [L,QSA]
+
+# /nomeartista/menu -> pagina menù (ristoranti e simili)
+RewriteRule ^([a-zA-Z0-9_-]+)/menu/?$ menu.php?slug=$1 [L,QSA]
+
+# /nomeartista/video -> pagina video YouTube
+RewriteRule ^([a-zA-Z0-9_-]+)/video/?$ video.php?slug=$1 [L,QSA]
+
+# /nomeartista/podcast -> pagina episodi podcast Spotify
+RewriteRule ^([a-zA-Z0-9_-]+)/podcast/?$ podcast.php?slug=$1 [L,QSA]
+
+# /nomeartista -> pagina profilo pubblica (regola generica, deve restare per ultima)
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ u.php?slug=$1 [L,QSA]

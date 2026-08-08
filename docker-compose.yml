@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build: ./app
+    container_name: ${CONTAINER_NAME:-chifacosa_app}
+    restart: unless-stopped
+    expose:
+      - "80"
+    environment:
+      - DB_HOST=myband_db
+      - DB_NAME=${DB_NAME:-chifacosa}
+      - DB_USER=${DB_USER:-chifacosa_user}
+      - DB_PASS=${DB_PASSWORD:-cambiami_123}
+      - SITE_URL=${SITE_URL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_SECURE=${SMTP_SECURE:-tls}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
+    volumes:
+      - ./app/public/uploads:/var/www/html/uploads
+    networks:
+      - myband2_myband_net
+      - proxy-manager_default
+
+volumes: {}
+
+networks:
+  myband2_myband_net:
+    external: true
+  proxy-manager_default:
+    external: true
