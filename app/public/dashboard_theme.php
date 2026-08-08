@@ -98,6 +98,13 @@ include __DIR__ . '/_dash_header.php';
                 <div style="border:1.5px solid #6C5CE7;border-radius:8px;height:10px;margin-bottom:4px;box-shadow:0 0 6px rgba(108,92,231,0.6);"></div>
                 <div style="border:1.5px solid #6C5CE7;border-radius:8px;height:10px;box-shadow:0 0 6px rgba(108,92,231,0.6);"></div>
               </div>
+            <?php elseif ($key === 'circuit'): ?>
+              <div style="background:#0b0b0f;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <div style="position:absolute;inset:0;background:repeating-linear-gradient(45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px), repeating-linear-gradient(-45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px);"></div>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#141420;margin:0 auto 8px;border:2px solid #6C5CE7;"></div>
+                <div style="position:relative;background:rgba(255,255,255,0.08);border-radius:6px;height:10px;margin-bottom:4px;"></div>
+                <div style="position:relative;background:rgba(255,255,255,0.08);border-radius:6px;height:10px;"></div>
+              </div>
             <?php elseif ($key === 'colorful'): ?>
               <div style="background:linear-gradient(160deg,#FFD6A5,#A0C4FF,#BDB2FF);border-radius:6px;padding:16px 10px;margin-bottom:10px;">
                 <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;"></div>

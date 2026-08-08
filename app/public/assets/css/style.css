@@ -1079,6 +1079,85 @@ body.electric-page {
   background: linear-gradient(-30deg, var(--electric-border-color), transparent, var(--electric-border-color));
 }
 
+/* ===== Tema "Circuit": griglia 3D di tessere che ruotano lentamente (tecnica Truchet tiles,
+   puro CSS/JS via assets/js/circuit-bg.js), a formare un disegno stile circuito stampato che
+   cambia nel tempo. Le linee delle tessere seguono l'accento scelto dal profilo. ===== */
+body.circuit-page {
+  background: #0b0b0f;
+  color: #f2f2f5;
+  --text-rgb: 242,242,245;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.circuit-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .circuit-page .container { max-width: 720px; } }
+.circuit-page footer.site { color: rgba(242,242,245,0.5); position: relative; z-index: 1; }
+.circuit-page .profile-header h1 { color: #fff; font-size: 30px; font-weight: 800; }
+.circuit-page .profile-header p { color: rgba(242,242,245,0.65); }
+.circuit-page .profile-meta { color: rgba(242,242,245,0.5); }
+.circuit-page .avatar { box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+.circuit-page .colorful-nav a { background: rgba(15,15,22,0.75); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
+.circuit-page .colorful-nav a:hover { background: rgba(25,25,36,0.85); }
+.circuit-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.circuit-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.circuit-page .social-icon-btn { background: rgba(15,15,22,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
+.circuit-page .color-link-btn { background: rgba(15,15,22,0.75) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #f2f2f5 !important; }
+.circuit-page .color-link-btn:hover { background: rgba(25,25,36,0.85) !important; transform: translateY(-2px); }
+.circuit-page .card { background: rgba(12,12,18,0.8); border: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(8px); color: #f2f2f5; }
+.circuit-page .section-title { color: rgba(242,242,245,0.5); }
+.circuit-page .event-item, .circuit-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.circuit-page a { color: var(--accent, #6C5CE7); }
+.circuit-page form textarea, .circuit-page form input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #f2f2f5; }
+.circuit-page form label { color: rgba(242,242,245,0.55); }
+.circuit-page .help-box { background: rgba(12,12,18,0.8); border-color: rgba(255,255,255,0.07); color: #f2f2f5; }
+
+#circuit-bg {
+  position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none;
+  perspective: 1000px;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%), #0b0b0f;
+}
+#circuit-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(0deg, #0b0b0f 0%, transparent 45%);
+  pointer-events: none;
+}
+#circuit-bg .cirContainer {
+  transform: translateY(-12%) rotateX(28deg);
+  transform-style: preserve-3d;
+  --tc: 2.5px;
+  width: fit-content;
+}
+#circuit-bg .cirRow { display: flex; height: fit-content; }
+#circuit-bg .cir {
+  position: relative;
+  width: var(--size); height: var(--size);
+  overflow: hidden;
+  transition: transform 1.4s ease-in-out;
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.06);
+}
+#circuit-bg .cir::before, #circuit-bg .cir::after {
+  content: ''; display: block; position: absolute; inset: 0;
+}
+#circuit-bg .cir::before {
+  background: radial-gradient(circle at 0.1% 0.1%,
+    transparent 0px, transparent calc((var(--size) / 2) - var(--tc)),
+    var(--circuit-line-color) calc((var(--size) / 2) - var(--tc)),
+    var(--circuit-line-color) calc((var(--size) / 2) + var(--tc)),
+    transparent calc((var(--size) / 2) + var(--tc)));
+  opacity: 0.55;
+}
+#circuit-bg .cir::after {
+  background: radial-gradient(circle at 99.9% 99.9%,
+    transparent 0px, transparent calc((var(--size) / 2) - var(--tc)),
+    var(--circuit-line-color) calc((var(--size) / 2) - var(--tc)),
+    var(--circuit-line-color) calc((var(--size) / 2) + var(--tc)),
+    transparent calc((var(--size) / 2) + var(--tc)));
+  opacity: 0.55;
+}
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {

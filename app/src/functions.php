@@ -464,6 +464,7 @@ const PAGE_THEMES = [
     'golden' => ['label' => 'Golden', 'description' => 'Tramonto caldo, pulsanti bianchi minimal, atmosfera quieta', 'body_class' => 'golden-page'],
     'la-caraffa' => ['label' => 'La Caraffa', 'description' => 'Tema blu corporativo ispirato al logo di La Caraffa Ristorante', 'body_class' => 'la-caraffa-page'],
     'electric' => ['label' => 'Electric', 'description' => 'Sfondo scuro con un bordo elettrico animato attorno al profilo', 'body_class' => 'electric-page'],
+    'circuit' => ['label' => 'Circuit', 'description' => 'Griglia 3D di tubi che ruotano lentamente, come un circuito stampato', 'body_class' => 'circuit-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -493,6 +494,14 @@ function renderWaveBackground(string $accentColor, string $themeKey = 'wave'): s
         . '></canvas>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="' . assetUrl('/assets/js/wave-bg.js') . '"></script>';
+}
+
+// Sfondo animato per il tema "Circuit" — griglia CSS/JS (nessuna dipendenza esterna) di
+// tessere che ruotano lentamente, a formare un disegno stile circuito stampato. Container
+// fisso dietro al contenuto, caricato solo se il profilo ha scelto questo tema.
+function renderCircuitBackground(string $accentColor): string {
+    return '<div id="circuit-bg" data-accent="' . e($accentColor) . '"></div>
+    <script src="' . assetUrl('/assets/js/circuit-bg.js') . '"></script>';
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla
