@@ -92,6 +92,12 @@ include __DIR__ . '/_dash_header.php';
                 <div style="background:#1c1c1c;border-left:3px solid #6C5CE7;border-radius:3px;height:10px;margin-bottom:4px;"></div>
                 <div style="background:#1c1c1c;border-left:3px solid #6C5CE7;border-radius:3px;height:10px;"></div>
               </div>
+            <?php elseif ($key === 'electric'): ?>
+              <div style="background:radial-gradient(ellipse at 50% -10%, rgba(108,92,231,0.35), transparent 55%), #0a0a0f;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#141420;margin:0 auto 8px;border:2px solid #6C5CE7;box-shadow:0 0 10px 1px rgba(108,92,231,0.7);"></div>
+                <div style="border:1.5px solid #6C5CE7;border-radius:8px;height:10px;margin-bottom:4px;box-shadow:0 0 6px rgba(108,92,231,0.6);"></div>
+                <div style="border:1.5px solid #6C5CE7;border-radius:8px;height:10px;box-shadow:0 0 6px rgba(108,92,231,0.6);"></div>
+              </div>
             <?php elseif ($key === 'colorful'): ?>
               <div style="background:linear-gradient(160deg,#FFD6A5,#A0C4FF,#BDB2FF);border-radius:6px;padding:16px 10px;margin-bottom:10px;">
                 <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;"></div>

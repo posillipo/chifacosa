@@ -463,6 +463,7 @@ const PAGE_THEMES = [
     'plasma' => ['label' => 'Plasma', 'description' => 'Sfumatura viola-magenta-blu satura, pulsanti arancioni a pillola', 'body_class' => 'plasma-page'],
     'golden' => ['label' => 'Golden', 'description' => 'Tramonto caldo, pulsanti bianchi minimal, atmosfera quieta', 'body_class' => 'golden-page'],
     'la-caraffa' => ['label' => 'La Caraffa', 'description' => 'Tema blu corporativo ispirato al logo di La Caraffa Ristorante', 'body_class' => 'la-caraffa-page'],
+    'electric' => ['label' => 'Electric', 'description' => 'Sfondo scuro con un bordo elettrico animato attorno al profilo', 'body_class' => 'electric-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -618,7 +619,10 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
 // coerente. La bio, quando presente, è mostrata come vignetta al passaggio del mouse
 // sull'avatar (non più come testo sempre visibile), per un profilo più compatto.
 function publicProfileHeader(array $artist, string $active, bool $showBio = false): string {
-    $html = '<div class="profile-header">';
+    $isElectric = ($artist['page_theme'] ?? 'colorful') === 'electric';
+    $electricClass = $isElectric ? ' electric-border' : '';
+    $electricStyle = $isElectric ? ' style="--electric-border-color:' . e($artist['theme_color'] ?: '#6C5CE7') . ';"' : '';
+    $html = '<div class="profile-header' . $electricClass . '"' . $electricStyle . '>';
     if (!empty($artist['avatar_path'])) {
         $html .= '<div class="avatar-wrap">';
         $html .= '<img class="avatar" src="/' . e($artist['avatar_path']) . '" alt="' . e($artist['display_name']) . '">';
@@ -640,6 +644,9 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu);
     $html .= '</div>';
+    if ($isElectric) {
+        $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
+    }
     return $html;
 }
 

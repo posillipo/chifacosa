@@ -1021,6 +1021,64 @@ body.golden-page {
 .golden-page form label { color: rgba(255,255,255,0.65); }
 .golden-page .help-box { background: rgba(0,0,0,0.25); border-color: rgba(255,255,255,0.12); color: #fff; }
 
+/* ===== Tema "Electric": sfondo scuro con bagliore soffuso, il blocco profilo è racchiuso da
+   un bordo animato "elettrico" (rumore procedurale su canvas + bagliore CSS), disegnato da
+   assets/js/electric-border.js. Il colore del bordo segue l'accento scelto dal profilo. ===== */
+body.electric-page {
+  background: radial-gradient(ellipse at 50% -10%, rgba(108,92,231,0.25), transparent 55%), #0a0a0f;
+  color: #f2f2f5;
+  --text-rgb: 242,242,245;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.electric-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .electric-page .container { max-width: 720px; } }
+.electric-page footer.site { color: rgba(242,242,245,0.5); }
+.electric-page .avatar { border: 3px solid var(--accent, #6C5CE7); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.electric-page .profile-header h1 { color: #fff; font-size: 28px; font-weight: 800; }
+.electric-page .profile-header p { color: rgba(242,242,245,0.7); }
+.electric-page .profile-meta { color: rgba(242,242,245,0.5); }
+.electric-page .colorful-nav a { background: rgba(20,20,30,0.7); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.1); }
+.electric-page .colorful-nav a:hover { background: rgba(30,30,45,0.85); }
+.electric-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
+.electric-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
+.electric-page .social-icon-btn { background: rgba(20,20,30,0.7); border: 1px solid rgba(255,255,255,0.1); }
+.electric-page .color-link-btn { background: rgba(20,20,30,0.7) !important; border: 1px solid rgba(255,255,255,0.12) !important; color: #f2f2f5 !important; }
+.electric-page .color-link-btn:hover { background: rgba(30,30,45,0.85) !important; transform: translateY(-2px); }
+.electric-page .card { background: rgba(16,16,24,0.78); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); color: #f2f2f5; }
+.electric-page .section-title { color: rgba(242,242,245,0.55); }
+.electric-page .event-item, .electric-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.electric-page a { color: var(--accent, #6C5CE7); }
+.electric-page form textarea, .electric-page form input { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); color: #f2f2f5; }
+.electric-page form label { color: rgba(242,242,245,0.6); }
+.electric-page .help-box { background: rgba(16,16,24,0.78); border-color: rgba(255,255,255,0.08); color: #f2f2f5; }
+
+.electric-page .profile-header.electric-border {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  padding: 28px 20px 20px;
+  margin: 0 auto 28px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.03);
+}
+.eb-canvas-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; }
+.eb-canvas { display: block; }
+.eb-layers { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; }
+.eb-glow-1, .eb-glow-2, .eb-background-glow { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-sizing: border-box; }
+.eb-glow-1 { border: 2px solid color-mix(in srgb, var(--electric-border-color) 60%, transparent); filter: blur(1px); }
+.eb-glow-2 { border: 2px solid var(--electric-border-color); filter: blur(4px); }
+.eb-background-glow {
+  z-index: -1;
+  transform: scale(1.08);
+  filter: blur(28px);
+  opacity: 0.35;
+  background: linear-gradient(-30deg, var(--electric-border-color), transparent, var(--electric-border-color));
+}
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {
