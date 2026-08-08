@@ -619,7 +619,8 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
         $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . '>' . $icon . e($t['label']) . '</a>';
     }
-    return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>';
+    return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>'
+        . '<script src="' . assetUrl('/assets/js/nav-scroll-hint.js') . '" defer></script>';
 }
 
 // Blocco identità condiviso (avatar + nome + eventuale bio + menu) stampato in cima ad ogni
