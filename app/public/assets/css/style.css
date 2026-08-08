@@ -457,8 +457,8 @@ body.colorful-page {
   position: relative;
   overflow: hidden;
   display: inline-block;
-  background: rgb(108,92,231);
-  color: #fff;
+  background: var(--accent, rgb(108,92,231));
+  color: var(--accent-text, #fff);
   font-weight: 700;
   font-size: 13px;
   padding: 7px 18px;
@@ -557,17 +557,17 @@ body.colorful-page {
   transition: background 0.15s ease;
 }
 .colorful-nav a:hover { background: rgba(255,255,255,0.65); }
-/* Colore fisso della voce attiva nel menu, identico su tutti i profili — non più legato al
-   colore tema di ciascuno, per coerenza visiva su tutta la piattaforma */
-.colorful-nav a[style*="color:#fff"] { background: rgb(108,92,231); }
-
-/* Tab "Segui": sempre acceso, ben distinto dagli altri, indipendentemente dal fatto che sia
-   la pagina attiva o meno */
+/* Voce attiva nel menu e tab "Segui" (sempre acceso): sfondo nel colore accento scelto dal
+   profilo, testo bianco o scuro calcolato automaticamente in base al contrasto migliore
+   (vedi getContrastTextColor() in functions.php) — vale su ogni tema, con !important per
+   vincere anche sullo sfondo/bordo che ciascun tema imposta di default sulle pillole del menu. */
+.colorful-nav a.nav-active-tab,
 .colorful-nav a.nav-segui-tab {
-  background: rgb(108,92,231) !important;
-  color: #fff !important;
+  background: var(--accent, rgb(108,92,231)) !important;
+  color: var(--accent-text, #fff) !important;
+  border-color: var(--accent, rgb(108,92,231)) !important;
 }
-.colorful-nav a.nav-segui-tab:hover { opacity: 0.9; background: rgb(108,92,231) !important; }
+.colorful-nav a.nav-segui-tab:hover { opacity: 0.9; }
 
 @media (max-width: 400px) {
   .colorful-nav a { font-size: 13.5px; padding: 4px 10px; }
@@ -693,8 +693,6 @@ body.rock-page {
   background: #202020; color: #eaeaea; border: 1px solid #2c2c2c; border-radius: 4px;
 }
 .rock-page .colorful-nav a:hover { background: #262626; }
-.rock-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; border-color: var(--accent, #6C5CE7); }
-.rock-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; border-color: rgb(108,92,231); }
 
 .rock-page .social-icon-btn {
   background: #202020; border: 1px solid #2c2c2c; border-radius: 6px; color: #eaeaea;
@@ -764,8 +762,6 @@ body.wave-page {
   backdrop-filter: blur(6px);
 }
 .wave-page .colorful-nav a:hover { background: rgba(30,30,45,0.8); }
-.wave-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.wave-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 
 .wave-page .social-icon-btn { background: rgba(20,20,30,0.7); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(6px); }
 .wave-page .color-link-btn {
@@ -820,8 +816,6 @@ body.wave-neon-page {
 .wave-neon-page .avatar { box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
 .wave-neon-page .colorful-nav a { background: rgba(15,15,22,0.75); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
 .wave-neon-page .colorful-nav a:hover { background: rgba(25,25,36,0.85); }
-.wave-neon-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.wave-neon-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .wave-neon-page .social-icon-btn { background: rgba(15,15,22,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
 .wave-neon-page .color-link-btn {
   background: rgba(12,12,18,0.8) !important;
@@ -861,8 +855,6 @@ body.wave-light-page {
 .wave-light-page .avatar { box-shadow: 0 10px 32px rgba(34,34,59,0.25); }
 .wave-light-page .colorful-nav a { background: rgba(255,255,255,0.75); color: #22223b; border: 1px solid rgba(34,34,59,0.1); backdrop-filter: blur(6px); }
 .wave-light-page .colorful-nav a:hover { background: rgba(255,255,255,0.9); }
-.wave-light-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.wave-light-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .wave-light-page .social-icon-btn { background: rgba(255,255,255,0.75); border: 1px solid rgba(34,34,59,0.1); backdrop-filter: blur(6px); }
 .wave-light-page .color-link-btn {
   background: rgba(255,255,255,0.8) !important;
@@ -916,8 +908,6 @@ body.aurora-page {
 .aurora-page .profile-meta { color: rgba(255,255,255,0.55); }
 .aurora-page .colorful-nav a { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.18); }
 .aurora-page .colorful-nav a:hover { background: rgba(255,255,255,0.22); }
-.aurora-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.aurora-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .aurora-page .social-icon-btn { background: #fff; color: #1c2540; }
 .aurora-page .color-link-btn {
   background: #e0654f !important;
@@ -961,8 +951,6 @@ body.plasma-page {
 .plasma-page .profile-meta { color: rgba(255,255,255,0.55); }
 .plasma-page .colorful-nav a { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
 .plasma-page .colorful-nav a:hover { background: rgba(255,255,255,0.26); }
-.plasma-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.plasma-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .plasma-page .social-icon-btn { background: #fff; color: #4b1266; }
 .plasma-page .color-link-btn {
   background: #ff8a3d !important;
@@ -1002,8 +990,6 @@ body.golden-page {
 .golden-page .profile-meta { color: rgba(255,255,255,0.55); }
 .golden-page .colorful-nav a { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
 .golden-page .colorful-nav a:hover { background: rgba(255,255,255,0.26); }
-.golden-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.golden-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .golden-page .social-icon-btn { background: rgba(0,0,0,0.35); color: #fff; }
 .golden-page .color-link-btn {
   background: #fff !important;
@@ -1043,8 +1029,6 @@ body.electric-page {
 .electric-page .profile-meta { color: rgba(242,242,245,0.5); }
 .electric-page .colorful-nav a { background: rgba(20,20,30,0.7); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.1); }
 .electric-page .colorful-nav a:hover { background: rgba(30,30,45,0.85); }
-.electric-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.electric-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .electric-page .social-icon-btn { background: rgba(20,20,30,0.7); border: 1px solid rgba(255,255,255,0.1); }
 .electric-page .color-link-btn { background: rgba(20,20,30,0.7) !important; border: 1px solid rgba(255,255,255,0.12) !important; color: #f2f2f5 !important; }
 .electric-page .color-link-btn:hover { background: rgba(30,30,45,0.85) !important; transform: translateY(-2px); }
@@ -1101,8 +1085,6 @@ body.circuit-page {
 .circuit-page .avatar { box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
 .circuit-page .colorful-nav a { background: rgba(15,15,22,0.75); color: #f2f2f5; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
 .circuit-page .colorful-nav a:hover { background: rgba(25,25,36,0.85); }
-.circuit-page .colorful-nav a[style*="color:#fff"] { background: var(--accent, #6C5CE7) !important; color: var(--accent-text, #fff) !important; }
-.circuit-page .colorful-nav a.nav-segui-tab { background: rgb(108,92,231) !important; color: #fff !important; }
 .circuit-page .social-icon-btn { background: rgba(15,15,22,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
 .circuit-page .color-link-btn { background: rgba(15,15,22,0.75) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #f2f2f5 !important; }
 .circuit-page .color-link-btn:hover { background: rgba(25,25,36,0.85) !important; transform: translateY(-2px); }
@@ -1180,3 +1162,103 @@ body.circuit-page {
 .menu-item-desc { font-weight: 400; font-style: italic; font-size: 13px; color: rgba(var(--text-rgb, 34,34,59), 0.65); margin-top: 2px; }
 .menu-item-price { font-weight: 700; white-space: nowrap; }
 .menu-allergen-legend { font-size: 11.5px; color: rgba(var(--text-rgb, 34,34,59), 0.55); margin-top: 20px; line-height: 1.6; }
+
+/* ===== Selezionatore tema a schermo intero (dashboard_theme.php) — griglia animata ispirata
+   a "Sketch 023: Background Picker" di Codrops (tympanus.net/Sketches/023-theme-picker,
+   licenza MIT), adattata da 360 sfumature a card a griglia con i temi reali della pagina
+   pubblica. Animazione via GSAP: le celle crescono da zero con un effetto a cascata casuale,
+   poi le linee bianche disegnano la griglia. ===== */
+.theme-picker-trigger { text-align: center; }
+
+.theme-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  overflow-y: auto;
+  background: #0a0a0f;
+}
+.theme-picker.hidden { opacity: 0; pointer-events: none; }
+
+.theme-picker__item {
+  position: relative;
+  cursor: pointer;
+  min-height: 22vh;
+}
+.theme-picker__item:nth-child(-n+3) i,
+.theme-picker__item:nth-child(3n+4) i {
+  z-index: 10;
+  background: rgba(255,255,255,0.9);
+  position: absolute;
+  will-change: transform;
+}
+.theme-picker__item:nth-child(-n+3):not(:nth-child(1)) i {
+  height: 100vh;
+  width: 2px;
+  top: 0;
+  left: -1px;
+}
+.theme-picker__item:nth-child(3n+4) i {
+  width: 100vw;
+  height: 2px;
+  left: 0;
+  top: -1px;
+}
+
+.theme-picker__item-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  will-change: transform;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+}
+.theme-picker__item-inner::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 3px solid rgba(255,255,255,0.6);
+  opacity: 0;
+  transition: opacity 0.15s linear;
+  pointer-events: none;
+}
+.theme-picker__item:hover .theme-picker__item-inner::after { opacity: 1; }
+
+.theme-picker__item-label {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+.theme-picker__item-check {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  color: #fff;
+  font-size: 18px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.theme-picker__close {
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  z-index: 20;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+@media (max-width: 500px) {
+  .theme-picker__item-label { font-size: 13px; }
+}

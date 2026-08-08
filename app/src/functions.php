@@ -614,11 +614,10 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
 
     $parts = [];
     foreach ($tabs as $key => $t) {
-        $extraClass = $t['class'] ?? '';
-        $activeAttr = $key === $active ? ' style="font-weight:900;color:#fff;"' : '';
-        $classAttr = $extraClass !== '' ? ' class="' . e($extraClass) . '"' : '';
+        $classes = trim(($t['class'] ?? '') . ($key === $active ? ' nav-active-tab' : ''));
+        $classAttr = $classes !== '' ? ' class="' . e($classes) . '"' : '';
         $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
-        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . $activeAttr . '>' . $icon . e($t['label']) . '</a>';
+        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . '>' . $icon . e($t['label']) . '</a>';
     }
     return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>';
 }

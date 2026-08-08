@@ -22,8 +22,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Sfondo rappresentativo di ciascun tema per il selezionatore a schermo intero — un unico
+// CSS background (non le mini-anteprime composte usate nella lista qui sotto), riprendendo
+// dove possibile gli stessi colori delle vere regole body.*-page in style.css.
+$themePickerBackgrounds = [
+    'colorful' => 'linear-gradient(135deg,#FFD6A5,#A0C4FF,#BDB2FF)',
+    'rock' => 'linear-gradient(160deg,#1a1a1a,#0d0d0d)',
+    'wave' => 'linear-gradient(160deg,#0b0b12,#1a1a2e)',
+    'wave-light' => 'linear-gradient(160deg,#f3f2f8,#e2e2ee)',
+    'wave-neon' => 'linear-gradient(160deg,#060609,#12121c)',
+    'aurora' => 'linear-gradient(180deg,#131b2e 0%,#4a3157 45%,#d97a52 100%)',
+    'plasma' => 'linear-gradient(160deg,#7b2ff7,#ff2fb0,#2f6bff)',
+    'golden' => 'linear-gradient(180deg,#f3a35a,#8a4a3a,#2b1a1f)',
+    'la-caraffa' => 'linear-gradient(135deg,#0a3d62,#1e5f8c)',
+    'electric' => 'radial-gradient(ellipse at 50% -10%, rgba(108,92,231,0.45), transparent 55%), #0a0a0f',
+    'circuit' => 'repeating-linear-gradient(45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px), repeating-linear-gradient(-45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px), #0b0b0f',
+];
+
 include __DIR__ . '/_dash_header.php';
 ?>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <?php if (!empty($message)): ?><div class="alert success"><?= e($message) ?></div><?php endif; ?>
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (!empty($success)): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
@@ -39,13 +57,33 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
 
+  <div class="card theme-picker-trigger">
+    <button type="button" id="open-theme-picker" class="btn" style="width:auto;">🎨 Apri il selezionatore animato</button>
+    <p style="color:var(--text-muted);font-size:13px;margin:10px 0 0;">Oppure scegli dalla lista qui sotto.</p>
+  </div>
+
+  <div class="theme-picker hidden" id="theme-picker">
+    <?php foreach (PAGE_THEMES as $key => $theme): ?>
+      <?php $isSelected = ($user['page_theme'] ?? 'colorful') === $key; ?>
+      <div class="theme-picker__item" data-theme-key="<?= e($key) ?>">
+        <div class="theme-picker__item-inner" style="background:<?= e($themePickerBackgrounds[$key] ?? '#333') ?>;">
+          <span class="theme-picker__item-label"><?= e($theme['label']) ?></span>
+          <?php if ($isSelected): ?><span class="theme-picker__item-check">✓</span><?php endif; ?>
+        </div>
+        <i></i>
+      </div>
+    <?php endforeach; ?>
+    <button type="button" class="theme-picker__close" aria-label="Chiudi">✕</button>
+  </div>
+  <script src="<?= assetUrl('/assets/js/theme-picker.js') ?>" defer></script>
+
   <form method="post">
     <?= csrfField() ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
       <?php foreach (PAGE_THEMES as $key => $theme): ?>
         <?php $isSelected = ($user['page_theme'] ?? 'colorful') === $key; ?>
         <label style="display:block;cursor:pointer;">
-          <input type="radio" name="page_theme" value="<?= e($key) ?>" <?= $isSelected ? 'checked' : '' ?> onchange="this.form.submit()" style="display:none;">
+          <input type="radio" id="theme-radio-<?= e($key) ?>" name="page_theme" value="<?= e($key) ?>" <?= $isSelected ? 'checked' : '' ?> onchange="this.form.submit()" style="display:none;">
           <div class="card" style="border:2px solid <?= $isSelected ? 'var(--accent)' : 'transparent' ?>;text-align:center;">
             <?php if ($key === 'wave'): ?>
               <div style="background:linear-gradient(160deg,#0b0b12,#1a1a2e);border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
