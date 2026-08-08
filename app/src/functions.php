@@ -573,26 +573,26 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     if (!$viewerId || !$ownerId || (int) $viewerId !== (int) $ownerId) {
         $tabs['segui'] = ['label' => $seguiLabel, 'url' => '/' . $slug . '#segui-widget', 'class' => 'nav-segui-tab'];
     }
-    $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug];
-    $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
+    $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug, 'icon' => 'fas fa-house'];
+    $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasSpotify && $isBandOrLabel) {
-        $tabs['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
+        $tabs['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify', 'icon' => 'fa-brands fa-spotify'];
     }
     if ($hasPodcast && $isBandOrLabel) {
-        $tabs['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
+        $tabs['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast', 'icon' => 'fas fa-microphone'];
     }
     if ($hasYoutube && $isBandOrLabel) {
-        $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
+        $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'icon' => 'fa-brands fa-youtube'];
     }
-    $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
-    $tabs['brani'] = ['label' => 'Brani', 'url' => '/' . $slug . '/brani'];
+    $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'icon' => 'fas fa-newspaper'];
+    $tabs['brani'] = ['label' => 'Brani', 'url' => '/' . $slug . '/brani', 'icon' => 'fas fa-music'];
     if ($hasMenu) {
-        $tabs['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu'];
+        $tabs['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu', 'icon' => 'fas fa-utensils'];
     }
     if ($isBandOrLabel) {
-        $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
+        $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
     }
-    $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+    $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti', 'icon' => 'fas fa-envelope'];
 
     // Non nasconde mai il tab attualmente attivo, anche se marcato nascosto: chi ci arriva
     // comunque tramite link diretto deve continuare a vedersi orientato nel menu, non sparire.
@@ -607,7 +607,8 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $extraClass = $t['class'] ?? '';
         $activeAttr = $key === $active ? ' style="font-weight:900;color:#fff;"' : '';
         $classAttr = $extraClass !== '' ? ' class="' . e($extraClass) . '"' : '';
-        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . $activeAttr . '>' . e($t['label']) . '</a>';
+        $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
+        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . $activeAttr . '>' . $icon . e($t['label']) . '</a>';
     }
     return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>';
 }
