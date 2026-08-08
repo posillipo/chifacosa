@@ -18,6 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Inserisci un nome per la categoria.';
         }
+    } elseif ($action === 'update_category') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        if ($name !== '') {
+            $stmt = getDB()->prepare('UPDATE menu_categories SET name=? WHERE id=? AND user_id=?');
+            $stmt->execute([$name, $id, $user['id']]);
+        } else {
+            $error = 'Inserisci un nome per la categoria.';
+        }
     } elseif ($action === 'delete_category') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('DELETE FROM menu_categories WHERE id=? AND user_id=?');
@@ -125,6 +134,15 @@ if ($editItemId > 0) {
     }
 }
 
+// Modalità modifica: se è presente ?edit_category=ID, precarichiamo quella categoria nel form
+$editingCategory = null;
+$editCategoryId = (int) ($_GET['edit_category'] ?? 0);
+if ($editCategoryId > 0) {
+    foreach ($categories as $c) {
+        if ((int) $c['id'] === $editCategoryId) { $editingCategory = $c; break; }
+    }
+}
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <details class="help-box">
@@ -149,6 +167,21 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if (!$categories): ?>
     <div class="alert error">Nessuna categoria ancora — creane una qui sopra per iniziare ad aggiungere piatti.</div>
+  <?php endif; ?>
+
+  <?php if ($editingCategory): ?>
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="update_category">
+    <input type="hidden" name="id" value="<?= (int) $editingCategory['id'] ?>">
+    <strong>Modifica categoria</strong>
+    <label>Nome categoria</label>
+    <div style="display:flex;gap:8px;">
+      <input type="text" name="name" value="<?= e($editingCategory['name']) ?>" required style="flex:1;margin-bottom:0;">
+      <button type="submit" class="btn" style="width:auto;">Salva</button>
+      <a href="/dashboard_menu.php" class="btn secondary" style="width:auto;">Annulla</a>
+    </div>
+  </form>
   <?php endif; ?>
 
   <?php if ($editingItem): ?>
@@ -218,6 +251,7 @@ include __DIR__ . '/_dash_header.php';
     <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span><?= e($cat['name']) ?></span>
       <div class="icon-btn-group">
+        <a class="icon-btn" href="/dashboard_menu.php?edit_category=<?= (int) $cat['id'] ?>" title="Rinomina categoria"><i class="fa-solid fa-pen"></i></a>
         <form method="post" title="Sposta su">
           <?= csrfField() ?>
           <input type="hidden" name="action" value="move_category_up">
