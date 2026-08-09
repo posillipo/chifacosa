@@ -217,6 +217,24 @@ Se modifichi il codice su GitHub e pushhi a `main`:
 1. Portainer → Stacks → chifacosa
 2. Clicca **Pull and Redeploy**
 
+### ⚠️ Regola d'oro: mai eliminare e ricreare lo Stack
+
+Usa **sempre e solo "Pull and Redeploy"** sullo stack esistente per aggiornare il codice.
+**Non eliminare mai lo Stack per poi ricrearlo da capo** — è già successo due volte che questo
+abbia causato perdita di dati:
+
+- Le variabili d'ambiente inserite a mano in Portainer (DB_PASSWORD, SMTP, ecc.) non vengono
+  salvate da nessuna parte nel repository: eliminando lo stack si perdono, e il container
+  ripartirebbe con le password di default, non raggiungendo più il database.
+- Portainer usa una cartella locale diversa (`/data/compose/NN`, con NN che cambia) per ogni
+  checkout del repository legato allo stack. Anche un semplice "Pull and Redeploy" sembra
+  poter finire su un numero diverso da quello precedente — motivo per cui **nessun file
+  scritto dall'app dentro al checkout del repository sopravvive in modo affidabile**
+  (vedi sotto, "Uploads").
+
+Se davvero serve eliminare e ricreare lo stack, salva prima le variabili d'ambiente
+(Portainer → Stack → Environment) in un posto sicuro.
+
 ---
 
 ## 🐛 Troubleshooting
@@ -242,13 +260,50 @@ docker exec chifacosa_app ping myband_db
 - Verifica che il dominio sia raggiungibile via DNS
 - Prova il DNS challenge anziché HTTP challenge
 
+### Immagini caricate in precedenza non si vedono più dopo un redeploy
+Successo il 9 agosto 2026 su pizzerialacaraffa.it. Due cause diverse, in sequenza:
+
+**1. I file erano davvero spariti dal disco.** Gli upload (avatar, copertine eventi) vivevano
+in `./app/public/uploads`, dentro al checkout Git dello stack — e quel checkout cambia cartella
+(`/data/compose/NN`) a ogni redeploy, quindi gli upload precedenti restano nella cartella
+vecchia, non in quella nuova. **Fix definitivo già applicato**: `docker-compose.yml` ora monta
+un volume Docker dedicato (`uploads_data`), indipendente dal checkout — verifica con:
+```bash
+docker inspect chifacosa_app --format '{{ range .Mounts }}{{ .Type }}: {{ .Source }}{{println}}{{end}}'
+# deve dire "volume", non "bind"
+```
+Se dice ancora `bind`, fai un "Pull and Redeploy" per far applicare il nuovo `docker-compose.yml`.
+Se dei file erano rimasti in una cartella `/data/compose/NN` precedente non ripulita, si possono
+recuperare così (sostituisci NN, slug e nome file):
+```bash
+docker exec chifacosa_app mkdir -p /var/www/html/uploads/images/<slug>
+docker cp /data/compose/NN/app/public/uploads/images/<slug>/. chifacosa_app:/var/www/html/uploads/images/<slug>/
+docker exec chifacosa_app chown -R www-data:www-data /var/www/html/uploads/images/<slug>
+```
+Non serve toccare il database: i percorsi (`avatar_path`, `cover_path`) restano corretti, basta
+far riesistere i file fisici con lo stesso nome.
+
+**2. Anche dopo aver restituito i file, Nginx Proxy Manager continuava a rispondere 404.**
+La funzione "Cache Assets" di NPM (`conf.d/include/assets.conf`) mette in cache anche le
+risposte 404 per le immagini — e quella cache vive nel filesystem del container di NPM stesso
+(`/var/lib/nginx/cache/public`), quindi **un riavvio del container non la svuota**. Va cancellata
+a mano:
+```bash
+docker exec -it proxy-manager-app-1 sh -c "rm -rf /var/lib/nginx/cache/public/*"
+```
+Per verificare rapidamente se è questo il problema (senza aspettare o svuotare nulla): prova lo
+stesso URL con un parametro finto in fondo, es. `?nocache=1` — se con quello si vede e senza no,
+è sicuramente la cache di NPM.
+
 ---
 
 ## 📝 Note
 
 - **Password DB:** La password `chifacosa_secure_123` è di esempio. Cambia con una forte in produzione.
 - **Risorse:** il container riusa la stessa istanza MySQL condivisa (`myband_db`), nessun database dedicato da gestire a parte.
-- **Uploads:** La cartella `app/public/uploads` è mappata come volume per persistenza tra redeploy.
+- **Uploads:** montati su un volume Docker dedicato (`uploads_data`), non su una cartella dentro
+  il repository — è l'unico modo che sopravvive in modo affidabile ai redeploy con questo setup
+  di Portainer (vedi Troubleshooting sopra per i dettagli).
 - **SMTP:** Se non hai configurato email, la maggior parte delle funzioni funzionerà comunque. Aggiungi SMTP solo se necessario.
 
 ---
