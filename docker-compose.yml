@@ -22,18 +22,27 @@ services:
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
     volumes:
       - uploads_data:/var/www/html/uploads
+      - app_config:/var/www/config
     networks:
       - myband2_myband_net
       - proxy-manager_default
 
-# Volume Docker dedicato per i file caricati (avatar, copertine eventi, audio...), NON una
-# cartella dentro il checkout Git dello stack: un "pull and redeploy" (o qualunque comando che
-# tocchi la working directory del repository, come git reset/clean) non lo tocca in alcun modo,
-# a differenza del precedente bind mount su ./app/public/uploads che ha causato la perdita delle
-# immagini già caricate. Compose lo crea con nome prefissato dal nome dello stack (es.
-# "chifacosa_uploads_data"), quindi resta automaticamente separato tra chifacosa_app e cfc_new_app.
+# uploads_data: file caricati (avatar, copertine eventi, audio...), NON una cartella dentro il
+# checkout Git dello stack: un "pull and redeploy" (o qualunque comando che tocchi la working
+# directory del repository, come git reset/clean) non lo tocca in alcun modo, a differenza del
+# precedente bind mount su ./app/public/uploads che ha causato la perdita delle immagini già
+# caricate.
+# app_config: dove il wizard di installazione (install.php) scrive le credenziali del database
+# quando NON vengono fornite come variabili d'ambiente del container — per chi preferisce
+# configurare tutto dal browser al primo avvio invece di compilare DB_HOST/DB_NAME/DB_USER/
+# DB_PASS prima ancora di partire. Le installazioni che già passano queste variabili via
+# ambiente (come questo stesso file fa qui sotto) non scrivono mai nulla qui: il volume resta
+# vuoto e inutilizzato per loro.
+# Compose crea entrambi con nome prefissato dal nome dello stack (es. "chifacosa_uploads_data"),
+# quindi restano automaticamente separati tra chifacosa_app e cfc_new_app.
 volumes:
   uploads_data:
+  app_config:
 
 networks:
   myband2_myband_net:

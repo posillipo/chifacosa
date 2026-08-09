@@ -14,13 +14,20 @@ function checkInstallation(): void {
         return; // Non fare controlli su queste pagine
     }
     
-    // Il database irraggiungibile (credenziali sbagliate, host non risolvibile, container non
-    // ancora pronto) è un problema diverso da "schema non ancora importato": confonderli mandava
-    // al wizard di reinstallazione anche quando i dati esistevano già ma erano temporaneamente
-    // irraggiungibili — con il rischio, completando di nuovo il wizard, di sembrare "ripartiti da
-    // zero" mentre i dati originali erano solo nascosti da un errore di connessione.
+    // Tre situazioni diverse, da non confondere tra loro:
+    //   1. Nessuna configurazione DB trovata (né variabili d'ambiente né file) — installazione
+    //      nuova, mai partita: al wizard, che ora sa chiedere anche le credenziali del database.
+    //   2. Configurazione presente ma il database è irraggiungibile (credenziali sbagliate, host
+    //      non risolvibile, container non ancora pronto) — problema diverso da "schema non
+    //      ancora importato": confonderli manderebbe al wizard di reinstallazione anche quando i
+    //      dati esistevano già ma erano temporaneamente irraggiungibili, col rischio, completando
+    //      di nuovo il wizard, di sembrare "ripartiti da zero" mentre i dati erano solo nascosti.
+    //   3. Connessione riuscita: si prosegue con i controlli sotto.
     try {
         $pdo = getDB();
+    } catch (DbNotConfiguredException $e) {
+        header('Location: /install.php');
+        exit;
     } catch (Exception $e) {
         http_response_code(500);
         die('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Database non raggiungibile</title></head>'
