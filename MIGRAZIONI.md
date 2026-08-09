@@ -296,6 +296,40 @@ nascosto, esattamente come prima di questa funzionalità. Le integrazioni (Spoti
 Video, il pulsante "Segui") non sono coperte, restano sempre governate dalla loro logica
 esistente.
 
+## 26. Prenotazione tavoli per gli eventi
+```sql
+ALTER TABLE events ADD COLUMN accepts_reservations TINYINT(1) NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS table_reservations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    event_id INT NULL,
+    guest_name VARCHAR(120) NOT NULL,
+    guest_email VARCHAR(190) NOT NULL,
+    guest_phone VARCHAR(30) DEFAULT NULL,
+    party_size SMALLINT UNSIGNED NOT NULL,
+    notes VARCHAR(300) DEFAULT NULL,
+    status ENUM('pending','confirmed','declined','cancelled','no_show','completed') NOT NULL DEFAULT 'confirmed',
+    marketing_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    INDEX idx_owner_status (user_id, status),
+    INDEX idx_guest_email (guest_email)
+) ENGINE=InnoDB;
+```
+Il gestore attiva "Accetta prenotazioni tavolo" su un singolo evento da `dashboard_events.php`;
+solo allora `evento.php` mostra il modulo pubblico di prenotazione (nome, email, telefono,
+numero di persone, note, consenso facoltativo a ricevere aggiornamenti/offerte in futuro —
+separato dalla prenotazione stessa per restare in regola: la prenotazione da sola autorizza a
+ricontattare solo per quella prenotazione). Le prenotazioni si vedono/gestiscono da
+`dashboard_reservations.php`, che offre anche una vista "clienti" raggruppata per email con lo
+storico di chi ha già prenotato — pensata per superare il limite del sistema "Segui"
+(`followers`), che è solo un elenco email da broadcast senza storico né dati di contatto
+completi. `event_id` resta nullable apposta: una futura fase "prenotazioni libere" (non legate
+a un evento) userà la stessa tabella senza nuove migrazioni.
+
 ---
 
 ## Come aggiungere una nuova voce

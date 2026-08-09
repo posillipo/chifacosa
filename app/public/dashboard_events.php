@@ -17,12 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $city = trim($_POST['city'] ?? '');
         $date = $_POST['event_date'] ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
+        $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
             $coverPath = handleCoverUpload($user['slug']);
-            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, cover_path) VALUES (?,?,?,?,?,?,?)');
-            $stmt->execute([$user['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $coverPath]);
+            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt->execute([$user['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $coverPath, $acceptsReservations]);
             $newEventId = (int) getDB()->lastInsertId();
 
             $eventUrl = siteUrl('/' . $user['slug'] . '/eventi/' . $newEventId);
@@ -36,6 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             deleteCoverFile($row['cover_path']);
         }
         $stmt = getDB()->prepare('DELETE FROM events WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $user['id']]);
+    } elseif ($action === 'toggle_reservations') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('UPDATE events SET accepts_reservations = NOT accepts_reservations WHERE id=? AND user_id=?');
         $stmt->execute([$id, $user['id']]);
     }
     if (!$error) {
@@ -67,6 +72,10 @@ include __DIR__ . '/_dash_header.php';
     <input type="url" name="ticket_url" placeholder="https://...">
     <label>Copertina quadrata (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
+      <input type="checkbox" name="accepts_reservations" value="1" style="width:auto;margin-bottom:0;">
+      Accetta prenotazioni tavolo per questo evento
+    </label>
     <button type="submit" class="btn">Aggiungi evento</button>
   </form>
 
@@ -82,12 +91,23 @@ include __DIR__ . '/_dash_header.php';
         <?php if ($ev['venue'] || $ev['city']): ?>
           <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>
         <?php endif; ?>
-        <form method="post" style="margin-top:8px;" onsubmit="return confirm('Eliminare questo evento?');">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="delete">
-          <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
-          <button class="btn small danger" type="submit">Elimina</button>
-        </form>
+        <?php if ((int) $ev['accepts_reservations'] === 1): ?>
+          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni tavolo attive</div>
+        <?php endif; ?>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <form method="post">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="toggle_reservations">
+            <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
+            <button class="btn small secondary" type="submit"><?= (int) $ev['accepts_reservations'] === 1 ? 'Disattiva prenotazioni' : 'Attiva prenotazioni' ?></button>
+          </form>
+          <form method="post" onsubmit="return confirm('Eliminare questo evento?');">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
+            <button class="btn small danger" type="submit">Elimina</button>
+          </form>
+        </div>
       </div>
     </div>
   <?php endforeach; ?>

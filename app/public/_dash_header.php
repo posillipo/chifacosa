@@ -213,6 +213,7 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_menu.php" class="<?= $activeTab==='menu'?'active':'' ?>">Menù</a>
     <?php if ($isBandOrLabel): ?>
     <a href="/dashboard_events.php" class="<?= $activeTab==='events'?'active':'' ?>">Eventi</a>
+    <a href="/dashboard_reservations.php" class="<?= $activeTab==='reservations'?'active':'' ?>">Prenotazioni</a>
     <?php endif; ?>
     <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
     <a href="/dashboard_followers.php" class="<?= $activeTab==='followers'?'active':'' ?>">Follower</a>

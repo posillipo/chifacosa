@@ -144,6 +144,8 @@ form input[type=url],
 form input[type=date],
 form input[type=datetime-local],
 form input[type=color],
+form input[type=tel],
+form input[type=number],
 form textarea,
 form select {
   width: 100%;

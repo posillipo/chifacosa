@@ -34,6 +34,9 @@ $artist = [
     'youtube_channel_id' => $event['youtube_channel_id'],
 ];
 
+$resMsg = $_GET['res_msg'] ?? '';
+$resErr = ($_GET['res_err'] ?? '0') === '1';
+
 $pageUrl = siteUrl('/' . $slug . '/eventi/' . $eventId);
 $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
 $locationLine = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));
@@ -92,6 +95,36 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
       <a class="btn" href="<?= e($event['ticket_url']) ?>" target="_blank" rel="noopener">Biglietti →</a>
     <?php endif; ?>
   </div>
+
+  <?php if ($resMsg): ?>
+    <div class="alert <?= $resErr ? 'error' : 'success' ?>"><?= e($resMsg) ?></div>
+  <?php endif; ?>
+
+  <?php if ((int) $event['accepts_reservations'] === 1): ?>
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Prenota un tavolo</div>
+      <form method="post" action="/reserve_table.php">
+        <?= csrfField() ?>
+        <input type="hidden" name="slug" value="<?= e($slug) ?>">
+        <input type="hidden" name="event_id" value="<?= (int) $eventId ?>">
+        <label>Nome e cognome</label>
+        <input type="text" name="guest_name" required>
+        <label>Email</label>
+        <input type="email" name="guest_email" required>
+        <label>Telefono (facoltativo)</label>
+        <input type="tel" name="guest_phone">
+        <label>Numero di persone</label>
+        <input type="number" name="party_size" min="1" max="50" value="2" required>
+        <label>Note (facoltative)</label>
+        <input type="text" name="notes" placeholder="es. seggiolone, allergie, ...">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
+          <input type="checkbox" name="marketing_opt_in" value="1" style="width:auto;margin-bottom:0;">
+          Voglio ricevere aggiornamenti su nuovi eventi e offerte da <?= e($event['display_name']) ?>
+        </label>
+        <button type="submit" class="btn">Prenota</button>
+      </form>
+    </div>
+  <?php endif; ?>
 
   <p><a href="/<?= e($slug) ?>/eventi">← Tutti gli eventi di <?= e($event['display_name']) ?></a></p>
 </div>

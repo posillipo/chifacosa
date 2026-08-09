@@ -796,6 +796,49 @@ function notifyNewVote(string $toEmail, string $toName, string $voterSlug, int $
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
 }
 
+// Notifica al gestore del locale quando arriva una nuova prenotazione tavolo per un suo evento.
+function notifyNewReservation(string $toEmail, string $toName, string $eventTitle, string $guestName, string $guestEmail, ?string $guestPhone, int $partySize, ?string $notes, string $reservationsUrl): bool {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return false;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+
+    $subject = "Nuova prenotazione per \"{$eventTitle}\" — {$guestName} ({$partySize} persone)";
+    $body = "Ciao {$toName},\n\n"
+          . "Hai ricevuto una nuova prenotazione tavolo per \"{$eventTitle}\":\n\n"
+          . "Nome: {$guestName}\n"
+          . "Email: {$guestEmail}\n"
+          . ($guestPhone ? "Telefono: {$guestPhone}\n" : '')
+          . "Persone: {$partySize}\n"
+          . ($notes ? "Note: {$notes}\n" : '')
+          . "\nGestisci tutte le prenotazioni dalla tua dashboard: {$reservationsUrl}";
+
+    return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
+}
+
+// Conferma via email all'ospite che ha appena prenotato un tavolo.
+function notifyReservationConfirmation(string $toEmail, string $guestName, string $venueName, string $eventTitle, string $eventDateFormatted, int $partySize): bool {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return false;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+
+    $subject = "Prenotazione confermata per \"{$eventTitle}\"";
+    $body = "Ciao {$guestName},\n\n"
+          . "La tua prenotazione da {$venueName} è confermata:\n\n"
+          . "Evento: {$eventTitle}\n"
+          . "Data: {$eventDateFormatted}\n"
+          . "Persone: {$partySize}\n\n"
+          . "Se hai bisogno di modificare o annullare la prenotazione, contatta direttamente {$venueName}.\n\n"
+          . "A presto!";
+
+    return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $guestName, $subject, $body);
+}
+
 // Notifica a tutti gli amministratori quando si registra un nuovo utente.
 function notifyAdminsNewUser(string $newUserEmail, string $newUserName, string $newUserSlug): bool {
     $cfg = getSmtpConfig();
@@ -1305,7 +1348,8 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'follow_account','dashboard_timeline','timeline','dashboard_post','timeline_post','feed','admin_import_old_timeline','timeline_more','track_review','admin_reviews','dashboard_password','dashboard_timeline_more',
     'login_otp_request','login_otp_verify','request_access','admin_access_requests','dashboard_theme','credits',
     'dashboard_invite','dashboard_following','dashboard_team','dashboard_log','track_lyrics',
-    'dashboard_messages','dashboard_chat','menu','dashboard_menu'];
+    'dashboard_messages','dashboard_chat','menu','dashboard_menu',
+    'reserve_table','dashboard_reservations'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

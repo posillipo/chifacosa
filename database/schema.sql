@@ -79,8 +79,30 @@ CREATE TABLE IF NOT EXISTS events (
     event_date DATETIME NOT NULL,
     ticket_url VARCHAR(500),
     cover_path VARCHAR(255) DEFAULT NULL,
+    accepts_reservations TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento; event_id resta
+-- pensato per poter restare NULL in futuro per prenotazioni "libere", senza nuove migrazioni).
+CREATE TABLE IF NOT EXISTS table_reservations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    event_id INT NULL,
+    guest_name VARCHAR(120) NOT NULL,
+    guest_email VARCHAR(190) NOT NULL,
+    guest_phone VARCHAR(30) DEFAULT NULL,
+    party_size SMALLINT UNSIGNED NOT NULL,
+    notes VARCHAR(300) DEFAULT NULL,
+    status ENUM('pending','confirmed','declined','cancelled','no_show','completed') NOT NULL DEFAULT 'confirmed',
+    marketing_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    INDEX idx_owner_status (user_id, status),
+    INDEX idx_guest_email (guest_email)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS blog_posts (
