@@ -21,12 +21,19 @@ services:
       - SMTP_FROM=${SMTP_FROM:-}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
     volumes:
-      - ./app/public/uploads:/var/www/html/uploads
+      - uploads_data:/var/www/html/uploads
     networks:
       - myband2_myband_net
       - proxy-manager_default
 
-volumes: {}
+# Volume Docker dedicato per i file caricati (avatar, copertine eventi, audio...), NON una
+# cartella dentro il checkout Git dello stack: un "pull and redeploy" (o qualunque comando che
+# tocchi la working directory del repository, come git reset/clean) non lo tocca in alcun modo,
+# a differenza del precedente bind mount su ./app/public/uploads che ha causato la perdita delle
+# immagini già caricate. Compose lo crea con nome prefissato dal nome dello stack (es.
+# "chifacosa_uploads_data"), quindi resta automaticamente separato tra chifacosa_app e cfc_new_app.
+volumes:
+  uploads_data:
 
 networks:
   myband2_myband_net:
