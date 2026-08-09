@@ -102,7 +102,7 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
 
   <?php if ((int) $event['accepts_reservations'] === 1): ?>
     <div class="card">
-      <div class="section-title" style="margin-top:0;">Prenota un tavolo</div>
+      <div class="section-title" style="margin-top:0;">Prenota</div>
       <form method="post" action="/reserve_table.php">
         <?= csrfField() ?>
         <input type="hidden" name="slug" value="<?= e($slug) ?>">

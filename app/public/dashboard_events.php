@@ -74,7 +74,7 @@ include __DIR__ . '/_dash_header.php';
     <input type="file" name="cover" accept="image/*">
     <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
       <input type="checkbox" name="accepts_reservations" value="1" style="width:auto;margin-bottom:0;">
-      Accetta prenotazioni tavolo per questo evento
+      Accetta prenotazioni per questo evento
     </label>
     <button type="submit" class="btn">Aggiungi evento</button>
   </form>
@@ -92,7 +92,7 @@ include __DIR__ . '/_dash_header.php';
           <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>
         <?php endif; ?>
         <?php if ((int) $ev['accepts_reservations'] === 1): ?>
-          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni tavolo attive</div>
+          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni attive</div>
         <?php endif; ?>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
           <form method="post">

@@ -796,7 +796,7 @@ function notifyNewVote(string $toEmail, string $toName, string $voterSlug, int $
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
 }
 
-// Notifica al gestore del locale quando arriva una nuova prenotazione tavolo per un suo evento.
+// Notifica al gestore quando arriva una nuova prenotazione per un suo evento.
 function notifyNewReservation(string $toEmail, string $toName, string $eventTitle, string $guestName, string $guestEmail, ?string $guestPhone, int $partySize, ?string $notes, string $reservationsUrl): bool {
     $cfg = getSmtpConfig();
     if (!$cfg['host']) {
@@ -807,7 +807,7 @@ function notifyNewReservation(string $toEmail, string $toName, string $eventTitl
 
     $subject = "Nuova prenotazione per \"{$eventTitle}\" — {$guestName} ({$partySize} persone)";
     $body = "Ciao {$toName},\n\n"
-          . "Hai ricevuto una nuova prenotazione tavolo per \"{$eventTitle}\":\n\n"
+          . "Hai ricevuto una nuova prenotazione per \"{$eventTitle}\":\n\n"
           . "Nome: {$guestName}\n"
           . "Email: {$guestEmail}\n"
           . ($guestPhone ? "Telefono: {$guestPhone}\n" : '')
@@ -818,7 +818,7 @@ function notifyNewReservation(string $toEmail, string $toName, string $eventTitl
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
 }
 
-// Conferma via email all'ospite che ha appena prenotato un tavolo.
+// Conferma via email all'ospite che ha appena prenotato.
 function notifyReservationConfirmation(string $toEmail, string $guestName, string $venueName, string $eventTitle, string $eventDateFormatted, int $partySize): bool {
     $cfg = getSmtpConfig();
     if (!$cfg['host']) {

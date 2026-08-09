@@ -16,19 +16,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = getDB()->prepare('UPDATE table_reservations SET status = ? WHERE id = ? AND user_id = ?');
         $stmt->execute([$_POST['status'], $id, $user['id']]);
     }
-    header('Location: /dashboard_reservations.php?view=' . urlencode($_GET['view'] ?? 'requests'));
+    $redirectParams = ['view' => $_GET['view'] ?? 'requests'];
+    if (!empty($_GET['event_id'])) {
+        $redirectParams['event_id'] = (int) $_GET['event_id'];
+    }
+    header('Location: /dashboard_reservations.php?' . http_build_query($redirectParams));
     exit;
 }
 
 $view = ($_GET['view'] ?? 'requests') === 'clients' ? 'clients' : 'requests';
+$eventFilter = (int) ($_GET['event_id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT tr.*, ev.title AS event_title, ev.event_date
-                          FROM table_reservations tr
-                          LEFT JOIN events ev ON ev.id = tr.event_id
-                          WHERE tr.user_id = ?
-                          ORDER BY ev.event_date DESC, tr.created_at DESC');
+// Solo gli eventi che hanno almeno una prenotazione, per non riempire il filtro di eventi vuoti.
+$stmt = getDB()->prepare('SELECT DISTINCT ev.id, ev.title, ev.event_date
+                          FROM events ev
+                          JOIN table_reservations tr ON tr.event_id = ev.id
+                          WHERE ev.user_id = ?
+                          ORDER BY ev.event_date DESC');
 $stmt->execute([$user['id']]);
+$eventsWithReservations = $stmt->fetchAll();
+
+$sql = 'SELECT tr.*, ev.title AS event_title, ev.event_date
+        FROM table_reservations tr
+        LEFT JOIN events ev ON ev.id = tr.event_id
+        WHERE tr.user_id = ?';
+$params = [$user['id']];
+if ($eventFilter > 0) {
+    $sql .= ' AND tr.event_id = ?';
+    $params[] = $eventFilter;
+}
+$sql .= ' ORDER BY ev.event_date DESC, tr.created_at DESC';
+$stmt = getDB()->prepare($sql);
+$stmt->execute($params);
 $reservations = $stmt->fetchAll();
+
+$stmt = getDB()->prepare('SELECT COUNT(*) FROM table_reservations WHERE user_id = ?');
+$stmt->execute([$user['id']]);
+$totalReservationsCount = (int) $stmt->fetchColumn();
 
 $stmt = getDB()->prepare("SELECT guest_email,
                                   SUBSTRING_INDEX(GROUP_CONCAT(guest_name ORDER BY created_at DESC), ',', 1) AS guest_name,
@@ -65,7 +89,7 @@ include __DIR__ . '/_dash_header.php';
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Le prenotazioni arrivano dagli eventi per cui hai attivato "Accetta prenotazioni tavolo"
+      Le prenotazioni arrivano dagli eventi per cui hai attivato "Accetta prenotazioni"
       (da Eventi). Qui puoi vedere le singole richieste ed anche i tuoi clienti — chi ha già
       prenotato almeno una volta, con l'email e il telefono lasciati, per poterli ricontattare
       quando vuoi.
@@ -73,13 +97,29 @@ include __DIR__ . '/_dash_header.php';
   </details>
 
   <div class="tabs">
-    <a href="/dashboard_reservations.php?view=requests" class="<?= $view === 'requests' ? 'active' : '' ?>">Richieste (<?= count($reservations) ?>)</a>
+    <a href="/dashboard_reservations.php?view=requests" class="<?= $view === 'requests' ? 'active' : '' ?>">Richieste (<?= $totalReservationsCount ?>)</a>
     <a href="/dashboard_reservations.php?view=clients" class="<?= $view === 'clients' ? 'active' : '' ?>">Clienti (<?= count($clients) ?>)</a>
   </div>
 
   <?php if ($view === 'requests'): ?>
-    <?php if (!$reservations): ?>
-      <div class="alert error">Nessuna prenotazione ancora. Attiva "Accetta prenotazioni tavolo" su un evento per iniziare a riceverle.</div>
+    <?php if ($eventsWithReservations): ?>
+      <form method="get" style="margin-bottom:16px;">
+        <input type="hidden" name="view" value="requests">
+        <label>Filtra per evento</label>
+        <select name="event_id" onchange="this.form.submit()">
+          <option value="">Tutti gli eventi (<?= $totalReservationsCount ?>)</option>
+          <?php foreach ($eventsWithReservations as $ev): ?>
+            <option value="<?= (int) $ev['id'] ?>" <?= $eventFilter === (int) $ev['id'] ? 'selected' : '' ?>>
+              <?= e($ev['title']) ?> — <?= date('d/m/Y', strtotime($ev['event_date'])) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </form>
+    <?php endif; ?>
+    <?php if (!$reservations && $eventFilter > 0): ?>
+      <div class="alert error">Nessuna prenotazione per questo evento.</div>
+    <?php elseif (!$reservations): ?>
+      <div class="alert error">Nessuna prenotazione ancora. Attiva "Accetta prenotazioni" su un evento per iniziare a riceverle.</div>
     <?php endif; ?>
     <?php foreach ($reservations as $r): ?>
       <div class="link-item" style="align-items:flex-start;">
