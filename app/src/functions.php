@@ -626,7 +626,10 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
         $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . '>' . $icon . e($t['label']) . '</a>';
     }
-    return '<nav class="colorful-nav">' . implode('', $parts) . '</nav>'
+    return '<div class="colorful-nav-wrap">'
+        . '<nav class="colorful-nav">' . implode('', $parts) . '</nav>'
+        . '<span class="colorful-nav-arrow" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></span>'
+        . '</div>'
         . '<script src="' . assetUrl('/assets/js/nav-scroll-hint.js') . '" defer></script>';
 }
 

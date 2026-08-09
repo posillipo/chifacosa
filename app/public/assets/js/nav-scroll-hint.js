@@ -12,6 +12,26 @@
 (function () {
     var nav = document.querySelector('.colorful-nav');
     if (!nav) return;
+    var wrap = nav.closest('.colorful-nav-wrap');
+
+    // Indicatore statico (freccina + ombra) sul bordo destro, stile Hetzner Cloud Console:
+    // mostrato subito via CSS non appena c'è davvero altro da scorrere, nascosto quando si
+    // arriva in fondo. Indipendente da prefers-reduced-motion: non è un'animazione, è
+    // un'informazione ("c'è altro qui"), quindi resta utile anche a chi disattiva i movimenti.
+    function updateArrow() {
+        if (!wrap) return;
+        if (nav.scrollWidth <= nav.clientWidth + 4) {
+            wrap.classList.remove('has-overflow');
+            return;
+        }
+        var atEnd = nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 4;
+        wrap.classList.toggle('has-overflow', !atEnd);
+    }
+    updateArrow();
+    nav.addEventListener('scroll', updateArrow, { passive: true });
+    window.addEventListener('resize', updateArrow);
+    window.addEventListener('load', updateArrow);
+
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     var userTouching = false;

@@ -603,7 +603,51 @@ body.colorful-page {
 }
 
 .colorful-nav-wrap { position: relative; }
-.colorful-nav-arrow { display: none; }
+
+/* Indicatore statico "c'è altro da scorrere" sul menu mobile, ispirato al comportamento della
+   console Hetzner (freccina + leggera ombra sul bordo destro): quasi tutto CSS, quindi visibile
+   da subito senza dipendere da un timer — si affianca al richiamo animato di nav-scroll-hint.js
+   senza sostituirlo. nav-scroll-hint.js aggiunge/toglie la classe "has-overflow" sul wrap in base
+   a se c'è davvero altro da scorrere e a se si è già arrivati in fondo. */
+.colorful-nav-arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: -2px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(20, 20, 30, 0.55);
+  color: #fff;
+  font-size: 11px;
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (max-width: 760px) {
+  .colorful-nav-arrow { display: flex; }
+  .colorful-nav-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 34px;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.12));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .colorful-nav-wrap.has-overflow::after { opacity: 1; }
+  .colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; }
+}
 
 .social-icons-row {
   display: flex;
