@@ -547,7 +547,17 @@ body.colorful-page {
   padding: 0;
   list-style: none;
   max-width: 100%;
+  border-radius: 10px;
 }
+/* Bagliore che si accende una sola volta, appena la pagina viene aperta, nello stesso istante
+   in cui nav-scroll-hint.js fa scattare il primo "sussulto" del menu — per farlo notare subito
+   a chi arriva, non ad ogni ripetizione successiva (altrimenti diventa fastidioso). Colore legato
+   all'accento della pagina, come il resto dei richiami visivi del menu. */
+@keyframes nav-hint-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  40% { box-shadow: 0 0 18px 4px color-mix(in srgb, var(--accent, #6C5CE7) 65%, transparent); }
+}
+.colorful-nav.nav-hint-flash { animation: nav-hint-flash 900ms ease-out; }
 .colorful-nav a {
   display: inline-block;
   color: #22223b;
