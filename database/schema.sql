@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento; event_id resta
+-- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento — event_id resta
 -- pensato per poter restare NULL in futuro per prenotazioni "libere", senza nuove migrazioni).
 CREATE TABLE IF NOT EXISTS table_reservations (
     id INT AUTO_INCREMENT PRIMARY KEY,

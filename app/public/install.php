@@ -99,14 +99,26 @@ if (getDbCredentials() === null) {
             $dbSetupError = 'Host, nome database e utente sono obbligatori.';
         } else {
             try {
-                new PDO("mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass, [
+                // Crea il database se non esiste già (richiede che l'utente fornito abbia il
+                // privilegio CREATE lato server — se non ce l'ha, l'eccezione qui sotto spiega
+                // il motivo, e resta comunque possibile creare il database a mano prima di
+                // riprovare, come in precedenza).
+                ensureDatabaseExists($dbHost, $dbName, $dbUser, $dbPass);
+
+                $testPdo = new PDO("mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 ]);
-                if (saveDbCredentials($dbHost, $dbName, $dbUser, $dbPass)) {
+                $schemaImported = importSchemaIfEmpty($testPdo);
+
+                if (!saveDbCredentials($dbHost, $dbName, $dbUser, $dbPass)) {
+                    $dbSetupError = 'Connessione riuscita, ma non sono riuscito a salvare la configurazione su disco (controlla i permessi del volume di configurazione).';
+                } elseif (!$schemaImported) {
+                    header('Location: install.php?schema_import_failed=1');
+                    exit;
+                } else {
                     header('Location: install.php');
                     exit;
                 }
-                $dbSetupError = 'Connessione riuscita, ma non sono riuscito a salvare la configurazione su disco (controlla i permessi del volume di configurazione).';
             } catch (Exception $e) {
                 $dbSetupError = 'Connessione al database fallita: ' . $e->getMessage();
             }
@@ -134,8 +146,9 @@ if (getDbCredentials() === null) {
 
             <div class="info">
                 Prima di tutto, dove si trova il database? Se non sai cosa inserire, chiedi a chi
-                ha preparato il server — di solito sono le stesse credenziali di un database MySQL
-                già esistente su cui questa installazione può creare le proprie tabelle.
+                ha preparato il server. Se il database indicato non esiste ancora, provo a crearlo
+                da solo (serve un utente con i permessi adatti) — così come le tabelle al suo
+                interno: non serve prepararle a mano in anticipo.
             </div>
 
             <form method="POST">
@@ -295,6 +308,15 @@ if ($success) {
 
         <?php if ($error): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <?php if (($_GET['schema_import_failed'] ?? '') === '1'): ?>
+            <div class="error">
+                Il database è raggiungibile, ma non sono riuscito a scaricare e creare
+                automaticamente le tabelle (serve una connessione internet dal server verso
+                GitHub). Importa manualmente <code>database/schema.sql</code> nel database che hai
+                appena indicato, poi ricarica questa pagina.
+            </div>
         <?php endif; ?>
 
         <div class="info">
