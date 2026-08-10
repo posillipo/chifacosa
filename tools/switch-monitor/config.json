@@ -1,0 +1,20 @@
+{
+  "interval_seconds": 10,
+  "ping_timeout_seconds": 1,
+  "targets": [
+    { "ip": "192.168.0.239", "name": "Sala CED (non configurato)", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.62", "name": "Sala CED", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.63", "name": "Sala CED", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.64", "name": "Primo piano sede centrale", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.65", "name": "Primo piano sede centrale", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.66", "name": "Secondo piano sede centrale", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.70", "name": "Primo piano sede Nello", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.71", "name": "Primo piano sede Nello", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.77", "name": "Piano terra Piazza Santa Maria", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.98", "name": "Polizia locale", "model": "Allied Telesis AT-GS970M/28PS" },
+    { "ip": "192.168.8.78", "name": "Sede LL.PP Viviani", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "192.168.8.73", "name": "Stanza Viabilità Comando PM", "model": "Allied AT-8000S/24" },
+    { "ip": "192.168.8.74", "name": "COC Protezione Civile", "model": "Netgear ProSafe GS728TPP" },
+    { "ip": "93.43.55.66", "name": "Firewall Quarto", "model": "Firewall" }
+  ]
+}

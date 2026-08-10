@@ -1,0 +1,14 @@
+[Unit]
+Description=Monitor switch di rete (ping panel)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/switch-monitor
+ExecStart=/usr/bin/python3 /opt/switch-monitor/monitor.py --config /opt/switch-monitor/config.json --port 8090
+Restart=on-failure
+RestartSec=5
+User=pi
+
+[Install]
+WantedBy=multi-user.target
