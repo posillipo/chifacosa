@@ -41,6 +41,14 @@ $themePickerBackgrounds = [
     'cosplay-pink' => '#FBB8D3',
     'cosplay-mint' => '#A9EAD1',
     'cosplay-yellow' => '#FCE28B',
+    'scifi-cyan' => 'radial-gradient(ellipse at 50% -10%, rgba(41,245,255,0.35), transparent 55%), linear-gradient(160deg, #060c16, #081824)',
+    'scifi-magenta' => 'radial-gradient(ellipse at 50% -10%, rgba(255,61,240,0.35), transparent 55%), linear-gradient(160deg, #0c0616, #180a22)',
+    'horror-blood' => 'radial-gradient(ellipse at 50% 25%, #241010, #0a0505 72%)',
+    'horror-fog' => 'radial-gradient(ellipse at 50% 25%, #2a332e, #0e1210 72%)',
+    'thriller-noir' => 'radial-gradient(ellipse at 50% -5%, #2c2c2c, #050505 68%)',
+    'thriller-shadow' => 'radial-gradient(ellipse at 50% -5%, #1c2733, #05080c 68%)',
+    'agent-gold' => 'linear-gradient(120deg, #0a0a0a 40%, #3a2f10 50%, #0a0a0a 60%)',
+    'agent-silver' => 'linear-gradient(120deg, #0a0a0a 40%, #33383d 50%, #0a0a0a 60%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -159,6 +167,34 @@ include __DIR__ . '/_dash_header.php';
                 <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #14141a;box-shadow:2px 2px 0 #14141a;"></div>
                 <div style="background:<?= e($cosplayFill) ?>;border:2px solid #14141a;border-radius:999px;height:10px;margin-bottom:5px;box-shadow:2px 2px 0 #14141a;"></div>
                 <div style="background:<?= e($cosplayFill) ?>;border:2px solid #14141a;border-radius:999px;height:10px;box-shadow:2px 2px 0 #14141a;"></div>
+              </div>
+            <?php elseif (in_array($key, ['scifi-cyan', 'scifi-magenta'], true)): ?>
+              <?php $neon = $key === 'scifi-cyan' ? '#29f5ff' : '#ff3df0'; ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:6px;background:#0a0f16;margin:0 auto 8px;border:2px solid <?= $neon ?>;box-shadow:0 0 10px <?= $neon ?>;"></div>
+                <div style="border:1px solid <?= $neon ?>;border-radius:6px;height:10px;margin-bottom:4px;"></div>
+                <div style="border:1px solid <?= $neon ?>;border-radius:6px;height:10px;"></div>
+              </div>
+            <?php elseif (in_array($key, ['horror-blood', 'horror-fog'], true)): ?>
+              <?php $hacc = $key === 'horror-blood' ? '#8a1414' : '#3f5c4d'; ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:3px;background:#141010;margin:0 auto 8px;border:2px solid <?= $hacc ?>;"></div>
+                <div style="border:2px solid <?= $hacc ?>;border-radius:3px;height:10px;margin-bottom:4px;background:#141010;"></div>
+                <div style="border:2px solid <?= $hacc ?>;border-radius:3px;height:10px;background:#141010;"></div>
+              </div>
+            <?php elseif (in_array($key, ['thriller-noir', 'thriller-shadow'], true)): ?>
+              <?php $tacc = $key === 'thriller-noir' ? '#c11119' : '#3aa7c9'; ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#141414;margin:0 auto 8px;border:2px solid rgba(255,255,255,0.3);"></div>
+                <div style="border-left:4px solid <?= $tacc ?>;border-radius:6px;height:10px;margin-bottom:4px;background:#141414;"></div>
+                <div style="border-left:4px solid <?= $tacc ?>;border-radius:6px;height:10px;background:#141414;"></div>
+              </div>
+            <?php elseif (in_array($key, ['agent-gold', 'agent-silver'], true)): ?>
+              <?php $macc = $key === 'agent-gold' ? '#d4af37' : '#c7ccd1'; ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#111;margin:0 auto 8px;border:2px solid <?= $macc ?>;"></div>
+                <div style="border:1.5px solid <?= $macc ?>;border-radius:8px;height:10px;margin-bottom:4px;background:#111;"></div>
+                <div style="border:1.5px solid <?= $macc ?>;border-radius:8px;height:10px;background:#111;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
