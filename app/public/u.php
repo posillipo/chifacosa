@@ -188,6 +188,13 @@ $bandReviewers = $bandReviewers->fetchAll();
     <?php endforeach; ?>
   <?php endif; ?>
 
+  <?= renderFixedNavLinkButtons(
+      $slug, 'home',
+      !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']),
+      $artist['account_type'] ?? 'band', (int) $uid, menuHasItems((int) $uid),
+      count($actionLinks)
+  ) ?>
+
   <?php if ($spotifyPreview): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Spotify</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;margin-bottom:10px;">

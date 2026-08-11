@@ -572,24 +572,12 @@ function menuHasItems(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
-// Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
-// Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hideNav = false): string {
-    // Sulla Home (u.php) la barra dei tab non compare: al suo posto restano ben in vista solo i
-    // pulsanti "Link in Bio" (icone social + pulsanti colorati), già stampati subito sotto da
-    // u.php — è quello lo scopo della Home. La barra ricompare su tutte le altre pagine
-    // pubbliche (Timeline, Blog, Brani, Eventi, Contatti, ecc.), dove serve per orientarsi.
-    // Non basta controllare $active==='home': anche band_che_amo.php passa 'home' (per tenere
-    // evidenziato il tab Home, dato che quella pagina non ha un tab proprio nel menu) pur non
-    // essendo la Home vera — da qui il flag esplicito, passato solo da publicProfileHeader()
-    // quando chiamata da u.php.
-    if ($hideNav) {
-        return '';
-    }
+// Costruisce l'elenco delle voci del menu pubblico (chiave => label/url/icona/classe), già
+// filtrato in base a quanto il profilo ha esplicitamente nascosto da "Menu di Navigazione" in
+// dashboard. Condiviso da publicNav() (barra di tab classica) e renderFixedNavLinkButtons()
+// (stessa lista, mostrata come pulsanti Link in Bio sulla Home) per non duplicare la logica.
+function buildPublicNavTabs(string $slug, string $active, bool $hasSpotify, bool $hasYoutube, bool $hasPodcast, string $accountType, ?int $ownerId, bool $hasMenu): array {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
-    // Tab standard che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in
-    // dashboard (Home/Timeline/Blog/Brani/Menù/Eventi/Contatti) — i tab "integrazione"
-    // (Spotify/Podcast/Video/Segui) non sono coperti, restano governati dalla loro logica.
     $hiddenKeys = $ownerId ? getHiddenNavKeys($ownerId) : [];
 
     $viewerId = $_SESSION['user_id'] ?? null;
@@ -629,6 +617,25 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
             unset($tabs[$hk]);
         }
     }
+    return $tabs;
+}
+
+// Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
+// Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hideNav = false): string {
+    // Sulla Home (u.php) la barra dei tab non compare: al suo posto, subito sotto ai pulsanti
+    // Link in Bio aggiunti dall'utente, compaiono le stesse voci come pulsanti "fissi" nello
+    // stesso stile (vedi renderFixedNavLinkButtons(), chiamata da u.php) — è quello lo scopo
+    // della Home. La barra ricompare su tutte le altre pagine pubbliche (Timeline, Blog, Brani,
+    // Eventi, Contatti, ecc.), dove serve per orientarsi.
+    // Non basta controllare $active==='home': anche band_che_amo.php passa 'home' (per tenere
+    // evidenziato il tab Home, dato che quella pagina non ha un tab proprio nel menu) pur non
+    // essendo la Home vera — da qui il flag esplicito, passato solo da publicProfileHeader()
+    // quando chiamata da u.php.
+    if ($hideNav) {
+        return '';
+    }
+    $tabs = buildPublicNavTabs($slug, $active, $hasSpotify, $hasYoutube, $hasPodcast, $accountType, $ownerId, $hasMenu);
 
     $parts = [];
     foreach ($tabs as $key => $t) {
@@ -642,6 +649,30 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         . '<span class="colorful-nav-arrow" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></span>'
         . '</div>'
         . '<script src="' . assetUrl('/assets/js/nav-scroll-hint.js') . '" defer></script>';
+}
+
+// Sulla Home, le voci del menu pubblico (Timeline, Blog, Brani, Eventi, Contatti, ecc.) non
+// compaiono come barra di tab in cima alla pagina, ma come pulsanti "fissi" nello stesso stile
+// dei pulsanti Link in Bio che l'utente aggiunge dalla dashboard (vedi .color-link-btn),
+// posizionati subito sotto quelli — "fissi" perché rappresentano le sezioni permanenti del
+// sito, non link che l'utente gestisce da dashboard_links.php. "Home" (punterebbe alla pagina
+// stessa) e "Segui" (già un widget a parte più in alto sulla Home) restano esclusi.
+// $paletteOffset continua la rotazione colori da dove sono arrivati i link dell'utente, per non
+// ripartire sempre dallo stesso colore subito dopo l'ultimo pulsante personalizzato.
+function renderFixedNavLinkButtons(string $slug, string $active, bool $hasSpotify, bool $hasYoutube, bool $hasPodcast, string $accountType, ?int $ownerId, bool $hasMenu, int $paletteOffset = 0): string {
+    $tabs = buildPublicNavTabs($slug, $active, $hasSpotify, $hasYoutube, $hasPodcast, $accountType, $ownerId, $hasMenu);
+    unset($tabs['home'], $tabs['segui']);
+    if (!$tabs) {
+        return '';
+    }
+    $html = '';
+    $i = $paletteOffset;
+    foreach ($tabs as $t) {
+        $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
+        $html .= '<a href="' . e($t['url']) . '" class="color-link-btn" style="background:' . e(COLORFUL_PALETTE[$i % count(COLORFUL_PALETTE)]) . ';">' . $icon . e($t['label']) . '</a>';
+        $i++;
+    }
+    return $html;
 }
 
 // Blocco identità condiviso (avatar + nome + eventuale bio + menu) stampato in cima ad ogni
