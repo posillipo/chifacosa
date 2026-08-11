@@ -50,6 +50,9 @@ $themePickerBackgrounds = [
     'agent-gold' => 'linear-gradient(120deg, #0a0a0a 40%, #3a2f10 50%, #0a0a0a 60%)',
     'agent-silver' => 'linear-gradient(120deg, #0a0a0a 40%, #33383d 50%, #0a0a0a 60%)',
     'bunny' => 'linear-gradient(160deg, #FFF6F0 0%, #FFE1EC 55%, #FFD1E3 100%)',
+    'zebra' => 'repeating-linear-gradient(125deg, #0a0a0a 0 10px, #f5f5f5 10px 18px, #0a0a0a 18px 24px, #f5f5f5 24px 40px, #0a0a0a 40px 46px, #f5f5f5 46px 64px)',
+    'polka' => 'radial-gradient(circle, #fff 22%, transparent 24%) 0 0/34px 34px, #FFD23F',
+    'meme67' => 'repeating-conic-gradient(from 0deg at 50% 10%, #1c1c1c 0deg 8deg, #111 8deg 16deg)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -206,6 +209,26 @@ include __DIR__ . '/_dash_header.php';
                 </div>
                 <div style="background:#fff;border:1.5px solid #FFC2D9;border-radius:999px;height:10px;margin-bottom:4px;"></div>
                 <div style="background:#fff;border:1.5px solid #FFC2D9;border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'zebra'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:3px solid #0a0a0a;box-shadow:2px 2px 0 #FF1493;"></div>
+                <div style="background:#fff;border:2px solid #0a0a0a;border-radius:999px;height:10px;margin-bottom:5px;box-shadow:2px 2px 0 #FF1493;"></div>
+                <div style="background:#fff;border:2px solid #0a0a0a;border-radius:999px;height:10px;box-shadow:2px 2px 0 #FF1493;"></div>
+              </div>
+            <?php elseif ($key === 'polka'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:3px solid #E63946;"></div>
+                <div style="background:#fff;border:2px solid #E63946;border-radius:999px;height:10px;margin-bottom:5px;"></div>
+                <div style="background:#fff;border:2px solid #E63946;border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'meme67'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <span style="position:absolute;left:-6px;top:-14px;font-size:44px;font-weight:900;font-style:italic;color:rgba(255,122,0,0.3);">6</span>
+                <span style="position:absolute;right:-8px;bottom:-18px;font-size:44px;font-weight:900;font-style:italic;color:rgba(57,255,20,0.25);">7</span>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#000;margin:0 auto 8px;border:2px solid #FF7A00;"></div>
+                <div style="position:relative;background:#39FF14;border:2px solid #000;border-radius:999px;height:10px;margin-bottom:5px;"></div>
+                <div style="position:relative;background:#39FF14;border:2px solid #000;border-radius:999px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>

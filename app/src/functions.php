@@ -485,6 +485,9 @@ const PAGE_THEMES = [
     'agent-gold' => ['label' => '007 Oro', 'description' => 'Nero elegante con dettagli oro, stile titoli di apertura da film di spionaggio', 'body_class' => 'agent-gold-page'],
     'agent-silver' => ['label' => '007 Argento', 'description' => 'Stessa eleganza da agente segreto, argento al posto dell\'oro', 'body_class' => 'agent-silver-page'],
     'bunny' => ['label' => 'Coniglietti', 'description' => 'Pastello rosa soffice, con vere orecchie da coniglio sull\'avatar e zampette 🐾 sui pulsanti', 'body_class' => 'bunny-page'],
+    'zebra' => ['label' => 'Zebrato', 'description' => 'Lo sfondo della pagina è a vere righe zebrate bianche e nere, dettagli rosa acceso', 'body_class' => 'zebra-page'],
+    'polka' => ['label' => 'Pois', 'description' => 'Sfondo giallo a pois bianchi, dettagli rosso ciliegia, tono vintage/picnic', 'body_class' => 'polka-page'],
+    'meme67' => ['label' => '67', 'description' => 'Il meme "6 7": numeri giganti sullo sfondo, sfondo a raggiera, verde neon e arancione', 'body_class' => 'meme67-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto

@@ -1674,6 +1674,166 @@ body.bunny-page {
 .bunny-page .link-divider span::before { content: '🐾 '; }
 .bunny-page .link-divider span::after { content: ' 🐾'; }
 
+/* ===== Tema "Zebrato": lo sfondo VERO della pagina è a righe zebrate (non solo un dettaglio sui
+   pulsanti) — più strisce di larghezza diversa per un effetto meno "codice a barre" e più
+   animalier. Card/pulsanti restano bianchi opachi con bordo nero, altrimenti sarebbero
+   illeggibili sopra le righe; il rosa acceso è l'unico colore che spezza il bianco/nero. ===== */
+body.zebra-page {
+  color: #1a1a1a;
+  --text-rgb: 26,26,26;
+  background-color: #f5f5f5;
+  background-image: repeating-linear-gradient(125deg,
+    #0a0a0a 0 10px, #f5f5f5 10px 18px,
+    #0a0a0a 18px 24px, #f5f5f5 24px 40px,
+    #0a0a0a 40px 46px, #f5f5f5 46px 64px);
+  background-attachment: fixed;
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+}
+.zebra-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .zebra-page .container { max-width: 720px; } }
+.zebra-page footer.site { color: rgba(26,26,26,0.65); }
+.zebra-page .avatar { border: 4px solid #0a0a0a; box-shadow: 4px 4px 0 #FF1493; background: #fff; }
+/* Il testo del profilo sta direttamente sopra le righe zebrate (nessuna card sotto), quindi un
+   colore pieno da solo non basta: capiterebbe su un tratto nero e sparirebbe. Un contorno bianco
+   spesso (via text-shadow multidirezionale, più affidabile di -webkit-text-stroke su ogni
+   browser) lo rende leggibile sopra qualunque punto della striscia. */
+.zebra-page .profile-header h1 {
+  color: #0a0a0a; font-size: 29px; font-weight: 900;
+  text-shadow: -2px 0 #fff, 2px 0 #fff, 0 -2px #fff, 0 2px #fff, -2px -2px #fff, 2px -2px #fff, -2px 2px #fff, 2px 2px #fff;
+}
+.zebra-page .profile-header p {
+  color: #0a0a0a; font-weight: 600;
+  text-shadow: -1.5px 0 #fff, 1.5px 0 #fff, 0 -1.5px #fff, 0 1.5px #fff, -1.5px -1.5px #fff, 1.5px -1.5px #fff, -1.5px 1.5px #fff, 1.5px 1.5px #fff;
+}
+.zebra-page .profile-meta {
+  color: #0a0a0a; font-weight: 600;
+  text-shadow: -1.5px 0 #fff, 1.5px 0 #fff, 0 -1.5px #fff, 0 1.5px #fff, -1.5px -1.5px #fff, 1.5px -1.5px #fff, -1.5px 1.5px #fff, 1.5px 1.5px #fff;
+}
+.zebra-page .colorful-nav a { background: #fff; color: #0a0a0a; border: 2px solid #0a0a0a; font-weight: 700; }
+.zebra-page .colorful-nav a:hover { border-color: #FF1493; }
+.zebra-page .social-icon-btn { background: #fff; color: #0a0a0a; border: 2px solid #0a0a0a; }
+.zebra-page .color-link-btn {
+  background: #fff !important; border: 3px solid #0a0a0a !important; border-radius: 999px;
+  color: #0a0a0a !important; font-weight: 800;
+  box-shadow: 4px 4px 0 #FF1493;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.zebra-page .color-link-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #FF1493; }
+.zebra-page .card { background: #fff; border: 3px solid #0a0a0a; border-radius: 18px; color: #1a1a1a; box-shadow: 4px 4px 0 #FF1493; }
+/* section-title e link-divider compaiono spesso direttamente sopra le righe (non sempre dentro
+   una .card), quindi ricevono lo stesso contorno bianco del resto del testo del profilo. */
+.zebra-page .section-title {
+  color: #0a0a0a; font-weight: 700;
+  text-shadow: -1.5px 0 #fff, 1.5px 0 #fff, 0 -1.5px #fff, 0 1.5px #fff, -1.5px -1.5px #fff, 1.5px -1.5px #fff, -1.5px 1.5px #fff, 1.5px 1.5px #fff;
+}
+.zebra-page .event-item, .zebra-page .blog-item { border-bottom-color: rgba(26,26,26,0.2); }
+.zebra-page a { color: #FF1493; font-weight: 700; }
+.zebra-page form textarea, .zebra-page form input { background: #fff; border: 2px solid #0a0a0a; color: #1a1a1a; border-radius: 12px; }
+.zebra-page form label { color: rgba(26,26,26,0.7); }
+.zebra-page .help-box { background: #fff; border-color: #0a0a0a; color: #1a1a1a; }
+.zebra-page .link-divider {
+  color: #FF1493; font-weight: 700;
+  text-shadow: -1.5px 0 #fff, 1.5px 0 #fff, 0 -1.5px #fff, 0 1.5px #fff, -1.5px -1.5px #fff, 1.5px -1.5px #fff, -1.5px 1.5px #fff, 1.5px 1.5px #fff;
+}
+.zebra-page .link-divider::before, .zebra-page .link-divider::after { background: #0a0a0a; }
+
+/* ===== Tema "Pois": sfondo giallo caldo puntinato di bianco (pattern radiale ripetuto),
+   pulsanti bianchi con bordo rosso ciliegia — tono vintage/picnic, allegro e leggibile. ===== */
+body.polka-page {
+  color: #2b2b2b;
+  --text-rgb: 43,43,43;
+  background-color: #FFD23F;
+  background-image: radial-gradient(circle, #fff 22%, transparent 24%);
+  background-size: 34px 34px;
+  background-attachment: fixed;
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+}
+.polka-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .polka-page .container { max-width: 720px; } }
+.polka-page footer.site { color: rgba(43,43,43,0.65); }
+.polka-page .avatar { border: 4px solid #fff; box-shadow: 0 6px 18px rgba(0,0,0,0.2); background: #fff; }
+.polka-page .profile-header h1 { color: #2b2b2b; font-size: 29px; font-weight: 800; }
+.polka-page .profile-header p { color: rgba(43,43,43,0.75); }
+.polka-page .profile-meta { color: rgba(43,43,43,0.6); }
+.polka-page .colorful-nav a { background: #fff; color: #2b2b2b; border: 2px solid #E63946; font-weight: 700; }
+.polka-page .colorful-nav a:hover { background: #FFF3F3; }
+.polka-page .social-icon-btn { background: #fff; color: #E63946; border: 2px solid #E63946; }
+.polka-page .color-link-btn {
+  background: #fff !important; border: 3px solid #E63946 !important; border-radius: 999px;
+  color: #E63946 !important; font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.polka-page .color-link-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,0.2); }
+.polka-page .card { background: #fff; border: 2px solid #E63946; border-radius: 18px; color: #2b2b2b; }
+.polka-page .section-title { color: rgba(43,43,43,0.6); }
+.polka-page .event-item, .polka-page .blog-item { border-bottom-color: rgba(43,43,43,0.2); }
+.polka-page a { color: #E63946; font-weight: 700; }
+.polka-page form textarea, .polka-page form input { background: #fff; border: 2px solid #E63946; color: #2b2b2b; border-radius: 12px; }
+.polka-page form label { color: rgba(43,43,43,0.7); }
+.polka-page .help-box { background: #fff; border-color: #E63946; color: #2b2b2b; }
+.polka-page .link-divider { color: #E63946; }
+.polka-page .link-divider::before, .polka-page .link-divider::after { background: #E63946; opacity: 0.4; }
+
+/* ===== Tema "67" (il meme): sfondo scuro a raggiera stile "cartone animato/meme energy burst"
+   (repeating-conic-gradient), con i due numeri giganti "6" e "7" semitrasparenti negli angoli
+   opposti — sempre dietro al contenuto (z-index sul .container, stesso trucco già usato per lo
+   sfondo animato del tema Circuit). Verde neon + arancione (rimando al basket, l'origine del
+   meme: 6'7" di altezza), tipografia bold/corsiva con contorno nero in stile didascalia. ===== */
+body.meme67-page {
+  color: #f5f5f5;
+  --text-rgb: 245,245,245;
+  background-color: #111;
+  background-image: repeating-conic-gradient(from 0deg at 50% 10%, rgba(255,255,255,0.045) 0deg 8deg, transparent 8deg 16deg);
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+  position: relative;
+}
+body.meme67-page::before {
+  content: '6';
+  position: fixed; top: -10vw; left: -8vw;
+  font-size: 46vw; font-weight: 900; font-style: italic; line-height: 1;
+  color: rgba(255,122,0,0.14);
+  z-index: 0; pointer-events: none;
+}
+body.meme67-page::after {
+  content: '7';
+  position: fixed; bottom: -12vw; right: -8vw;
+  font-size: 46vw; font-weight: 900; font-style: italic; line-height: 1;
+  color: rgba(57,255,20,0.12);
+  z-index: 0; pointer-events: none;
+}
+.meme67-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .meme67-page .container { max-width: 720px; } }
+.meme67-page footer.site { color: rgba(245,245,245,0.55); position: relative; z-index: 1; }
+.meme67-page .avatar { border: 3px solid #000; box-shadow: 0 0 0 3px #FF7A00; }
+.meme67-page .profile-header h1 {
+  color: #39FF14; -webkit-text-stroke: 1.5px #000; font-size: 30px; font-weight: 900;
+  text-transform: uppercase; font-style: italic;
+}
+.meme67-page .profile-header p { color: rgba(245,245,245,0.8); }
+.meme67-page .profile-meta { color: rgba(245,245,245,0.6); }
+.meme67-page .colorful-nav a { background: #000; color: #fff; border: 2px solid #FF7A00; font-weight: 800; text-transform: uppercase; }
+.meme67-page .colorful-nav a:hover { border-color: #39FF14; }
+.meme67-page .social-icon-btn { background: #000; border: 2px solid #FF7A00; color: #fff; }
+.meme67-page .color-link-btn {
+  background: #39FF14 !important; border: 3px solid #000 !important; border-radius: 999px;
+  color: #000 !important; font-weight: 900; text-transform: uppercase;
+  box-shadow: 4px 4px 0 #FF7A00;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.meme67-page .color-link-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #FF7A00; }
+.meme67-page .card { background: #000; border: 2px solid #FF7A00; border-radius: 14px; color: #f5f5f5; }
+.meme67-page .section-title { color: #FF7A00; text-transform: uppercase; letter-spacing: 1px; }
+.meme67-page .event-item, .meme67-page .blog-item { border-bottom-color: rgba(245,245,245,0.15); }
+.meme67-page a { color: #39FF14; font-weight: 700; }
+.meme67-page form textarea, .meme67-page form input { background: #000; border: 2px solid #FF7A00; color: #f5f5f5; border-radius: 10px; }
+.meme67-page form label { color: rgba(245,245,245,0.65); }
+.meme67-page .help-box { background: #000; border-color: #FF7A00; color: #f5f5f5; }
+.meme67-page .link-divider { color: #FF7A00; font-weight: 700; }
+.meme67-page .link-divider::before, .meme67-page .link-divider::after { background: #FF7A00; }
+.meme67-page .link-divider span::before { content: '6️⃣7️⃣ '; }
+.meme67-page .link-divider span::after { content: ' 6️⃣7️⃣'; }
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {
