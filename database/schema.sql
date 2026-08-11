@@ -45,6 +45,11 @@ CREATE TABLE IF NOT EXISTS profiles (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- link_type distingue tre voci diverse nella stessa lista ordinabile: 'link' (pulsante normale,
+-- comportamento originale), 'divider' (solo un titolo di sezione, non cliccabile, url resta ''),
+-- 'map' (mappa OpenStreetMap incorporata, usa map_lat/map_lng invece di url). Tenerle nella
+-- stessa tabella (invece di tabelle separate) permette di riordinarle tutte insieme con le
+-- stesse frecce sposta-su/giù già esistenti.
 CREATE TABLE IF NOT EXISTS links (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -56,6 +61,9 @@ CREATE TABLE IF NOT EXISTS links (
     click_count INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     is_website_icon TINYINT(1) NOT NULL DEFAULT 0,
+    link_type ENUM('link','divider','map') NOT NULL DEFAULT 'link',
+    map_lat DECIMAL(10,7) DEFAULT NULL,
+    map_lng DECIMAL(10,7) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

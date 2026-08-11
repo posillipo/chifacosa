@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/geocoding.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -176,15 +177,24 @@ $bandReviewers = $bandReviewers->fetchAll();
   <?php endif; ?>
 
   <?php if ($actionLinks): ?>
-    <?php foreach ($actionLinks as $i => $l): ?>
-      <a class="color-link-btn" style="background:<?= e(COLORFUL_PALETTE[$i % count(COLORFUL_PALETTE)]) ?>;"
-         target="_blank" rel="noopener"
-         href="/link.php?id=<?= (int)$l['id'] ?>">
-        <?php if ($l['cover_path']): ?>
-          <img src="/<?= e($l['cover_path']) ?>" class="btn-cover-icon">
-        <?php endif; ?>
-        <?= e($l['label']) ?>
-      </a>
+    <?php $colorIdx = 0; ?>
+    <?php foreach ($actionLinks as $l): ?>
+      <?php if (($l['link_type'] ?? 'link') === 'divider'): ?>
+        <div class="link-divider"><span><?= e($l['label']) ?></span></div>
+      <?php elseif (($l['link_type'] ?? 'link') === 'map'): ?>
+        <?php if ($l['label']): ?><div class="link-map-label"><?= e($l['label']) ?></div><?php endif; ?>
+        <?= renderOsmEmbed((float)$l['map_lat'], (float)$l['map_lng']) ?>
+      <?php else: ?>
+        <a class="color-link-btn" style="background:<?= e(COLORFUL_PALETTE[$colorIdx % count(COLORFUL_PALETTE)]) ?>;"
+           target="_blank" rel="noopener"
+           href="/link.php?id=<?= (int)$l['id'] ?>">
+          <?php if ($l['cover_path']): ?>
+            <img src="/<?= e($l['cover_path']) ?>" class="btn-cover-icon">
+          <?php endif; ?>
+          <?= e($l['label']) ?>
+        </a>
+        <?php $colorIdx++; ?>
+      <?php endif; ?>
     <?php endforeach; ?>
   <?php endif; ?>
 

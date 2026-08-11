@@ -330,6 +330,20 @@ storico di chi ha già prenotato — pensata per superare il limite del sistema 
 completi. `event_id` resta nullable apposta: una futura fase "prenotazioni libere" (non legate
 a un evento) userà la stessa tabella senza nuove migrazioni.
 
+## 27. Separatori e mappa (gratuita, OpenStreetMap) tra i Link in Bio
+```sql
+ALTER TABLE links
+  ADD COLUMN link_type ENUM('link','divider','map') NOT NULL DEFAULT 'link',
+  ADD COLUMN map_lat DECIMAL(10,7) DEFAULT NULL,
+  ADD COLUMN map_lng DECIMAL(10,7) DEFAULT NULL;
+```
+Due nuovi tipi di voce nella stessa lista di `dashboard_links.php`, riordinabili con le stesse
+frecce dei link normali: un **separatore** (solo un titolo di sezione, es. "Per prenotare", non
+cliccabile) e una **mappa** (indirizzo cercato tramite Nominatim/OpenStreetMap — gratuito, nessuna
+chiave API — e mostrato come mappa incorporata sulla pagina pubblica, sempre da OpenStreetMap,
+anch'esso gratuito). Vedi `app/src/geocoding.php`. I link esistenti restano tutti `link_type='link'`
+per via del `DEFAULT`, nessun impatto sui dati già presenti.
+
 ---
 
 ## Come aggiungere una nuova voce

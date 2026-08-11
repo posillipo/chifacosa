@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/geocoding.php';
 $user = requireLogin();
 $activeTab = 'links';
 $pageTitle = 'Link';
@@ -21,6 +22,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Inserisci un\'etichetta e un URL valido.';
         }
+    } elseif ($action === 'add_divider') {
+        $label = trim($_POST['label'] ?? '');
+        if ($label !== '') {
+            $stmt = getDB()->prepare("INSERT INTO links (user_id, label, url, link_type, sort_order) VALUES (?,?,'','divider', (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))");
+            $stmt->execute([$user['id'], $label, $user['id']]);
+        } else {
+            $error = 'Inserisci un titolo per il separatore.';
+        }
+    } elseif ($action === 'add_map') {
+        $address = trim($_POST['address'] ?? '');
+        $label = trim($_POST['label'] ?? '');
+        $geo = geocodeAddress($address);
+        if (!$geo) {
+            header('Location: /dashboard_links.php?geocode_error=1');
+            exit;
+        }
+        $mapLabel = $label !== '' ? $label : $geo['display_name'];
+        $stmt = getDB()->prepare("INSERT INTO links (user_id, label, url, link_type, map_lat, map_lng, sort_order) VALUES (?,?,'','map',?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))");
+        $stmt->execute([$user['id'], $mapLabel, $geo['lat'], $geo['lng'], $user['id']]);
     } elseif ($action === 'update_link') {
         $id = (int) ($_POST['id'] ?? 0);
         $label = trim($_POST['label'] ?? '');
@@ -38,6 +58,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             header('Location: /dashboard_links.php?edit=' . $id . '&error=1');
             exit;
+        }
+    } elseif ($action === 'update_divider') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $label = trim($_POST['label'] ?? '');
+        if ($label !== '') {
+            $stmt = getDB()->prepare("UPDATE links SET label=? WHERE id=? AND user_id=? AND link_type='divider'");
+            $stmt->execute([$label, $id, $user['id']]);
+        } else {
+            header('Location: /dashboard_links.php?edit=' . $id . '&error=1');
+            exit;
+        }
+    } elseif ($action === 'update_map') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $label = trim($_POST['label'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        if ($address !== '') {
+            $geo = geocodeAddress($address);
+            if (!$geo) {
+                header('Location: /dashboard_links.php?edit=' . $id . '&geocode_error=1');
+                exit;
+            }
+            $mapLabel = $label !== '' ? $label : $geo['display_name'];
+            $stmt = getDB()->prepare("UPDATE links SET label=?, map_lat=?, map_lng=? WHERE id=? AND user_id=? AND link_type='map'");
+            $stmt->execute([$mapLabel, $geo['lat'], $geo['lng'], $id, $user['id']]);
+        } elseif ($label !== '') {
+            $stmt = getDB()->prepare("UPDATE links SET label=? WHERE id=? AND user_id=? AND link_type='map'");
+            $stmt->execute([$label, $id, $user['id']]);
         }
     } elseif ($action === 'toggle_website') {
         $id = (int) ($_POST['id'] ?? 0);
@@ -103,20 +150,33 @@ foreach ($links as $i => $l) {
 
 function renderLinkItem(array $l, int $idx, int $total): void {
     $platform = $l['platform'] ?? null;
+    $type = $l['link_type'] ?? 'link';
 ?>
   <div class="link-item">
     <div style="display:flex;align-items:center;gap:10px;">
-      <?php if ($platform): ?>
+      <?php if ($type === 'divider'): ?>
+        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--text-rgb),0.12);color:var(--text-muted);font-size:16px;"><i class="fa-solid fa-grip-lines"></i></span>
+      <?php elseif ($type === 'map'): ?>
+        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--text-rgb),0.12);color:var(--text-muted);font-size:16px;"><i class="fa-solid fa-location-dot"></i></span>
+      <?php elseif ($platform): ?>
         <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-text,#fff);font-size:16px;"><i class="<?= e($platform['icon_class']) ?>"></i></span>
       <?php elseif ($l['cover_path']): ?>
         <img src="/<?= e($l['cover_path']) ?>" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div>
         <strong><?= e($l['label']) ?></strong>
-        <?php if ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span><?php endif; ?>
+        <?php if ($type === 'divider'): ?><span style="color:var(--text-muted);font-size:12px;"> · separatore</span>
+        <?php elseif ($type === 'map'): ?><span style="color:var(--text-muted);font-size:12px;"> · mappa</span>
+        <?php elseif ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span><?php endif; ?>
         <?php if (!$l['is_active']): ?><span style="color:#ff8a8a;font-size:12px;"> · nascosto</span><?php endif; ?>
         <br>
-        <small style="color:var(--text-muted)"><?= e($l['url']) ?> · <?= (int)$l['click_count'] ?> click</small>
+        <?php if ($type === 'divider'): ?>
+          <small style="color:var(--text-muted)">titolo di sezione, non cliccabile</small>
+        <?php elseif ($type === 'map'): ?>
+          <small style="color:var(--text-muted)"><?= number_format((float)$l['map_lat'], 5) ?>, <?= number_format((float)$l['map_lng'], 5) ?></small>
+        <?php else: ?>
+          <small style="color:var(--text-muted)"><?= e($l['url']) ?> · <?= (int)$l['click_count'] ?> click</small>
+        <?php endif; ?>
       </div>
     </div>
     <div class="icon-btn-group">
@@ -163,8 +223,40 @@ include __DIR__ . '/_dash_header.php';
   </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['error'])): ?><div class="alert error">Inserisci un'etichetta e un URL valido.</div><?php endif; ?>
+  <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città).</div><?php endif; ?>
 
-  <?php if ($editingLink): ?>
+  <?php if ($editingLink && ($editingLink['link_type'] ?? 'link') === 'divider'): ?>
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="update_divider">
+    <input type="hidden" name="id" value="<?= (int)$editingLink['id'] ?>">
+    <strong>Modifica separatore</strong>
+    <label>Titolo della sezione</label>
+    <input type="text" name="label" value="<?= e($editingLink['label']) ?>" required>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button type="submit" class="btn">Salva modifiche</button>
+      <a href="/dashboard_links.php" class="btn secondary">Annulla</a>
+    </div>
+  </form>
+  <?php elseif ($editingLink && ($editingLink['link_type'] ?? 'link') === 'map'): ?>
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="update_map">
+    <input type="hidden" name="id" value="<?= (int)$editingLink['id'] ?>">
+    <strong>Modifica mappa</strong>
+    <label>Etichetta</label>
+    <input type="text" name="label" value="<?= e($editingLink['label']) ?>">
+    <label>Nuovo indirizzo (lascia vuoto per non spostare la mappa)</label>
+    <input type="text" name="address" placeholder="Via Roma 1, Napoli">
+    <p style="color:var(--text-muted);font-size:12px;">
+      Posizione attuale: <?= number_format((float)$editingLink['map_lat'], 5) ?>, <?= number_format((float)$editingLink['map_lng'], 5) ?>
+    </p>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button type="submit" class="btn">Salva modifiche</button>
+      <a href="/dashboard_links.php" class="btn secondary">Annulla</a>
+    </div>
+  </form>
+  <?php elseif ($editingLink): ?>
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="update_link">
@@ -204,6 +296,39 @@ include __DIR__ . '/_dash_header.php';
     </label>
     <button type="submit" class="btn">Aggiungi link</button>
   </form>
+
+  <details class="help-box" style="margin-top:14px;">
+    <summary>➕ Aggiungi un separatore</summary>
+    <p style="color:var(--text-muted);font-size:13px;">
+      Solo un titolo per dividere i link in sezioni (es. "Per prenotare", "Dove siamo") — non è
+      cliccabile, serve solo a organizzare la lista sulla pagina pubblica.
+    </p>
+    <form method="post" style="margin-top:10px;">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="add_divider">
+      <label>Titolo della sezione</label>
+      <input type="text" name="label" required>
+      <button type="submit" class="btn secondary">Aggiungi separatore</button>
+    </form>
+  </details>
+
+  <details class="help-box" style="margin-top:10px;">
+    <summary>📍 Aggiungi una mappa (gratuita)</summary>
+    <p style="color:var(--text-muted);font-size:13px;">
+      Cerca un indirizzo e mostra una mappa interattiva sulla tua pagina pubblica — tramite
+      OpenStreetMap, un servizio completamente gratuito, senza chiave API e senza costi anche con
+      molte visite (a differenza di Google Maps).
+    </p>
+    <form method="post" style="margin-top:10px;">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="add_map">
+      <label>Etichetta (opzionale)</label>
+      <input type="text" name="label" placeholder="La nostra sede">
+      <label>Indirizzo</label>
+      <input type="text" name="address" placeholder="Via Roma 1, Napoli" required>
+      <button type="submit" class="btn secondary">Trova e aggiungi mappa</button>
+    </form>
+  </details>
   <?php endif; ?>
 
   <div class="section-title">I tuoi link (<?= count($links) ?>)</div>
@@ -221,7 +346,7 @@ include __DIR__ . '/_dash_header.php';
   <?php endif; ?>
 
   <?php if ($actionLinks): ?>
-    <div class="section-title" style="margin-top:22px;">Link normali (<?= count($actionLinks) ?>)</div>
+    <div class="section-title" style="margin-top:22px;">Link e sezioni (<?= count($actionLinks) ?>)</div>
     <?php foreach ($actionLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
   <?php endif; ?>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

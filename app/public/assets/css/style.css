@@ -695,6 +695,46 @@ body.colorful-page {
   object-fit: cover;
 }
 
+/* Separatore tra i pulsanti Link in Bio: solo un titolo di sezione, non cliccabile — usa
+   --text-rgb (già definita da ogni tema) invece di un colore fisso, così si legge bene sia sui
+   temi chiari che su quelli scuri senza bisogno di regole per-tema separate. */
+.link-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--text-rgb, 34,34,59), 0.6);
+}
+.link-divider::before, .link-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(var(--text-rgb, 34,34,59), 0.18);
+}
+
+/* Mappa OpenStreetMap incorporata tra i Link in Bio (vedi geocoding.php) — gratuita, nessuna
+   chiave API, funziona allo stesso modo su ogni tema grafico. */
+.link-map-label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: rgba(var(--text-rgb, 34,34,59), 0.75);
+}
+.link-map-embed { margin-bottom: 14px; }
+.link-map-embed iframe { max-width: 100%; }
+.link-map-directions {
+  display: block;
+  text-align: center;
+  font-size: 12.5px;
+  margin-top: 6px;
+  color: rgba(var(--text-rgb, 34,34,59), 0.6);
+}
+
 .colorful-page .card {
   background: rgba(255,255,255,0.6);
   border: none;
