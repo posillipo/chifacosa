@@ -489,6 +489,7 @@ const PAGE_THEMES = [
     'polka' => ['label' => 'Pois', 'description' => 'Sfondo giallo a pois bianchi, dettagli rosso ciliegia, tono vintage/picnic', 'body_class' => 'polka-page'],
     'meme67' => ['label' => '67', 'description' => 'Il meme "6 7": numeri giganti sullo sfondo, sfondo a raggiera, verde neon e arancione', 'body_class' => 'meme67-page'],
     'napoli' => ['label' => 'Forza Napoli', 'description' => 'Cielo azzurro sul golfo con il Vesuvio all\'orizzonte, sole che ruota dietro l\'avatar, coriandoli azzurro/oro che salgono dal basso', 'body_class' => 'napoli-page'],
+    'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -535,6 +536,15 @@ function renderCircuitBackground(string $accentColor): string {
 function renderNapoliBackground(): string {
     return '<div id="napoli-bg"><div class="napoli-vesuvio"></div></div>
     <script src="' . assetUrl('/assets/js/napoli-fx.js') . '"></script>';
+}
+
+// Sfondo animato per il tema "Frontiera Stellare" (ispirato a Star Trek) — campo stellare che
+// scintilla e strisce di "salto nel warp" generate da startrek-fx.js. Container fisso dietro al
+// contenuto, caricato solo se il profilo ha scelto questo tema, stesso schema delle altre
+// funzioni renderXBackground().
+function renderStarTrekBackground(): string {
+    return '<div id="startrek-bg"></div>
+    <script src="' . assetUrl('/assets/js/startrek-fx.js') . '"></script>';
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla

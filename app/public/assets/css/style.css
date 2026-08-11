@@ -1963,6 +1963,122 @@ body.napoli-page {
   .napoli-page .color-link-btn::after { animation: none; }
 }
 
+/* ===== Tema "Frontiera Stellare" (ispirato a Star Trek): spazio profondo con nebulose viola/blu
+   sfumate, campo stellare che scintilla e strisce di "salto nel warp" generate da
+   startrek-fx.js (stesso z-index-trick dietro al contenuto già usato per Circuit/Napoli).
+   Pulsanti/nav in stile pannello LCARS (angoli asimmetrici, arancione/blu vivaci su nero,
+   tipografia maiuscola bold) — il linguaggio visivo dell'interfaccia della serie, non il logo.
+   Il distintivo sull'avatar è un disegno originale (cerchio + stella + bagliore pulsante), NON
+   il simbolo Starfleet ufficiale: quello è un marchio registrato, non riproducibile qui. ===== */
+body.startrek-page {
+  color: #e8e8ff;
+  --text-rgb: 232,232,255;
+  background-color: #05061a;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.25), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.18), transparent 60%),
+    linear-gradient(180deg, #05061a 0%, #0a0e2e 100%);
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+}
+.startrek-page .container { position: relative; z-index: 1; flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .startrek-page .container { max-width: 720px; } }
+.startrek-page footer.site { color: rgba(232,232,255,0.55); position: relative; z-index: 1; }
+
+/* Sfondo fisso: campo stellare + strisce di warp, entrambi generati da startrek-fx.js. */
+#startrek-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+.startrek-star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation-name: startrek-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes startrek-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+.startrek-warp {
+  position: absolute;
+  left: -20%;
+  width: 26%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  transform: rotate(-4deg);
+  animation-name: startrek-warp-fly;
+  animation-timing-function: ease-in;
+  animation-iteration-count: 1;
+}
+@keyframes startrek-warp-fly {
+  0% { left: -20%; opacity: 0; }
+  15% { opacity: 1; }
+  100% { left: 120%; opacity: 0; }
+}
+
+/* Distintivo circolare originale in basso a destra dell'avatar (non il logo Starfleet), con un
+   bagliore che pulsa piano — come un comunicatore che "respira". */
+.startrek-page .avatar-wrap { position: relative; }
+.startrek-page .avatar-wrap::after {
+  content: '✦';
+  position: absolute;
+  bottom: 2px; right: 2px;
+  width: 32px; height: 32px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 15px;
+  color: #FFD98A;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1b2a4a 0%, #0a1128 70%);
+  border: 2px solid #FF9F1C;
+  z-index: 2;
+  animation: startrek-badge-pulse 2.6s ease-in-out infinite;
+}
+@keyframes startrek-badge-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,159,28,0.5); }
+  50% { box-shadow: 0 0 18px rgba(255,159,28,0.9); }
+}
+.startrek-page .avatar { position: relative; z-index: 1; border: 3px solid #6B8CFF; box-shadow: 0 0 20px rgba(107,140,255,0.4); }
+.startrek-page .profile-header h1 {
+  color: #fff; font-size: 27px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.startrek-page .profile-header p { color: rgba(232,232,255,0.8); }
+.startrek-page .profile-meta { color: rgba(232,232,255,0.6); }
+.startrek-page .colorful-nav a {
+  background: #1c2150; color: #CDE7EA; border: 1px solid #6B8CFF;
+  border-radius: 999px 14px 14px 999px;
+  text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; font-size: 12.5px;
+}
+.startrek-page .colorful-nav a:hover { background: #262c66; }
+.startrek-page .social-icon-btn { background: #1c2150; border: 1px solid #6B8CFF; color: #CDE7EA; }
+.startrek-page .color-link-btn {
+  background: #FF9F1C !important;
+  border: none !important;
+  border-radius: 999px 22px 22px 999px;
+  color: #14102a !important;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 14px rgba(255,159,28,0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.startrek-page .color-link-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,159,28,0.5); }
+.startrek-page .card {
+  background: rgba(10,14,46,0.75); border: none; border-left: 6px solid #FF9F1C;
+  border-radius: 4px 18px 18px 4px; color: #e8e8ff; backdrop-filter: blur(4px);
+}
+.startrek-page .section-title { color: #CC99CC; text-transform: uppercase; letter-spacing: 1px; }
+.startrek-page .event-item, .startrek-page .blog-item { border-bottom-color: rgba(232,232,255,0.15); }
+.startrek-page a { color: #9AD1D6; font-weight: 700; }
+.startrek-page form textarea, .startrek-page form input {
+  background: rgba(255,255,255,0.06); border: 1px solid #6B8CFF; color: #e8e8ff; border-radius: 10px;
+}
+.startrek-page form label { color: rgba(232,232,255,0.65); }
+.startrek-page .help-box { background: rgba(10,14,46,0.75); border-color: #6B8CFF; color: #e8e8ff; }
+.startrek-page .link-divider { color: #9AD1D6; }
+.startrek-page .link-divider::before, .startrek-page .link-divider::after { background: #6B8CFF; opacity: 0.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .startrek-page .avatar-wrap::after,
+  .startrek-page .startrek-star { animation: none; }
+}
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {

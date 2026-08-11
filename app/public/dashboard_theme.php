@@ -54,6 +54,7 @@ $themePickerBackgrounds = [
     'polka' => 'radial-gradient(circle, #fff 22%, transparent 24%) 0 0/34px 34px, #FFD23F',
     'meme67' => 'repeating-conic-gradient(from 0deg at 50% 10%, #1c1c1c 0deg 8deg, #111 8deg 16deg)',
     'napoli' => 'linear-gradient(180deg, #063b66 0%, #0f7ac2 45%, #2aa8e0 70%, #f2b552 100%)',
+    'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -237,6 +238,16 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #FFD447;box-shadow:0 0 10px #FFD447;"></div>
                 <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;margin-bottom:4px;"></div>
                 <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'startrek'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <span style="position:absolute;left:15%;top:20%;width:2px;height:2px;background:#fff;border-radius:50%;"></span>
+                <span style="position:absolute;left:70%;top:15%;width:2px;height:2px;background:#fff;border-radius:50%;"></span>
+                <span style="position:absolute;left:85%;top:55%;width:1.5px;height:1.5px;background:#fff;border-radius:50%;"></span>
+                <span style="position:absolute;left:30%;top:70%;width:1.5px;height:1.5px;background:#fff;border-radius:50%;"></span>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#0a0e2e;margin:0 auto 8px;border:2px solid #6B8CFF;box-shadow:0 0 8px #6B8CFF;"></div>
+                <div style="position:relative;background:#FF9F1C;border-radius:999px 8px 8px 999px;height:10px;margin-bottom:5px;"></div>
+                <div style="position:relative;background:#FF9F1C;border-radius:999px 8px 8px 999px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
