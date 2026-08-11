@@ -488,6 +488,7 @@ const PAGE_THEMES = [
     'zebra' => ['label' => 'Zebrato', 'description' => 'Lo sfondo della pagina è a vere righe zebrate bianche e nere, dettagli rosa acceso', 'body_class' => 'zebra-page'],
     'polka' => ['label' => 'Pois', 'description' => 'Sfondo giallo a pois bianchi, dettagli rosso ciliegia, tono vintage/picnic', 'body_class' => 'polka-page'],
     'meme67' => ['label' => '67', 'description' => 'Il meme "6 7": numeri giganti sullo sfondo, sfondo a raggiera, verde neon e arancione', 'body_class' => 'meme67-page'],
+    'napoli' => ['label' => 'Forza Napoli', 'description' => 'Cielo azzurro sul golfo con il Vesuvio all\'orizzonte, sole che ruota dietro l\'avatar, coriandoli azzurro/oro che salgono dal basso', 'body_class' => 'napoli-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -525,6 +526,15 @@ function renderWaveBackground(string $accentColor, string $themeKey = 'wave'): s
 function renderCircuitBackground(string $accentColor): string {
     return '<div id="circuit-bg" data-accent="' . e($accentColor) . '"></div>
     <script src="' . assetUrl('/assets/js/circuit-bg.js') . '"></script>';
+}
+
+// Sfondo animato per il tema "Forza Napoli" — silhouette del Vesuvio fissa in basso (puro CSS,
+// vedi style.css) e coriandoli azzurro/bianco/oro generati da napoli-fx.js che salgono dal
+// basso in continuo. Container fisso dietro al contenuto, caricato solo se il profilo ha scelto
+// questo tema, stesso schema di renderCircuitBackground()/renderWaveBackground().
+function renderNapoliBackground(): string {
+    return '<div id="napoli-bg"><div class="napoli-vesuvio"></div></div>
+    <script src="' . assetUrl('/assets/js/napoli-fx.js') . '"></script>';
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla

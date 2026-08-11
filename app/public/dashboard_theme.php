@@ -53,6 +53,7 @@ $themePickerBackgrounds = [
     'zebra' => 'repeating-linear-gradient(125deg, #0a0a0a 0 10px, #f5f5f5 10px 18px, #0a0a0a 18px 24px, #f5f5f5 24px 40px, #0a0a0a 40px 46px, #f5f5f5 46px 64px)',
     'polka' => 'radial-gradient(circle, #fff 22%, transparent 24%) 0 0/34px 34px, #FFD23F',
     'meme67' => 'repeating-conic-gradient(from 0deg at 50% 10%, #1c1c1c 0deg 8deg, #111 8deg 16deg)',
+    'napoli' => 'linear-gradient(180deg, #063b66 0%, #0f7ac2 45%, #2aa8e0 70%, #f2b552 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -229,6 +230,13 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#000;margin:0 auto 8px;border:2px solid #FF7A00;"></div>
                 <div style="position:relative;background:#39FF14;border:2px solid #000;border-radius:999px;height:10px;margin-bottom:5px;"></div>
                 <div style="position:relative;background:#39FF14;border:2px solid #000;border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'napoli'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <div style="position:absolute;left:0;right:0;bottom:0;height:14px;background:rgba(6,20,35,0.65);clip-path:polygon(0% 100%,0% 60%,30% 35%,45% 55%,60% 10%,75% 45%,100% 55%,100% 100%);"></div>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #FFD447;box-shadow:0 0 10px #FFD447;"></div>
+                <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;margin-bottom:4px;"></div>
+                <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
