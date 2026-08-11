@@ -37,6 +37,10 @@ $themePickerBackgrounds = [
     'la-caraffa' => 'linear-gradient(135deg,#0a3d62,#1e5f8c)',
     'electric' => 'radial-gradient(ellipse at 50% -10%, rgba(108,92,231,0.45), transparent 55%), #0a0a0f',
     'circuit' => 'repeating-linear-gradient(45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px), repeating-linear-gradient(-45deg, transparent 0 10px, rgba(108,92,231,0.35) 10px 12px, transparent 12px 22px), #0b0b0f',
+    'cosplay-blue' => '#AFC8FB',
+    'cosplay-pink' => '#FBB8D3',
+    'cosplay-mint' => '#A9EAD1',
+    'cosplay-yellow' => '#FCE28B',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -148,6 +152,13 @@ include __DIR__ . '/_dash_header.php';
                 <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;"></div>
                 <div style="background:rgba(255,255,255,0.6);border-radius:999px;height:10px;margin-bottom:4px;"></div>
                 <div style="background:rgba(255,255,255,0.6);border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif (in_array($key, ['cosplay-blue', 'cosplay-pink', 'cosplay-mint', 'cosplay-yellow'], true)): ?>
+              <?php $cosplayFill = ['cosplay-blue' => '#E1EBFF', 'cosplay-pink' => '#FFE1EF', 'cosplay-mint' => '#DFFBEF', 'cosplay-yellow' => '#FFF6D6'][$key]; ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #14141a;box-shadow:2px 2px 0 #14141a;"></div>
+                <div style="background:<?= e($cosplayFill) ?>;border:2px solid #14141a;border-radius:999px;height:10px;margin-bottom:5px;box-shadow:2px 2px 0 #14141a;"></div>
+                <div style="background:<?= e($cosplayFill) ?>;border:2px solid #14141a;border-radius:999px;height:10px;box-shadow:2px 2px 0 #14141a;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>

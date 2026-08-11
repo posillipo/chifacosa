@@ -1237,6 +1237,110 @@ body.circuit-page {
   opacity: 0.55;
 }
 
+/* ===== Temi "Cosplay": sfondo pastello piatto, bordo nero spesso e ombra netta (senza sfocatura)
+   su ogni elemento — stile sticker/fumetto/locandina da fiera cosplay, ispirato alle pillole con
+   bordo nero delle FAQ di Ko-fi. Quattro varianti colore identiche nella forma, cambia solo la
+   tinta pastello: Blu, Rosa, Menta, Giallo. Le pillole dei link usano una tinta più chiara dello
+   sfondo pagina, così restano leggibili sopra qualunque variante senza bisogno di regole diverse
+   per l'accento del profilo (quello resta sempre governato da --accent, come negli altri temi). */
+body.cosplay-blue-page, body.cosplay-pink-page, body.cosplay-mint-page, body.cosplay-yellow-page {
+  color: #14141a;
+  --text-rgb: 20,20,26;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cosplay-blue-page, .cosplay-pink-page, .cosplay-mint-page, .cosplay-yellow-page { --cosplay-ink: #14141a; }
+body.cosplay-blue-page { background: #AFC8FB; }
+body.cosplay-pink-page { background: #FBB8D3; }
+body.cosplay-mint-page { background: #A9EAD1; }
+body.cosplay-yellow-page { background: #FCE28B; }
+
+.cosplay-blue-page .container, .cosplay-pink-page .container, .cosplay-mint-page .container, .cosplay-yellow-page .container {
+  flex: 1 0 auto; max-width: 100%;
+}
+@media (min-width: 761px) {
+  .cosplay-blue-page .container, .cosplay-pink-page .container, .cosplay-mint-page .container, .cosplay-yellow-page .container { max-width: 720px; }
+}
+.cosplay-blue-page footer.site, .cosplay-pink-page footer.site, .cosplay-mint-page footer.site, .cosplay-yellow-page footer.site {
+  color: rgba(20,20,26,0.6);
+}
+.cosplay-blue-page .avatar, .cosplay-pink-page .avatar, .cosplay-mint-page .avatar, .cosplay-yellow-page .avatar {
+  border: 4px solid var(--cosplay-ink); box-shadow: 4px 4px 0 var(--cosplay-ink); background: #fff;
+}
+.cosplay-blue-page .profile-header h1, .cosplay-pink-page .profile-header h1, .cosplay-mint-page .profile-header h1, .cosplay-yellow-page .profile-header h1 {
+  color: #14141a; font-size: 29px; font-weight: 900;
+}
+.cosplay-blue-page .profile-header p, .cosplay-pink-page .profile-header p, .cosplay-mint-page .profile-header p, .cosplay-yellow-page .profile-header p {
+  color: rgba(20,20,26,0.75);
+}
+.cosplay-blue-page .profile-meta, .cosplay-pink-page .profile-meta, .cosplay-mint-page .profile-meta, .cosplay-yellow-page .profile-meta {
+  color: rgba(20,20,26,0.6);
+}
+.cosplay-blue-page .colorful-nav a, .cosplay-pink-page .colorful-nav a, .cosplay-mint-page .colorful-nav a, .cosplay-yellow-page .colorful-nav a {
+  background: #fff; color: #14141a; border: 2px solid var(--cosplay-ink); font-weight: 700;
+}
+.cosplay-blue-page .colorful-nav a:hover, .cosplay-pink-page .colorful-nav a:hover, .cosplay-mint-page .colorful-nav a:hover, .cosplay-yellow-page .colorful-nav a:hover {
+  transform: translateY(-2px);
+}
+.cosplay-blue-page .social-icon-btn, .cosplay-pink-page .social-icon-btn, .cosplay-mint-page .social-icon-btn, .cosplay-yellow-page .social-icon-btn {
+  background: #fff; color: #14141a; border: 2px solid var(--cosplay-ink); box-shadow: 2px 2px 0 var(--cosplay-ink);
+}
+.cosplay-blue-page .color-link-btn, .cosplay-pink-page .color-link-btn, .cosplay-mint-page .color-link-btn, .cosplay-yellow-page .color-link-btn {
+  border: 3px solid var(--cosplay-ink) !important;
+  border-radius: 999px;
+  color: #14141a !important;
+  font-weight: 800;
+  box-shadow: 4px 4px 0 var(--cosplay-ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cosplay-blue-page .color-link-btn { background: #E1EBFF !important; }
+.cosplay-pink-page .color-link-btn { background: #FFE1EF !important; }
+.cosplay-mint-page .color-link-btn { background: #DFFBEF !important; }
+.cosplay-yellow-page .color-link-btn { background: #FFF6D6 !important; }
+.cosplay-blue-page .color-link-btn:hover, .cosplay-pink-page .color-link-btn:hover, .cosplay-mint-page .color-link-btn:hover, .cosplay-yellow-page .color-link-btn:hover {
+  transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--cosplay-ink);
+}
+.cosplay-blue-page .card, .cosplay-pink-page .card, .cosplay-mint-page .card, .cosplay-yellow-page .card {
+  background: #fff; border: 3px solid var(--cosplay-ink); border-radius: 20px; color: #14141a;
+  box-shadow: 4px 4px 0 var(--cosplay-ink);
+}
+.cosplay-blue-page .section-title, .cosplay-pink-page .section-title, .cosplay-mint-page .section-title, .cosplay-yellow-page .section-title {
+  color: rgba(20,20,26,0.65);
+}
+.cosplay-blue-page .event-item, .cosplay-blue-page .blog-item,
+.cosplay-pink-page .event-item, .cosplay-pink-page .blog-item,
+.cosplay-mint-page .event-item, .cosplay-mint-page .blog-item,
+.cosplay-yellow-page .event-item, .cosplay-yellow-page .blog-item {
+  border-bottom-color: rgba(20,20,26,0.2);
+}
+.cosplay-blue-page a, .cosplay-pink-page a, .cosplay-mint-page a, .cosplay-yellow-page a {
+  color: #14141a; font-weight: 700; text-decoration: underline;
+}
+.cosplay-blue-page form textarea, .cosplay-blue-page form input,
+.cosplay-pink-page form textarea, .cosplay-pink-page form input,
+.cosplay-mint-page form textarea, .cosplay-mint-page form input,
+.cosplay-yellow-page form textarea, .cosplay-yellow-page form input {
+  background: #fff; border: 2px solid var(--cosplay-ink); color: #14141a; border-radius: 12px;
+}
+.cosplay-blue-page form label, .cosplay-pink-page form label, .cosplay-mint-page form label, .cosplay-yellow-page form label {
+  color: rgba(20,20,26,0.7); font-weight: 700;
+}
+.cosplay-blue-page .help-box, .cosplay-pink-page .help-box, .cosplay-mint-page .help-box, .cosplay-yellow-page .help-box {
+  background: #fff; border: 2px solid var(--cosplay-ink); color: #14141a;
+}
+.cosplay-blue-page .link-divider, .cosplay-pink-page .link-divider, .cosplay-mint-page .link-divider, .cosplay-yellow-page .link-divider {
+  color: rgba(20,20,26,0.7);
+}
+.cosplay-blue-page .link-divider::before, .cosplay-blue-page .link-divider::after,
+.cosplay-pink-page .link-divider::before, .cosplay-pink-page .link-divider::after,
+.cosplay-mint-page .link-divider::before, .cosplay-mint-page .link-divider::after,
+.cosplay-yellow-page .link-divider::before, .cosplay-yellow-page .link-divider::after {
+  background: rgba(20,20,26,0.35);
+}
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {

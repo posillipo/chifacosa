@@ -472,6 +472,10 @@ const PAGE_THEMES = [
     'la-caraffa' => ['label' => 'La Caraffa', 'description' => 'Tema blu corporativo ispirato al logo di La Caraffa Ristorante', 'body_class' => 'la-caraffa-page'],
     'electric' => ['label' => 'Electric', 'description' => 'Sfondo scuro con un bordo elettrico animato attorno al profilo', 'body_class' => 'electric-page'],
     'circuit' => ['label' => 'Circuit', 'description' => 'Griglia 3D di tubi che ruotano lentamente, come un circuito stampato', 'body_class' => 'circuit-page'],
+    'cosplay-blue' => ['label' => 'Cosplay Blu', 'description' => 'Sfondo blu pastello, pulsanti a pillola con bordo nero e ombra netta, stile sticker/fumetto', 'body_class' => 'cosplay-blue-page'],
+    'cosplay-pink' => ['label' => 'Cosplay Rosa', 'description' => 'Stessa grafica a sticker con bordo nero, in rosa confetto', 'body_class' => 'cosplay-pink-page'],
+    'cosplay-mint' => ['label' => 'Cosplay Menta', 'description' => 'Stessa grafica a sticker con bordo nero, in verde menta', 'body_class' => 'cosplay-mint-page'],
+    'cosplay-yellow' => ['label' => 'Cosplay Giallo', 'description' => 'Stessa grafica a sticker con bordo nero, in giallo pastello', 'body_class' => 'cosplay-yellow-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
