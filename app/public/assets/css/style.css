@@ -1599,6 +1599,81 @@ body.agent-silver-page {
 .agent-gold-page .link-divider::before, .agent-gold-page .link-divider::after,
 .agent-silver-page .link-divider::before, .agent-silver-page .link-divider::after { background: var(--agent-metal); opacity: 0.5; }
 
+/* ===== Tema "Coniglietti": pastello rosa soffice, ombre morbide (sfocate, non nette come nei
+   temi Cosplay) e due orecchie da coniglio disegnate in puro CSS (::before/::after su
+   .avatar-wrap, già position:relative) che spuntano dietro l'avatar — nessuna immagine esterna.
+   Piccole zampette 🐾 sui pulsanti e attorno ai separatori, per un tocco giocoso in più. ===== */
+body.bunny-page {
+  color: #6b4a4a;
+  --text-rgb: 107,74,74;
+  background: linear-gradient(160deg, #FFF6F0 0%, #FFE1EC 55%, #FFD1E3 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.bunny-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .bunny-page .container { max-width: 720px; } }
+.bunny-page footer.site { color: rgba(107,74,74,0.6); }
+.bunny-page .avatar {
+  width: 118px; height: 118px;
+  position: relative; z-index: 1;
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(255,143,179,0.4);
+}
+/* Le due orecchie: ovali allungati, ruotati in direzioni opposte, con una sfumatura rosa al
+   centro che imita l'interno dell'orecchio — restano dietro all'avatar (z-index 0 contro 1). */
+.bunny-page .avatar-wrap::before, .bunny-page .avatar-wrap::after {
+  content: '';
+  position: absolute;
+  top: -38px;
+  width: 32px;
+  height: 60px;
+  border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%;
+  background: radial-gradient(ellipse 55% 85% at 50% 62%, #FFAFCB 0%, transparent 72%), #fff;
+  border: 2px solid #6b4a4a;
+  z-index: 0;
+}
+.bunny-page .avatar-wrap::before { left: 8px; transform: rotate(-22deg); }
+.bunny-page .avatar-wrap::after { right: 8px; transform: rotate(22deg); }
+.bunny-page .profile-header h1 { color: #6b4a4a; font-size: 28px; font-weight: 800; }
+.bunny-page .profile-header p { color: rgba(107,74,74,0.75); }
+.bunny-page .profile-meta { color: rgba(107,74,74,0.6); }
+.bunny-page .colorful-nav a {
+  background: #fff; color: #6b4a4a; border: 1.5px solid #FFC2D9; font-weight: 700;
+}
+.bunny-page .colorful-nav a:hover { background: #FFF0F5; }
+.bunny-page .social-icon-btn { background: #fff; color: #6b4a4a; border: 1.5px solid #FFC2D9; }
+.bunny-page .color-link-btn {
+  background: #fff !important;
+  border: 2px solid #FFC2D9 !important;
+  border-radius: 999px;
+  color: #6b4a4a !important;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(255,143,179,0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.bunny-page .color-link-btn::before { content: '🐾'; margin-right: 6px; }
+.bunny-page .color-link-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(255,143,179,0.5); }
+.bunny-page .card {
+  background: #fff; border: 2px solid #FFD9E8; border-radius: 20px; color: #6b4a4a;
+  box-shadow: 0 8px 22px rgba(255,143,179,0.25);
+}
+.bunny-page .section-title { color: rgba(107,74,74,0.6); }
+.bunny-page .event-item, .bunny-page .blog-item { border-bottom-color: rgba(107,74,74,0.15); }
+.bunny-page a { color: #FF6FA0; font-weight: 700; }
+.bunny-page form textarea, .bunny-page form input {
+  background: #fff; border: 1.5px solid #FFC2D9; color: #6b4a4a; border-radius: 14px;
+}
+.bunny-page form label { color: rgba(107,74,74,0.7); }
+.bunny-page .help-box { background: #fff; border-color: #FFD9E8; color: #6b4a4a; }
+.bunny-page .link-divider { color: rgba(107,74,74,0.65); }
+.bunny-page .link-divider::before, .bunny-page .link-divider::after { background: #FFC2D9; }
+.bunny-page .link-divider span::before { content: '🐾 '; }
+.bunny-page .link-divider span::after { content: ' 🐾'; }
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {

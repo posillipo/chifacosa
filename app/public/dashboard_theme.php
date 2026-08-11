@@ -49,6 +49,7 @@ $themePickerBackgrounds = [
     'thriller-shadow' => 'radial-gradient(ellipse at 50% -5%, #1c2733, #05080c 68%)',
     'agent-gold' => 'linear-gradient(120deg, #0a0a0a 40%, #3a2f10 50%, #0a0a0a 60%)',
     'agent-silver' => 'linear-gradient(120deg, #0a0a0a 40%, #33383d 50%, #0a0a0a 60%)',
+    'bunny' => 'linear-gradient(160deg, #FFF6F0 0%, #FFE1EC 55%, #FFD1E3 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -195,6 +196,16 @@ include __DIR__ . '/_dash_header.php';
                 <div style="width:40px;height:40px;border-radius:50%;background:#111;margin:0 auto 8px;border:2px solid <?= $macc ?>;"></div>
                 <div style="border:1.5px solid <?= $macc ?>;border-radius:8px;height:10px;margin-bottom:4px;background:#111;"></div>
                 <div style="border:1.5px solid <?= $macc ?>;border-radius:8px;height:10px;background:#111;"></div>
+              </div>
+            <?php elseif ($key === 'bunny'): ?>
+              <div style="background:linear-gradient(160deg, #FFF6F0 0%, #FFE1EC 55%, #FFD1E3 100%);border-radius:6px;padding:22px 10px 16px;margin-bottom:10px;">
+                <div style="position:relative;width:40px;height:40px;margin:0 auto 8px;">
+                  <div style="position:absolute;top:-15px;left:-1px;width:11px;height:22px;border-radius:50% 50% 45% 45% / 65% 65% 35% 35%;background:#fff;border:1.5px solid #6b4a4a;transform:rotate(-22deg);"></div>
+                  <div style="position:absolute;top:-15px;right:-1px;width:11px;height:22px;border-radius:50% 50% 45% 45% / 65% 65% 35% 35%;background:#fff;border:1.5px solid #6b4a4a;transform:rotate(22deg);"></div>
+                  <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#fff;border:2px solid #6b4a4a;"></div>
+                </div>
+                <div style="background:#fff;border:1.5px solid #FFC2D9;border-radius:999px;height:10px;margin-bottom:4px;"></div>
+                <div style="background:#fff;border:1.5px solid #FFC2D9;border-radius:999px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
