@@ -490,6 +490,7 @@ const PAGE_THEMES = [
     'meme67' => ['label' => '67', 'description' => 'Il meme "6 7": numeri giganti sullo sfondo, sfondo a raggiera, verde neon e arancione', 'body_class' => 'meme67-page'],
     'napoli' => ['label' => 'Forza Napoli', 'description' => 'Cielo azzurro sul golfo con il Vesuvio all\'orizzonte, sole che ruota dietro l\'avatar, coriandoli azzurro/oro che salgono dal basso', 'body_class' => 'napoli-page'],
     'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
+    'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -545,6 +546,17 @@ function renderNapoliBackground(): string {
 function renderStarTrekBackground(): string {
     return '<div id="startrek-bg"></div>
     <script src="' . assetUrl('/assets/js/startrek-fx.js') . '"></script>';
+}
+
+// Sfondo animato per il tema "Console Galattica" — campo stellare su canvas che simula un
+// viaggio nell'iperspazio (galactic-fx.js), più un pulsante per attivare/disattivare i suoni
+// sintetizzati (spenti di default, l'utente li accende esplicitamente). Container fisso dietro
+// al contenuto, caricato solo se il profilo ha scelto questo tema, stesso schema delle altre
+// funzioni renderXBackground().
+function renderGalacticBackground(): string {
+    return '<div id="galactic-bg"></div>
+    <button type="button" id="galactic-sound-toggle" class="floating-btn" style="bottom:130px;" title="Attiva i suoni" aria-pressed="false"></button>
+    <script src="' . assetUrl('/assets/js/galactic-fx.js') . '"></script>';
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla

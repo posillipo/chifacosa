@@ -55,6 +55,7 @@ $themePickerBackgrounds = [
     'meme67' => 'repeating-conic-gradient(from 0deg at 50% 10%, #1c1c1c 0deg 8deg, #111 8deg 16deg)',
     'napoli' => 'linear-gradient(180deg, #063b66 0%, #0f7ac2 45%, #2aa8e0 70%, #f2b552 100%)',
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
+    'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -248,6 +249,15 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#0a0e2e;margin:0 auto 8px;border:2px solid #6B8CFF;box-shadow:0 0 8px #6B8CFF;"></div>
                 <div style="position:relative;background:#FF9F1C;border-radius:999px 8px 8px 999px;height:10px;margin-bottom:5px;"></div>
                 <div style="position:relative;background:#FF9F1C;border-radius:999px 8px 8px 999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'galactic'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <span style="position:absolute;left:12%;top:25%;width:2px;height:6px;background:#fff;transform:rotate(20deg);"></span>
+                <span style="position:absolute;left:75%;top:18%;width:2px;height:8px;background:#fff;transform:rotate(20deg);"></span>
+                <span style="position:absolute;left:88%;top:60%;width:1.5px;height:5px;background:#fff;transform:rotate(20deg);"></span>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#0a0a1e;margin:0 auto 8px;border:2px solid #29f5ff;box-shadow:0 0 10px #29f5ff;"></div>
+                <div style="position:relative;background:linear-gradient(90deg,#062f22,#12b57a);border:1px solid #3dffb0;border-radius:8px;height:10px;margin-bottom:5px;"></div>
+                <div style="position:relative;background:linear-gradient(90deg,#2a0a3f,#a13fd6);border:1px solid #e39bff;border-radius:8px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
