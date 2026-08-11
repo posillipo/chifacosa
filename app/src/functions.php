@@ -574,7 +574,18 @@ function menuHasItems(int $userId): bool {
 
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hideNav = false): string {
+    // Sulla Home (u.php) la barra dei tab non compare: al suo posto restano ben in vista solo i
+    // pulsanti "Link in Bio" (icone social + pulsanti colorati), già stampati subito sotto da
+    // u.php — è quello lo scopo della Home. La barra ricompare su tutte le altre pagine
+    // pubbliche (Timeline, Blog, Brani, Eventi, Contatti, ecc.), dove serve per orientarsi.
+    // Non basta controllare $active==='home': anche band_che_amo.php passa 'home' (per tenere
+    // evidenziato il tab Home, dato che quella pagina non ha un tab proprio nel menu) pur non
+    // essendo la Home vera — da qui il flag esplicito, passato solo da publicProfileHeader()
+    // quando chiamata da u.php.
+    if ($hideNav) {
+        return '';
+    }
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab standard che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in
     // dashboard (Home/Timeline/Blog/Brani/Menù/Eventi/Contatti) — i tab "integrazione"
@@ -637,7 +648,7 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
 // pagina pubblica dell'artista (home, blog, brani, eventi, contatti, spotify), per un aspetto
 // coerente. La bio, quando presente, è mostrata come vignetta al passaggio del mouse
 // sull'avatar (non più come testo sempre visibile), per un profilo più compatto.
-function publicProfileHeader(array $artist, string $active, bool $showBio = false): string {
+function publicProfileHeader(array $artist, string $active, bool $showBio = false, bool $hideNav = false): string {
     $isElectric = ($artist['page_theme'] ?? 'colorful') === 'electric';
     $electricClass = $isElectric ? ' electric-border' : '';
     $electricStyle = $isElectric ? ' style="--electric-border-color:' . e($artist['theme_color'] ?: '#6C5CE7') . ';"' : '';
@@ -661,7 +672,7 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $html .= '</p>';
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu);
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hideNav);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';

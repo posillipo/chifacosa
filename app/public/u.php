@@ -129,7 +129,7 @@ $bandReviewers = $bandReviewers->fetchAll();
 <?php if (($artist['page_theme'] ?? 'colorful') === 'circuit'): ?><?= renderCircuitBackground($artist['theme_color'] ?? '#6C5CE7') ?><?php endif; ?>
 <?= embedTrackingBodyStart() ?>
 <div class="container">
-  <?= publicProfileHeader($artist, 'home', true) ?>
+  <?= publicProfileHeader($artist, 'home', true, true) ?>
 
   <?php if ($followMsg): ?>
     <div class="alert <?= $followErr ? 'error' : 'success' ?>"><?= e($followMsg) ?></div>
