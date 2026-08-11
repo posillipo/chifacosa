@@ -92,6 +92,64 @@ if ($editId > 0) {
     }
 }
 
+// Stessa suddivisione usata per costruire davvero la pagina pubblica (vedi splitSocialAndActionLinks
+// in functions.php): così l'elenco qui in dashboard mostra esattamente quali link diventeranno
+// icone social in cima alla pagina e quali restano pulsanti normali, invece di un elenco unico.
+list($socialLinks, $actionLinks) = splitSocialAndActionLinks($links);
+$linkIndex = [];
+foreach ($links as $i => $l) {
+    $linkIndex[$l['id']] = $i;
+}
+
+function renderLinkItem(array $l, int $idx, int $total): void {
+    $platform = $l['platform'] ?? null;
+?>
+  <div class="link-item">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <?php if ($platform): ?>
+        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-text,#fff);font-size:16px;"><i class="<?= e($platform['icon_class']) ?>"></i></span>
+      <?php elseif ($l['cover_path']): ?>
+        <img src="/<?= e($l['cover_path']) ?>" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+      <?php endif; ?>
+      <div>
+        <strong><?= e($l['label']) ?></strong>
+        <?php if ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span><?php endif; ?>
+        <?php if (!$l['is_active']): ?><span style="color:#ff8a8a;font-size:12px;"> · nascosto</span><?php endif; ?>
+        <br>
+        <small style="color:var(--text-muted)"><?= e($l['url']) ?> · <?= (int)$l['click_count'] ?> click</small>
+      </div>
+    </div>
+    <div class="icon-btn-group">
+      <form method="post" title="Sposta su">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="move_up">
+        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
+        <button class="icon-btn" type="submit" <?= $idx === 0 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-up"></i></button>
+      </form>
+      <form method="post" title="Sposta giù">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="move_down">
+        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
+        <button class="icon-btn" type="submit" <?= $idx === $total - 1 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-down"></i></button>
+      </form>
+      <a class="icon-btn" href="/dashboard_links.php?edit=<?= (int)$l['id'] ?>" title="Modifica"><i class="fa-solid fa-pen"></i></a>
+      <form method="post" title="<?= $l['is_active'] ? 'Nascondi' : 'Mostra' ?>">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="toggle">
+        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
+        <button class="icon-btn" type="submit"><i class="fa-solid <?= $l['is_active'] ? 'fa-eye' : 'fa-eye-slash' ?>"></i></button>
+      </form>
+      <form method="post" onsubmit="return confirm('Eliminare questo link?');" title="Elimina">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
+        <button class="icon-btn danger" type="submit"><i class="fa-solid fa-trash"></i></button>
+      </form>
+    </div>
+  </div>
+<?php
+}
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <details class="help-box">
@@ -156,47 +214,14 @@ include __DIR__ . '/_dash_header.php';
     compaiono qui sotto; eventuali duplicati restano tra i pulsanti. Usa le frecce per decidere
     l'ordine.
   </p>
-  <?php foreach ($links as $i => $l): ?>
-    <div class="link-item">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <?php if ($l['cover_path']): ?>
-          <img src="/<?= e($l['cover_path']) ?>" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-        <?php endif; ?>
-        <div>
-          <strong><?= e($l['label']) ?></strong>
-          <?php if (!empty($l['is_website_icon'])): ?><span style="color:var(--accent);font-size:12px;"> · icona sito web</span><?php endif; ?>
-          <?php if (!$l['is_active']): ?><span style="color:#ff8a8a;font-size:12px;"> · nascosto</span><?php endif; ?>
-          <br>
-          <small style="color:var(--text-muted)"><?= e($l['url']) ?> · <?= (int)$l['click_count'] ?> click</small>
-        </div>
-      </div>
-      <div class="icon-btn-group">
-        <form method="post" title="Sposta su">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="move_up">
-          <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-          <button class="icon-btn" type="submit" <?= $i === 0 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-up"></i></button>
-        </form>
-        <form method="post" title="Sposta giù">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="move_down">
-          <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-          <button class="icon-btn" type="submit" <?= $i === count($links) - 1 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-down"></i></button>
-        </form>
-        <a class="icon-btn" href="/dashboard_links.php?edit=<?= (int)$l['id'] ?>" title="Modifica"><i class="fa-solid fa-pen"></i></a>
-        <form method="post" title="<?= $l['is_active'] ? 'Nascondi' : 'Mostra' ?>">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="toggle">
-          <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-          <button class="icon-btn" type="submit"><i class="fa-solid <?= $l['is_active'] ? 'fa-eye' : 'fa-eye-slash' ?>"></i></button>
-        </form>
-        <form method="post" onsubmit="return confirm('Eliminare questo link?');" title="Elimina">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="delete">
-          <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-          <button class="icon-btn danger" type="submit"><i class="fa-solid fa-trash"></i></button>
-        </form>
-      </div>
-    </div>
-  <?php endforeach; ?>
+
+  <?php if ($socialLinks): ?>
+    <div class="section-title" style="margin-top:22px;">Icone social (<?= count($socialLinks) ?>)</div>
+    <?php foreach ($socialLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
+  <?php endif; ?>
+
+  <?php if ($actionLinks): ?>
+    <div class="section-title" style="margin-top:22px;">Link normali (<?= count($actionLinks) ?>)</div>
+    <?php foreach ($actionLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
+  <?php endif; ?>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

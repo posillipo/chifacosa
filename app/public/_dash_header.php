@@ -208,7 +208,7 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">TIMELINE</a>
     <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Pubblica</a>
     <a href="/dashboard_fan_bands.php" class="<?= $activeTab==='fan_bands'?'active':'' ?>">Band che amo</a>
-    <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">LINK</a>
+    <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">Link</a>
     <a href="/dashboard_audio.php" class="<?= $activeTab==='audio'?'active':'' ?>">Brani</a>
     <a href="/dashboard_menu.php" class="<?= $activeTab==='menu'?'active':'' ?>">Menù</a>
     <?php if ($isBandOrLabel): ?>
