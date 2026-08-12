@@ -49,7 +49,7 @@ http://localhost:8080
 ```
 
 WSL2 inoltra automaticamente le porte verso Windows, quindi funziona senza configurazioni
-aggiuntive. Registra un musicista di prova e verifica che la pagina pubblica funzioni su:
+aggiuntive. Registra un account di prova e verifica che la pagina pubblica funzioni su:
 
 ```
 http://localhost:8080/nomepagina-scelta

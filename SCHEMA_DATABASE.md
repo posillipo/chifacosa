@@ -19,7 +19,7 @@ site_settings   (tabella indipendente, chiave/valore globale)
 ---
 
 ## `users`
-Account dei musicisti registrati (include anche l'account admin).
+Account degli utenti registrati (include anche l'account admin).
 
 | Colonna | Tipo | Chiave / Vincoli | Descrizione |
 |---|---|---|---|
@@ -58,7 +58,7 @@ Link personalizzati mostrati nella pagina pubblica (Spotify, social, ecc.).
 | is_active | TINYINT(1) | DEFAULT 1 | Visibile/nascosto |
 
 ## `audio_tracks`
-Brani audio caricati dal musicista.
+Brani audio caricati dall'utente.
 
 | Colonna | Tipo | Chiave / Vincoli | Descrizione |
 |---|---|---|---|

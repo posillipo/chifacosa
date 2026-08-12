@@ -1,9 +1,9 @@
 # CHI FA COSA — Documentazione tecnica completa del progetto
 
-Piattaforma multi-utente in stile "Link in Bio" pensata specificamente per musicisti e addetti ai
-lavori del settore ("band manager"), con area pubblica per ogni artista, dashboard di gestione
-contenuti, area di amministrazione, e integrazioni con servizi esterni (email transazionali,
-Spotify, tracking).
+Piattaforma multi-utente in stile "Link in Bio", nata per band e musicisti ma pensata per
+qualsiasi tipo di attività o profilo (locali, ristoranti, professionisti, fan), con area pubblica
+per ogni profilo, dashboard di gestione contenuti, area di amministrazione, e integrazioni con
+servizi esterni (email transazionali, Spotify, tracking).
 
 ---
 
@@ -63,7 +63,7 @@ database (vedi sezione Area Admin).
 
 | Tabella | Scopo | Colonne chiave |
 |---|---|---|
-| `users` | Account (musicisti + admin) | `slug` (univoco, pagina pubblica), `email`, `password_hash` (bcrypt), `is_active`, `is_admin`, `email_verified`, `verification_token`/`verification_expires` |
+| `users` | Account (profili + admin) | `slug` (univoco, pagina pubblica), `email`, `password_hash` (bcrypt), `is_active`, `is_admin`, `email_verified`, `verification_token`/`verification_expires` |
 | `profiles` | Dati profilo pubblico, 1:1 con `users` | `display_name`, `bio`, `avatar_path`, `theme_color`, `dashboard_theme` (non più usato in UI), `spotify_artist_id`/`spotify_artist_name` |
 | `links` | Link della pagina Link in Bio | `label`, `url`, `sort_order` (riordinabile), `click_count`, `is_active`, `is_website_icon` (flag manuale per l'icona "sito web personale") |
 | `audio_tracks` | Brani audio caricati | `title`, `file_path`, `sort_order` |
@@ -79,9 +79,9 @@ automaticamente profilo, link, brani, eventi, articoli, contatti e follower coll
 
 ---
 
-## 4. Sito pubblico di ogni artista
+## 4. Sito pubblico di ogni profilo
 
-Ogni musicista ha una pagina pubblica raggiungibile su `tuodominio.it/nomeslug`, con routing gestito
+Ogni utente ha una pagina pubblica raggiungibile su `tuodominio.it/nomeslug`, con routing gestito
 via `.htaccess` (mod_rewrite) verso i seguenti script:
 
 | URL | Script | Contenuto |

@@ -1,8 +1,9 @@
-# CHI FA COSA — Piattaforma Link in Bio per musicisti
+# CHI FA COSA — Piattaforma Link in Bio
 
-Piattaforma multi-utente dove ogni musicista (band manager) può registrarsi e creare la propria
-pagina pubblica (`tuodominio.it/nomepagina`) con link, brani audio, calendario concerti, blog e form
-di contatto/booking.
+Piattaforma multi-utente dove chiunque — band e musicisti, locali e ristoranti, fan, professionisti
+o qualsiasi altra attività — può registrarsi e creare la propria pagina pubblica
+(`tuodominio.it/nomepagina`) con link, brani audio, calendario eventi, menù, blog e form di
+contatto/prenotazione.
 
 Stack: **PHP 8.2 + Apache** (container `app`) + **MySQL 8** (container `db`), orchestrati con
 Docker Compose. In produzione gestito con **Portainer** + **Nginx Proxy Manager** su Hetzner.

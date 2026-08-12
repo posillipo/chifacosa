@@ -6,7 +6,7 @@
 2. **Create app**
 3. Compila:
    - **App name**: es. "CHI FA COSA"
-   - **App description**: es. "Piattaforma Link in Bio per musicisti"
+   - **App description**: es. "Piattaforma Link in Bio"
    - **Redirect URI**: puoi mettere `https://www.tuodominio.it/` (non viene effettivamente usata da
      questa integrazione, che non richiede login utente, ma il campo è obbligatorio)
    - **Which API/SDKs are you planning to use?**: spunta **Web API**
