@@ -56,8 +56,14 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
 <meta property="og:title" content="<?= e($post['display_name']) ?> su <?= e(siteName()) ?>">
 <meta property="og:description" content="<?= e($anteprima) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
 <?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
 <meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($post['display_name']) ?> su <?= e(siteName()) ?>">
+<meta name="twitter:description" content="<?= e($anteprima) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
