@@ -1441,10 +1441,27 @@ function blogPostUrl(string $userSlug, array $post): string {
 function siteUrl(string $path = ''): string {
     $base = rtrim(getenv('SITE_URL') ?: '', '/');
     if ($base === '') {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $base = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $base = requestScheme() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
     return $base . '/' . ltrim($path, '/');
+}
+
+// Schema (http/https) della richiesta corrente, tenendo conto del reverse proxy
+// (Nginx/Nginx Proxy Manager/Traefik) che termina il TLS e inoltra in HTTP: in quel
+// caso $_SERVER['HTTPS'] non risulta valorizzato, va letto X-Forwarded-Proto.
+function requestScheme(): string {
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return 'https';
+    }
+    $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+    if ($forwardedProto !== '') {
+        $forwardedProto = trim(explode(',', $forwardedProto)[0]);
+        if ($forwardedProto === 'https') return 'https';
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') {
+        return 'https';
+    }
+    return 'http';
 }
 
 // Estratto in testo semplice per meta description / anteprima social
