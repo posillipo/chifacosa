@@ -158,6 +158,9 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_nav_menu.php" class="account-sidebar-link <?= $activeTab==='nav_menu'?'active':'' ?>">
       <i class="fa-solid fa-bars"></i> Menu di Navigazione
     </a>
+    <a href="/dashboard_feed.php" class="account-sidebar-link <?= $activeTab==='feed'?'active':'' ?>">
+      <i class="fa-solid fa-rss"></i> Feed RSS
+    </a>
     <a href="/dashboard_invite.php" class="account-sidebar-link <?= $activeTab==='invite'?'active':'' ?>">
       <i class="fa-solid fa-user-plus"></i> Invita
     </a>
