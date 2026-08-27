@@ -15,12 +15,12 @@ if (!$artist) {
     exit;
 }
 
-// Link personalizzato per il <guid> impostato in Dashboard → Profilo: si applica solo ai post
-// pubblicati da quando il campo è stato impostato/modificato in poi (vedi MIGRAZIONI.md #28) —
-// il <link> resta invece sempre il permalink interno, così la pagina della pubblicazione non
-// viene toccata da questa personalizzazione.
-$customGuid = $artist['custom_feed_guid'] ?: null;
-$customGuidSince = $artist['custom_feed_guid_since'] ? strtotime($artist['custom_feed_guid_since']) : null;
+// Link personalizzato per il <link> dell'item, impostato in Dashboard → Feed RSS: si applica
+// solo ai post pubblicati da quando il campo è stato impostato/modificato in poi (vedi
+// MIGRAZIONI.md #28) — il <guid> resta invece sempre il permalink interno stabile, così i
+// feed reader continuano a riconoscere correttamente ogni post come lo stesso item nel tempo.
+$customLink = $artist['custom_feed_guid'] ?: null;
+$customLinkSince = $artist['custom_feed_guid_since'] ? strtotime($artist['custom_feed_guid_since']) : null;
 
 // Stesso feed della Timeline, ma senza i Brani (link a Spotify, non a un contenuto editoriale
 // con la propria immagine di anteprima — vedi analisi di fattibilità).
@@ -45,13 +45,13 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <?php foreach ($feed as $item): ?>
 <?php
     $itemUrl = siteUrl($item['url']);
-    $useCustomGuid = $customGuid && $customGuidSince && strtotime($item['data']) >= $customGuidSince;
-    $guidUrl = $useCustomGuid ? $customGuid : $itemUrl;
+    $useCustomLink = $customLink && $customLinkSince && strtotime($item['data']) >= $customLinkSince;
+    $linkUrl = $useCustomLink ? $customLink : $itemUrl;
 ?>
 <item>
 <title><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></title>
-<link><?= e($itemUrl) ?></link>
-<guid isPermaLink="true"><?= e($guidUrl) ?></guid>
+<link><?= e($linkUrl) ?></link>
+<guid isPermaLink="true"><?= e($itemUrl) ?></guid>
 <pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
 <description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>
 <?php if ($item['cover']): ?>

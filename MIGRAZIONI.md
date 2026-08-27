@@ -344,21 +344,24 @@ chiave API — e mostrato come mappa incorporata sulla pagina pubblica, sempre d
 anch'esso gratuito). Vedi `app/src/geocoding.php`. I link esistenti restano tutti `link_type='link'`
 per via del `DEFAULT`, nessun impatto sui dati già presenti.
 
-## 28. Link personalizzato per il `<guid>` del feed RSS
+## 28. Link personalizzato per il `<link>` del feed RSS
 ```sql
 ALTER TABLE profiles
   ADD COLUMN custom_feed_guid VARCHAR(500) DEFAULT NULL,
   ADD COLUMN custom_feed_guid_since DATETIME DEFAULT NULL;
 ```
-Da Dashboard → Profilo, un utente può impostare un URL personalizzato che sostituisce il
-`<guid>` (non il `<link>`, che resta sempre il permalink interno chifacosa.it) degli item del
-proprio feed RSS (`feed.php`) — utile quando vuole che un'automazione collegata al feed apra un
-altro URL invece del permalink standard, senza dover complicare la pagina di pubblicazione dei
-singoli post con un campo ad hoc per ognuno. Si applica solo ai post pubblicati da quando il
-campo è stato impostato/modificato in poi (`custom_feed_guid_since`, aggiornato automaticamente
-a ogni cambio di valore) — i post già esistenti al momento del salvataggio non vengono toccati.
-Il valore resta invariato finché l'utente non lo modifica o lo svuota: se nel frattempo pubblica
-più post, tutti condivideranno lo stesso `<guid>` finché il campo non viene aggiornato.
+Da Dashboard → Feed RSS, un utente può impostare un URL personalizzato che sostituisce il
+`<link>` (non il `<guid>`, che resta sempre il permalink interno chifacosa.it, stabile per i
+feed reader) degli item del proprio feed RSS (`feed.php`) — utile quando vuole che
+un'automazione collegata al feed apra un altro URL invece del permalink standard, senza dover
+complicare la pagina di pubblicazione dei singoli post con un campo ad hoc per ognuno. Si
+applica solo ai post pubblicati da quando il campo è stato impostato/modificato in poi
+(`custom_feed_guid_since`, aggiornato automaticamente a ogni cambio di valore) — i post già
+esistenti al momento del salvataggio non vengono toccati. Il valore resta invariato finché
+l'utente non lo modifica o lo svuota: se nel frattempo pubblica più post, tutti condivideranno
+lo stesso `<link>` finché il campo non viene aggiornato. (Le colonne si chiamano ancora
+`custom_feed_guid*` per non richiedere una nuova migrazione dopo la correzione del campo XML
+interessato — sono solo nomi interni, non visibili all'utente.)
 
 ---
 
