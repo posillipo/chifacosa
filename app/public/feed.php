@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 header('Content-Type: application/rss+xml; charset=UTF-8');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio, p.custom_feed_guid, p.custom_feed_guid_since
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -14,6 +14,13 @@ if (!$artist) {
     http_response_code(404);
     exit;
 }
+
+// Link personalizzato per il <guid> impostato in Dashboard → Profilo: si applica solo ai post
+// pubblicati da quando il campo è stato impostato/modificato in poi (vedi MIGRAZIONI.md #28) —
+// il <link> resta invece sempre il permalink interno, così la pagina della pubblicazione non
+// viene toccata da questa personalizzazione.
+$customGuid = $artist['custom_feed_guid'] ?: null;
+$customGuidSince = $artist['custom_feed_guid_since'] ? strtotime($artist['custom_feed_guid_since']) : null;
 
 // Stesso feed della Timeline, ma senza i Brani (link a Spotify, non a un contenuto editoriale
 // con la propria immagine di anteprima — vedi analisi di fattibilità).
@@ -36,10 +43,15 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <language>it-it</language>
 <lastBuildDate><?= date(DATE_RSS) ?></lastBuildDate>
 <?php foreach ($feed as $item): ?>
+<?php
+    $itemUrl = siteUrl($item['url']);
+    $useCustomGuid = $customGuid && $customGuidSince && strtotime($item['data']) >= $customGuidSince;
+    $guidUrl = $useCustomGuid ? $customGuid : $itemUrl;
+?>
 <item>
 <title><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></title>
-<link><?= e(siteUrl($item['url'])) ?></link>
-<guid isPermaLink="true"><?= e(siteUrl($item['url'])) ?></guid>
+<link><?= e($itemUrl) ?></link>
+<guid isPermaLink="true"><?= e($guidUrl) ?></guid>
 <pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
 <description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>
 <?php if ($item['cover']): ?>
