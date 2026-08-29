@@ -18,12 +18,7 @@ if (!$artist) {
 }
 
 const TIMELINE_PAGE_SIZE = 20;
-// "grid" (default): griglia stile Instagram. "feed": scorrimento singolo, un post alla volta,
-// aperto cliccando una cella della griglia — parte da $start (l'indice cronologico assoluto di
-// quella cella) e continua a scorrere all'indietro nel tempo da lì con lo stesso infinite-scroll.
-$view = ($_GET['view'] ?? 'grid') === 'feed' ? 'feed' : 'grid';
-$start = $view === 'feed' ? max(0, (int) ($_GET['start'] ?? 0)) : 0;
-$feed = getTimelineFeedForUsers([$artist['id']], TIMELINE_PAGE_SIZE, $start);
+$feed = getTimelineFeedForUsers([$artist['id']], TIMELINE_PAGE_SIZE, 0);
 $pageUrl = siteUrl('/' . $slug . '/timeline');
 ?>
 <!doctype html>
@@ -53,22 +48,12 @@ $pageUrl = siteUrl('/' . $slug . '/timeline');
 <div class="container">
   <?= publicProfileHeader($artist, 'timeline') ?>
 
-  <?php if ($view === 'feed'): ?>
-    <p style="margin-bottom:14px;"><a href="/<?= e($slug) ?>/timeline">← Torna alla griglia</a></p>
-  <?php endif; ?>
-
   <?php if (!$feed): ?>
     <div class="card">Nessun contenuto pubblicato ancora.</div>
-  <?php elseif ($view === 'feed'): ?>
-    <div id="timeline-feed">
-      <?php foreach ($feed as $i => $item): ?>
-        <?= renderTimelineFeedCard($item, $start + $i) ?>
-      <?php endforeach; ?>
-    </div>
   <?php else: ?>
     <div id="timeline-feed" class="ig-grid">
-      <?php foreach ($feed as $i => $item): ?>
-        <?= renderTimelineFeedItem($item, $slug, $i) ?>
+      <?php foreach ($feed as $item): ?>
+        <?= renderTimelineFeedItem($item) ?>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>
@@ -83,8 +68,7 @@ $pageUrl = siteUrl('/' . $slug . '/timeline');
 <script>
 (function () {
   var slug = <?= json_encode($slug) ?>;
-  var view = <?= json_encode($view) ?>;
-  var offset = <?= $start + count($feed) ?>;
+  var offset = <?= count($feed) ?>;
   var pageSize = <?= TIMELINE_PAGE_SIZE ?>;
   var loading = false;
   var finished = <?= count($feed) < TIMELINE_PAGE_SIZE ? 'true' : 'false' ?>;
@@ -97,7 +81,7 @@ $pageUrl = siteUrl('/' . $slug . '/timeline');
     if (loading || finished) return;
     loading = true;
     loadingEl.style.display = 'block';
-    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset + '&view=' + view)
+    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset)
       .then(function (r) { return r.json(); })
       .then(function (data) {
         loadingEl.style.display = 'none';
