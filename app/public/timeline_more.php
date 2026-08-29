@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 $slug = $_GET['slug'] ?? '';
 $offset = max(0, (int) ($_GET['offset'] ?? 0));
+$view = ($_GET['view'] ?? 'grid') === 'feed' ? 'feed' : 'grid';
 $pageSize = 20;
 
 $stmt = getDB()->prepare('SELECT id FROM users WHERE slug = ? AND is_active = 1');
@@ -20,8 +21,9 @@ if (!$user) {
 $items = getTimelineFeedForUsers([$user['id']], $pageSize, $offset);
 
 $html = '';
-foreach ($items as $item) {
-    $html .= renderTimelineFeedItem($item);
+foreach ($items as $i => $item) {
+    $index = $offset + $i;
+    $html .= $view === 'feed' ? renderTimelineFeedCard($item, $index) : renderTimelineFeedItem($item, $slug, $index);
 }
 
 echo json_encode(['html' => $html, 'count' => count($items)]);

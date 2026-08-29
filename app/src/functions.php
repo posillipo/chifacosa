@@ -1381,10 +1381,14 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
 // riempie il quadrato ritagliandola (object-fit:cover, anche se le proporzioni originali sono
 // diverse); se manca l'immagine (es. un "pensiero" di solo testo) la cella mostra solo la prima
 // lettera del titolo, alla stessa dimensione delle altre celle — mai testo/didascalia visibile
-// nella griglia, come nel vero layout Instagram (il contenuto completo si vede aprendo la voce).
-function renderTimelineFeedItem(array $item): string {
+// nella griglia, come nel vero layout Instagram. Il click non apre la pagina singola del
+// contenuto, ma la stessa timeline in modalità "scorrimento singolo" (renderTimelineFeedCard()),
+// posizionata esattamente su questa voce (?view=feed&start=$index#post-$index) — da lì si
+// continua a scorrere all'indietro nel tempo, un post alla volta, con lo stesso infinite-scroll.
+function renderTimelineFeedItem(array $item, string $slug, int $index): string {
     $coverSrc = $item['cover'] ? (str_starts_with($item['cover'], 'http') ? $item['cover'] : '/' . $item['cover']) : null;
-    $html = '<a href="' . e($item['url']) . '" class="ig-grid-item">';
+    $feedUrl = '/' . $slug . '/timeline?view=feed&start=' . $index . '#post-' . $index;
+    $html = '<a href="' . e($feedUrl) . '" class="ig-grid-item">';
     if ($coverSrc) {
         $html .= '<img src="' . e($coverSrc) . '" alt="" loading="lazy">';
     } else {
@@ -1392,6 +1396,31 @@ function renderTimelineFeedItem(array $item): string {
         $html .= '<span class="ig-grid-letter">' . e($letter) . '</span>';
     }
     $html .= '</a>';
+    return $html;
+}
+
+// Modalità "scorrimento singolo" della stessa timeline (il click su una cella della griglia
+// arriva qui): una card per voce, come il layout usato prima della griglia — resta cliccabile
+// verso la pagina dedicata del contenuto, ma qui serve soprattutto a scorrere in ordine
+// cronologico un post alla volta. L'id consente di atterrare esattamente su questa voce tramite
+// il frammento #post-$index nell'URL (gestito nativamente dal browser, nessun JS necessario).
+function renderTimelineFeedCard(array $item, int $index): string {
+    $coverSrc = $item['cover'] ? (str_starts_with($item['cover'], 'http') ? $item['cover'] : '/' . $item['cover']) : null;
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
+    $label = $labels[$item['tipo']] ?? '';
+    $eventoInfo = '';
+    if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
+        $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+    }
+    $html = '<a id="post-' . $index . '" href="' . e($item['url']) . '" class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;scroll-margin-top:20px;">';
+    if ($coverSrc) {
+        $html .= '<img src="' . e($coverSrc) . '" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;">';
+    }
+    $html .= '<div style="flex:1;min-width:0;">';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">' . e($label) . '</small><br>';
+    $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(date('d/m/Y', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '</div></a>';
     return $html;
 }
 
