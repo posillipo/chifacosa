@@ -732,6 +732,18 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         unset($tabs[$hk]);
     }
 
+    // Ordine personalizzato dal profilo (trascinamento in dashboard_nav_menu.php) — se non
+    // ancora impostato per una voce, resta nell'ordine con cui è stata costruita sopra.
+    if ($ownerId) {
+        $order = getNavItemOrder($ownerId);
+        $keysInOrder = array_keys($tabs);
+        uksort($tabs, function ($a, $b) use ($order, $keysInOrder) {
+            $posA = $order[$a] ?? (1000 + array_search($a, $keysInOrder, true));
+            $posB = $order[$b] ?? (1000 + array_search($b, $keysInOrder, true));
+            return $posA <=> $posB;
+        });
+    }
+
     $parts = [];
     foreach ($tabs as $key => $t) {
         $classes = trim(($t['class'] ?? '') . ($key === $active ? ' nav-active-tab' : ''));
@@ -1552,6 +1564,8 @@ function textExcerpt(string $text, int $length = 160): string {
 // e nella checklist di dashboard_nav_menu.php, per restare sempre coerenti tra loro.
 const PUBLIC_NAV_ITEM_KEYS = [
     'Home' => 'home',
+    'Link' => 'link',
+    'Band che amo' => 'bandcheamo',
     'Timeline' => 'timeline',
     'Spotify' => 'spotify',
     'Podcast' => 'podcast',
@@ -1566,21 +1580,25 @@ const PUBLIC_NAV_ITEM_KEYS = [
 
 /**
  * Crea le voci di menu di default per un profilo, con URL basati sul suo slug reale
- * (idempotente: INSERT IGNORE, non duplica se già esistenti).
+ * (idempotente: INSERT IGNORE, non duplica se già esistenti). "Link" e "Band che amo" non hanno
+ * un tab proprio nel menu pubblico (sono sezioni dentro Home, non pagine separate): l'URL
+ * indicato è solo quello della pagina su cui vivono, per riferimento nella checklist.
  */
 function createDefaultProfileNavMenu(int $userId, string $slug): bool {
     $defaults = [
         ['Home', 'fas fa-home', '/' . $slug, 1],
-        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
-        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 3],
-        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 4],
-        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 5],
-        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 6],
-        ['Brani', 'fas fa-music', '/' . $slug . '/brani', 7],
-        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 8],
-        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 9],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 10],
-        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 11],
+        ['Link', 'fas fa-link', '/' . $slug, 2],
+        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 3],
+        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 4],
+        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 5],
+        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 6],
+        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 7],
+        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 8],
+        ['Brani', 'fas fa-music', '/' . $slug . '/brani', 9],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 10],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 11],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 12],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 13],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {
@@ -1646,4 +1664,20 @@ function getHiddenNavKeys(int $userId): array {
         }
     }
     return $hidden;
+}
+
+// Ordine personalizzato (trascinamento in dashboard_nav_menu.php) di questo profilo, come
+// chiave interna => sort_order, usata da publicNav() per riordinare il menu pubblico. Stessa
+// nota di getHiddenNavKeys(): nessuna riga in tabella significa semplicemente nessun ordine
+// personalizzato, publicNav() ricade sull'ordine con cui costruisce i tab.
+function getNavItemOrder(int $userId): array {
+    $stmt = getDB()->prepare('SELECT name, sort_order FROM profile_navigation_menu WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $order = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if (isset(PUBLIC_NAV_ITEM_KEYS[$row['name']])) {
+            $order[PUBLIC_NAV_ITEM_KEYS[$row['name']]] = (int) $row['sort_order'];
+        }
+    }
+    return $order;
 }

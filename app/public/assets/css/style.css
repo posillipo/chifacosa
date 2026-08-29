@@ -163,12 +163,13 @@ form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-
    attive andare a capo creava uno "scavallamento" su più righe anche su schermi larghi. */
 .tabs {
   display: flex; gap: 3px; margin-bottom: 20px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   padding-bottom: 2px;
+  max-width: 100%;
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs a {
@@ -2466,5 +2467,5 @@ body.galactic-page {
    restano invariate. Su mobile (sotto 761px) nessuna di queste regole si applica: il
    comportamento resta quello di sempre. */
 @media (min-width: 761px) {
-  body[class$="-page"] .container { max-width: 860px; }
+  body[class$="-page"] .container { max-width: 860px !important; }
 }

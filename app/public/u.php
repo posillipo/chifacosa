@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rate_
 }
 
 $uid = $artist['id'];
+$hiddenNavKeys = getHiddenNavKeys((int) $uid);
 
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
 $links->execute([$uid]);
@@ -139,7 +140,7 @@ $bandReviewers = $bandReviewers->fetchAll();
     <div class="alert <?= $followErr ? 'error' : 'success' ?>"><?= e($followMsg) ?></div>
   <?php endif; ?>
 
-  <?php if (!in_array('segui', getHiddenNavKeys((int) $uid), true)): ?>
+  <?php if (!in_array('segui', $hiddenNavKeys, true)): ?>
   <div id="segui-widget" style="text-align:center;margin-bottom:18px;scroll-margin-top:20px;">
     <?php if (!empty($_SESSION['user_id']) && (int)$_SESSION['user_id'] !== (int)$uid): ?>
       <?php $alreadyFollowing = isFollowingAccount((int)$_SESSION['user_id'], (int)$uid); ?>
@@ -172,6 +173,7 @@ $bandReviewers = $bandReviewers->fetchAll();
   </div>
   <?php endif; ?>
 
+  <?php if (!in_array('link', $hiddenNavKeys, true)): ?>
   <?php if ($socialLinks): ?>
     <div class="social-icons-row">
       <?php foreach ($socialLinks as $l): ?>
@@ -202,8 +204,9 @@ $bandReviewers = $bandReviewers->fetchAll();
       <?php endif; ?>
     <?php endforeach; ?>
   <?php endif; ?>
+  <?php endif; ?>
 
-  <?php if ($spotifyPreview): ?>
+  <?php if ($spotifyPreview && !in_array('spotify', $hiddenNavKeys, true)): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Spotify</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;margin-bottom:10px;">
       <?php foreach ($spotifyPreview as $a): ?>
@@ -220,7 +223,7 @@ $bandReviewers = $bandReviewers->fetchAll();
         <a href="/<?= e($slug) ?>/spotify">Vedi tutto su Spotify →</a>
       </p>
     <?php endif; ?>
-  <?php elseif ($fanFavorites): ?>
+  <?php elseif ($fanFavorites && !in_array('bandcheamo', $hiddenNavKeys, true)): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Band che amo</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:10px;">
       <?php foreach ($fanFavoritesPreview as $f): ?>
