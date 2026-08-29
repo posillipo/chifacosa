@@ -34,7 +34,7 @@ $channelDesc = htmlspecialchars($artist['bio'] ? textExcerpt($artist['bio'], 200
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
 <channel>
 <title><?= $channelTitle ?></title>
 <link><?= e($channelUrl) ?></link>
@@ -55,8 +55,14 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
 <description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>
 <?php if ($item['cover']): ?>
-<?php $coverUrl = str_starts_with($item['cover'], 'http') ? $item['cover'] : siteUrl($item['cover']); ?>
-<enclosure url="<?= e($coverUrl) ?>" type="image/jpeg" />
+<?php
+    $coverUrl = str_starts_with($item['cover'], 'http') ? $item['cover'] : siteUrl($item['cover']);
+    $coverExt = strtolower(pathinfo(parse_url($coverUrl, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
+    $coverMime = ['png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'][$coverExt] ?? 'image/jpeg';
+?>
+<enclosure url="<?= e($coverUrl) ?>" type="<?= e($coverMime) ?>" />
+<media:content url="<?= e($coverUrl) ?>" type="<?= e($coverMime) ?>" medium="image" />
+<media:thumbnail url="<?= e($coverUrl) ?>" />
 <?php endif; ?>
 </item>
 <?php endforeach; ?>
