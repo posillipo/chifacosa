@@ -48,15 +48,15 @@ $pageUrl = siteUrl('/' . $slug . '/timeline');
 <div class="container">
   <?= publicProfileHeader($artist, 'timeline') ?>
 
-  <div id="timeline-feed">
-    <?php if (!$feed): ?>
-      <div class="card">Nessun contenuto pubblicato ancora.</div>
-    <?php else: ?>
+  <?php if (!$feed): ?>
+    <div class="card">Nessun contenuto pubblicato ancora.</div>
+  <?php else: ?>
+    <div id="timeline-feed" class="ig-grid">
       <?php foreach ($feed as $item): ?>
         <?= renderTimelineFeedItem($item) ?>
       <?php endforeach; ?>
-    <?php endif; ?>
-  </div>
+    </div>
+  <?php endif; ?>
 
   <div id="timeline-sentinel" style="height:1px;"></div>
   <p id="timeline-loading" style="text-align:center;color:rgba(var(--text-rgb),0.5);display:none;">Caricamento...</p>
