@@ -725,12 +725,11 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs['segui'] = ['label' => $seguiLabel, 'url' => '/' . $slug . '#segui-widget', 'class' => 'nav-segui-tab'];
     }
 
-    // Non nasconde mai il tab attualmente attivo, anche se marcato nascosto: chi ci arriva
-    // comunque tramite link diretto deve continuare a vedersi orientato nel menu, non sparire.
+    // "Nascosto" vale sempre, anche per la pagina su cui ci si trova in quel momento: se il
+    // profilo ha disattivato una voce, non deve comparire nel menu neppure arrivandoci tramite
+    // link diretto.
     foreach ($hiddenKeys as $hk) {
-        if ($hk !== $active) {
-            unset($tabs[$hk]);
-        }
+        unset($tabs[$hk]);
     }
 
     $parts = [];

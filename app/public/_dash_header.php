@@ -239,8 +239,10 @@ document.addEventListener('click', function (e) {
     <?php if ($navVisibility['Timeline'] ?? 1): ?>
     <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Timeline</a>
     <?php endif; ?>
+    <?php if ($navVisibility['Home'] ?? 1): ?>
     <a href="/dashboard_fan_bands.php" class="<?= $activeTab==='fan_bands'?'active':'' ?>">Band che amo</a>
     <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">Link</a>
+    <?php endif; ?>
     <?php if ($navVisibility['Blog'] ?? 1): ?>
     <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
     <?php endif; ?>
@@ -254,7 +256,9 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_events.php" class="<?= $activeTab==='events'?'active':'' ?>">Eventi</a>
     <a href="/dashboard_reservations.php" class="<?= $activeTab==='reservations'?'active':'' ?>">Prenotazioni</a>
     <?php endif; ?>
+    <?php if ($navVisibility['Segui'] ?? 1): ?>
     <a href="/dashboard_followers.php" class="<?= $activeTab==='followers'?'active':'' ?>">Follower</a>
+    <?php endif; ?>
     <?php if ($navVisibility['Contatti'] ?? 1): ?>
     <a href="/dashboard_contacts.php" class="<?= $activeTab==='contacts'?'active':'' ?>">Contatti</a>
     <?php endif; ?>

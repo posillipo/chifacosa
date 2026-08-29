@@ -2455,3 +2455,16 @@ body.galactic-page {
 @media (max-width: 500px) {
   .theme-picker__item-label { font-size: 13px; }
 }
+
+/* Pulsanti Link in Bio più larghi solo su desktop: sono elementi a blocco che riempiono sempre
+   il .container che li contiene, quindi per allargarli senza toccare il resto del layout
+   servirebbe farli "uscire" dal contenitore con margini negativi — rischioso su finestre
+   desktop più strette (scroll orizzontale). Allarghiamo invece il contenitore stesso, ma solo
+   per le pagine pubbliche a tema (classe body "*-page": ogni tema imposta già 720px qui sopra a
+   partire dagli stessi 761px — questa regola ha specificità più alta e vince ovunque, sia sotto
+   che sopra quel limite) — dashboard e pagine di autenticazione non hanno quella classe e
+   restano invariate. Su mobile (sotto 761px) nessuna di queste regole si applica: il
+   comportamento resta quello di sempre. */
+@media (min-width: 761px) {
+  body[class$="-page"] .container { max-width: 860px; }
+}
