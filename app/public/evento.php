@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $eventId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, ev.*
+$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.custom_feed_guid, p.custom_feed_guid_since, ev.*
                           FROM events ev
                           JOIN users u ON u.id = ev.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -47,6 +47,7 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($event['custom_feed_guid'], $event['custom_feed_guid_since'], $event['created_at']); ?>
 <title><?= e($event['title']) ?> — <?= e($event['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($ogDescription) ?>">
 

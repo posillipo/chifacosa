@@ -297,6 +297,22 @@ function siteName(): string {
     return $name !== '' ? $name : 'Chi Fa Cosa';
 }
 
+// Se il profilo ha un link personalizzato per il feed attivo (Dashboard → Feed RSS) e questo
+// contenuto è stato pubblicato da quando è stato impostato, reindirizza i visitatori umani
+// all'URL esterno via JS non appena la pagina carica. I bot che leggono solo l'HTML statico
+// (Metricool e la maggior parte degli scraper Open Graph) non eseguono JavaScript e continuano
+// a leggere gli og:image/og:title corretti di questa pagina — solo chi clicca davvero dal
+// social finisce sul sito esterno. Va richiamata nell'<head>, il prima possibile.
+function emitCustomFeedLinkRedirect(?string $customFeedLink, ?string $customFeedLinkSince, string $contentPublishedAt): void {
+    if (!$customFeedLink || !$customFeedLinkSince) {
+        return;
+    }
+    if (strtotime($contentPublishedAt) < strtotime($customFeedLinkSince)) {
+        return;
+    }
+    echo '<script>location.replace(' . json_encode($customFeedLink) . ');</script>' . "\n";
+}
+
 // Restituisce lo script privacy/cookie (es. Iubenda) impostato dall'admin, pronto per essere
 // stampato nell'<head> di ogni pagina pubblica. Contenuto fidato: inserito solo dall'amministratore.
 function embedPrivacyScript(): string {

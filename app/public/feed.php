@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 header('Content-Type: application/rss+xml; charset=UTF-8');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio, p.custom_feed_guid, p.custom_feed_guid_since
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -15,12 +15,13 @@ if (!$artist) {
     exit;
 }
 
-// Link personalizzato per il <link> dell'item, impostato in Dashboard → Feed RSS: si applica
-// solo ai post pubblicati da quando il campo è stato impostato/modificato in poi (vedi
-// MIGRAZIONI.md #28) — il <guid> resta invece sempre il permalink interno stabile, così i
-// feed reader continuano a riconoscere correttamente ogni post come lo stesso item nel tempo.
-$customLink = $artist['custom_feed_guid'] ?: null;
-$customLinkSince = $artist['custom_feed_guid_since'] ? strtotime($artist['custom_feed_guid_since']) : null;
+// Il link personalizzato impostato in Dashboard → Feed RSS NON viene messo qui nel <link> XML:
+// strumenti come Metricool, per l'immagine dei post automatici, ignorano enclosure/media RSS e
+// vanno a leggere l'og:image della pagina puntata da <link> — se puntasse già al sito esterno,
+// prenderebbero l'immagine sbagliata (o nessuna). <link> e <guid> restano quindi sempre il
+// permalink interno chifacosa.it, che ha gli og:image/og:title corretti; è la pagina di
+// destinazione stessa (timeline_post.php, blog_post.php, evento.php) a reindirizzare i
+// visitatori reali all'URL esterno via JS — vedi emitCustomFeedLinkRedirect() in functions.php.
 
 // Stesso feed della Timeline, ma senza i Brani (link a Spotify, non a un contenuto editoriale
 // con la propria immagine di anteprima — vedi analisi di fattibilità).
@@ -43,14 +44,10 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <language>it-it</language>
 <lastBuildDate><?= date(DATE_RSS) ?></lastBuildDate>
 <?php foreach ($feed as $item): ?>
-<?php
-    $itemUrl = siteUrl($item['url']);
-    $useCustomLink = $customLink && $customLinkSince && strtotime($item['data']) >= $customLinkSince;
-    $linkUrl = $useCustomLink ? $customLink : $itemUrl;
-?>
+<?php $itemUrl = siteUrl($item['url']); ?>
 <item>
 <title><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></title>
-<link><?= e($linkUrl) ?></link>
+<link><?= e($itemUrl) ?></link>
 <guid isPermaLink="true"><?= e($itemUrl) ?></guid>
 <pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
 <description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>

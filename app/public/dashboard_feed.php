@@ -35,15 +35,16 @@ include __DIR__ . '/_dash_header.php';
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Il feed RSS della tua Timeline (<code>/<?= e($user['slug']) ?>/feed</code>) espone per ogni
-      post un elemento <code>&lt;link&gt;</code> che punta al permalink automatico su
-      <?= e(siteName()) ?>. Se compili il link qui sotto, i post pubblicati
-      <strong>da questo momento in poi</strong> useranno quel link al posto del permalink
-      automatico — utile ad esempio se un'automazione collegata al feed deve aprire un altro
-      indirizzo. Il permalink della pagina resta comunque sempre quello standard, cambia solo il
-      feed, e i post già pubblicati non vengono toccati. Finché non modifichi o svuoti questo
-      campo, ogni nuovo post userà lo stesso link: se ti serve un link diverso per un'altra
-      pubblicazione, torna qui e aggiornalo.
+      Se compili il link qui sotto, chi clicca sui post pubblicati <strong>da questo momento in
+      poi</strong> (dalla Timeline, dal feed RSS o da un'automazione tipo Metricool) viene
+      automaticamente reindirizzato a questo indirizzo invece che alla pagina del post su
+      <?= e(siteName()) ?>. Il feed RSS continua però a esporre il permalink standard di
+      <?= e(siteName()) ?> (non questo link) proprio per restare compatibile con strumenti come
+      Metricool, che leggono l'immagine di anteprima dalla pagina del post — l'immagine mostrata
+      resta quindi sempre quella caricata qui, anche quando il click porta altrove. I post già
+      pubblicati non vengono toccati. Finché non modifichi o svuoti questo campo, ogni nuovo post
+      userà lo stesso link: se ti serve un link diverso per un'altra pubblicazione, torna qui e
+      aggiornalo.
     </p>
   </details>
 

@@ -344,24 +344,34 @@ chiave API — e mostrato come mappa incorporata sulla pagina pubblica, sempre d
 anch'esso gratuito). Vedi `app/src/geocoding.php`. I link esistenti restano tutti `link_type='link'`
 per via del `DEFAULT`, nessun impatto sui dati già presenti.
 
-## 28. Link personalizzato per il `<link>` del feed RSS
+## 28. Link personalizzato per i post (redirect via JS sulla pagina, non nel feed)
 ```sql
 ALTER TABLE profiles
   ADD COLUMN custom_feed_guid VARCHAR(500) DEFAULT NULL,
   ADD COLUMN custom_feed_guid_since DATETIME DEFAULT NULL;
 ```
-Da Dashboard → Feed RSS, un utente può impostare un URL personalizzato che sostituisce il
-`<link>` (non il `<guid>`, che resta sempre il permalink interno chifacosa.it, stabile per i
-feed reader) degli item del proprio feed RSS (`feed.php`) — utile quando vuole che
-un'automazione collegata al feed apra un altro URL invece del permalink standard, senza dover
-complicare la pagina di pubblicazione dei singoli post con un campo ad hoc per ognuno. Si
-applica solo ai post pubblicati da quando il campo è stato impostato/modificato in poi
-(`custom_feed_guid_since`, aggiornato automaticamente a ogni cambio di valore) — i post già
-esistenti al momento del salvataggio non vengono toccati. Il valore resta invariato finché
-l'utente non lo modifica o lo svuota: se nel frattempo pubblica più post, tutti condivideranno
-lo stesso `<link>` finché il campo non viene aggiornato. (Le colonne si chiamano ancora
-`custom_feed_guid*` per non richiedere una nuova migrazione dopo la correzione del campo XML
-interessato — sono solo nomi interni, non visibili all'utente.)
+Da Dashboard → Feed RSS, un utente può impostare un URL personalizzato che si applica ai post
+pubblicati da quando il campo è stato impostato/modificato in poi (`custom_feed_guid_since`,
+aggiornato automaticamente a ogni cambio di valore) — i post già esistenti al momento del
+salvataggio non vengono toccati.
+
+Prima versione (ora corretta): il link personalizzato sostituiva `<link>` nel feed RSS
+(`feed.php`). Si è rivelato incompatibile con Metricool, che per l'immagine dei post automatici
+non guarda `<enclosure>`/`<media:content>` ma legge sempre l'`og:image` della pagina puntata da
+`<link>` — puntando al sito esterno, Metricool prendeva l'immagine sbagliata (o nessuna).
+
+Comportamento attuale: `<link>` e `<guid>` nel feed RSS restano **sempre** il permalink interno
+chifacosa.it (che ha gli og:image/og:title corretti). È invece la pagina di destinazione del
+singolo contenuto (`timeline_post.php`, `blog_post.php`, `evento.php`) a reindirizzare i
+visitatori umani all'URL esterno via JavaScript (`emitCustomFeedLinkRedirect()` in
+`functions.php`, chiamata nell'`<head>`) non appena la pagina carica. I bot che leggono solo
+l'HTML statico (Metricool, Facebook, ecc.) non eseguono JS e continuano a leggere gli og:image
+corretti; solo chi clicca davvero dal social/feed finisce sul sito esterno.
+
+Il valore resta invariato finché l'utente non lo modifica o lo svuota: se nel frattempo pubblica
+più post, tutti reindirizzano allo stesso link finché il campo non viene aggiornato. (Le colonne
+si chiamano ancora `custom_feed_guid*` per non richiedere una nuova migrazione dopo le due
+correzioni successive al meccanismo — sono solo nomi interni, non visibili all'utente.)
 
 ---
 

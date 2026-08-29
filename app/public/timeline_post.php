@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $postId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.genere, tp.*
+$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, tp.*
                           FROM timeline_posts tp
                           JOIN users u ON u.id = tp.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -50,6 +50,7 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']); ?>
 <title><?= e($post['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($anteprima) ?>">
 <meta property="og:type" content="website">

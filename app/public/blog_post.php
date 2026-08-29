@@ -14,7 +14,7 @@ if (!preg_match('/^\d{4}\.\d{2}\.\d{2}\.(.+)$/', $postToken, $m)) {
 }
 $postSlug = $m[1];
 
-$stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.genere, b.*
+$stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, b.*
                           FROM blog_posts b
                           JOIN users u ON u.id = b.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -49,6 +49,7 @@ $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_p
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['published_at']); ?>
 <title><?= e($post['title']) ?> — <?= e($post['display_name']) ?></title>
 <meta name="description" content="<?= e($post['excerpt'] ?: textExcerpt($post['content'])) ?>">
 
