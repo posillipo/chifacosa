@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user);
 $activeTab = 'messages';
 $pageTitle = 'Messaggi';
 
@@ -24,7 +25,7 @@ $stmt = getDB()->prepare("SELECT
         SELECT sender_id FROM direct_messages WHERE recipient_id = ?
     )
     ORDER BY last_at DESC");
-$stmt->execute([$user['id'], $user['id'], $user['id'], $user['id'], $user['id'], $user['id'], $user['id']]);
+$stmt->execute([$profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id']]);
 $conversations = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';

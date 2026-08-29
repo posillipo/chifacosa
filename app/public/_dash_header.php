@@ -15,12 +15,17 @@ syncActingProfileFromRequest((int) $user['id']);
 $managedProfiles = getManagedProfiles((int) $user['id']);
 $actingAsId = $_SESSION['acting_as_user_id'] ?? null;
 
+// Come $isBandOrLabel sopra: usa il profilo attivo quando la pagina lo espone già, altrimenti
+// ricade sul proprio account — altrimenti il badge mostrerebbe sempre i conteggi del tuo
+// account reale anche mentre agisci su un altro profilo.
+$countsForId = (int) ($profile ?? $user)['id'];
+
 $stmt = getDB()->prepare('SELECT COUNT(*) c FROM contact_requests WHERE user_id = ? AND is_read = 0');
-$stmt->execute([$user['id']]);
+$stmt->execute([$countsForId]);
 $unreadMessages = (int) $stmt->fetch()['c'];
 
 $stmt = getDB()->prepare('SELECT COUNT(*) c FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL');
-$stmt->execute([$user['id']]);
+$stmt->execute([$countsForId]);
 $unreadDirectMessages = (int) $stmt->fetch()['c'];
 
 // Avatar mostrato nella barra in alto: il proprio, a meno che non si stia gestendo un altro

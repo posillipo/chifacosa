@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user);
 $activeTab = 'messages';
 $pageTitle = 'Messaggi';
 
@@ -10,12 +11,12 @@ $stmt = getDB()->prepare('SELECT u.id, u.slug, u.email, p.display_name, p.avatar
 $stmt->execute([$withSlug]);
 $other = $stmt->fetch();
 
-if (!$other || (int) $other['id'] === (int) $user['id']) {
+if (!$other || (int) $other['id'] === (int) $profile['id']) {
     header('Location: /dashboard_messages.php');
     exit;
 }
 
-$isMutual = areMutualFollowers((int) $user['id'], (int) $other['id']);
+$isMutual = areMutualFollowers((int) $profile['id'], (int) $other['id']);
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,15 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare("SELECT COUNT(*) c FROM direct_messages
                 WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
                 AND created_at >= CURDATE()");
-            $stmt->execute([$user['id'], $other['id'], $other['id'], $user['id']]);
+            $stmt->execute([$profile['id'], $other['id'], $other['id'], $profile['id']]);
             $isFirstToday = (int) $stmt->fetch()['c'] === 0;
 
             $stmt = getDB()->prepare('INSERT INTO direct_messages (sender_id, recipient_id, message) VALUES (?, ?, ?)');
-            $stmt->execute([$user['id'], $other['id'], $message]);
+            $stmt->execute([$profile['id'], $other['id'], $message]);
 
             if ($isFirstToday) {
-                $conversationUrl = siteUrl('/dashboard_chat.php?with=' . $user['slug']);
-                notifyNewMessage($other['email'], $other['display_name'], $user['display_name'], $conversationUrl);
+                $conversationUrl = siteUrl('/dashboard_chat.php?with=' . $profile['slug']);
+                notifyNewMessage($other['email'], $other['display_name'], $profile['display_name'], $conversationUrl);
             }
         }
     }
@@ -48,10 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Segna come letti i messaggi ricevuti da questa persona
 $stmt = getDB()->prepare('UPDATE direct_messages SET read_at = NOW() WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL');
-$stmt->execute([$other['id'], $user['id']]);
+$stmt->execute([$other['id'], $profile['id']]);
 
 $stmt = getDB()->prepare('SELECT * FROM direct_messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC LIMIT 300');
-$stmt->execute([$user['id'], $other['id'], $other['id'], $user['id']]);
+$stmt->execute([$profile['id'], $other['id'], $other['id'], $profile['id']]);
 $messages = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
@@ -73,7 +74,7 @@ include __DIR__ . '/_dash_header.php';
 
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
     <?php foreach ($messages as $m): ?>
-      <?php $isMine = (int) $m['sender_id'] === (int) $user['id']; ?>
+      <?php $isMine = (int) $m['sender_id'] === (int) $profile['id']; ?>
       <div style="align-self:<?= $isMine ? 'flex-end' : 'flex-start' ?>;max-width:75%;">
         <div class="card" style="margin-bottom:2px;<?= $isMine ? 'background:var(--accent);color:#fff;' : '' ?>">
           <?= nl2br(e($m['message'])) ?>

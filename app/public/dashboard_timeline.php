@@ -2,12 +2,13 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user);
 $activeTab = 'timeline';
 $pageTitle = 'La mia Timeline';
 
 const DASH_TIMELINE_PAGE_SIZE = 20;
-$followedIds = getFollowedUserIds((int) $user['id']);
-$feedUserIds = array_merge($followedIds, [(int) $user['id']]);
+$followedIds = getFollowedUserIds((int) $profile['id']);
+$feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
 $feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0);
 
 $followedBands = [];
@@ -91,7 +92,7 @@ include __DIR__ . '/_dash_header.php';
   <?php else: ?>
     <div id="dash-timeline-feed">
       <?php foreach ($feed as $item): ?>
-        <?= renderDashboardTimelineItem($item, $user['slug']) ?>
+        <?= renderDashboardTimelineItem($item, $profile['slug']) ?>
       <?php endforeach; ?>
     </div>
     <div id="dash-timeline-sentinel" style="height:1px;"></div>

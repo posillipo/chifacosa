@@ -2,17 +2,18 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user);
 $activeTab = 'invite';
 $pageTitle = 'Invita';
 
-$inviteLink = siteUrl('/request_access.php?ref=' . $user['slug']);
+$inviteLink = siteUrl('/request_access.php?ref=' . $profile['slug']);
 
 $stmt = getDB()->prepare('SELECT COUNT(*) c FROM access_requests WHERE referrer_user_id = ?');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $totalInvited = (int) $stmt->fetch()['c'];
 
 $stmt = getDB()->prepare("SELECT COUNT(*) c FROM access_requests WHERE referrer_user_id = ? AND invite_used = 1");
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $totalJoined = (int) $stmt->fetch()['c'];
 
 include __DIR__ . '/_dash_header.php';

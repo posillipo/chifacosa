@@ -2,13 +2,14 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user);
 $activeTab = 'following';
 $pageTitle = 'Seguiti';
 
 $stmt = getDB()->prepare('SELECT u.id, u.slug, p.display_name, p.avatar_path
     FROM account_follows af JOIN users u ON u.id = af.followed_user_id JOIN profiles p ON p.user_id = u.id
     WHERE af.follower_user_id = ? ORDER BY p.display_name ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $following = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
@@ -38,7 +39,7 @@ include __DIR__ . '/_dash_header.php';
           <small style="color:var(--text-muted)">@<?= e($f['slug']) ?></small>
         </div>
       </a>
-      <?php if (areMutualFollowers((int) $user['id'], (int) $f['id'])): ?>
+      <?php if (areMutualFollowers((int) $profile['id'], (int) $f['id'])): ?>
         <a href="/dashboard_chat.php?with=<?= e($f['slug']) ?>" class="btn small" style="flex-shrink:0;">💬 Messaggia</a>
       <?php endif; ?>
     </div>

@@ -2,12 +2,13 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'log';
 $pageTitle = 'Log';
 
 $stmt = getDB()->prepare('SELECT COUNT(*) c FROM profile_admins WHERE owner_user_id = ?');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $adminCount = (int) $stmt->fetch()['c'];
 
 $logs = [];
@@ -15,7 +16,7 @@ if ($adminCount > 0) {
     $stmt = getDB()->prepare('SELECT l.*, p.display_name AS actor_name, u.slug AS actor_slug
         FROM admin_action_logs l JOIN users u ON u.id = l.actor_user_id JOIN profiles p ON p.user_id = u.id
         WHERE l.owner_user_id = ? ORDER BY l.created_at DESC LIMIT 200');
-    $stmt->execute([$user['id']]);
+    $stmt->execute([$profile['id']]);
     $logs = $stmt->fetchAll();
 }
 

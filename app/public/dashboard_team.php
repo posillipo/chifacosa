@@ -2,7 +2,8 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'team';
 $pageTitle = 'Team e co-admin';
 
@@ -15,14 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Si può promuovere solo qualcuno che ti segue davvero (evita di aggiungere admin a
         // caso passando un ID a mano)
         $stmt = getDB()->prepare('SELECT 1 FROM account_follows WHERE follower_user_id = ? AND followed_user_id = ?');
-        $stmt->execute([$targetId, $user['id']]);
-        if ($stmt->fetch() && $targetId !== (int) $user['id']) {
+        $stmt->execute([$targetId, $profile['id']]);
+        if ($stmt->fetch() && $targetId !== (int) $profile['id']) {
             $stmt = getDB()->prepare('INSERT IGNORE INTO profile_admins (owner_user_id, admin_user_id) VALUES (?, ?)');
-            $stmt->execute([$user['id'], $targetId]);
+            $stmt->execute([$profile['id'], $targetId]);
         }
     } elseif ($action === 'revoke' && $targetId) {
         $stmt = getDB()->prepare('DELETE FROM profile_admins WHERE owner_user_id = ? AND admin_user_id = ?');
-        $stmt->execute([$user['id'], $targetId]);
+        $stmt->execute([$profile['id'], $targetId]);
     }
     header('Location: /dashboard_team.php');
     exit;
@@ -32,14 +33,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = getDB()->prepare('SELECT u.id, u.slug, p.display_name, p.avatar_path
     FROM account_follows af JOIN users u ON u.id = af.follower_user_id JOIN profiles p ON p.user_id = u.id
     WHERE af.followed_user_id = ? ORDER BY p.display_name ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $followers = $stmt->fetchAll();
 
 // Co-admin attuali
 $stmt = getDB()->prepare('SELECT u.id, u.slug, p.display_name, p.avatar_path
     FROM profile_admins pa JOIN users u ON u.id = pa.admin_user_id JOIN profiles p ON p.user_id = u.id
     WHERE pa.owner_user_id = ? ORDER BY p.display_name ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $admins = $stmt->fetchAll();
 $adminIds = array_column($admins, 'id');
 
