@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'blog';
 $pageTitle = 'Blog';
 $error = null;
@@ -16,24 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '' || $content === '') {
             $error = 'Titolo e contenuto sono obbligatori.';
         } else {
-            $slug = generateUniquePostSlug((int)$user['id'], $title);
+            $slug = generateUniquePostSlug((int)$profile['id'], $title);
             $excerpt = textExcerpt($content, 200);
-            $coverPath = handleCoverUpload($user['slug']);
+            $coverPath = handleCoverUpload($profile['slug']);
             $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$user['id'], $title, $slug, $excerpt, $content, $coverPath]);
+            $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath]);
 
-            $postUrl = siteUrl(blogPostUrl($user['slug'], ['published_at' => date('Y-m-d H:i:s'), 'slug' => $slug]));
-            notifyFollowersNewContent((int)$user['id'], $user['display_name'], $user['slug'], 'blog', $title, $postUrl);
+            $postUrl = siteUrl(blogPostUrl($profile['slug'], ['published_at' => date('Y-m-d H:i:s'), 'slug' => $slug]));
+            notifyFollowersNewContent((int)$profile['id'], $profile['display_name'], $profile['slug'], 'blog', $title, $postUrl);
         }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT cover_path FROM blog_posts WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['cover_path']);
         }
         $stmt = getDB()->prepare('DELETE FROM blog_posts WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     }
     if (!$error) {
         header('Location: /dashboard_blog.php');
@@ -42,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $posts = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
@@ -71,7 +72,7 @@ include __DIR__ . '/_dash_header.php';
         <div class="date"><?= date('d/m/Y', strtotime($p['published_at'])) ?></div>
         <strong><?= e($p['title']) ?></strong>
         <p style="color:var(--text-muted)"><?= nl2br(e($p['content'])) ?></p>
-        <p><a href="<?= e(blogPostUrl($user['slug'], $p)) ?>" target="_blank"><?= e(siteName()) ?><?= e(blogPostUrl($user['slug'], $p)) ?> ↗</a></p>
+        <p><a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank"><?= e(siteName()) ?><?= e(blogPostUrl($profile['slug'], $p)) ?> ↗</a></p>
         <form method="post" onsubmit="return confirm('Eliminare questo post?');">
           <?= csrfField() ?>
           <input type="hidden" name="action" value="delete">

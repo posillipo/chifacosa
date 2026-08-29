@@ -203,6 +203,53 @@ function canManageProfile(int $viewerId, int $ownerId): bool {
     return (bool) $stmt->fetch();
 }
 
+// Un "owner" (a differenza di un semplice co-admin) ha accesso pieno a tutte le pagine di
+// gestione contenuti di un profilo, non solo Timeline e Brani — è il caso di un profilo che
+// l'utente ha creato da sé (vedi dashboard_profiles.php), non di un profilo altrui condiviso
+// con lui. Titolare del profilo (viewerId === ownerId) conta sempre come full owner.
+function isFullOwnerOf(int $viewerId, int $ownerId): bool {
+    if ($viewerId === $ownerId) {
+        return true;
+    }
+    $stmt = getDB()->prepare("SELECT 1 FROM profile_admins WHERE owner_user_id = ? AND admin_user_id = ? AND role = 'owner'");
+    $stmt->execute([$ownerId, $viewerId]);
+    return (bool) $stmt->fetch();
+}
+
+// Blocca le pagine di gestione contenuti (Link, Eventi, Blog, Menù, Profilo, Feed, Tema,
+// integrazioni, ecc.) quando si sta agendo su un profilo per cui si è solo co-admin "normale"
+// (role='coadmin') — quel ruolo resta volutamente limitato a Timeline e Brani, come sempre.
+function requireFullOwnerAccess(array $loggedInUser, array $actingProfile): void {
+    if (!isFullOwnerOf((int) $loggedInUser['id'], (int) $actingProfile['id'])) {
+        http_response_code(403);
+        exit('Come co-admin puoi gestire solo Timeline e Brani per questo profilo.');
+    }
+}
+
+// Crea un nuovo profilo posseduto dall'utente corrente: una riga users/profiles a tutti gli
+// effetti (email sintetica univoca, password casuale mai comunicata — non pensata per un login
+// diretto, solo per essere gestita via switch dal profilo che l'ha creata) più la riga
+// profile_admins con role='owner' che dà accesso pieno. Restituisce l'ID del nuovo profilo.
+function createOwnedProfile(int $creatorUserId, string $displayName, string $slug): int {
+    $db = getDB();
+    $syntheticEmail = 'profilo+' . $slug . '-' . bin2hex(random_bytes(6)) . '@profili.chifacosa.local';
+    $randomPassword = password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT);
+
+    $db->beginTransaction();
+    $stmt = $db->prepare("INSERT INTO users (slug, email, password_hash, is_active, email_verified, account_type, account_type_chosen) VALUES (?, ?, ?, 1, 1, 'band', 1)");
+    $stmt->execute([$slug, $syntheticEmail, $randomPassword]);
+    $newUserId = (int) $db->lastInsertId();
+
+    $stmt = $db->prepare('INSERT INTO profiles (user_id, display_name) VALUES (?, ?)');
+    $stmt->execute([$newUserId, $displayName]);
+
+    $stmt = $db->prepare("INSERT INTO profile_admins (owner_user_id, admin_user_id, role) VALUES (?, ?, 'owner')");
+    $stmt->execute([$newUserId, $creatorUserId]);
+    $db->commit();
+
+    return $newUserId;
+}
+
 // Legge l'eventuale parametro ?acting_as= dalla URL e, se l'utente loggato è autorizzato ad
 // agire su quel profilo (è il suo, o è stato promosso admin), aggiorna la sessione. Va
 // richiamata da OGNI pagina della dashboard (lo fa _dash_header.php stesso, incluso da tutte),
@@ -1423,7 +1470,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'login_otp_request','login_otp_verify','request_access','admin_access_requests','dashboard_theme','credits',
     'dashboard_invite','dashboard_following','dashboard_team','dashboard_log','track_lyrics',
     'dashboard_messages','dashboard_chat','menu','dashboard_menu',
-    'reserve_table','dashboard_reservations'];
+    'reserve_table','dashboard_reservations','dashboard_profiles','dashboard_feed'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

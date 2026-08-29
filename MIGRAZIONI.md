@@ -373,6 +373,30 @@ più post, tutti reindirizzano allo stesso link finché il campo non viene aggio
 si chiamano ancora `custom_feed_guid*` per non richiedere una nuova migrazione dopo le due
 correzioni successive al meccanismo — sono solo nomi interni, non visibili all'utente.)
 
+## 29. Profili multipli per utente ("Crea nuovo profilo")
+```sql
+ALTER TABLE profile_admins ADD COLUMN role ENUM('coadmin','owner') NOT NULL DEFAULT 'coadmin';
+```
+Riusa la tabella `profile_admins` già esistente per "Team e co-admin", distinguendo due casi con
+la nuova colonna `role`:
+
+- **`coadmin`** (comportamento esistente, invariato): un altro utente promosso da Team e
+  co-admin — accesso volutamente limitato a Timeline e Brani, come documentato in
+  `dashboard_team.php`.
+- **`owner`** (nuovo): un profilo che l'utente ha creato da sé da Dashboard → I tuoi profili
+  (`dashboard_profiles.php`) — stesso account di login, nessuna registrazione separata, ma un
+  secondo profilo pubblico (slug/pagina) del tutto proprio. A differenza di un co-admin, chi ha
+  `role='owner'` ha accesso pieno a tutte le pagine di gestione contenuti (Link, Eventi, Blog,
+  Menù, Profilo, Feed RSS, Tema, integrazioni, ecc.), non solo Timeline e Brani.
+
+Il profilo creato è una riga `users`/`profiles` a tutti gli effetti (email sintetica univoca,
+password casuale mai comunicata — non è pensato per un login diretto, solo per essere gestito
+via switch dal profilo che l'ha creato), quindi nessuna nuova tabella: stessa struttura dati di
+un account normale. Lo switch tra profili (menu in alto in dashboard) esisteva già da prima per
+i co-admin; questa migrazione lo estende con lo stesso meccanismo (`getActingProfile()`) a tutte
+le pagine di gestione contenuti, ma solo per chi ha `role='owner'` (o è il titolare) — i co-admin
+restano limitati esattamente come prima, nessuna modifica al loro perimetro.
+
 ---
 
 ## Come aggiungere una nuova voce

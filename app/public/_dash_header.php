@@ -4,7 +4,10 @@
 // resta nel database per un'eventuale reintroduzione futura della scelta, ma non viene più
 // letta qui.
 $dashTheme = 'light-theme';
-$isBandOrLabel = in_array($user['account_type'] ?? 'band', ['band', 'label'], true);
+// Usa il profilo su cui si sta agendo quando la pagina lo espone già ($profile), altrimenti
+// ricade sul proprio account — non tutte le pagine dashboard_*.php calcolano $profile (solo
+// quelle di gestione contenuti), quindi non possiamo darlo per scontato qui.
+$isBandOrLabel = in_array(($profile ?? $user)['account_type'] ?? 'band', ['band', 'label'], true);
 
 // Profili che questo utente co-gestisce (oltre al proprio) — se ce ne sono, mostriamo un
 // selettore per scegliere su quale si sta agendo in questo momento.
@@ -108,6 +111,10 @@ if ($actingAsId) {
             </a>
           <?php endforeach; ?>
           <div class="profile-switcher-divider"></div>
+          <a href="/dashboard_profiles.php" class="profile-switcher-item">
+            <i class="fa-solid fa-plus" style="width:26px;text-align:center;color:var(--text-muted);"></i>
+            <span>Crea nuovo profilo</span>
+          </a>
           <a href="/<?= e($user['slug']) ?>" target="_blank" class="profile-switcher-item">
             <i class="fa-solid fa-arrow-up-right-from-square" style="width:26px;text-align:center;color:var(--text-muted);"></i>
             <span>Vedi la tua pagina pubblica</span>
@@ -148,6 +155,9 @@ document.addEventListener('click', function (e) {
   <div style="padding:8px 0;">
     <a href="/dashboard_profile.php" class="account-sidebar-link <?= $activeTab==='profile'?'active':'' ?>">
       <i class="fa-solid fa-id-card"></i> Profilo e anagrafica
+    </a>
+    <a href="/dashboard_profiles.php" class="account-sidebar-link <?= $activeTab==='profiles'?'active':'' ?>">
+      <i class="fa-solid fa-layer-group"></i> I tuoi profili
     </a>
     <a href="/dashboard_password.php" class="account-sidebar-link <?= $activeTab==='password'?'active':'' ?>">
       <i class="fa-solid fa-lock"></i> Cambia password

@@ -2,7 +2,8 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'events';
 $pageTitle = 'Eventi';
 $error = null;
@@ -21,27 +22,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
-            $coverPath = handleCoverUpload($user['slug']);
+            $coverPath = handleCoverUpload($profile['slug']);
             $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?)');
-            $stmt->execute([$user['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $coverPath, $acceptsReservations]);
+            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $coverPath, $acceptsReservations]);
             $newEventId = (int) getDB()->lastInsertId();
 
-            $eventUrl = siteUrl('/' . $user['slug'] . '/eventi/' . $newEventId);
-            notifyFollowersNewContent((int)$user['id'], $user['display_name'], $user['slug'], 'evento', $title, $eventUrl);
+            $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
+            notifyFollowersNewContent((int)$profile['id'], $profile['display_name'], $profile['slug'], 'evento', $title, $eventUrl);
         }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT cover_path FROM events WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['cover_path']);
         }
         $stmt = getDB()->prepare('DELETE FROM events WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'toggle_reservations') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE events SET accepts_reservations = NOT accepts_reservations WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     }
     if (!$error) {
         header('Location: /dashboard_events.php');
@@ -50,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? ORDER BY event_date ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $events = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';

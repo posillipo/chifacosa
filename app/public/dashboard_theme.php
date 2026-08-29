@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'theme';
 $pageTitle = 'Tema grafico';
 
@@ -16,9 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $theme = $_POST['page_theme'] ?? 'colorful';
     if (array_key_exists($theme, PAGE_THEMES)) {
         $stmt = $pdo->prepare('UPDATE profiles SET page_theme = ? WHERE user_id = ?');
-        $stmt->execute([$theme, $user['id']]);
+        $stmt->execute([$theme, $profile['id']]);
         $success = 'Tema della tua pagina aggiornato.';
         $user = currentUser();
+        $profile = getActingProfile($user);
     }
 }
 
@@ -83,7 +85,7 @@ include __DIR__ . '/_dash_header.php';
 
   <div class="theme-picker hidden" id="theme-picker">
     <?php foreach (PAGE_THEMES as $key => $theme): ?>
-      <?php $isSelected = ($user['page_theme'] ?? 'colorful') === $key; ?>
+      <?php $isSelected = ($profile['page_theme'] ?? 'colorful') === $key; ?>
       <div class="theme-picker__item" data-theme-key="<?= e($key) ?>">
         <div class="theme-picker__item-inner" style="background:<?= e($themePickerBackgrounds[$key] ?? '#333') ?>;">
           <span class="theme-picker__item-label"><?= e($theme['label']) ?></span>
@@ -100,7 +102,7 @@ include __DIR__ . '/_dash_header.php';
     <?= csrfField() ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
       <?php foreach (PAGE_THEMES as $key => $theme): ?>
-        <?php $isSelected = ($user['page_theme'] ?? 'colorful') === $key; ?>
+        <?php $isSelected = ($profile['page_theme'] ?? 'colorful') === $key; ?>
         <label style="display:block;cursor:pointer;">
           <input type="radio" id="theme-radio-<?= e($key) ?>" name="page_theme" value="<?= e($key) ?>" <?= $isSelected ? 'checked' : '' ?> onchange="this.form.submit()" style="display:none;">
           <div class="card" style="border:2px solid <?= $isSelected ? 'var(--accent)' : 'transparent' ?>;text-align:center;">

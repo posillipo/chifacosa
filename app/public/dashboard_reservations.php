@@ -2,7 +2,8 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'reservations';
 $pageTitle = 'Prenotazioni';
 
@@ -14,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'update_status' && in_array($_POST['status'] ?? '', $validStatuses, true)) {
         $stmt = getDB()->prepare('UPDATE table_reservations SET status = ? WHERE id = ? AND user_id = ?');
-        $stmt->execute([$_POST['status'], $id, $user['id']]);
+        $stmt->execute([$_POST['status'], $id, $profile['id']]);
     }
     $redirectParams = ['view' => $_GET['view'] ?? 'requests'];
     if (!empty($_GET['event_id'])) {
@@ -33,14 +34,14 @@ $stmt = getDB()->prepare('SELECT DISTINCT ev.id, ev.title, ev.event_date
                           JOIN table_reservations tr ON tr.event_id = ev.id
                           WHERE ev.user_id = ?
                           ORDER BY ev.event_date DESC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $eventsWithReservations = $stmt->fetchAll();
 
 $sql = 'SELECT tr.*, ev.title AS event_title, ev.event_date
         FROM table_reservations tr
         LEFT JOIN events ev ON ev.id = tr.event_id
         WHERE tr.user_id = ?';
-$params = [$user['id']];
+$params = [$profile['id']];
 if ($eventFilter > 0) {
     $sql .= ' AND tr.event_id = ?';
     $params[] = $eventFilter;
@@ -51,7 +52,7 @@ $stmt->execute($params);
 $reservations = $stmt->fetchAll();
 
 $stmt = getDB()->prepare('SELECT COUNT(*) FROM table_reservations WHERE user_id = ?');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $totalReservationsCount = (int) $stmt->fetchColumn();
 
 $stmt = getDB()->prepare("SELECT guest_email,
@@ -64,7 +65,7 @@ $stmt = getDB()->prepare("SELECT guest_email,
                           WHERE user_id = ?
                           GROUP BY guest_email
                           ORDER BY last_reservation_at DESC");
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $clients = $stmt->fetchAll();
 
 $statusLabels = [

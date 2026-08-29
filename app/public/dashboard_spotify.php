@@ -3,7 +3,8 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'spotify';
 $pageTitle = 'Spotify';
 
@@ -19,13 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $artistName = trim($_POST['artist_name'] ?? '');
         if ($artistId !== '') {
             $stmt = getDB()->prepare('UPDATE profiles SET spotify_artist_id=?, spotify_artist_name=? WHERE user_id=?');
-            $stmt->execute([$artistId, $artistName, $user['id']]);
+            $stmt->execute([$artistId, $artistName, $profile['id']]);
             header('Location: /dashboard_spotify.php');
             exit;
         }
     } elseif ($action === 'unlink') {
         $stmt = getDB()->prepare('UPDATE profiles SET spotify_artist_id=NULL, spotify_artist_name=NULL WHERE user_id=?');
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$profile['id']]);
         header('Location: /dashboard_spotify.php');
         exit;
     } elseif ($action === 'search') {
@@ -38,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Ricarichiamo l'utente per avere il collegamento Spotify aggiornato dopo un eventuale salvataggio
 $user = currentUser();
+$profile = getActingProfile($user);
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -50,13 +52,13 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
 
-  <?php if (!empty($user['spotify_artist_id'])): ?>
+  <?php if (!empty($profile['spotify_artist_id'])): ?>
     <div class="card">
-      <strong>Profilo collegato:</strong> <?= e($user['spotify_artist_name'] ?: $user['spotify_artist_id']) ?>
+      <strong>Profilo collegato:</strong> <?= e($profile['spotify_artist_name'] ?: $profile['spotify_artist_id']) ?>
       <br>
-      <a href="https://open.spotify.com/artist/<?= e($user['spotify_artist_id']) ?>" target="_blank">Vedi su Spotify ↗</a>
+      <a href="https://open.spotify.com/artist/<?= e($profile['spotify_artist_id']) ?>" target="_blank">Vedi su Spotify ↗</a>
       <br><br>
-      <a href="/<?= e($user['slug']) ?>/spotify" target="_blank">Vedi la tua pagina pubblica Spotify ↗</a>
+      <a href="/<?= e($profile['slug']) ?>/spotify" target="_blank">Vedi la tua pagina pubblica Spotify ↗</a>
       <form method="post" style="margin-top:12px;" onsubmit="return confirm('Scollegare il profilo Spotify? La sezione dedicata sparirà dalla tua pagina pubblica.');">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="unlink">

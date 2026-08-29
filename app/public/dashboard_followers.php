@@ -2,21 +2,22 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'followers';
 $pageTitle = 'Follower';
 
-$total = getFollowerCount((int)$user['id']);
+$total = getFollowerCount((int)$profile['id']);
 
 $stmt = getDB()->prepare("SELECT COUNT(*) c FROM followers WHERE user_id=? AND verified=1 AND created_at >= NOW() - INTERVAL 7 DAY");
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $last7 = (int) $stmt->fetch()['c'];
 
 $stmt = getDB()->prepare("SELECT COUNT(*) c FROM followers WHERE user_id=? AND verified=1 AND created_at >= NOW() - INTERVAL 30 DAY");
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $last30 = (int) $stmt->fetch()['c'];
 
 $stmt = getDB()->prepare('SELECT email, created_at FROM followers WHERE user_id=? AND verified=1 ORDER BY created_at DESC LIMIT 200');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $followers = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';

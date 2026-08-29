@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'fan_bands';
 $pageTitle = 'Band che amo';
 
@@ -21,12 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('INSERT IGNORE INTO fan_favorite_bands
                 (user_id, spotify_artist_id, spotify_artist_name, artist_image, sort_order)
                 VALUES (?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_bands WHERE user_id=?) t))');
-            $stmt->execute([$user['id'], $artistId, $artistName, $artistImage ?: null, $user['id']]);
+            $stmt->execute([$profile['id'], $artistId, $artistName, $artistImage ?: null, $profile['id']]);
         }
     } elseif ($action === 'remove') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('DELETE FROM fan_favorite_bands WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
@@ -36,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $favorites = $stmt->fetchAll();
 $favoriteIds = array_column($favorites, 'spotify_artist_id');
 

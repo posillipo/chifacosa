@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'feed';
 $pageTitle = 'Feed RSS';
 $error = null;
@@ -18,15 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Il timestamp "since" segna da quando vale il link personalizzato: si aggiorna solo
         // quando il valore cambia davvero, così il feed continua ad applicarlo dal momento giusto
         // invece di ripartire da adesso ogni volta che si salva il form senza toccare questo campo.
-        $customFeedGuidSince = $user['custom_feed_guid_since'] ?? null;
-        if ($customFeedGuid !== ($user['custom_feed_guid'] ?? null)) {
+        $customFeedGuidSince = $profile['custom_feed_guid_since'] ?? null;
+        if ($customFeedGuid !== ($profile['custom_feed_guid'] ?? null)) {
             $customFeedGuidSince = $customFeedGuid ? date('Y-m-d H:i:s') : null;
         }
 
         $stmt = getDB()->prepare('UPDATE profiles SET custom_feed_guid=?, custom_feed_guid_since=? WHERE user_id=?');
-        $stmt->execute([$customFeedGuid, $customFeedGuidSince, $user['id']]);
+        $stmt->execute([$customFeedGuid, $customFeedGuidSince, $profile['id']]);
         $success = 'Impostazioni feed aggiornate.';
         $user = currentUser();
+        $profile = getActingProfile($user);
     }
 }
 
@@ -54,10 +56,10 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" class="card">
     <?= csrfField() ?>
     <label>Link personalizzato (opzionale)</label>
-    <input type="url" name="custom_feed_guid" value="<?= e($user['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
-    <?php if (!empty($user['custom_feed_guid_since'])): ?>
+    <input type="url" name="custom_feed_guid" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
+    <?php if (!empty($profile['custom_feed_guid_since'])): ?>
       <p style="color:var(--text-muted);font-size:13px;">
-        Attivo dal <?= e(date('d/m/Y H:i', strtotime($user['custom_feed_guid_since']))) ?>.
+        Attivo dal <?= e(date('d/m/Y H:i', strtotime($profile['custom_feed_guid_since']))) ?>.
       </p>
     <?php endif; ?>
     <button type="submit" class="btn">Salva</button>
@@ -65,6 +67,6 @@ include __DIR__ . '/_dash_header.php';
 
   <div class="card">
     <strong>Il tuo feed:</strong><br>
-    <a href="/<?= e($user['slug']) ?>/feed" target="_blank"><?= e(siteName()) ?>/<?= e($user['slug']) ?>/feed</a>
+    <a href="/<?= e($profile['slug']) ?>/feed" target="_blank"><?= e(siteName()) ?>/<?= e($profile['slug']) ?>/feed</a>
   </div>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

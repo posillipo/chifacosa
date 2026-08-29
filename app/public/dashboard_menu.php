@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'menu';
 $pageTitle = 'Menù';
 $error = null;
@@ -14,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') {
             $stmt = getDB()->prepare('INSERT INTO menu_categories (user_id, name, sort_order) VALUES (?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM menu_categories WHERE user_id=?) t))');
-            $stmt->execute([$user['id'], $name, $user['id']]);
+            $stmt->execute([$profile['id'], $name, $profile['id']]);
         } else {
             $error = 'Inserisci un nome per la categoria.';
         }
@@ -23,18 +24,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') {
             $stmt = getDB()->prepare('UPDATE menu_categories SET name=? WHERE id=? AND user_id=?');
-            $stmt->execute([$name, $id, $user['id']]);
+            $stmt->execute([$name, $id, $profile['id']]);
         } else {
             $error = 'Inserisci un nome per la categoria.';
         }
     } elseif ($action === 'delete_category') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('DELETE FROM menu_categories WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'move_category_up' || $action === 'move_category_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id, sort_order FROM menu_categories WHERE user_id=? ORDER BY sort_order ASC, id ASC');
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$profile['id']]);
         $all = $stmt->fetchAll();
         $idx = null;
         foreach ($all as $i => $row) {
@@ -45,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($all[$swapIdx])) {
                 $a = $all[$idx];
                 $b = $all[$swapIdx];
-                getDB()->prepare('UPDATE menu_categories SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $user['id']]);
-                getDB()->prepare('UPDATE menu_categories SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $user['id']]);
+                getDB()->prepare('UPDATE menu_categories SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $profile['id']]);
+                getDB()->prepare('UPDATE menu_categories SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $profile['id']]);
             }
         }
     } elseif ($action === 'add_item' || $action === 'update_item') {
@@ -63,33 +64,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Verifica che la categoria appartenga davvero a questo utente, per evitare che un
         // ID arbitrario nel form associ un piatto alla categoria di qualcun altro.
         $catStmt = getDB()->prepare('SELECT id FROM menu_categories WHERE id=? AND user_id=?');
-        $catStmt->execute([$categoryId, $user['id']]);
+        $catStmt->execute([$categoryId, $profile['id']]);
 
         if ($name === '' || !$catStmt->fetch()) {
             $error = 'Inserisci un nome per il piatto e scegli una categoria valida.';
         } elseif ($action === 'add_item') {
             $stmt = getDB()->prepare('INSERT INTO menu_items (user_id, category_id, name, description, price, allergens, sort_order) VALUES (?,?,?,?,?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM menu_items WHERE category_id=?) t))');
-            $stmt->execute([$user['id'], $categoryId, $name, $description ?: null, $price, $allergensCsv, $categoryId]);
+            $stmt->execute([$profile['id'], $categoryId, $name, $description ?: null, $price, $allergensCsv, $categoryId]);
         } else {
             $stmt = getDB()->prepare('UPDATE menu_items SET category_id=?, name=?, description=?, price=?, allergens=? WHERE id=? AND user_id=?');
-            $stmt->execute([$categoryId, $name, $description ?: null, $price, $allergensCsv, $itemId, $user['id']]);
+            $stmt->execute([$categoryId, $name, $description ?: null, $price, $allergensCsv, $itemId, $profile['id']]);
         }
     } elseif ($action === 'delete_item') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('DELETE FROM menu_items WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'toggle_item') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE menu_items SET is_active = NOT is_active WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'move_item_up' || $action === 'move_item_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id, category_id, sort_order FROM menu_items WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
         $item = $stmt->fetch();
         if ($item) {
             $stmt = getDB()->prepare('SELECT id, sort_order FROM menu_items WHERE user_id=? AND category_id=? ORDER BY sort_order ASC, id ASC');
-            $stmt->execute([$user['id'], $item['category_id']]);
+            $stmt->execute([$profile['id'], $item['category_id']]);
             $all = $stmt->fetchAll();
             $idx = null;
             foreach ($all as $i => $row) {
@@ -100,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (isset($all[$swapIdx])) {
                     $a = $all[$idx];
                     $b = $all[$swapIdx];
-                    getDB()->prepare('UPDATE menu_items SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $user['id']]);
-                    getDB()->prepare('UPDATE menu_items SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $user['id']]);
+                    getDB()->prepare('UPDATE menu_items SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $profile['id']]);
+                    getDB()->prepare('UPDATE menu_items SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $profile['id']]);
                 }
             }
         }
@@ -114,11 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = getDB()->prepare('SELECT * FROM menu_categories WHERE user_id=? ORDER BY sort_order ASC, id ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $categories = $stmt->fetchAll();
 
 $stmt = getDB()->prepare('SELECT * FROM menu_items WHERE user_id=? ORDER BY sort_order ASC, id ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $allItems = $stmt->fetchAll();
 $itemsByCategory = [];
 foreach ($allItems as $it) {

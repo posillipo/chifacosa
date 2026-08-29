@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'contacts';
 $pageTitle = 'Contatti';
 
@@ -11,17 +12,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int) ($_POST['id'] ?? 0);
     if ($action === 'mark_read') {
         $stmt = getDB()->prepare('UPDATE contact_requests SET is_read=1 WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'delete') {
         $stmt = getDB()->prepare('DELETE FROM contact_requests WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     }
     header('Location: /dashboard_contacts.php');
     exit;
 }
 
 $stmt = getDB()->prepare('SELECT * FROM contact_requests WHERE user_id=? ORDER BY created_at DESC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $requests = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';

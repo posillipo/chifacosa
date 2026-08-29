@@ -273,6 +273,7 @@ CREATE TABLE IF NOT EXISTS profile_admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     owner_user_id INT NOT NULL,
     admin_user_id INT NOT NULL,
+    role ENUM('coadmin','owner') NOT NULL DEFAULT 'coadmin',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_owner_admin (owner_user_id, admin_user_id),
     FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE,

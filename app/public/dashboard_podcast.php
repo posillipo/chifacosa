@@ -3,7 +3,8 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 $user = requireLogin();
-requireBandOrLabel($user);
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+requireBandOrLabel($profile);
 $activeTab = 'podcast';
 $pageTitle = 'Podcast';
 
@@ -19,13 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $showName = trim($_POST['show_name'] ?? '');
         if ($showId !== '') {
             $stmt = getDB()->prepare('UPDATE profiles SET spotify_show_id=?, spotify_show_name=? WHERE user_id=?');
-            $stmt->execute([$showId, $showName, $user['id']]);
+            $stmt->execute([$showId, $showName, $profile['id']]);
             header('Location: /dashboard_podcast.php');
             exit;
         }
     } elseif ($action === 'unlink') {
         $stmt = getDB()->prepare('UPDATE profiles SET spotify_show_id=NULL, spotify_show_name=NULL WHERE user_id=?');
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$profile['id']]);
         header('Location: /dashboard_podcast.php');
         exit;
     } elseif ($action === 'search') {
@@ -37,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $user = currentUser();
+$profile = getActingProfile($user);
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -49,13 +51,13 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
 
-  <?php if (!empty($user['spotify_show_id'])): ?>
+  <?php if (!empty($profile['spotify_show_id'])): ?>
     <div class="card">
-      <strong>Podcast collegato:</strong> <?= e($user['spotify_show_name'] ?: $user['spotify_show_id']) ?>
+      <strong>Podcast collegato:</strong> <?= e($profile['spotify_show_name'] ?: $profile['spotify_show_id']) ?>
       <br>
-      <a href="https://open.spotify.com/show/<?= e($user['spotify_show_id']) ?>" target="_blank">Vedi su Spotify ↗</a>
+      <a href="https://open.spotify.com/show/<?= e($profile['spotify_show_id']) ?>" target="_blank">Vedi su Spotify ↗</a>
       <br><br>
-      <a href="/<?= e($user['slug']) ?>/podcast" target="_blank">Vedi la tua pagina pubblica Podcast ↗</a>
+      <a href="/<?= e($profile['slug']) ?>/podcast" target="_blank">Vedi la tua pagina pubblica Podcast ↗</a>
       <form method="post" style="margin-top:12px;" onsubmit="return confirm('Scollegare il podcast? La sezione dedicata sparirà dalla tua pagina pubblica.');">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="unlink">

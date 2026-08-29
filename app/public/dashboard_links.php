@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/geocoding.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'links';
 $pageTitle = 'Link';
 $error = null;
@@ -16,9 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $url = trim($_POST['url'] ?? '');
         $isWebsite = isset($_POST['is_website_icon']) ? 1 : 0;
         if ($label !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
-            $coverPath = handleCoverUpload($user['slug']);
+            $coverPath = handleCoverUpload($profile['slug']);
             $stmt = getDB()->prepare('INSERT INTO links (user_id, label, url, is_website_icon, cover_path, sort_order) VALUES (?,?,?,?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))');
-            $stmt->execute([$user['id'], $label, $url, $isWebsite, $coverPath, $user['id']]);
+            $stmt->execute([$profile['id'], $label, $url, $isWebsite, $coverPath, $profile['id']]);
         } else {
             $error = 'Inserisci un\'etichetta e un URL valido.';
         }
@@ -26,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $label = trim($_POST['label'] ?? '');
         if ($label !== '') {
             $stmt = getDB()->prepare("INSERT INTO links (user_id, label, url, link_type, sort_order) VALUES (?,?,'','divider', (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))");
-            $stmt->execute([$user['id'], $label, $user['id']]);
+            $stmt->execute([$profile['id'], $label, $profile['id']]);
         } else {
             $error = 'Inserisci un titolo per il separatore.';
         }
@@ -40,20 +41,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $mapLabel = $label !== '' ? $label : $geo['display_name'];
         $stmt = getDB()->prepare("INSERT INTO links (user_id, label, url, link_type, map_lat, map_lng, sort_order) VALUES (?,?,'','map',?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))");
-        $stmt->execute([$user['id'], $mapLabel, $geo['lat'], $geo['lng'], $user['id']]);
+        $stmt->execute([$profile['id'], $mapLabel, $geo['lat'], $geo['lng'], $profile['id']]);
     } elseif ($action === 'update_link') {
         $id = (int) ($_POST['id'] ?? 0);
         $label = trim($_POST['label'] ?? '');
         $url = trim($_POST['url'] ?? '');
         $isWebsite = isset($_POST['is_website_icon']) ? 1 : 0;
         if ($label !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
-            $newCover = handleCoverUpload($user['slug']);
+            $newCover = handleCoverUpload($profile['slug']);
             if ($newCover) {
                 $stmt = getDB()->prepare('UPDATE links SET label=?, url=?, is_website_icon=?, cover_path=? WHERE id=? AND user_id=?');
-                $stmt->execute([$label, $url, $isWebsite, $newCover, $id, $user['id']]);
+                $stmt->execute([$label, $url, $isWebsite, $newCover, $id, $profile['id']]);
             } else {
                 $stmt = getDB()->prepare('UPDATE links SET label=?, url=?, is_website_icon=? WHERE id=? AND user_id=?');
-                $stmt->execute([$label, $url, $isWebsite, $id, $user['id']]);
+                $stmt->execute([$label, $url, $isWebsite, $id, $profile['id']]);
             }
         } else {
             header('Location: /dashboard_links.php?edit=' . $id . '&error=1');
@@ -64,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $label = trim($_POST['label'] ?? '');
         if ($label !== '') {
             $stmt = getDB()->prepare("UPDATE links SET label=? WHERE id=? AND user_id=? AND link_type='divider'");
-            $stmt->execute([$label, $id, $user['id']]);
+            $stmt->execute([$label, $id, $profile['id']]);
         } else {
             header('Location: /dashboard_links.php?edit=' . $id . '&error=1');
             exit;
@@ -81,32 +82,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $mapLabel = $label !== '' ? $label : $geo['display_name'];
             $stmt = getDB()->prepare("UPDATE links SET label=?, map_lat=?, map_lng=? WHERE id=? AND user_id=? AND link_type='map'");
-            $stmt->execute([$mapLabel, $geo['lat'], $geo['lng'], $id, $user['id']]);
+            $stmt->execute([$mapLabel, $geo['lat'], $geo['lng'], $id, $profile['id']]);
         } elseif ($label !== '') {
             $stmt = getDB()->prepare("UPDATE links SET label=? WHERE id=? AND user_id=? AND link_type='map'");
-            $stmt->execute([$label, $id, $user['id']]);
+            $stmt->execute([$label, $id, $profile['id']]);
         }
     } elseif ($action === 'toggle_website') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE links SET is_website_icon = NOT is_website_icon WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT cover_path FROM links WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['cover_path']);
         }
         $stmt = getDB()->prepare('DELETE FROM links WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'toggle') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE links SET is_active = NOT is_active WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $user['id']]);
+        $stmt->execute([$id, $profile['id']]);
     } elseif ($action === 'move_up' || $action === 'move_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id, sort_order FROM links WHERE user_id=? ORDER BY sort_order ASC, id ASC');
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$profile['id']]);
         $all = $stmt->fetchAll();
         $idx = null;
         foreach ($all as $i => $row) {
@@ -117,8 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($all[$swapIdx])) {
                 $a = $all[$idx];
                 $b = $all[$swapIdx];
-                getDB()->prepare('UPDATE links SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $user['id']]);
-                getDB()->prepare('UPDATE links SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $user['id']]);
+                getDB()->prepare('UPDATE links SET sort_order=? WHERE id=? AND user_id=?')->execute([$b['sort_order'], $a['id'], $profile['id']]);
+                getDB()->prepare('UPDATE links SET sort_order=? WHERE id=? AND user_id=?')->execute([$a['sort_order'], $b['id'], $profile['id']]);
             }
         }
     }
@@ -127,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = getDB()->prepare('SELECT * FROM links WHERE user_id=? ORDER BY sort_order ASC, id ASC');
-$stmt->execute([$user['id']]);
+$stmt->execute([$profile['id']]);
 $links = $stmt->fetchAll();
 
 // Modalità modifica: se è presente ?edit=ID, precarichiamo quel link nel form al posto di "Aggiungi"

@@ -2,22 +2,23 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'nav_menu';
 $pageTitle = 'Menu di Navigazione';
 $success = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    $items = getAllProfileNavigationMenu((int) $user['id'], $user['slug']);
+    $items = getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']);
     foreach ($items as $item) {
         $isVisible = isset($_POST['visibility'][$item['id']]);
         getDB()->prepare('UPDATE profile_navigation_menu SET is_visible = ? WHERE id = ? AND user_id = ?')
-            ->execute([$isVisible ? 1 : 0, $item['id'], $user['id']]);
+            ->execute([$isVisible ? 1 : 0, $item['id'], $profile['id']]);
     }
     $success = 'Menu aggiornato.';
 }
 
-$items = getAllProfileNavigationMenu((int) $user['id'], $user['slug']);
+$items = getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']);
 $visibleItems = array_values(array_filter($items, fn($it) => (bool) $it['is_visible']));
 
 include __DIR__ . '/_dash_header.php';
