@@ -28,11 +28,13 @@ $unreadDirectMessages = (int) $stmt->fetch()['c'];
 // d'occhio su chi si sta agendo, senza dover aprire il menu.
 $barAvatarPath = $user['avatar_path'] ?? null;
 $barAvatarName = $user['display_name'] ?? '?';
+$barSlug = $user['slug'];
 if ($actingAsId) {
     foreach ($managedProfiles as $mp) {
         if ($mp['id'] == $actingAsId) {
             $barAvatarPath = $mp['avatar_path'];
             $barAvatarName = $mp['display_name'];
+            $barSlug = $mp['slug'];
             break;
         }
     }
@@ -115,7 +117,7 @@ if ($actingAsId) {
             <i class="fa-solid fa-plus" style="width:26px;text-align:center;color:var(--text-muted);"></i>
             <span>Crea nuovo profilo</span>
           </a>
-          <a href="/<?= e($user['slug']) ?>" target="_blank" class="profile-switcher-item">
+          <a href="/<?= e($barSlug) ?>" target="_blank" class="profile-switcher-item">
             <i class="fa-solid fa-arrow-up-right-from-square" style="width:26px;text-align:center;color:var(--text-muted);"></i>
             <span>Vedi la tua pagina pubblica</span>
           </a>
