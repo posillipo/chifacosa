@@ -687,9 +687,8 @@ function menuHasItems(int $userId): bool {
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
 function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
-    // Tab standard che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in
-    // dashboard (Home/Timeline/Blog/Brani/Menù/Eventi/Contatti) — i tab "integrazione"
-    // (Spotify/Podcast/Video/Segui) non sono coperti, restano governati dalla loro logica.
+    // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
+    // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
     $hiddenKeys = $ownerId ? getHiddenNavKeys($ownerId) : [];
 
     $viewerId = $_SESSION['user_id'] ?? null;
@@ -697,10 +696,11 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     if ($viewerId && $ownerId && (int) $viewerId !== (int) $ownerId) {
         $seguiLabel = isFollowingAccount((int) $viewerId, (int) $ownerId) ? '✓ Segui già' : '✨ Segui';
     }
+    $canFollow = !$viewerId || !$ownerId || (int) $viewerId !== (int) $ownerId;
+
+    // Stesso ordine di PUBLIC_NAV_ITEM_KEYS/createDefaultProfileNavMenu(), per restare coerenti
+    // con l'ordine mostrato nella checklist di dashboard_nav_menu.php.
     $tabs = [];
-    if (!$viewerId || !$ownerId || (int) $viewerId !== (int) $ownerId) {
-        $tabs['segui'] = ['label' => $seguiLabel, 'url' => '/' . $slug . '#segui-widget', 'class' => 'nav-segui-tab'];
-    }
     $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug, 'icon' => 'fas fa-house'];
     $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasSpotify && $isBandOrLabel) {
@@ -721,6 +721,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
     }
     $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti', 'icon' => 'fas fa-envelope'];
+    if ($canFollow) {
+        $tabs['segui'] = ['label' => $seguiLabel, 'url' => '/' . $slug . '#segui-widget', 'class' => 'nav-segui-tab'];
+    }
 
     // Non nasconde mai il tab attualmente attivo, anche se marcato nascosto: chi ci arriva
     // comunque tramite link diretto deve continuare a vedersi orientato nel menu, non sparire.
@@ -1537,22 +1540,29 @@ function textExcerpt(string $text, int $length = 160): string {
 // ============================================
 // PROFILE NAVIGATION MENU FUNCTIONS
 // ============================================
-// Permette a ogni profilo di nascondere singoli tab standard (Home, Timeline, Blog, Brani,
-// Menù, Eventi, Contatti) dal proprio menu di navigazione pubblico. Non copre i tab
-// "integrazione" (Spotify/Podcast/Video/Segui), che restano governati dalla loro logica
-// esistente (compaiono solo se effettivamente collegati).
+// Permette a ogni profilo di nascondere singoli tab del proprio menu di navigazione pubblico,
+// incluse le integrazioni (Spotify/Podcast/Video) e il pulsante Segui — questi ultimi restano
+// comunque governati anche dalla loro condizione di base (es. Spotify compare solo se
+// effettivamente collegato): nasconderli qui li nasconde sempre, ma non basta da solo a farli
+// comparire se quella condizione non è soddisfatta.
 
 // Mappa tra il "name" salvato in profile_navigation_menu e la chiave interna usata da
 // publicNav() per identificare ciascun tab — tenerle distinte evita di legare lo schema del
 // database ai nomi visualizzati (che potrebbero cambiare) o a caratteri accentati nelle chiavi.
+// L'ordine qui rispecchia l'ordine con cui i tab compaiono davvero nel menu pubblico (publicNav())
+// e nella checklist di dashboard_nav_menu.php, per restare sempre coerenti tra loro.
 const PUBLIC_NAV_ITEM_KEYS = [
     'Home' => 'home',
     'Timeline' => 'timeline',
+    'Spotify' => 'spotify',
+    'Podcast' => 'podcast',
+    'Video' => 'video',
     'Blog' => 'blog',
     'Brani' => 'brani',
     'Menù' => 'menu',
     'Eventi' => 'eventi',
     'Contatti' => 'contatti',
+    'Segui' => 'segui',
 ];
 
 /**
@@ -1563,11 +1573,15 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
     $defaults = [
         ['Home', 'fas fa-home', '/' . $slug, 1],
         ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
-        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 3],
-        ['Brani', 'fas fa-music', '/' . $slug . '/brani', 4],
-        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 5],
-        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 6],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 7],
+        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 3],
+        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 4],
+        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 5],
+        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 6],
+        ['Brani', 'fas fa-music', '/' . $slug . '/brani', 7],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 8],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 9],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 10],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 11],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {
@@ -1583,8 +1597,11 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
 }
 
 /**
- * Ottiene TUTTE le voci di menu per un profilo (incluse nascoste), creando i default al primo
- * accesso se il profilo non le ha ancora (es. account creati prima di questa funzionalità).
+ * Ottiene TUTTE le voci di menu per un profilo (incluse nascoste), creando i default mancanti al
+ * primo accesso — sia per un profilo che non ne ha ancora nessuna, sia per un profilo creato
+ * prima dell'introduzione di una voce più recente (es. Spotify/Podcast/Video/Segui, aggiunte
+ * dopo Home/Timeline/Blog/Brani/Menù/Eventi/Contatti): in quel caso ne mancano solo alcune, non
+ * tutte, ma vanno comunque completate.
  */
 function getAllProfileNavigationMenu(int $userId, string $slug): array {
     $stmt = getDB()->prepare('
@@ -1595,7 +1612,7 @@ function getAllProfileNavigationMenu(int $userId, string $slug): array {
     ');
     $stmt->execute([$userId]);
     $items = $stmt->fetchAll() ?: [];
-    if (!$items) {
+    if (count($items) < count(PUBLIC_NAV_ITEM_KEYS)) {
         createDefaultProfileNavMenu($userId, $slug);
         $stmt->execute([$userId]);
         $items = $stmt->fetchAll() ?: [];

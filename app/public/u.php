@@ -139,6 +139,7 @@ $bandReviewers = $bandReviewers->fetchAll();
     <div class="alert <?= $followErr ? 'error' : 'success' ?>"><?= e($followMsg) ?></div>
   <?php endif; ?>
 
+  <?php if (!in_array('segui', getHiddenNavKeys((int) $uid), true)): ?>
   <div id="segui-widget" style="text-align:center;margin-bottom:18px;scroll-margin-top:20px;">
     <?php if (!empty($_SESSION['user_id']) && (int)$_SESSION['user_id'] !== (int)$uid): ?>
       <?php $alreadyFollowing = isFollowingAccount((int)$_SESSION['user_id'], (int)$uid); ?>
@@ -169,6 +170,7 @@ $bandReviewers = $bandReviewers->fetchAll();
       </div>
     <?php endif; ?>
   </div>
+  <?php endif; ?>
 
   <?php if ($socialLinks): ?>
     <div class="social-icons-row">

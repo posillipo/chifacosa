@@ -26,9 +26,10 @@ include __DIR__ . '/_dash_header.php';
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica. Le
-      integrazioni (Spotify, Podcast, Video, il pulsante "Segui") non sono elencate qui: compaiono
-      automaticamente solo quando le colleghi dalla loro sezione dedicata.
+      Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica — anche
+      Spotify, Podcast, Video e il pulsante "Segui". Nota: Spotify/Podcast/Video restano comunque
+      visibili solo se li hai anche effettivamente collegati dalla loro sezione dedicata —
+      spuntarli qui non basta da solo a farli comparire.
     </p>
   </details>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
