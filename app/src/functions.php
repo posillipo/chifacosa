@@ -1484,7 +1484,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'login_otp_request','login_otp_verify','request_access','admin_access_requests','dashboard_theme','credits',
     'dashboard_invite','dashboard_following','dashboard_team','dashboard_log','track_lyrics',
     'dashboard_messages','dashboard_chat','menu','dashboard_menu',
-    'reserve_table','dashboard_reservations','dashboard_profiles','dashboard_feed'];
+    'reserve_table','dashboard_reservations','dashboard_profiles','dashboard_feed','sitemap','robots'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

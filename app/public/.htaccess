@@ -5,6 +5,12 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+# /sitemap.xml -> sitemap dinamica per Google Search Console
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+# /robots.txt -> generato dinamicamente (usa siteUrl() per la riga Sitemap, invece di un dominio fisso)
+RewriteRule ^robots\.txt$ robots.php [L]
+
 # /nomeartista/blog/anno.mese.giorno.slug-articolo -> singolo articolo (permalink SEO)
 RewriteRule ^([a-zA-Z0-9_-]+)/blog/([0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[a-zA-Z0-9-]+)/?$ blog_post.php?slug=$1&post=$2 [L,QSA]
 
