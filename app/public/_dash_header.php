@@ -28,6 +28,16 @@ $stmt = getDB()->prepare('SELECT COUNT(*) c FROM direct_messages WHERE recipient
 $stmt->execute([$countsForId]);
 $unreadDirectMessages = (int) $stmt->fetch()['c'];
 
+// Voci del Menu di Navigazione (dashboard_nav_menu.php) per questo profilo, indicizzate per
+// nome: usate per nascondere dalla barra della dashboard le schede corrispondenti a sezioni che
+// l'utente ha disattivato dal menu pubblico (es. "Blog" disattivato → scheda "Blog" nascosta
+// anche qui), così i due posti restano sempre coerenti tra loro.
+$navVisibility = array_column(
+    getAllProfileNavigationMenu((int) ($profile ?? $user)['id'], ($profile ?? $user)['slug']),
+    'is_visible',
+    'name'
+);
+
 // Avatar mostrato nella barra in alto: il proprio, a meno che non si stia gestendo un altro
 // profilo — in quel caso mostriamo l'avatar DI QUEL profilo, così è sempre chiaro a colpo
 // d'occhio su chi si sta agendo, senza dover aprire il menu.
@@ -226,16 +236,26 @@ document.addEventListener('click', function (e) {
 <div class="container">
   <div class="tabs">
     <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">Feed</a>
+    <?php if ($navVisibility['Timeline'] ?? 1): ?>
     <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Timeline</a>
+    <?php endif; ?>
     <a href="/dashboard_fan_bands.php" class="<?= $activeTab==='fan_bands'?'active':'' ?>">Band che amo</a>
     <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">Link</a>
+    <?php if ($navVisibility['Blog'] ?? 1): ?>
+    <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
+    <?php endif; ?>
+    <?php if ($navVisibility['Brani'] ?? 1): ?>
     <a href="/dashboard_audio.php" class="<?= $activeTab==='audio'?'active':'' ?>">Brani</a>
+    <?php endif; ?>
+    <?php if ($navVisibility['Menù'] ?? 1): ?>
     <a href="/dashboard_menu.php" class="<?= $activeTab==='menu'?'active':'' ?>">Menù</a>
-    <?php if ($isBandOrLabel): ?>
+    <?php endif; ?>
+    <?php if ($isBandOrLabel && ($navVisibility['Eventi'] ?? 1)): ?>
     <a href="/dashboard_events.php" class="<?= $activeTab==='events'?'active':'' ?>">Eventi</a>
     <a href="/dashboard_reservations.php" class="<?= $activeTab==='reservations'?'active':'' ?>">Prenotazioni</a>
     <?php endif; ?>
-    <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
     <a href="/dashboard_followers.php" class="<?= $activeTab==='followers'?'active':'' ?>">Follower</a>
+    <?php if ($navVisibility['Contatti'] ?? 1): ?>
     <a href="/dashboard_contacts.php" class="<?= $activeTab==='contacts'?'active':'' ?>">Contatti</a>
+    <?php endif; ?>
   </div>
