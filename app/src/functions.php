@@ -1377,21 +1377,23 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     return $html;
 }
 
-// Griglia a 3 colonne stile Instagram: ogni voce è una cella quadrata, l'immagine (se c'è)
-// riempie il quadrato ritagliandola (object-fit:cover, anche se le proporzioni originali sono
-// diverse); se manca l'immagine (es. un "pensiero" di solo testo) la cella mostra solo la prima
-// lettera del titolo, alla stessa dimensione delle altre celle — mai testo/didascalia visibile
-// nella griglia, come nel vero layout Instagram (il contenuto completo si vede aprendo la voce).
 function renderTimelineFeedItem(array $item): string {
     $coverSrc = $item['cover'] ? (str_starts_with($item['cover'], 'http') ? $item['cover'] : '/' . $item['cover']) : null;
-    $html = '<a href="' . e($item['url']) . '" class="ig-grid-item">';
-    if ($coverSrc) {
-        $html .= '<img src="' . e($coverSrc) . '" alt="" loading="lazy">';
-    } else {
-        $letter = mb_strtoupper(mb_substr(trim($item['titolo']), 0, 1)) ?: '?';
-        $html .= '<span class="ig-grid-letter">' . e($letter) . '</span>';
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
+    $label = $labels[$item['tipo']] ?? '';
+    $eventoInfo = '';
+    if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
+        $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
     }
-    $html .= '</a>';
+    $html = '<a href="' . e($item['url']) . '" class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">';
+    if ($coverSrc) {
+        $html .= '<img src="' . e($coverSrc) . '" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;">';
+    }
+    $html .= '<div style="flex:1;min-width:0;">';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">' . e($label) . '</small><br>';
+    $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(date('d/m/Y', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '</div></a>';
     return $html;
 }
 
