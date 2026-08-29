@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
 $profile = getActingProfile($user); // il profilo su cui si sta agendo (proprio, o co-gestito)
 $activeTab = 'post';
-$pageTitle = 'Pubblica';
+$pageTitle = 'Timeline';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();

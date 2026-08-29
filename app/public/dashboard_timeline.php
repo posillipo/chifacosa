@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
 $profile = getActingProfile($user);
 $activeTab = 'timeline';
-$pageTitle = 'La mia Timeline';
+$pageTitle = 'Feed';
 
 const DASH_TIMELINE_PAGE_SIZE = 20;
 $followedIds = getFollowedUserIds((int) $profile['id']);

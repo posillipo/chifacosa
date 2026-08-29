@@ -225,8 +225,8 @@ document.addEventListener('click', function (e) {
 
 <div class="container">
   <div class="tabs">
-    <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">TIMELINE</a>
-    <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Pubblica</a>
+    <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">Feed</a>
+    <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Timeline</a>
     <a href="/dashboard_fan_bands.php" class="<?= $activeTab==='fan_bands'?'active':'' ?>">Band che amo</a>
     <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">Link</a>
     <a href="/dashboard_audio.php" class="<?= $activeTab==='audio'?'active':'' ?>">Brani</a>
@@ -237,4 +237,5 @@ document.addEventListener('click', function (e) {
     <?php endif; ?>
     <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
     <a href="/dashboard_followers.php" class="<?= $activeTab==='followers'?'active':'' ?>">Follower</a>
+    <a href="/dashboard_contacts.php" class="<?= $activeTab==='contacts'?'active':'' ?>">Contatti</a>
   </div>
