@@ -1,16 +1,13 @@
-// Tema "Giardino Anomalo" — sfera di vetro WebGPU/TSL con gocce fisiche che rappresentano
-// le voci del menu del profilo. Adattamento dell'esperimento creativo open-source
-// "Garden Anomaly": stessa fisica/shader del vetro, senza il pannello di debug (Tweakpane),
-// con gocce meno numerose ma più grandi e distinte per colore/etichetta, cliccabili per
-// portare alla vera pagina (Timeline, Blog, ecc.) invece di generare contenuto nella scena.
+// Tema "Giardino Anomalo" — bolle di vetro colorate che fluttuano libere sullo schermo,
+// una per ogni voce del menu del profilo. Evoluzione dell'esperimento creativo open-source
+// "Garden Anomaly": non più una singola sfera-guscio con gocce dentro, ma tante piccole
+// sfere di vetro indipendenti (materiale fisico reale, trasmissione + iridescenza), ognuna
+// con un colore/tinta diversa, che salgono lentamente e ondeggiano, si respingono a vicenda
+// senza mai sovrapporsi del tutto, e si possono trascinare (tornano in posizione da sole) o
+// toccare per andare alla vera pagina collegata.
 import * as THREE from 'three';
-import {
-  uv, vec3, vec4, smoothstep, pow, uniform, pass, uniformArray,
-  positionGeometry, normalize, max, float, exp, transformNormalToView,
-  texture, vec2, cross,
-} from 'three/tsl';
+import { pass } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const DATA = window.__GA_DATA__ || { navItems: [], assetBase: '/assets/themes/garden-anomaly', accent: '#1f7cff' };
@@ -35,21 +32,20 @@ if (!navigator.gpu) {
 
 async function init() {
   const prm = {
-    simSpeed: 0.37, gravity: 1.65, throwPow: 1.04, friction: 3.91, damp: 0.9,
-    ior: 1.30, thickness: 1.42, roughness: 0.36, nrmScale: 1.0, irid: 0.90, iridIor: 1.55,
-    envInt: 2.12, bulgeAmt: 0.15, bulgeSharp: 43.30, bulgeRel: 2.77,
-    attColor: '#0033ff', attDist: 8.40, dentAO: 3.20, dentNrm: 1.96,
-    scanInt: 0.45, scanSpeed: 0.18, rotY: 0.10, rotX: 0.04,
-    blobRough: 0.30, blobCoat: 0.35,
-    // Gocce poche e "importanti" (sono link, non sabbia): devono restare ferme abbastanza
-    // a lungo da poter essere lette e toccate con precisione — molto più calme dell'originale.
-    blowPow: 2.6, blowDelay: 2.6,
-    sndOn: false, sndVol: 0.12,
-    bloomStrength: 0.02, bloomRadius: 0.0, bloomThreshold: 0.76, exposure: 0.85,
+    riseSpeed: 0.14,       // salita costante, lenta (unità/s)
+    swayAmp: 0.55, swayFreq: 0.35,       // ondeggiamento orizzontale
+    bobAmp: 0.22, bobFreq: 0.5,          // ondeggiamento in profondità
+    springK: 5.5, springDamp: 4.2,       // molla che riporta una bolla al suo percorso dopo un trascinamento
+    hoverPush: 0.9,        // spinta di disturbo al passaggio del mouse (senza premere)
+    dragPush: 2.4,         // spinta quando si trascina una bolla
+    repelDist: 0.18,       // margine minimo extra tra bolle vicine
+    roughness: 0.16, ior: 1.24, thickness: 0.55, iridescence: 0.75, iridescenceIOR: 1.3,
+    attenuationDistance: 0.9, envInt: 1.5,
+    sndOn: false, sndVol: 0.14,
+    bloomStrength: 0.045, bloomRadius: 0.15, bloomThreshold: 0.7, exposure: 0.95,
   };
 
-  const SHELL_R = 1.3;
-  const N_BLOBS = Math.max(navItems.length, 1);
+  const N = Math.max(navItems.length, 1);
 
   const renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -71,13 +67,10 @@ async function init() {
     scene.environment = t;
   } catch (e) { /* resta il colore di sfondo */ }
 
-  const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 60);
-  camera.position.set(0, 0.08, 7.6);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.target.set(0, 0, 0);
+  const CAM_Z = 8;
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 60);
+  camera.position.set(0, 0, CAM_Z);
+  camera.lookAt(0, 0, 0);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   const roomEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -87,121 +80,27 @@ async function init() {
   const key = new THREE.DirectionalLight(0xffffff, 1.2);
   key.position.set(2.5, 4, 3);
   scene.add(key);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-  // ── guscio di vetro ──
-  const N_BULGE = 8;
-  const bulgeVecs = Array.from({ length: N_BULGE }, () => new THREE.Vector4(0, 1, 0, 0));
-  const uBulges = uniformArray(bulgeVecs);
-  const uBulgeSharp = uniform(prm.bulgeSharp);
-
-  const shellMat = new THREE.MeshPhysicalNodeMaterial({
-    transmission: 1.0, thickness: prm.thickness, ior: prm.ior, roughness: prm.roughness,
-    metalness: 0, iridescence: prm.irid, iridescenceIOR: prm.iridIor,
-    iridescenceThicknessRange: [140, 380], clearcoat: 1.0, clearcoatRoughness: 0.10,
-    specularIntensity: 1.0, envMapIntensity: prm.envInt,
-    attenuationColor: new THREE.Color(prm.attColor), attenuationDistance: prm.attDist,
-  });
-
-  const uDentAO = uniform(prm.dentAO);
-  const uDentNrm = uniform(prm.dentNrm);
-  const uScan = uniform(0);
-
-  const buildBump = () => {
-    const nrm = normalize(positionGeometry);
-    let bump = float(0);
-    let grad = vec3(0, 0, 0);
-    for (let k = 0; k < N_BULGE; k++) {
-      const b = uBulges.element(k);
-      const u = max(nrm.dot(b.xyz), 0.0);
-      bump = bump.add(b.w.mul(pow(u, uBulgeSharp)));
-      grad = grad.add(b.xyz.sub(nrm.mul(u)).mul(b.w.mul(uBulgeSharp).mul(pow(u, uBulgeSharp.sub(1)))));
-    }
-    return { nrm, bump, grad: grad.div(SHELL_R) };
-  };
-
-  const v = buildBump();
-  shellMat.positionNode = positionGeometry.add(v.nrm.mul(v.bump));
-
-  const f = buildBump();
-  const normalTex = await new THREE.TextureLoader().loadAsync(ASSET + '/normal.webp');
-  normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
-  const tN = texture(normalTex, uv().mul(2)).xyz.mul(2).sub(1);
-  const T = normalize(cross(vec3(0, 1, 0), f.nrm).add(vec3(1e-4, 0, 0)));
-  const B = cross(f.nrm, T);
-  shellMat.normalNode = transformNormalToView(normalize(
-    f.nrm.mul(tN.z).add(T.mul(tN.x)).add(B.mul(tN.y)).sub(f.grad.mul(uDentNrm))
-  ));
-  const ao = exp(f.bump.mul(uDentAO).negate());
-  shellMat.colorNode = vec3(ao);
-  shellMat.aoNode = ao;
-
-  const scanCanvas = document.createElement('canvas');
-  scanCanvas.width = 4; scanCanvas.height = 1024;
-  const sg = scanCanvas.getContext('2d');
-  sg.fillStyle = '#000'; sg.fillRect(0, 0, 4, 1024);
-  for (let i = 0; i < 22; i++) {
-    const y = Math.random() * 1024, h = 1 + Math.random() * 3, a = 0.35 + Math.random() * 0.65;
-    sg.fillStyle = `rgba(255,255,255,${a})`;
-    sg.fillRect(0, y, 4, h); sg.fillRect(0, y - 1024, 4, h); sg.fillRect(0, y + 1024, 4, h);
+  // area visibile a profondità CAM_Z, per distribuire e far "rinascere" le bolle sempre
+  // dentro (o appena fuori) dallo schermo, qualunque sia la finestra
+  function visibleSize(depth) {
+    const vFov = (camera.fov * Math.PI) / 180;
+    const h = 2 * Math.tan(vFov / 2) * depth;
+    return { w: h * camera.aspect, h };
   }
-  const scanTex = new THREE.CanvasTexture(scanCanvas);
-  scanTex.wrapS = scanTex.wrapT = THREE.RepeatWrapping;
-  scanTex.colorSpace = THREE.SRGBColorSpace;
-  shellMat.emissiveNode = vec3(texture(scanTex, uv().add(vec2(0, uScan))).r).mul(prm.scanInt);
+  let { w: viewW, h: viewH } = visibleSize(CAM_Z);
+  let boundX = viewW * 0.42;
+  let boundY = viewH * 0.42;
+  let riseSpan = viewH + 5; // il "giro" avviene sempre fuori dallo schermo, mai visto
 
-  const roughTex = await new THREE.TextureLoader().loadAsync(ASSET + '/rough.jpg');
-  roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
-  shellMat.roughnessNode = texture(roughTex, uv()).r.mul(prm.roughness).mul(2);
-
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(SHELL_R, 96, 96), shellMat);
-  scene.add(shell);
-
-  // ── gocce (una per voce di menu) ──
-  const blobMat = new THREE.MeshPhysicalMaterial({
-    roughness: prm.blobRough, metalness: 0, clearcoat: prm.blobCoat,
-    clearcoatRoughness: 0.25, envMapIntensity: 0.55,
-  });
-  const blobGeo = new THREE.SphereGeometry(1, 32, 32);
-  const blobs = new THREE.InstancedMesh(blobGeo, blobMat, N_BLOBS);
-  blobs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  scene.add(blobs);
-
-  const P = new Float32Array(N_BLOBS * 3);
-  const Pp = new Float32Array(N_BLOBS * 3);
-  const V = new Float32Array(N_BLOBS * 3);
-  const R = new Float32Array(N_BLOBS);
-  const touch = new Uint8Array(N_BLOBS);
-  const wallPrev = new Uint8Array(N_BLOBS);
-  const rushCd = new Float32Array(N_BLOBS);
-  const rushPow = new Float32Array(N_BLOBS);
-  const restT = new Float32Array(N_BLOBS);
-
-  const bulgeA = new Float32Array(N_BULGE);
-  const bulgeAge = new Float32Array(N_BULGE);
-  const _bq = new THREE.Quaternion();
-  const _bv = new THREE.Vector3();
-  function spawnBulge(nx, ny, nz, amp) {
-    _bv.set(nx, ny, nz).applyQuaternion(_bq.copy(shell.quaternion).invert());
-    nx = _bv.x; ny = _bv.y; nz = _bv.z;
-    let k = 0, best = Infinity;
-    for (let s = 0; s < N_BULGE; s++) {
-      const cur = bulgeA[s] * Math.exp(-bulgeAge[s] * prm.bulgeRel);
-      if (cur < best) { best = cur; k = s; }
-    }
-    bulgeVecs[k].set(nx, ny, nz, 0);
-    bulgeA[k] = amp; bulgeAge[k] = 0;
-  }
-  function updateBulges(dt) {
-    for (let k = 0; k < N_BULGE; k++) {
-      bulgeAge[k] += dt;
-      bulgeVecs[k].w = bulgeA[k] * (1 - Math.exp(-bulgeAge[k] * 18)) * Math.exp(-bulgeAge[k] * prm.bulgeRel);
-    }
-  }
-
-  const _c = new THREE.Color();
-  const _m = new THREE.Matrix4();
-  const labelSprites = [];
+  let normalTex = null, roughTex = null;
+  try {
+    normalTex = await new THREE.TextureLoader().loadAsync(ASSET + '/normal.webp');
+    normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+    roughTex = await new THREE.TextureLoader().loadAsync(ASSET + '/rough.jpg');
+    roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+  } catch (e) { /* bolle senza dettaglio superficiale, va bene lo stesso */ }
 
   function makeLabelSprite(text, colorCss) {
     const c = document.createElement('canvas');
@@ -229,132 +128,55 @@ async function init() {
     return spr;
   }
 
-  function seed() {
-    for (let i = 0; i < N_BLOBS; i++) {
-      R[i] = N_BLOBS <= 1 ? 0.32 : 0.16 + Math.random() * 0.13;
-      const a = Math.random() * Math.PI * 2;
-      const rr = Math.sqrt(Math.random()) * 0.55;
-      P[i * 3 + 0] = Math.cos(a) * rr;
-      P[i * 3 + 1] = 0.2 + Math.random() * 0.85;
-      P[i * 3 + 2] = Math.sin(a) * rr;
-      V[i * 3] = V[i * 3 + 1] = V[i * 3 + 2] = 0;
-      restT[i] = 0;
-      const item = navItems[i];
-      _c.set(item ? item.color : '#1f7cff');
-      blobs.setColorAt(i, _c);
-      _m.makeScale(R[i], R[i], R[i]);
-      _m.setPosition(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
-      blobs.setMatrixAt(i, _m);
-      if (item && !labelSprites[i]) {
-        const spr = makeLabelSprite(item.label, item.color);
-        scene.add(spr);
-        labelSprites[i] = spr;
-      }
-    }
-    blobs.instanceMatrix.needsUpdate = true;
-    if (blobs.instanceColor) blobs.instanceColor.needsUpdate = true;
-  }
-  seed();
+  // ── crea una bolla di vetro reale (non istanziata: sono poche, ognuna può avere una
+  // propria tinta di vetro — attenuationColor — che è il modo fisicamente corretto di
+  // colorare del vetro trasparente senza renderlo opaco) ──
+  const bubbles = [];
+  for (let i = 0; i < N; i++) {
+    const item = navItems[i];
+    const radius = 0.42 + ((i * 37) % 5) * 0.045; // piccola varietà di dimensione, deterministica
+    const geo = new THREE.SphereGeometry(radius, 48, 48);
+    const mat = new THREE.MeshPhysicalMaterial({
+      transmission: 1.0,
+      thickness: prm.thickness,
+      ior: prm.ior,
+      roughness: prm.roughness,
+      metalness: 0,
+      iridescence: prm.iridescence,
+      iridescenceIOR: prm.iridescenceIOR,
+      iridescenceThicknessRange: [100, 320],
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: prm.envInt,
+      attenuationColor: new THREE.Color(item ? item.color : '#1f7cff'),
+      attenuationDistance: prm.attenuationDistance,
+    });
+    if (roughTex) { mat.roughnessMap = roughTex; }
+    if (normalTex) { mat.normalMap = normalTex; mat.normalScale = new THREE.Vector2(0.35, 0.35); }
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData.idx = i;
+    scene.add(mesh);
 
-  function step(dt) {
-    const damp = Math.exp(-prm.damp * dt);
-    const invDt = 1 / dt;
-    for (let i = 0; i < N_BLOBS; i++) {
-      const ix = i * 3;
-      Pp[ix] = P[ix]; Pp[ix + 1] = P[ix + 1]; Pp[ix + 2] = P[ix + 2];
-      V[ix + 1] -= prm.gravity * dt;
-      V[ix] *= damp; V[ix + 1] *= damp; V[ix + 2] *= damp;
-      P[ix] += V[ix] * dt; P[ix + 1] += V[ix + 1] * dt; P[ix + 2] += V[ix + 2] * dt;
-      touch[i] = 0;
-      if (rushCd[i] > 0) rushCd[i] -= dt;
-    }
-    for (let i = 0; i < N_BLOBS; i++) {
-      const ix = i * 3;
-      const pr = Math.hypot(P[ix], P[ix + 1], P[ix + 2]);
-      const maxR = SHELL_R - 0.04 - R[i];
-      const atWall = pr > maxR ? 1 : 0;
-      if (atWall && !wallPrev[i] && pr > 1e-5) {
-        const nx = P[ix] / pr, ny = P[ix + 1] / pr, nz = P[ix + 2] / pr;
-        const vn = V[ix] * nx + V[ix + 1] * ny + V[ix + 2] * nz;
-        if (vn > 0.45) {
-          const amp = Math.min(vn, 3.5) * prm.bulgeAmt * (0.4 + R[i] * 2.5);
-          spawnBulge(nx, ny, nz, amp);
-          playHit(i, vn, P[ix]);
-        }
-      }
-      wallPrev[i] = atWall;
-    }
-    for (let it = 0; it < 3; it++) {
-      for (let i = 0; i < N_BLOBS; i++) {
-        const ix = i * 3;
-        for (let j = i + 1; j < N_BLOBS; j++) {
-          const jx = j * 3;
-          const dx = P[ix] - P[jx], dy = P[ix + 1] - P[jx + 1], dz = P[ix + 2] - P[jx + 2];
-          const d = Math.hypot(dx, dy, dz);
-          const minD = R[i] + R[j];
-          if (d < minD && d > 1e-5) {
-            touch[i] = touch[j] = 1;
-            const mi = R[i] ** 3, mj = R[j] ** 3;
-            const wi = mj / (mi + mj), wj = mi / (mi + mj);
-            const ov = (minD - d) / d;
-            P[ix] += dx * ov * wi; P[ix + 1] += dy * ov * wi; P[ix + 2] += dz * ov * wi;
-            P[jx] -= dx * ov * wj; P[jx + 1] -= dy * ov * wj; P[jx + 2] -= dz * ov * wj;
-            if (it === 0) {
-              const vn = ((V[ix] - V[jx]) * dx + (V[ix + 1] - V[jx + 1]) * dy + (V[ix + 2] - V[jx + 2]) * dz) / d;
-              if (vn < -1.1) {
-                const pw = Math.min(-vn, 4);
-                if (rushCd[i] <= 0) { rushPow[i] = Math.max(rushPow[i], pw); rushCd[i] = 0.18; }
-                if (rushCd[j] <= 0) { rushPow[j] = Math.max(rushPow[j], pw); rushCd[j] = 0.18; }
-              }
-            }
-          }
-        }
-      }
-      for (let i = 0; i < N_BLOBS; i++) {
-        const ix = i * 3;
-        const pr = Math.hypot(P[ix], P[ix + 1], P[ix + 2]);
-        const maxR = SHELL_R - 0.04 - R[i];
-        if (pr > maxR) { touch[i] = 1; const f2 = maxR / pr; P[ix] *= f2; P[ix + 1] *= f2; P[ix + 2] *= f2; }
-      }
-    }
-    const cd = Math.exp(-prm.friction * dt);
-    for (let i = 0; i < N_BLOBS; i++) {
-      const ix = i * 3;
-      V[ix] = (P[ix] - Pp[ix]) * invDt;
-      V[ix + 1] = (P[ix + 1] - Pp[ix + 1]) * invDt;
-      V[ix + 2] = (P[ix + 2] - Pp[ix + 2]) * invDt;
-      if (touch[i]) { V[ix] *= cd; V[ix + 1] *= cd; V[ix + 2] *= cd; }
-      if (rushPow[i] > 0) {
-        const own = Math.hypot(V[ix], V[ix + 1], V[ix + 2]);
-        const spd = Math.min(Math.max(own * 0.6 + rushPow[i] * 0.55, 0.6), 4.5);
-        const ra = Math.random() * Math.PI * 2, ry = Math.random() * 1.3 - 0.3;
-        const rh = Math.sqrt(Math.max(1 - ry * ry, 0.05));
-        V[ix] = Math.cos(ra) * rh * spd; V[ix + 1] = ry * spd; V[ix + 2] = Math.sin(ra) * rh * spd;
-        rushPow[i] = 0;
-      }
-      const spd = Math.hypot(V[ix], V[ix + 1], V[ix + 2]);
-      if (spd < 0.15) restT[i] += dt; else restT[i] = 0;
-      if (restT[i] > prm.blowDelay) {
-        restT[i] = 0;
-        const bp = prm.blowPow * (0.7 + Math.random() * 0.8);
-        const ba = Math.random() * Math.PI * 2, bh = 0.2 + Math.random() * 0.55;
-        V[ix] += Math.cos(ba) * bh * bp;
-        V[ix + 1] += bp * (0.8 + Math.random() * 0.5);
-        V[ix + 2] += Math.sin(ba) * bh * bp;
-      }
-      // La goccia sotto il puntatore/dito si ingrandisce leggermente: conferma visiva
-      // immediata di quale sarà attivata, prima ancora del tocco.
-      const s = i === hoveredIdx ? R[i] * 1.18 : R[i];
-      _m.makeScale(s, s, s);
-      _m.setPosition(P[ix], P[ix + 1], P[ix + 2]);
-      blobs.setMatrixAt(i, _m);
-      const spr = labelSprites[i];
-      if (spr) spr.position.set(P[ix], P[ix + 1] + R[i] + 0.22, P[ix + 2]);
-    }
-    blobs.instanceMatrix.needsUpdate = true;
+    const label = item ? makeLabelSprite(item.label, item.color) : null;
+    if (label) scene.add(label);
+
+    const spreadX = N > 1 ? (i / (N - 1) - 0.5) * boundX * 1.7 : 0;
+    bubbles.push({
+      mesh, label, radius,
+      homeX: spreadX + (Math.random() - 0.5) * boundX * 0.25,
+      homeZ: (Math.random() - 0.5) * 1.8,
+      riseSeed: Math.random() * riseSpan,
+      riseSpeed: prm.riseSpeed * (0.75 + Math.random() * 0.5),
+      swayPhase: Math.random() * Math.PI * 2,
+      bobPhase: Math.random() * Math.PI * 2,
+      swayFreq: prm.swayFreq * (0.8 + Math.random() * 0.4),
+      drift: new THREE.Vector3(),
+      driftVel: new THREE.Vector3(),
+      pos: new THREE.Vector3(),
+    });
   }
 
-  // ── audio procedurale (spento di default, come le altre ambientazioni) ──
+  // ── audio procedurale (spento di default) ──
   const SND = { ctx: null, master: null, last: 0, voices: 0 };
   function ensureAudio() {
     if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return; }
@@ -382,12 +204,12 @@ async function init() {
   function playHit(idx, vel, x) {
     if (!prm.sndOn || !SND.ctx || SND.ctx.state !== 'running') return;
     const t = SND.ctx.currentTime;
-    if (t - SND.last < 0.05 || SND.voices > 8) return;
+    if (t - SND.last < 0.08 || SND.voices > 8) return;
     SND.last = t; SND.voices++;
     const f = PENTA[idx % PENTA.length];
     const vol = Math.min(vel / 3, 1) * 0.7;
     const p = SND.ctx.createStereoPanner();
-    p.pan.value = Math.max(-1, Math.min(1, x / 1.3)) * 0.8;
+    p.pan.value = Math.max(-1, Math.min(1, x / boundX));
     p.connect(SND.master);
     const partials = [[1.0, 1.0, 0.60], [1.5, 0.32, 0.45], [2.0, 0.28, 0.40], [3.0, 0.10, 0.25]];
     let ended = 0;
@@ -416,13 +238,54 @@ async function init() {
     });
   }
 
-  // ── interazione: due sistemi di puntamento distinti, per due scopi diversi ──
-  //  1) "sweep" per distanza dal raggio: tocco morbido, usato solo per far rimbalzare più
-  //     gocce vicine al passaggio del mouse — l'imprecisione qui è voluta, è gioco fisico.
-  //  2) raycasting geometrico reale di Three.js contro la mesh vera (stesso sistema che usa
-  //     il motore per capire cosa è "davanti" alla telecamera, non solo cosa è vicino al
-  //     raggio) — usato SOLO per capire quale goccia sta guardando l'utente e dove clicca:
-  //     risolve il problema per cui una goccia dietro un'altra veniva scelta per errore.
+  // ── posizione "base" di ogni bolla nel tempo: salita continua che si "riavvolge" sempre
+  // fuori dallo schermo (mai un salto visibile), più un dolce ondeggiare laterale/in
+  // profondità — funzione pura del tempo, quindi stabile per costruzione (niente deriva) ──
+  function basePos(b, t, out) {
+    const y = (((b.riseSeed + t * b.riseSpeed) % riseSpan) + riseSpan) % riseSpan - riseSpan / 2;
+    const x = b.homeX + Math.sin(t * b.swayFreq + b.swayPhase) * prm.swayAmp;
+    const z = b.homeZ + Math.sin(t * prm.bobFreq + b.bobPhase) * prm.bobAmp;
+    out.set(x, y, z);
+    return out;
+  }
+
+  const _base = new THREE.Vector3();
+  function step(dt, t) {
+    // molla che riporta lo scostamento da trascinamento/disturbo a zero
+    for (const b of bubbles) {
+      b.driftVel.addScaledVector(b.drift, -prm.springK * dt);
+      b.driftVel.multiplyScalar(Math.max(0, 1 - prm.springDamp * dt));
+      b.drift.addScaledVector(b.driftVel, dt);
+    }
+    // posizione grezza
+    for (const b of bubbles) {
+      basePos(b, t, _base);
+      b.pos.copy(_base).add(b.drift);
+    }
+    // repulsione morbida: se due bolle si sovrappongono troppo, le allontana un poco
+    for (let i = 0; i < bubbles.length; i++) {
+      for (let j = i + 1; j < bubbles.length; j++) {
+        const a = bubbles[i], c = bubbles[j];
+        const dx = a.pos.x - c.pos.x, dy = a.pos.y - c.pos.y, dz = a.pos.z - c.pos.z;
+        const d = Math.hypot(dx, dy, dz);
+        const minD = a.radius + c.radius + prm.repelDist;
+        if (d > 1e-4 && d < minD) {
+          const push = (minD - d) / d * 0.5;
+          a.pos.x += dx * push; a.pos.y += dy * push; a.pos.z += dz * push;
+          c.pos.x -= dx * push; c.pos.y -= dy * push; c.pos.z -= dz * push;
+        }
+      }
+    }
+    for (const b of bubbles) {
+      const isHover = b.mesh.userData.idx === hoveredIdx;
+      const s = isHover ? b.radius * 1.15 : b.radius;
+      b.mesh.position.copy(b.pos);
+      b.mesh.scale.setScalar(s / b.radius);
+      if (b.label) b.label.position.set(b.pos.x, b.pos.y + b.radius + 0.24, b.pos.z);
+    }
+  }
+
+  // ── interazione ──
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const ndcPrev = new THREE.Vector2();
@@ -430,67 +293,64 @@ async function init() {
   const camRight = new THREE.Vector3();
   const camUp = new THREE.Vector3();
   const _w = new THREE.Vector3();
-  let havePrev = false;
-  let flingDrag = false;
+  const meshList = bubbles.map((b) => b.mesh);
   let downTime = 0;
   let downIdx = -1;
   let hoveredIdx = -1;
+  let dragging = false;
 
   function toNdc(e, out) {
     out.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   }
-  function rayDist(i, o, dir) {
-    const ix = i * 3;
-    const px = P[ix] - o.x, py = P[ix + 1] - o.y, pz = P[ix + 2] - o.z;
-    const t = px * dir.x + py * dir.y + pz * dir.z;
-    const cx = px - dir.x * t, cy = py - dir.y * t, cz = pz - dir.z * t;
-    return Math.hypot(cx, cy, cz);
-  }
-  // Raycasting preciso contro la mesh reale delle gocce: Three.js intersects ogni istanza
-  // con la sua vera geometria/posizione e restituisce gli hit ordinati per distanza dalla
-  // telecamera, quindi la prima è sempre quella davanti — niente più scambi con gocce dietro.
+  // Raycasting preciso contro le vere mesh delle bolle: Three.js le ordina per distanza
+  // reale dalla telecamera, quindi quella "davanti" vince sempre — niente scambi.
   function preciseHit(pointerNdc) {
     ray.setFromCamera(pointerNdc, camera);
-    const hits = ray.intersectObject(blobs, false);
-    return hits.length ? hits[0].instanceId : -1;
-  }
-  function fling(dxN, dyN) {
-    const speed = Math.hypot(dxN, dyN);
-    if (speed < 0.0005) return;
-    ray.setFromCamera(ndc, camera);
-    camera.matrixWorld.extractBasis(camRight, camUp, _w);
-    const o = ray.ray.origin, dir = ray.ray.direction;
-    for (let i = 0; i < N_BLOBS; i++) {
-      if (rayDist(i, o, dir) < R[i] + 0.14) {
-        const ix = i * 3;
-        const k = prm.throwPow * Math.min(speed * 30, 3) / Math.max(R[i] / 0.18, 0.6);
-        const ra = Math.random() * Math.PI * 2;
-        const rmag = k * (3 + Math.random() * 10);
-        V[ix] += Math.cos(ra) * rmag + (camRight.x * dxN + camUp.x * dyN) * k * 4;
-        V[ix + 1] += k * (0.8 + Math.random() * 2.7);
-        V[ix + 2] += Math.sin(ra) * rmag + (camRight.z * dxN + camUp.z * dyN) * k * 4;
-      }
-    }
+    const hits = ray.intersectObjects(meshList, false);
+    return hits.length ? hits[0].object.userData.idx : -1;
   }
 
   renderer.domElement.addEventListener('pointerdown', (e) => {
     ensureAudio();
     toNdc(e, ndc);
     ndcPrev.copy(ndc); downNdc.copy(ndc);
-    havePrev = true;
     downTime = performance.now();
     downIdx = preciseHit(ndc);
-    hoveredIdx = downIdx; // conferma visiva immediata anche su touch (niente hover prima del tocco)
-    flingDrag = downIdx >= 0;
-    controls.enabled = !flingDrag;
+    hoveredIdx = downIdx;
+    dragging = downIdx >= 0;
   });
 
   renderer.domElement.addEventListener('pointermove', (e) => {
     toNdc(e, ndc);
-    if (!havePrev) { ndcPrev.copy(ndc); havePrev = true; }
     const dxN = ndc.x - ndcPrev.x, dyN = ndc.y - ndcPrev.y;
     ndcPrev.copy(ndc);
-    if (e.buttons === 0 || flingDrag) fling(dxN, dyN);
+
+    camera.matrixWorld.extractBasis(camRight, camUp, _w);
+    const worldDx = camRight.clone().multiplyScalar(dxN * boundX * 2);
+    const worldDy = camUp.clone().multiplyScalar(dyN * boundY * 2);
+
+    if (dragging && downIdx >= 0) {
+      // trascinare una bolla la spinge direttamente: torna in posizione da sola grazie alla molla
+      const b = bubbles[downIdx];
+      b.driftVel.addScaledVector(worldDx.add(worldDy), prm.dragPush);
+    } else if (e.buttons === 0) {
+      // passare il mouse vicino a una bolla (senza premere) la disturba appena, come "farla tintinnare"
+      const speed = Math.hypot(dxN, dyN);
+      if (speed > 0.0006) {
+        ray.setFromCamera(ndc, camera);
+        const o = ray.ray.origin, dir = ray.ray.direction;
+        for (const b of bubbles) {
+          const px = b.pos.x - o.x, py = b.pos.y - o.y, pz = b.pos.z - o.z;
+          const tt = px * dir.x + py * dir.y + pz * dir.z;
+          const cx = px - dir.x * tt, cy = py - dir.y * tt, cz = pz - dir.z * tt;
+          const d = Math.hypot(cx, cy, cz);
+          if (d < b.radius + 0.16) {
+            b.driftVel.addScaledVector(worldDx.clone().add(worldDy), prm.hoverPush);
+            playHit(b.mesh.userData.idx, speed * 20, b.pos.x);
+          }
+        }
+      }
+    }
 
     hoveredIdx = preciseHit(ndc);
     if (hoveredIdx >= 0 && navItems[hoveredIdx]) {
@@ -501,7 +361,7 @@ async function init() {
       renderer.domElement.style.cursor = 'pointer';
     } else {
       hoverLabelEl.style.display = 'none';
-      renderer.domElement.style.cursor = flingDrag ? 'grabbing' : 'grab';
+      renderer.domElement.style.cursor = dragging ? 'grabbing' : 'grab';
     }
   });
 
@@ -510,22 +370,22 @@ async function init() {
       const dt = performance.now() - downTime;
       toNdc(e, ndc);
       const moved = ndc.distanceTo(downNdc);
-      // Naviga solo se il tocco è breve, non si è mosso quasi nulla E la goccia sotto il
-      // dito/cursore al rilascio è ESATTAMENTE la stessa premuta all'inizio — un doppio
-      // controllo che evita di attivare un link diverso da quello che si vedeva.
       const upIdx = preciseHit(ndc);
+      // naviga solo se il tocco è breve, quasi fermo, e la bolla sotto al rilascio è
+      // esattamente la stessa premuta all'inizio
       if (dt < 350 && moved < 0.02 && upIdx === downIdx) {
         window.location.href = navItems[downIdx].url;
         return;
       }
     }
-    flingDrag = false;
-    controls.enabled = true;
+    dragging = false;
     downIdx = -1;
-    hoveredIdx = -1;
   }
   renderer.domElement.addEventListener('pointerup', endGesture);
-  renderer.domElement.addEventListener('pointercancel', () => { flingDrag = false; controls.enabled = true; downIdx = -1; hoveredIdx = -1; });
+  renderer.domElement.addEventListener('pointercancel', () => { dragging = false; downIdx = -1; });
+  renderer.domElement.addEventListener('pointerleave', () => {
+    if (!dragging) { hoveredIdx = -1; hoverLabelEl.style.display = 'none'; }
+  });
 
   // ── post-processing ──
   const pipeline = new THREE.RenderPipeline(renderer);
@@ -538,19 +398,18 @@ async function init() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    const size = visibleSize(CAM_Z);
+    viewW = size.w; viewH = size.h;
+    boundX = viewW * 0.42; boundY = viewH * 0.42;
+    riseSpan = viewH + 5;
   });
 
   const timer = new THREE.Timer();
   let firstFrame = true;
   renderer.setAnimationLoop(() => {
     timer.update();
-    const rdt = Math.min(timer.getDelta(), 1 / 30);
-    const dt = rdt * prm.simSpeed;
-    if (dt > 0) { step(dt); updateBulges(dt); }
-    shell.rotation.y += prm.rotY * rdt;
-    shell.rotation.x += prm.rotX * rdt;
-    uScan.value = (uScan.value + prm.scanSpeed * dt) % 1;
-    controls.update();
+    const dt = Math.min(timer.getDelta(), 1 / 30);
+    step(dt, timer.elapsed);
     pipeline.render();
     if (firstFrame) { firstFrame = false; if (loaderEl) loaderEl.classList.add('hidden'); }
   });
