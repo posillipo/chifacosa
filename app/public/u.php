@@ -56,6 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rate_
 $uid = $artist['id'];
 $hiddenNavKeys = getHiddenNavKeys((int) $uid);
 
+// Tema "Giardino Anomalo": sostituisce l'intera Home con una scena 3D a sé — non tocca il
+// resto del layout né le altre pagine del profilo, che restano quelle normali.
+if (($artist['page_theme'] ?? 'colorful') === 'garden-anomaly') {
+    $hasMenu = menuHasItems((int) $uid);
+    $navBlobs = buildGardenAnomalyNavBlobs($artist, $slug, $hiddenNavKeys, $hasMenu);
+    echo renderGardenAnomalyScene($artist, $slug, $navBlobs);
+    exit;
+}
+
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
 $links->execute([$uid]);
 $links = $links->fetchAll();

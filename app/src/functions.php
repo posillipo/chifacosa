@@ -554,6 +554,7 @@ const PAGE_THEMES = [
     'napoli' => ['label' => 'Forza Napoli', 'description' => 'Cielo azzurro sul golfo con il Vesuvio all\'orizzonte, sole che ruota dietro l\'avatar, coriandoli azzurro/oro che salgono dal basso', 'body_class' => 'napoli-page'],
     'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
+    'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -620,6 +621,212 @@ function renderGalacticBackground(): string {
     return '<div id="galactic-bg"></div>
     <button type="button" id="galactic-sound-toggle" class="floating-btn" style="bottom:130px;" title="Attiva i suoni" aria-pressed="false"></button>
     <script src="' . assetUrl('/assets/js/galactic-fx.js') . '"></script>';
+}
+
+// Voci di navigazione trasformate in "protuberanze" cliccabili nella scena 3D del tema
+// "Giardino Anomalo" — stessa logica/ordine di publicNav() (spotify/podcast/video solo se
+// band/label e collegati, eventi solo se band/label, menu solo se ci sono piatti attivi),
+// ma esclude Home (è la scena stessa) e Segui (resta un pulsante fisso separato in overlay,
+// non una pagina a sé). A ogni voce viene assegnato un colore distinto (tonalità distribuite
+// sulla ruota cromatica) così le gocce nella sfera sono visivamente distinguibili.
+function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu): array {
+    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+
+    $items = [];
+    $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
+    if (!empty($artist['spotify_artist_id']) && $isBandOrLabel) {
+        $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
+    }
+    if (!empty($artist['spotify_show_id']) && $isBandOrLabel) {
+        $items['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
+    }
+    if (!empty($artist['youtube_channel_id']) && $isBandOrLabel) {
+        $items['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
+    }
+    $items['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
+    $items['brani'] = ['label' => 'Brani', 'url' => '/' . $slug . '/brani'];
+    if ($hasMenu) {
+        $items['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu'];
+    }
+    if ($isBandOrLabel) {
+        $items['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
+    }
+    $items['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+
+    $visible = array_filter($items, fn ($k) => !in_array($k, $hiddenNavKeys, true), ARRAY_FILTER_USE_KEY);
+    $n = max(count($visible), 1);
+
+    $blobs = [];
+    $i = 0;
+    foreach ($visible as $key => $item) {
+        $hue = (int) round(($i / $n) * 300);
+        $blobs[] = [
+            'key' => $key,
+            'label' => $item['label'],
+            'url' => $item['url'],
+            'color' => 'hsl(' . $hue . ',72%,58%)',
+        ];
+        $i++;
+    }
+    return $blobs;
+}
+
+// Tema grafico "Giardino Anomalo": sostituisce interamente la Home pubblica con una scena 3D
+// WebGPU/TSL (sfera di vetro con gocce fisiche che tintinnano al tocco) — adattamento
+// dell'esperimento creativo open-source "Garden Anomaly". Le gocce sono le voci del menu di
+// navigazione del profilo: toccarle porta alla vera pagina (Timeline, Blog, ecc.), non genera
+// contenuto dentro la scena — così la SEO e la condivisione social di quelle pagine restano
+// intatte. Tema completamente autonomo: solo il body diverso, nessun'altra pagina o tema è
+// toccato. Richiede WebGPU; su browser senza supporto la pagina mostra un elenco di link
+// (nessun fallback grafico previsto, per scelta).
+function renderGardenAnomalyScene(array $artist, string $slug, array $navBlobs): string {
+    $pageUrl = siteUrl('/' . $slug);
+    $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
+    $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di ' . $artist['display_name'] . ' su ' . siteName());
+    $accent = $artist['theme_color'] ?: '#1f7cff';
+    $base = '/assets/themes/garden-anomaly';
+
+    $viewerId = $_SESSION['user_id'] ?? null;
+    $uid = (int) $artist['id'];
+    $isOwnProfile = $viewerId && (int) $viewerId === $uid;
+    $alreadyFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
+    $followerCount = getFollowerCount($uid);
+
+    $navData = json_encode(array_map(static function (array $b): array {
+        return ['label' => $b['label'], 'url' => $b['url'], 'color' => $b['color']];
+    }, array_values($navBlobs)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    $fallbackLinks = '';
+    foreach ($navBlobs as $b) {
+        $fallbackLinks .= '<a href="' . e($b['url']) . '">' . e($b['label']) . '</a>';
+    }
+
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<link rel="alternate" type="application/rss+xml" title="<?= e($artist['display_name']) ?> — <?= e(siteName()) ?>" href="<?= e(siteUrl('/' . $slug . '/feed')) ?>">
+<?= embedPrivacyScript() ?>
+<?= embedTrackingHead() ?>
+<?= embedGoogleAnalytics() ?>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100vh; overflow:hidden; background:linear-gradient(160deg,#eef1f5,#c9d2de); color:#fff; -webkit-font-smoothing:antialiased; }
+body.garden-anomaly-page { display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', system-ui, sans-serif; }
+@font-face { font-family:'Space Grotesk'; src:url('<?= assetUrl($base . '/fonts/SpaceGrotesk-SemiBold.ttf') ?>') format('truetype'); font-weight:600; }
+@font-face { font-family:'Space Grotesk'; src:url('<?= assetUrl($base . '/fonts/SpaceGrotesk-Regular.ttf') ?>') format('truetype'); font-weight:400; }
+canvas#ga-canvas { display:block; cursor:grab; touch-action:none; position:fixed; inset:0; width:100%; height:100%; }
+canvas#ga-canvas:active { cursor:grabbing; }
+#ga-vignette { pointer-events:none; position:fixed; inset:0; box-shadow:inset 0 0 90px rgba(0,0,0,0.28); z-index:98; }
+#ga-loader { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:900; pointer-events:none; transition:opacity .5s ease; background:linear-gradient(160deg,#eef1f5,#c9d2de); }
+#ga-loader.hidden { opacity:0; }
+.ga-spinner { width:36px; height:36px; border:3px solid rgba(30,30,40,0.2); border-top-color:<?= e($accent) ?>; border-radius:50%; animation:ga-spin .8s linear infinite; }
+@keyframes ga-spin { to { transform:rotate(360deg); } }
+.ga-loading-text { font:400 13px 'Space Grotesk', sans-serif; color:#4a4a55; letter-spacing:.08em; }
+#ga-title-block { position:fixed; top:26px; left:26px; z-index:200; max-width:min(280px, 60vw); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+#ga-title-block img { width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.85); box-shadow:0 4px 14px rgba(0,0,0,0.25); margin-bottom:6px; }
+#ga-title-eyebrow { font:400 12px/1 'Space Grotesk', sans-serif; text-transform:uppercase; letter-spacing:.1em; color:#2a2a35; text-shadow:0 1px 4px rgba(255,255,255,0.6); }
+#ga-title-headline { font:600 24px/1.15 'Space Grotesk', sans-serif; color:#14141c; text-shadow:0 1px 6px rgba(255,255,255,0.5); }
+#ga-hint { position:fixed; bottom:70px; left:26px; z-index:200; font:400 12px/1.5 'Space Grotesk', sans-serif; color:#3a3a45; max-width:220px; text-shadow:0 1px 4px rgba(255,255,255,0.6); }
+#ga-hover-label { position:fixed; z-index:250; transform:translate(-50%,-100%); background:rgba(20,20,28,0.85); color:#fff; font:600 13px 'Space Grotesk', sans-serif; padding:5px 12px; border-radius:999px; pointer-events:none; display:none; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+#ga-follow { position:fixed; top:26px; right:26px; z-index:200; }
+#ga-follow button, #ga-follow .ga-pill { font:600 13px 'Space Grotesk', sans-serif; border:none; border-radius:999px; padding:9px 18px; cursor:pointer; background:<?= e($accent) ?>; color:#fff; box-shadow:0 4px 14px rgba(0,0,0,0.2); }
+#ga-sound-toggle { position:fixed; bottom:26px; right:26px; z-index:200; width:42px; height:42px; border-radius:50%; border:none; background:rgba(20,20,28,0.55); color:#fff; font-size:16px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+#ga-sound-toggle[aria-pressed="true"] { background:<?= e($accent) ?>; }
+#ga-footer { position:fixed; bottom:14px; left:0; right:0; z-index:150; display:flex; justify-content:center; gap:14px; font:400 11px 'Space Grotesk', sans-serif; color:#3a3a45; }
+#ga-footer a { color:inherit; text-decoration:none; opacity:.75; }
+#ga-footer a:hover { opacity:1; }
+#ga-fallback { position:fixed; inset:0; z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:linear-gradient(160deg,#eef1f5,#c9d2de); }
+#ga-fallback.show { display:flex; }
+#ga-fallback h1 { font:600 22px 'Space Grotesk', sans-serif; color:#14141c; }
+#ga-fallback p { font:400 13px 'Space Grotesk', sans-serif; color:#4a4a55; max-width:280px; }
+#ga-fallback a { display:block; margin:4px 0; padding:10px 20px; border-radius:999px; background:#fff; color:#14141c; text-decoration:none; font:600 13px 'Space Grotesk', sans-serif; box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+@media (max-width:640px) {
+  #ga-title-block img { width:44px; height:44px; }
+  #ga-title-headline { font-size:19px; }
+  #ga-hint { display:none; }
+}
+</style>
+</head>
+<body class="garden-anomaly-page">
+<?= embedTrackingBodyStart() ?>
+<div id="ga-vignette"></div>
+<div id="ga-title-block">
+  <?php if (!empty($artist['avatar_path'])): ?><img src="/<?= e($artist['avatar_path']) ?>" alt="<?= e($artist['display_name']) ?>"><?php endif; ?>
+  <span id="ga-title-eyebrow">@<?= e($slug) ?></span>
+  <span id="ga-title-headline"><?= e($artist['display_name']) ?></span>
+</div>
+<p id="ga-hint">Tocca le gocce nella sfera per esplorare, trascina per ruotarla.</p>
+<div id="ga-hover-label"></div>
+
+<div id="ga-follow">
+<?php if (!$isOwnProfile): ?>
+  <?php if ($viewerId): ?>
+    <form method="post" action="/follow_account.php">
+      <?= csrfField() ?>
+      <input type="hidden" name="user_id" value="<?= $uid ?>">
+      <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
+      <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+      <button type="submit" class="ga-pill"><?= $alreadyFollowing ? '✓ Segui già' : '✨ Segui' ?></button>
+    </form>
+  <?php else: ?>
+    <details>
+      <summary class="ga-pill" style="display:inline-block;">✨ Segui</summary>
+    </details>
+  <?php endif; ?>
+<?php endif; ?>
+</div>
+
+<button type="button" id="ga-sound-toggle" title="Attiva i suoni" aria-pressed="false">🔈</button>
+
+<div id="ga-footer">
+  <a href="#" class="cky-banner-element">Preferenze Cookie</a>
+  <?php if ($viewerId): ?><a href="/dashboard_profile.php">Dashboard</a><?php else: ?><a href="/"><?= e(siteName()) ?></a><?php endif; ?>
+</div>
+
+<div id="ga-loader"><div class="ga-spinner"></div><div class="ga-loading-text">caricamento…</div></div>
+
+<div id="ga-fallback">
+  <h1><?= e($artist['display_name']) ?></h1>
+  <p>Questo profilo usa un tema 3D che richiede un browser più recente (con supporto WebGPU). Ecco i link diretti:</p>
+  <?= $fallbackLinks ?>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+} }
+</script>
+<script>
+window.__GA_DATA__ = {
+  navItems: <?= $navData ?>,
+  assetBase: <?= json_encode($base, JSON_UNESCAPED_SLASHES) ?>,
+  accent: <?= json_encode($accent) ?>
+};
+</script>
+<script type="module" src="<?= assetUrl($base . '/scene.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla
