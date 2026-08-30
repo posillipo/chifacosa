@@ -263,11 +263,10 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;background:linear-gradient(90deg,#2a0a3f,#a13fd6);border:1px solid #e39bff;border-radius:8px;height:10px;"></div>
               </div>
             <?php elseif ($key === 'garden-anomaly'): ?>
-              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;height:72px;">
-                <span style="position:absolute;left:18%;top:38%;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(255,140,140,0.35) 60%, rgba(200,80,80,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 8px rgba(220,120,120,0.5);"></span>
-                <span style="position:absolute;left:52%;top:14%;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(140,200,255,0.35) 60%, rgba(80,150,200,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 8px rgba(120,170,220,0.5);"></span>
-                <span style="position:absolute;left:70%;top:48%;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(160,255,180,0.35) 60%, rgba(90,200,120,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 8px rgba(130,220,150,0.5);"></span>
-                <span style="position:absolute;left:38%;top:62%;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(255,220,140,0.35) 60%, rgba(210,170,80,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 8px rgba(220,190,120,0.5);"></span>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;margin:0 auto 8px;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(150,190,230,0.35) 60%, rgba(100,140,190,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 10px rgba(120,160,220,0.5), inset 0 0 8px rgba(255,255,255,0.6);"></div>
+                <div style="position:relative;background:#1f7cff;border-radius:999px;height:8px;width:8px;margin:0 auto 4px;"></div>
+                <div style="position:relative;background:rgba(120,160,220,0.5);border-radius:999px;height:10px;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>

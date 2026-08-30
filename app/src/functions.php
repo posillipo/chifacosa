@@ -554,7 +554,7 @@ const PAGE_THEMES = [
     'napoli' => ['label' => 'Forza Napoli', 'description' => 'Cielo azzurro sul golfo con il Vesuvio all\'orizzonte, sole che ruota dietro l\'avatar, coriandoli azzurro/oro che salgono dal basso', 'body_class' => 'napoli-page'],
     'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
-    'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Bolle di vetro 3D che fluttuano libere sullo schermo, ognuna di un colore diverso e con dentro tintinnii — ogni bolla è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Solo su computer (Chrome/Edge aggiornati); da smartphone e tablet, per garantire affidabilità, la pagina mostra sempre un semplice elenco di link al posto della scena 3D', 'body_class' => 'garden-anomaly-page'],
+    'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -623,12 +623,12 @@ function renderGalacticBackground(): string {
     <script src="' . assetUrl('/assets/js/galactic-fx.js') . '"></script>';
 }
 
-// Voci di navigazione trasformate in bolle di vetro fluttuanti e cliccabili nella scena 3D
-// del tema "Giardino Anomalo" — stessa logica/ordine di publicNav() (spotify/podcast/video
-// solo se band/label e collegati, eventi solo se band/label, menu solo se ci sono piatti
-// attivi), ma esclude Home (è la scena stessa) e Segui (resta un pulsante fisso separato in
-// overlay, non una pagina a sé). A ogni voce viene assegnato un colore distinto (tonalità
-// distribuite sulla ruota cromatica) così le bolle sono visivamente distinguibili.
+// Voci di navigazione trasformate in "protuberanze" cliccabili nella scena 3D del tema
+// "Giardino Anomalo" — stessa logica/ordine di publicNav() (spotify/podcast/video solo se
+// band/label e collegati, eventi solo se band/label, menu solo se ci sono piatti attivi),
+// ma esclude Home (è la scena stessa) e Segui (resta un pulsante fisso separato in overlay,
+// non una pagina a sé). A ogni voce viene assegnato un colore distinto (tonalità distribuite
+// sulla ruota cromatica) così le gocce nella sfera sono visivamente distinguibili.
 function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu): array {
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
 
@@ -672,15 +672,13 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
 }
 
 // Tema grafico "Giardino Anomalo": sostituisce interamente la Home pubblica con una scena 3D
-// WebGPU (bolle di vetro colorate che fluttuano libere e tintinnano al tocco) — adattamento
-// dell'esperimento creativo open-source "Garden Anomaly". Ogni bolla è una voce del menu di
-// navigazione del profilo: toccarla porta alla vera pagina (Timeline, Blog, ecc.), non genera
+// WebGPU/TSL (sfera di vetro con gocce fisiche che tintinnano al tocco) — adattamento
+// dell'esperimento creativo open-source "Garden Anomaly". Le gocce sono le voci del menu di
+// navigazione del profilo: toccarle porta alla vera pagina (Timeline, Blog, ecc.), non genera
 // contenuto dentro la scena — così la SEO e la condivisione social di quelle pagine restano
 // intatte. Tema completamente autonomo: solo il body diverso, nessun'altra pagina o tema è
-// toccato. Richiede WebGPU: attivo solo su desktop; su mobile (dove WebGPU è ancora instabile
-// su molti dispositivi) e su browser senza supporto la pagina mostra sempre un elenco di link
-// (nessun fallback grafico previsto, per scelta — la decisione se attivare WebGPU è in
-// scene.js lato client, qui arriva comunque l'HTML completo con entrambi gli stati pronti).
+// toccato. Richiede WebGPU; su browser senza supporto la pagina mostra un elenco di link
+// (nessun fallback grafico previsto, per scelta).
 function renderGardenAnomalyScene(array $artist, string $slug, array $navBlobs): string {
     $pageUrl = siteUrl('/' . $slug);
     $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
@@ -773,7 +771,7 @@ canvas#ga-canvas:active { cursor:grabbing; }
   <span id="ga-title-eyebrow">@<?= e($slug) ?></span>
   <span id="ga-title-headline"><?= e($artist['display_name']) ?></span>
 </div>
-<p id="ga-hint">Tocca una bolla per andare alla pagina, trascinala per farla danzare via.</p>
+<p id="ga-hint">Tocca le gocce nella sfera per esplorare, trascina per ruotarla.</p>
 <div id="ga-hover-label"></div>
 
 <div id="ga-follow">
@@ -805,7 +803,7 @@ canvas#ga-canvas:active { cursor:grabbing; }
 
 <div id="ga-fallback">
   <h1><?= e($artist['display_name']) ?></h1>
-  <p>Questo profilo usa un tema 3D disponibile solo su computer. Ecco i link diretti:</p>
+  <p>Questo profilo usa un tema 3D che richiede un browser più recente (con supporto WebGPU). Ecco i link diretti:</p>
   <?= $fallbackLinks ?>
 </div>
 
