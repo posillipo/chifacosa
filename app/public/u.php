@@ -65,15 +65,6 @@ if (($artist['page_theme'] ?? 'colorful') === 'garden-anomaly') {
     exit;
 }
 
-// Tema "Disco Retrò": stesso principio — sostituisce solo la Home, il resto del profilo resta
-// invariato. Riusa buildGardenAnomalyNavBlobs() perché la logica delle voci di menu è identica.
-if (($artist['page_theme'] ?? 'colorful') === 'retro-disc') {
-    $hasMenu = menuHasItems((int) $uid);
-    $navItemsRd = buildGardenAnomalyNavBlobs($artist, $slug, $hiddenNavKeys, $hasMenu);
-    echo renderRetroDiscScene($artist, $slug, $navItemsRd);
-    exit;
-}
-
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
 $links->execute([$uid]);
 $links = $links->fetchAll();

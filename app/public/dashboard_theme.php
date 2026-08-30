@@ -59,7 +59,6 @@ $themePickerBackgrounds = [
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'garden-anomaly' => 'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.55), transparent 60%), linear-gradient(160deg,#eef1f5,#c9d2de)',
-    'retro-disc' => 'radial-gradient(circle at 50% 15%, rgba(255,255,255,0.18), transparent 45%), linear-gradient(160deg, #4b2fd6 0%, #7b3ce0 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -268,12 +267,6 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;margin:0 auto 8px;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(150,190,230,0.35) 60%, rgba(100,140,190,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 10px rgba(120,160,220,0.5), inset 0 0 8px rgba(255,255,255,0.6);"></div>
                 <div style="position:relative;background:#1f7cff;border-radius:999px;height:8px;width:8px;margin:0 auto 4px;"></div>
                 <div style="position:relative;background:rgba(120,160,220,0.5);border-radius:999px;height:10px;"></div>
-              </div>
-            <?php elseif ($key === 'retro-disc'): ?>
-              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
-                <div style="position:relative;width:34px;height:34px;border-radius:50%;margin:0 auto 8px;background:conic-gradient(from 0deg,#fff,#9be7ff,#ffd6f0,#d8ffea,#fff);box-shadow:0 0 10px rgba(255,255,255,0.5);"></div>
-                <div style="position:relative;background:#fff;border-radius:2px;height:9px;width:38px;margin:0 auto 4px;font:900 8px/9px Arial, sans-serif;text-align:center;color:#4b2fd6;letter-spacing:.05em;">DISCO</div>
-                <div style="position:relative;background:rgba(255,255,255,0.35);border-radius:999px;height:8px;width:60%;margin:0 auto;"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
