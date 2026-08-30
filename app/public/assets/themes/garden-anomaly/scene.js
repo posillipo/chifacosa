@@ -406,11 +406,24 @@ async function init() {
 
   const timer = new THREE.Timer();
   let firstFrame = true;
+  // Rete di sicurezza: se qualcosa va storto dentro il ciclo di rendering (un errore lì non
+  // viene mai intercettato da fuori, a differenza degli errori in fase di avvio), la pagina
+  // non deve restare bloccata sul caricamento — mostriamo l'elenco di link invece.
+  const watchdog = setTimeout(() => { if (firstFrame) showFallback(); }, 7000);
   renderer.setAnimationLoop(() => {
-    timer.update();
-    const dt = Math.min(timer.getDelta(), 1 / 30);
-    step(dt, timer.elapsed);
-    pipeline.render();
-    if (firstFrame) { firstFrame = false; if (loaderEl) loaderEl.classList.add('hidden'); }
+    try {
+      timer.update();
+      const dt = Math.min(timer.getDelta(), 1 / 30);
+      step(dt, timer.elapsed);
+      pipeline.render();
+      if (firstFrame) {
+        firstFrame = false;
+        clearTimeout(watchdog);
+        if (loaderEl) loaderEl.classList.add('hidden');
+      }
+    } catch (err) {
+      renderer.setAnimationLoop(null);
+      showFallback();
+    }
   });
 }
