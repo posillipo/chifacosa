@@ -41,7 +41,9 @@ async function init() {
     attColor: '#0033ff', attDist: 8.40, dentAO: 3.20, dentNrm: 1.96,
     scanInt: 0.45, scanSpeed: 0.18, rotY: 0.10, rotX: 0.04,
     blobRough: 0.30, blobCoat: 0.35,
-    blowPow: 5.22, blowDelay: 0.6,
+    // Gocce poche e "importanti" (sono link, non sabbia): devono restare ferme abbastanza
+    // a lungo da poter essere lette e toccate con precisione — molto più calme dell'originale.
+    blowPow: 2.6, blowDelay: 2.6,
     sndOn: false, sndVol: 0.12,
     bloomStrength: 0.02, bloomRadius: 0.0, bloomThreshold: 0.76, exposure: 0.85,
   };
@@ -340,7 +342,10 @@ async function init() {
         V[ix + 1] += bp * (0.8 + Math.random() * 0.5);
         V[ix + 2] += Math.sin(ba) * bh * bp;
       }
-      _m.makeScale(R[i], R[i], R[i]);
+      // La goccia sotto il puntatore/dito si ingrandisce leggermente: conferma visiva
+      // immediata di quale sarà attivata, prima ancora del tocco.
+      const s = i === hoveredIdx ? R[i] * 1.18 : R[i];
+      _m.makeScale(s, s, s);
       _m.setPosition(P[ix], P[ix + 1], P[ix + 2]);
       blobs.setMatrixAt(i, _m);
       const spr = labelSprites[i];
@@ -411,7 +416,13 @@ async function init() {
     });
   }
 
-  // ── interazione: hover/trascina per far rimbalzare, tocco breve per navigare ──
+  // ── interazione: due sistemi di puntamento distinti, per due scopi diversi ──
+  //  1) "sweep" per distanza dal raggio: tocco morbido, usato solo per far rimbalzare più
+  //     gocce vicine al passaggio del mouse — l'imprecisione qui è voluta, è gioco fisico.
+  //  2) raycasting geometrico reale di Three.js contro la mesh vera (stesso sistema che usa
+  //     il motore per capire cosa è "davanti" alla telecamera, non solo cosa è vicino al
+  //     raggio) — usato SOLO per capire quale goccia sta guardando l'utente e dove clicca:
+  //     risolve il problema per cui una goccia dietro un'altra veniva scelta per errore.
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const ndcPrev = new THREE.Vector2();
@@ -423,6 +434,7 @@ async function init() {
   let flingDrag = false;
   let downTime = 0;
   let downIdx = -1;
+  let hoveredIdx = -1;
 
   function toNdc(e, out) {
     out.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
@@ -434,15 +446,13 @@ async function init() {
     const cx = px - dir.x * t, cy = py - dir.y * t, cz = pz - dir.z * t;
     return Math.hypot(cx, cy, cz);
   }
-  function hitTest(pointerNdc) {
+  // Raycasting preciso contro la mesh reale delle gocce: Three.js intersects ogni istanza
+  // con la sua vera geometria/posizione e restituisce gli hit ordinati per distanza dalla
+  // telecamera, quindi la prima è sempre quella davanti — niente più scambi con gocce dietro.
+  function preciseHit(pointerNdc) {
     ray.setFromCamera(pointerNdc, camera);
-    const o = ray.ray.origin, dir = ray.ray.direction;
-    let best = -1, bestD = Infinity;
-    for (let i = 0; i < N_BLOBS; i++) {
-      const d = rayDist(i, o, dir);
-      if (d < R[i] + 0.14 && d < bestD) { bestD = d; best = i; }
-    }
-    return best;
+    const hits = ray.intersectObject(blobs, false);
+    return hits.length ? hits[0].instanceId : -1;
   }
   function fling(dxN, dyN) {
     const speed = Math.hypot(dxN, dyN);
@@ -469,7 +479,8 @@ async function init() {
     ndcPrev.copy(ndc); downNdc.copy(ndc);
     havePrev = true;
     downTime = performance.now();
-    downIdx = hitTest(ndc);
+    downIdx = preciseHit(ndc);
+    hoveredIdx = downIdx; // conferma visiva immediata anche su touch (niente hover prima del tocco)
     flingDrag = downIdx >= 0;
     controls.enabled = !flingDrag;
   });
@@ -481,9 +492,9 @@ async function init() {
     ndcPrev.copy(ndc);
     if (e.buttons === 0 || flingDrag) fling(dxN, dyN);
 
-    const hover = hitTest(ndc);
-    if (hover >= 0 && navItems[hover]) {
-      hoverLabelEl.textContent = navItems[hover].label;
+    hoveredIdx = preciseHit(ndc);
+    if (hoveredIdx >= 0 && navItems[hoveredIdx]) {
+      hoverLabelEl.textContent = navItems[hoveredIdx].label;
       hoverLabelEl.style.left = e.clientX + 'px';
       hoverLabelEl.style.top = (e.clientY - 30) + 'px';
       hoverLabelEl.style.display = 'block';
@@ -499,7 +510,11 @@ async function init() {
       const dt = performance.now() - downTime;
       toNdc(e, ndc);
       const moved = ndc.distanceTo(downNdc);
-      if (dt < 350 && moved < 0.02) {
+      // Naviga solo se il tocco è breve, non si è mosso quasi nulla E la goccia sotto il
+      // dito/cursore al rilascio è ESATTAMENTE la stessa premuta all'inizio — un doppio
+      // controllo che evita di attivare un link diverso da quello che si vedeva.
+      const upIdx = preciseHit(ndc);
+      if (dt < 350 && moved < 0.02 && upIdx === downIdx) {
         window.location.href = navItems[downIdx].url;
         return;
       }
@@ -507,9 +522,10 @@ async function init() {
     flingDrag = false;
     controls.enabled = true;
     downIdx = -1;
+    hoveredIdx = -1;
   }
   renderer.domElement.addEventListener('pointerup', endGesture);
-  renderer.domElement.addEventListener('pointercancel', () => { flingDrag = false; controls.enabled = true; downIdx = -1; });
+  renderer.domElement.addEventListener('pointercancel', () => { flingDrag = false; controls.enabled = true; downIdx = -1; hoveredIdx = -1; });
 
   // ── post-processing ──
   const pipeline = new THREE.RenderPipeline(renderer);
