@@ -555,6 +555,7 @@ const PAGE_THEMES = [
     'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
     'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
+    'retro-disc' => ['label' => 'Disco Retrò', 'description' => 'Schermata di avvio in stile console anni \'90 ("Inserisci il disco"), poi il tuo nome appare come un boot-up e la Home diventa un disco che ruota con anelli ed icone fluttuanti — le voci del tuo menu (Timeline, Blog, Brani...) si scorrono come un mangianastri, si tocca il disco per andare alla vera pagina. Funziona ovunque (nessuna grafica 3D pesante), anche su telefoni meno recenti', 'body_class' => 'retro-disc-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -823,6 +824,236 @@ window.__GA_DATA__ = {
 };
 </script>
 <script type="module" src="<?= assetUrl($base . '/scene.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Tema grafico "Disco Retrò": sostituisce interamente la Home pubblica con una schermata di
+// avvio in stile console anni '90 ("Inserisci il disco", nome che appare come un boot-up)
+// seguita da un disco che ruota con anelli e icone, dove le voci del menu del profilo
+// scorrono come un mangianastri (effetto "slot machine") e si tocca il disco per andare alla
+// vera pagina — stesso principio di renderGardenAnomalyScene() (solo la Home cambia, il resto
+// del profilo resta quello normale, SEO/condivisione intatte), ma qui deliberatamente SENZA
+// alcuna libreria 3D: solo CSS/SVG/JS semplice, per essere leggero e affidabile ovunque
+// (incluso mobile) dopo i problemi di stabilità avuti con WebGPU sul tema Giardino Anomalo.
+function renderRetroDiscScene(array $artist, string $slug, array $navItems): string {
+    $pageUrl = siteUrl('/' . $slug);
+    $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
+    $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di ' . $artist['display_name'] . ' su ' . siteName());
+    $accent = $artist['theme_color'] ?: '#6C5CE7';
+    $base = '/assets/themes/retro-disc';
+
+    $viewerId = $_SESSION['user_id'] ?? null;
+    $uid = (int) $artist['id'];
+    $isOwnProfile = $viewerId && (int) $viewerId === $uid;
+    $alreadyFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
+
+    // Sigla breve stile "GOOD" in alto: prime lettere del nome, max 4 caratteri.
+    $wordmark = mb_strtoupper(mb_substr(preg_replace('/[^\p{L}\p{N}]/u', '', $artist['display_name']) ?: 'CFC', 0, 4));
+
+    $navData = json_encode(array_map(static function (array $n): array {
+        return ['label' => $n['label'], 'url' => $n['url'], 'color' => $n['color']];
+    }, array_values($navItems)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    $fallbackLinks = '';
+    foreach ($navItems as $n) {
+        $fallbackLinks .= '<a href="' . e($n['url']) . '">' . e($n['label']) . '</a>';
+    }
+
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<link rel="alternate" type="application/rss+xml" title="<?= e($artist['display_name']) ?> — <?= e(siteName()) ?>" href="<?= e(siteUrl('/' . $slug . '/feed')) ?>">
+<?= embedPrivacyScript() ?>
+<?= embedTrackingHead() ?>
+<?= embedGoogleAnalytics() ?>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased; }
+body.retro-disc-page {
+  font-family: 'Arial Narrow', Arial, sans-serif;
+  color:#fff;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 20% 15%, rgba(255,255,255,0.10), transparent 45%),
+    linear-gradient(160deg, #4b2fd6 0%, #5a35e8 45%, #7b3ce0 100%);
+}
+.rd-fixed { position:fixed; inset:0; }
+#rd-vignette { pointer-events:none; z-index:5; box-shadow: inset 0 0 120px rgba(0,0,0,0.35); }
+
+/* ── boot screen ── */
+#rd-boot { z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; cursor:pointer; transition:opacity .5s ease; }
+#rd-boot.hidden { opacity:0; pointer-events:none; }
+.rd-disc-wrap { position:relative; width:180px; height:180px; display:flex; align-items:center; justify-content:center; }
+.rd-ring { position:absolute; border:1px solid rgba(255,255,255,0.35); border-radius:50%; }
+.rd-ring.r1 { width:340px; height:130px; animation: rd-spin 14s linear infinite; }
+.rd-ring.r2 { width:280px; height:170px; animation: rd-spin 10s linear infinite reverse; }
+@keyframes rd-spin { to { transform: rotate(360deg); } }
+.rd-disc { width:120px; height:120px; border-radius:50%; background: conic-gradient(from 0deg, #fff, #9be7ff, #ffd6f0, #d8ffea, #fff); box-shadow:0 0 30px rgba(255,255,255,0.45); animation: rd-disc-spin 3.2s linear infinite; position:relative; }
+.rd-disc::after { content:''; position:absolute; inset:0; margin:auto; width:14px; height:14px; border-radius:50%; background:#4b2fd6; top:0; bottom:0; left:0; right:0; }
+@keyframes rd-disc-spin { to { transform: rotate(360deg); } }
+#rd-boot-label { font:800 15px/1 Arial, sans-serif; letter-spacing:.18em; padding:11px 26px; border:2px solid #fff; border-radius:999px; text-transform:uppercase; }
+#rd-boot-hint { font:600 11px/1 Arial, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,0.65); }
+
+/* ── boot logo reveal ── */
+#rd-logo { z-index:90; display:none; align-items:center; justify-content:center; }
+#rd-logo.show { display:flex; }
+#rd-logo span { font:900 15vw/1 Arial, sans-serif; letter-spacing:.02em; opacity:0; transform:scale(0.6); display:inline-block; animation: rd-letter .45s cubic-bezier(.2,1.4,.4,1) forwards; }
+
+/* ── main view ── */
+#rd-main { z-index:10; display:none; flex-direction:column; opacity:0; transition:opacity .5s ease; }
+#rd-main.show { display:flex; opacity:1; }
+#rd-topbar { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; }
+#rd-wordmark { font:900 20px/1 Arial, sans-serif; letter-spacing:.04em; border:2px solid #fff; padding:5px 9px; }
+#rd-topbar-actions { display:flex; gap:10px; align-items:center; }
+.rd-icon-btn { width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.08); color:#fff; font-size:15px; cursor:pointer; }
+#rd-menu-btn { font:700 12px/1 Arial, sans-serif; letter-spacing:.08em; text-transform:uppercase; background:#fff; color:#4b2fd6; border:none; border-radius:999px; padding:10px 16px; cursor:pointer; }
+
+#rd-carousel { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; touch-action: pan-x; user-select:none; }
+
+#rd-ticker { height:1.15em; overflow:hidden; text-align:center; margin-bottom:6px; }
+#rd-ticker-col { display:flex; flex-direction:column; transition: transform .5s cubic-bezier(.2,.9,.3,1); }
+#rd-ticker-col span { height:1.15em; line-height:1.15em; font:900 clamp(26px,7vw,44px) 'Arial Narrow', Arial, sans-serif; letter-spacing:.02em; text-transform:uppercase; white-space:nowrap; opacity:0.28; }
+#rd-ticker-col span.rd-current { opacity:1; }
+
+.rd-disc-stage { position:relative; width:min(78vw,340px); height:min(78vw,340px); display:flex; align-items:center; justify-content:center; margin:14px 0; cursor:pointer; }
+.rd-disc-stage svg { position:absolute; inset:0; width:100%; height:100%; opacity:0.85; }
+#rd-shape-a, #rd-shape-b { position:absolute; width:15%; height:15%; transition: background .4s ease; }
+#rd-shape-a { background:#fff; border-radius:50%; animation: rd-float-a 5s ease-in-out infinite; }
+#rd-shape-b { transform: rotate(45deg); animation: rd-float-b 6s ease-in-out infinite; }
+@keyframes rd-float-a { 0%,100%{ transform:translate(-92px,-10px) scale(1);} 50%{ transform:translate(-98px,10px) scale(1.1);} }
+@keyframes rd-float-b { 0%,100%{ transform:translate(88px,6px) rotate(45deg) scale(1);} 50%{ transform:translate(94px,-12px) rotate(45deg) scale(1.15);} }
+#rd-play-hint { position:absolute; bottom:8px; font:700 10px/1 Arial, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,0.7); }
+
+#rd-tag { font:700 12px/1 Arial, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-top:4px; }
+
+#rd-nav-dots { display:flex; gap:6px; margin-top:18px; }
+.rd-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.35); }
+.rd-dot.active { background:#fff; width:18px; border-radius:4px; transition: width .25s ease; }
+
+.rd-arrow { position:absolute; top:50%; transform:translateY(-50%); background:none; border:none; color:#fff; font-size:26px; opacity:0.6; cursor:pointer; padding:14px; }
+.rd-arrow:hover { opacity:1; }
+#rd-arrow-prev { left:2px; }
+#rd-arrow-next { right:2px; }
+
+/* ── menu overlay ── */
+#rd-menu-overlay { z-index:120; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(43,26,110,0.97); }
+#rd-menu-overlay.show { display:flex; }
+#rd-menu-overlay a { color:#fff; text-decoration:none; font:800 clamp(20px,6vw,30px) 'Arial Narrow', Arial, sans-serif; text-transform:uppercase; letter-spacing:.03em; }
+#rd-menu-close { position:absolute; top:20px; right:20px; }
+
+#rd-footer { position:fixed; bottom:12px; left:0; right:0; z-index:15; display:flex; justify-content:center; gap:14px; font:600 10px/1 Arial, sans-serif; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,0.55); }
+#rd-footer a { color:inherit; text-decoration:none; }
+
+#rd-follow { position:fixed; top:18px; right:18px; z-index:80; }
+#rd-follow button, #rd-follow .rd-pill { font:700 11px/1 Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; border:none; border-radius:999px; padding:9px 15px; cursor:pointer; background:#fff; color:#4b2fd6; }
+
+@keyframes rd-letter { to { opacity:1; transform:scale(1); } }
+
+#rd-fallback { position:fixed; inset:0; z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:linear-gradient(160deg, #4b2fd6, #7b3ce0); }
+#rd-fallback.show { display:flex; }
+#rd-fallback h1 { font:900 24px Arial, sans-serif; }
+#rd-fallback a { display:block; margin:4px 0; padding:10px 22px; border-radius:999px; background:#fff; color:#4b2fd6; text-decoration:none; font:700 13px Arial, sans-serif; text-transform:uppercase; }
+</style>
+</head>
+<body class="retro-disc-page">
+<?= embedTrackingBodyStart() ?>
+<div id="rd-vignette" class="rd-fixed"></div>
+
+<div id="rd-follow">
+<?php if (!$isOwnProfile): ?>
+  <?php if ($viewerId): ?>
+    <form method="post" action="/follow_account.php">
+      <?= csrfField() ?>
+      <input type="hidden" name="user_id" value="<?= $uid ?>">
+      <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
+      <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+      <button type="submit" class="rd-pill"><?= $alreadyFollowing ? '✓ Segui già' : '✨ Segui' ?></button>
+    </form>
+  <?php else: ?>
+    <details><summary class="rd-pill" style="display:inline-block;">✨ Segui</summary></details>
+  <?php endif; ?>
+<?php endif; ?>
+</div>
+
+<div id="rd-boot" class="rd-fixed">
+  <div class="rd-disc-wrap">
+    <div class="rd-ring r1"></div>
+    <div class="rd-ring r2"></div>
+    <div class="rd-disc"></div>
+  </div>
+  <div id="rd-boot-label">Inserisci il disco</div>
+  <div id="rd-boot-hint">▶ Meglio con l'audio attivo</div>
+</div>
+
+<div id="rd-logo" class="rd-fixed"></div>
+
+<div id="rd-main" class="rd-fixed">
+  <div id="rd-topbar">
+    <div id="rd-wordmark"><?= e($wordmark) ?></div>
+    <div id="rd-topbar-actions">
+      <button type="button" id="rd-sound-toggle" class="rd-icon-btn" title="Attiva i suoni" aria-pressed="false">🔈</button>
+      <button type="button" id="rd-menu-btn">Menu</button>
+    </div>
+  </div>
+  <div id="rd-carousel">
+    <button type="button" class="rd-arrow" id="rd-arrow-prev" aria-label="Precedente">‹</button>
+    <div id="rd-ticker"><div id="rd-ticker-col"></div></div>
+    <div class="rd-disc-stage" id="rd-disc-stage">
+      <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+        <ellipse cx="100" cy="100" rx="95" ry="38" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+        <ellipse cx="100" cy="100" rx="95" ry="38" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1" transform="rotate(60 100 100)"/>
+        <ellipse cx="100" cy="100" rx="95" ry="38" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1" transform="rotate(120 100 100)"/>
+      </svg>
+      <div id="rd-shape-a"></div>
+      <div id="rd-shape-b"></div>
+      <div id="rd-play-hint">Tocca per entrare</div>
+    </div>
+    <div id="rd-tag"></div>
+    <div id="rd-nav-dots"></div>
+    <button type="button" class="rd-arrow" id="rd-arrow-next" aria-label="Successivo">›</button>
+  </div>
+</div>
+
+<div id="rd-menu-overlay" class="rd-fixed">
+  <button type="button" id="rd-menu-close" class="rd-icon-btn">✕</button>
+</div>
+
+<div id="rd-footer">
+  <a href="#" class="cky-banner-element">Preferenze Cookie</a>
+  <?php if ($viewerId): ?><a href="/dashboard_profile.php">Dashboard</a><?php else: ?><a href="/"><?= e(siteName()) ?></a><?php endif; ?>
+</div>
+
+<div id="rd-fallback">
+  <h1><?= e($artist['display_name']) ?></h1>
+  <?= $fallbackLinks ?>
+</div>
+
+<script>
+window.__RD_DATA__ = {
+  navItems: <?= $navData ?>,
+  wordmark: <?= json_encode($wordmark, JSON_UNESCAPED_UNICODE) ?>
+};
+</script>
+<script src="<?= assetUrl($base . '/disc.js') ?>" defer></script>
 </body>
 </html>
     <?php
