@@ -31,6 +31,13 @@ if (!navigator.gpu) {
 }
 
 async function init() {
+  // Il vetro con trasmissione reale + iridescenza + bloom è pesante per le GPU dei telefoni
+  // (WebGPU su mobile è ancora giovane): su mobile usiamo una versione "leggera" — vetro
+  // semi-trasparente semplice invece della trasmissione fisica, niente bloom, meno
+  // dettaglio geometrico — per evitare che la scena si blocchi dopo il primo fotogramma.
+  const isMobile = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || navigator.userAgent));
+
   const prm = {
     riseSpeed: 0.14,       // salita costante, lenta (unità/s)
     swayAmp: 0.55, swayFreq: 0.35,       // ondeggiamento orizzontale
@@ -46,9 +53,10 @@ async function init() {
   };
 
   const N = Math.max(navItems.length, 1);
+  const SPHERE_SEGS = isMobile ? 22 : 48;
 
-  const renderer = new THREE.WebGPURenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const renderer = new THREE.WebGPURenderer({ antialias: !isMobile });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = prm.exposure;
@@ -95,12 +103,14 @@ async function init() {
   let riseSpan = viewH + 5; // il "giro" avviene sempre fuori dallo schermo, mai visto
 
   let normalTex = null, roughTex = null;
-  try {
-    normalTex = await new THREE.TextureLoader().loadAsync(ASSET + '/normal.webp');
-    normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
-    roughTex = await new THREE.TextureLoader().loadAsync(ASSET + '/rough.jpg');
-    roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
-  } catch (e) { /* bolle senza dettaglio superficiale, va bene lo stesso */ }
+  if (!isMobile) {
+    try {
+      normalTex = await new THREE.TextureLoader().loadAsync(ASSET + '/normal.webp');
+      normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+      roughTex = await new THREE.TextureLoader().loadAsync(ASSET + '/rough.jpg');
+      roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+    } catch (e) { /* bolle senza dettaglio superficiale, va bene lo stesso */ }
+  }
 
   function makeLabelSprite(text, colorCss) {
     const c = document.createElement('canvas');
@@ -135,24 +145,40 @@ async function init() {
   for (let i = 0; i < N; i++) {
     const item = navItems[i];
     const radius = 0.42 + ((i * 37) % 5) * 0.045; // piccola varietà di dimensione, deterministica
-    const geo = new THREE.SphereGeometry(radius, 48, 48);
-    const mat = new THREE.MeshPhysicalMaterial({
-      transmission: 1.0,
-      thickness: prm.thickness,
-      ior: prm.ior,
-      roughness: prm.roughness,
-      metalness: 0,
-      iridescence: prm.iridescence,
-      iridescenceIOR: prm.iridescenceIOR,
-      iridescenceThicknessRange: [100, 320],
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.12,
-      envMapIntensity: prm.envInt,
-      attenuationColor: new THREE.Color(item ? item.color : '#1f7cff'),
-      attenuationDistance: prm.attenuationDistance,
-    });
-    if (roughTex) { mat.roughnessMap = roughTex; }
-    if (normalTex) { mat.normalMap = normalTex; mat.normalScale = new THREE.Vector2(0.35, 0.35); }
+    const geo = new THREE.SphereGeometry(radius, SPHERE_SEGS, SPHERE_SEGS);
+    const bubbleColor = new THREE.Color(item ? item.color : '#1f7cff');
+    // Su mobile: vetro colorato semplice (opacità + clearcoat), niente trasmissione reale né
+    // iridescenza — sono le due funzioni più pesanti per il driver WebGPU del telefono.
+    const mat = isMobile
+      ? new THREE.MeshPhysicalMaterial({
+          color: bubbleColor,
+          transparent: true,
+          opacity: 0.62,
+          roughness: 0.28,
+          metalness: 0,
+          clearcoat: 0.6,
+          clearcoatRoughness: 0.2,
+          envMapIntensity: prm.envInt,
+        })
+      : new THREE.MeshPhysicalMaterial({
+          transmission: 1.0,
+          thickness: prm.thickness,
+          ior: prm.ior,
+          roughness: prm.roughness,
+          metalness: 0,
+          iridescence: prm.iridescence,
+          iridescenceIOR: prm.iridescenceIOR,
+          iridescenceThicknessRange: [100, 320],
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.12,
+          envMapIntensity: prm.envInt,
+          attenuationColor: bubbleColor,
+          attenuationDistance: prm.attenuationDistance,
+        });
+    if (!isMobile) {
+      if (roughTex) { mat.roughnessMap = roughTex; }
+      if (normalTex) { mat.normalMap = normalTex; mat.normalScale = new THREE.Vector2(0.35, 0.35); }
+    }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.userData.idx = i;
     scene.add(mesh);
@@ -387,12 +413,19 @@ async function init() {
     if (!dragging) { hoveredIdx = -1; hoverLabelEl.style.display = 'none'; }
   });
 
-  // ── post-processing ──
-  const pipeline = new THREE.RenderPipeline(renderer);
-  const scenePass = pass(scene, camera);
-  const sceneColor = scenePass.getTextureNode();
-  const bloomPass = bloom(sceneColor, prm.bloomStrength, prm.bloomRadius, prm.bloomThreshold);
-  pipeline.outputNode = sceneColor.add(bloomPass);
+  // ── post-processing: il bloom via TSL è un ulteriore costo per il driver, saltato su
+  // mobile — su desktop resta l'aspetto lucido/luminoso già collaudato ──
+  let renderFrame;
+  if (isMobile) {
+    renderFrame = () => renderer.render(scene, camera);
+  } else {
+    const pipeline = new THREE.RenderPipeline(renderer);
+    const scenePass = pass(scene, camera);
+    const sceneColor = scenePass.getTextureNode();
+    const bloomPass = bloom(sceneColor, prm.bloomStrength, prm.bloomRadius, prm.bloomThreshold);
+    pipeline.outputNode = sceneColor.add(bloomPass);
+    renderFrame = () => pipeline.render();
+  }
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -406,22 +439,31 @@ async function init() {
 
   const timer = new THREE.Timer();
   let firstFrame = true;
-  // Rete di sicurezza: se qualcosa va storto dentro il ciclo di rendering (un errore lì non
-  // viene mai intercettato da fuori, a differenza degli errori in fase di avvio), la pagina
-  // non deve restare bloccata sul caricamento — mostriamo l'elenco di link invece.
-  const watchdog = setTimeout(() => { if (firstFrame) showFallback(); }, 7000);
+  // Rete di sicurezza "a battito": se il ciclo di rendering non produce un fotogramma da
+  // qualche secondo — sia perché non parte mai, sia perché si blocca a metà (il caso più
+  // insidioso: un errore lì non viene mai intercettato da fuori) — mostriamo l'elenco di
+  // link invece di lasciare la scena congelata senza spiegazione.
+  let lastAlive = Date.now();
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastAlive > 5000) {
+      clearInterval(watchdog);
+      renderer.setAnimationLoop(null);
+      showFallback();
+    }
+  }, 1500);
   renderer.setAnimationLoop(() => {
     try {
       timer.update();
       const dt = Math.min(timer.getDelta(), 1 / 30);
       step(dt, timer.elapsed);
-      pipeline.render();
+      renderFrame();
+      lastAlive = Date.now();
       if (firstFrame) {
         firstFrame = false;
-        clearTimeout(watchdog);
         if (loaderEl) loaderEl.classList.add('hidden');
       }
     } catch (err) {
+      clearInterval(watchdog);
       renderer.setAnimationLoop(null);
       showFallback();
     }
