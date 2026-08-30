@@ -65,6 +65,15 @@ if (($artist['page_theme'] ?? 'colorful') === 'garden-anomaly') {
     exit;
 }
 
+// Tema "Scorrimento Infinito": stesso principio — sostituisce solo la Home, il resto del
+// profilo resta invariato.
+if (($artist['page_theme'] ?? 'colorful') === 'infinite-parallax') {
+    $hasMenu = menuHasItems((int) $uid);
+    $panels = buildParallaxHeroPanels($artist, $slug, $hiddenNavKeys, $hasMenu);
+    echo renderParallaxHeroScene($artist, $slug, $panels);
+    exit;
+}
+
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
 $links->execute([$uid]);
 $links = $links->fetchAll();

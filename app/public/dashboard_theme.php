@@ -59,6 +59,7 @@ $themePickerBackgrounds = [
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'garden-anomaly' => 'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.55), transparent 60%), linear-gradient(160deg,#eef1f5,#c9d2de)',
+    'infinite-parallax' => 'linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.6)), linear-gradient(160deg, #2c2c38, #0a0a0f)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -267,6 +268,11 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;margin:0 auto 8px;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(150,190,230,0.35) 60%, rgba(100,140,190,0.25));border:1px solid rgba(255,255,255,0.7);box-shadow:0 0 10px rgba(120,160,220,0.5), inset 0 0 8px rgba(255,255,255,0.6);"></div>
                 <div style="position:relative;background:#1f7cff;border-radius:999px;height:8px;width:8px;margin:0 auto 4px;"></div>
                 <div style="position:relative;background:rgba(120,160,220,0.5);border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'infinite-parallax'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;height:60px;">
+                <div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font:900 20px Arial, sans-serif;color:rgba(255,255,255,0.18);white-space:nowrap;letter-spacing:-1px;">SCROLL • SCROLL • SCROLL</div>
+                <div style="position:relative;width:34px;height:34px;border-radius:50%;margin:0 auto;background:#fff;border:2px solid rgba(255,255,255,0.85);"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>

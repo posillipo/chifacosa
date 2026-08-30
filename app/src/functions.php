@@ -555,6 +555,7 @@ const PAGE_THEMES = [
     'startrek' => ['label' => 'Frontiera Stellare', 'description' => 'Ispirato a Star Trek: pannelli in stile LCARS, campo stellare animato, lampi di "salto nel warp" e un distintivo circolare originale sull\'avatar (non il logo ufficiale del franchise)', 'body_class' => 'startrek-page'],
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
     'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
+    'infinite-parallax' => ['label' => 'Scorrimento Infinito', 'description' => 'La Home diventa una serie di pannelli a schermo intero — il tuo profilo, poi una voce del menu ciascuno — con scorrimento morbido e continuo e un leggero effetto di profondità sulle immagini mentre scorri, in loop senza fine. Si tocca un pannello per andare alla vera pagina. Nessuna grafica 3D, leggero e affidabile ovunque', 'body_class' => 'infinite-parallax-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -827,6 +828,256 @@ window.__GA_DATA__ = {
 </html>
     <?php
     return ob_get_clean();
+}
+
+// Pannelli a schermo intero per il tema "Scorrimento Infinito": riusa buildGardenAnomalyNavBlobs()
+// per label/url/colore di ogni voce del menu, e per le sezioni che hanno contenuto reale
+// (Timeline/Blog/Brani/Eventi) cerca una copertina vera con una query leggera (LIMIT 1, sempre
+// avvolta in try/catch — se qualcosa non torna, il pannello usa comunque lo sfondo colorato).
+// Il primo pannello è sempre quello del profilo (avatar + nome), decorativo, non cliccabile.
+function buildParallaxHeroPanels(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu): array {
+    $navItems = buildGardenAnomalyNavBlobs($artist, $slug, $hiddenNavKeys, $hasMenu);
+    $uid = (int) $artist['id'];
+    $db = getDB();
+
+    $findImage = function (string $key) use ($db, $uid): ?string {
+        try {
+            switch ($key) {
+                case 'timeline':
+                    $stmt = $db->prepare("SELECT image_path AS img FROM timeline_posts WHERE user_id = ? AND image_path IS NOT NULL AND image_path <> '' ORDER BY created_at DESC LIMIT 1");
+                    $stmt->execute([$uid]);
+                    break;
+                case 'blog':
+                    $stmt = $db->prepare("SELECT cover_path AS img FROM blog_posts WHERE user_id = ? AND cover_path IS NOT NULL AND cover_path <> '' ORDER BY published_at DESC LIMIT 1");
+                    $stmt->execute([$uid]);
+                    break;
+                case 'brani':
+                    $stmt = $db->prepare("SELECT cover_path AS img FROM audio_tracks WHERE user_id = ? AND cover_path IS NOT NULL AND cover_path <> '' ORDER BY id DESC LIMIT 1");
+                    $stmt->execute([$uid]);
+                    break;
+                case 'eventi':
+                    $stmt = $db->prepare("SELECT cover_path AS img FROM events WHERE user_id = ? AND cover_path IS NOT NULL AND cover_path <> '' AND event_date >= NOW() ORDER BY event_date ASC LIMIT 1");
+                    $stmt->execute([$uid]);
+                    $row = $stmt->fetch();
+                    if ($row && $row['img']) return $row['img'];
+                    $stmt = $db->prepare("SELECT cover_path AS img FROM events WHERE user_id = ? AND cover_path IS NOT NULL AND cover_path <> '' ORDER BY event_date DESC LIMIT 1");
+                    $stmt->execute([$uid]);
+                    break;
+                default:
+                    return null;
+            }
+            $row = $stmt->fetch();
+            return $row ? ($row['img'] ?: null) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    };
+
+    $panels = [];
+    $panels[] = [
+        'key' => 'profile',
+        'label' => $artist['display_name'],
+        'url' => null,
+        'color' => $artist['theme_color'] ?: '#6C5CE7',
+        'image' => $artist['avatar_path'] ?: null,
+    ];
+    foreach ($navItems as $item) {
+        $panels[] = [
+            'key' => $item['key'],
+            'label' => $item['label'],
+            'url' => $item['url'],
+            'color' => $item['color'],
+            'image' => $findImage($item['key']),
+        ];
+    }
+    return $panels;
+}
+
+// Tema grafico "Scorrimento Infinito": sostituisce interamente la Home pubblica con una serie
+// di pannelli a schermo intero (profilo + una voce di menu ciascuno) con scorrimento fluido
+// continuo (Lenis) e un leggero effetto di profondità sulle immagini mentre si scorre (GSAP +
+// ScrollTrigger) — adattamento del tutorial creativo open-source "Infinite Scroll with
+// Parallax" (Codrops). Deliberatamente niente 3D/WebGL: solo DOM/CSS animati, per essere
+// leggero e affidabile ovunque incluso mobile. Come gli altri temi, sostituisce solo la Home:
+// toccare un pannello porta alla vera pagina (Timeline, Blog, ecc.), non genera contenuto
+// nella scena, quindi SEO e condivisione social restano intatte.
+function renderParallaxHeroScene(array $artist, string $slug, array $panels): string {
+    $pageUrl = siteUrl('/' . $slug);
+    $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
+    $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di ' . $artist['display_name'] . ' su ' . siteName());
+    $accent = $artist['theme_color'] ?: '#6C5CE7';
+
+    $viewerId = $_SESSION['user_id'] ?? null;
+    $uid = (int) $artist['id'];
+    $isOwnProfile = $viewerId && (int) $viewerId === $uid;
+    $alreadyFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
+
+    // Il loop "senza fine" (Lenis infinite) ha bisogno di duplicare il primo pannello in fondo
+    // — funziona bene solo con un numero di pannelli piccolo e fisso come questo (profilo +
+    // voci di menu), non con contenuti che crescono nel tempo (per questo il tema tocca solo
+    // la Home, mai Timeline/Blog che sono liste aperte).
+    $loopable = count($panels) >= 2;
+    $renderPanels = $panels;
+    if ($loopable) {
+        $renderPanels[] = $panels[0];
+    }
+
+    $fallbackLinks = '';
+    foreach ($panels as $p) {
+        if ($p['url']) $fallbackLinks .= '<a href="' . e($p['url']) . '">' . e($p['label']) . '</a>';
+    }
+
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<link rel="alternate" type="application/rss+xml" title="<?= e($artist['display_name']) ?> — <?= e(siteName()) ?>" href="<?= e(siteUrl('/' . $slug . '/feed')) ?>">
+<?= embedPrivacyScript() ?>
+<?= embedTrackingHead() ?>
+<?= embedGoogleAnalytics() ?>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; -webkit-font-smoothing:antialiased; background:#111; color:#fff; font-family: system-ui, -apple-system, Arial, sans-serif; }
+#ip-wrapper { position:fixed; inset:0; overflow:hidden; }
+#ip-content { }
+#ip-topbar { position:fixed; top:0; left:0; right:0; z-index:50; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; pointer-events:none; mix-blend-mode: difference; }
+#ip-topbar * { pointer-events:auto; }
+#ip-wordmark { font:900 15px/1 Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#fff; }
+#ip-menu-btn { font:700 11px/1 Arial, sans-serif; letter-spacing:.08em; text-transform:uppercase; background:transparent; color:#fff; border:1px solid #fff; border-radius:999px; padding:8px 14px; cursor:pointer; }
+
+.ip-hero { position:relative; width:100%; height:100vh; height:100dvh; overflow:hidden; display:flex; align-items:center; justify-content:center; text-decoration:none; cursor:pointer; }
+.ip-hero-bg { position:absolute; inset:-12% -2%; background-size:cover; background-position:center; will-change:transform; }
+.ip-hero-tint { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55) 100%); }
+.ip-hero-marquee { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); overflow:hidden; white-space:nowrap; pointer-events:none; will-change:transform; }
+.ip-hero-marquee span { display:inline-block; font:900 12vw/1 Arial, sans-serif; letter-spacing:-0.01em; text-transform:uppercase; color:rgba(255,255,255,0.14); animation: ip-marquee 16s linear infinite; }
+@keyframes ip-marquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+.ip-hero-label { position:relative; z-index:2; font:900 clamp(30px,7vw,64px) Arial, sans-serif; letter-spacing:-0.01em; text-transform:uppercase; text-align:center; text-shadow:0 4px 24px rgba(0,0,0,0.4); padding:0 24px; }
+.ip-hero-sub { position:relative; z-index:2; margin-top:10px; font:600 13px/1.5 system-ui, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,0.75); }
+.ip-hero-avatar { position:relative; z-index:2; width:96px; height:96px; border-radius:50%; object-fit:cover; border:3px solid rgba(255,255,255,0.85); margin-bottom:18px; box-shadow:0 8px 30px rgba(0,0,0,0.4); }
+.ip-hero-tap { position:absolute; bottom:26px; z-index:2; font:700 10px/1 Arial, sans-serif; letter-spacing:.15em; text-transform:uppercase; color:rgba(255,255,255,0.65); }
+
+#ip-follow { position:fixed; top:18px; right:18px; z-index:80; mix-blend-mode: difference; }
+#ip-follow button, #ip-follow .ip-pill { font:700 11px/1 Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; border:none; border-radius:999px; padding:9px 15px; cursor:pointer; background:#fff; color:#111; }
+
+#ip-menu-overlay { position:fixed; inset:0; z-index:120; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(10,10,14,0.97); }
+#ip-menu-overlay.show { display:flex; }
+#ip-menu-overlay a { color:#fff; text-decoration:none; font:800 clamp(22px,6vw,32px) Arial, sans-serif; text-transform:uppercase; letter-spacing:.02em; }
+#ip-menu-close { position:fixed; top:20px; right:20px; z-index:121; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer; }
+
+#ip-fallback { position:fixed; inset:0; z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:#111; }
+#ip-fallback.show { display:flex; }
+#ip-fallback h1 { font:900 24px Arial, sans-serif; }
+#ip-fallback a { display:block; margin:4px 0; padding:10px 22px; border-radius:999px; background:#fff; color:#111; text-decoration:none; font:700 13px Arial, sans-serif; text-transform:uppercase; }
+</style>
+</head>
+<body class="infinite-parallax-page">
+<?= embedTrackingBodyStart() ?>
+
+<div id="ip-topbar">
+  <div id="ip-wordmark"><?= e(mb_strtoupper(mb_substr($artist['display_name'], 0, 18))) ?></div>
+  <button type="button" id="ip-menu-btn">Menu</button>
+</div>
+
+<div id="ip-follow">
+<?php if (!$isOwnProfile): ?>
+  <?php if ($viewerId): ?>
+    <form method="post" action="/follow_account.php">
+      <?= csrfField() ?>
+      <input type="hidden" name="user_id" value="<?= $uid ?>">
+      <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
+      <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+      <button type="submit" class="ip-pill"><?= $alreadyFollowing ? '✓ Segui già' : '✨ Segui' ?></button>
+    </form>
+  <?php else: ?>
+    <details><summary class="ip-pill" style="display:inline-block;">✨ Segui</summary></details>
+  <?php endif; ?>
+<?php endif; ?>
+</div>
+
+<div id="ip-wrapper">
+  <div id="ip-content">
+    <?php foreach ($renderPanels as $p): ?>
+      <?php $tag = $p['url'] ? 'a' : 'div'; ?>
+      <<?= $tag ?> class="ip-hero"<?php if ($tag === 'a'): ?> href="<?= e($p['url']) ?>"<?php endif; ?>>
+        <?php if ($p['image']): ?>
+          <div class="ip-hero-bg" style="background-image:url('/<?= e($p['image']) ?>');"></div>
+        <?php else: ?>
+          <div class="ip-hero-bg" style="background:radial-gradient(circle at 30% 20%, <?= e(cssColorWithAlpha($p['color'], 0.4)) ?>, transparent 60%), linear-gradient(160deg, #14141c, #000);"></div>
+        <?php endif; ?>
+        <div class="ip-hero-tint"></div>
+        <div class="ip-hero-marquee"><span><?= str_repeat(e(mb_strtoupper($p['label'])) . ' &nbsp;•&nbsp; ', 6) ?></span></div>
+        <?php if ($p['key'] === 'profile' && $p['image']): ?>
+          <img class="ip-hero-avatar" src="/<?= e($p['image']) ?>" alt="">
+        <?php endif; ?>
+        <div class="ip-hero-label"><?= e($p['label']) ?></div>
+        <?php if ($p['key'] === 'profile'): ?>
+          <div class="ip-hero-sub">@<?= e($slug) ?></div>
+        <?php elseif ($p['url']): ?>
+          <div class="ip-hero-tap">Tocca per entrare ↓</div>
+        <?php endif; ?>
+      </<?= $tag ?>>
+    <?php endforeach; ?>
+  </div>
+</div>
+
+<div id="ip-menu-overlay">
+  <button type="button" id="ip-menu-close">✕</button>
+</div>
+
+<div id="ip-fallback">
+  <h1><?= e($artist['display_name']) ?></h1>
+  <?= $fallbackLinks ?>
+</div>
+
+<script>
+window.__IP_DATA__ = { loopable: <?= $loopable ? 'true' : 'false' ?> };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis-snap.min.js"></script>
+<script src="<?= assetUrl('/assets/themes/infinite-parallax/parallax.js') ?>" defer></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Rende un colore CSS (esadecimale "#rrggbb" o "hsl(h,s%,l%)", le due forme usate nei temi)
+// semi-trasparente in modo sicuro — non si può semplicemente accodare un suffisso alpha
+// esadecimale a un hsl(), non è CSS valido: va convertito nella variante rgba()/hsla() giusta.
+function cssColorWithAlpha(string $color, float $alpha): string {
+    $color = trim($color);
+    if (str_starts_with($color, '#')) {
+        $hex = ltrim($color, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        if (strlen($hex) === 6 && ctype_xdigit($hex)) {
+            $r = hexdec(substr($hex, 0, 2));
+            $g = hexdec(substr($hex, 2, 2));
+            $b = hexdec(substr($hex, 4, 2));
+            return 'rgba(' . $r . ',' . $g . ',' . $b . ',' . $alpha . ')';
+        }
+    } elseif (preg_match('/^hsl\(([^)]+)\)$/i', $color, $m)) {
+        return 'hsla(' . $m[1] . ',' . $alpha . ')';
+    }
+    return $color; // formato non riconosciuto: meglio lasciarlo invariato che generare CSS rotto
 }
 
 // Calcola se il testo sopra un colore di sfondo debba essere bianco o scuro, in base alla
