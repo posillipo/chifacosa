@@ -953,7 +953,14 @@ function renderParallaxHeroScene(array $artist, string $slug, array $panels): st
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; overflow:hidden; -webkit-font-smoothing:antialiased; background:#111; color:#fff; font-family: system-ui, -apple-system, Arial, sans-serif; }
-#ip-wrapper { position:fixed; inset:0; overflow:hidden; }
+/* Lenis richiede uno scroll nativo VERO sul contenitore (overflow:auto), non solo simulato via
+   JS — con overflow:hidden lo scrollTop non ha alcun effetto e, se lo script di scroll fluido
+   non parte per qualsiasi motivo, la pagina resta bloccata senza nessuna alternativa. Con
+   overflow-y:auto lo scroll nativo del browser funziona comunque come base, e Lenis vi si
+   aggancia sopra per la fluidità/loop quando disponibile — la barra di scorrimento resta
+   nascosta solo visivamente (::-webkit-scrollbar), lo scroll stesso resta pienamente attivo. */
+#ip-wrapper { position:fixed; inset:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+#ip-wrapper::-webkit-scrollbar { display:none; }
 #ip-content { }
 #ip-topbar { position:fixed; top:0; left:0; right:0; z-index:50; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; pointer-events:none; mix-blend-mode: difference; }
 #ip-topbar * { pointer-events:auto; }
