@@ -15,7 +15,7 @@ if (!$artist) {
     exit;
 }
 
-// Il link personalizzato impostato in Dashboard → Feed RSS NON viene messo qui nel <link> XML:
+// Il link personalizzato impostato in Dashboard → Timeline NON viene messo qui nel <link> XML:
 // strumenti come Metricool, per l'immagine dei post automatici, ignorano enclosure/media RSS e
 // vanno a leggere l'og:image della pagina puntata da <link> — se puntasse già al sito esterno,
 // prenderebbero l'immagine sbagliata (o nessuna). <link> e <guid> restano quindi sempre il

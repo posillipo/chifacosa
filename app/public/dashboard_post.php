@@ -6,11 +6,32 @@ $profile = getActingProfile($user); // il profilo su cui si sta agendo (proprio,
 $activeTab = 'post';
 $pageTitle = 'Timeline';
 
+$feedError = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'add') {
+        // Link personalizzato per il feed (ex dashboard_feed.php, ora vive qui): impostazione
+        // del profilo, non del singolo post — si aggiorna comunque ogni volta che si pubblica,
+        // indipendentemente dal fatto che il post stesso vada a buon fine, così cambiare o
+        // svuotare il link non richiede per forza di scrivere qualcosa di nuovo.
+        $customFeedGuid = trim($_POST['custom_feed_guid'] ?? '');
+        if ($customFeedGuid !== '' && !filter_var($customFeedGuid, FILTER_VALIDATE_URL)) {
+            $feedError = 'Il link personalizzato per il feed non è un URL valido.';
+        } else {
+            $customFeedGuid = $customFeedGuid ?: null;
+            $customFeedGuidSince = $profile['custom_feed_guid_since'] ?? null;
+            if ($customFeedGuid !== ($profile['custom_feed_guid'] ?? null)) {
+                $customFeedGuidSince = $customFeedGuid ? date('Y-m-d H:i:s') : null;
+            }
+            $stmt = getDB()->prepare('UPDATE profiles SET custom_feed_guid=?, custom_feed_guid_since=? WHERE user_id=?');
+            $stmt->execute([$customFeedGuid, $customFeedGuidSince, $profile['id']]);
+            $user = currentUser();
+            $profile = getActingProfile($user);
+        }
+
         $testo = trim($_POST['testo'] ?? '');
         $imagePath = handleCoverUpload($profile['slug'], 'image');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
@@ -65,9 +86,18 @@ include __DIR__ . '/_dash_header.php';
       scrivere un articolo completo come nel Blog. Puoi renderlo pubblico o visibile solo a te,
       e programmarne la pubblicazione per una data futura.
     </p>
+    <p style="color:var(--text-muted)">
+      Il link personalizzato per il feed è opzionale: se lo compili, chi clicca sui post
+      pubblicati <strong>da questo momento in poi</strong> (dalla Timeline, dal feed RSS o da
+      un'automazione tipo Metricool) viene reindirizzato lì invece che alla pagina del post su
+      <?= e(siteName()) ?>. Il feed RSS continua comunque a esporre il permalink standard e
+      l'immagine caricata qui, per restare compatibile con strumenti come Metricool. Vale finché
+      non lo modifichi o lo svuoti — non serve ripeterlo a ogni pubblicazione.
+    </p>
   </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if (!empty($feedError)): ?><div class="alert error"><?= e($feedError) ?></div><?php endif; ?>
 
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
@@ -87,12 +117,32 @@ include __DIR__ . '/_dash_header.php';
       </label>
     </div>
 
-    <label>Programma la pubblicazione (opzionale)</label>
-    <input type="datetime-local" name="publish_at">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <label>Programma la pubblicazione (opzionale)</label>
+        <input type="datetime-local" name="publish_at">
+        <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <label>Link personalizzato per il feed (opzionale)</label>
+        <input type="url" name="custom_feed_guid" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
+        <?php if (!empty($profile['custom_feed_guid_since'])): ?>
+          <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+            Attivo dal <?= e(date('d/m/Y H:i', strtotime($profile['custom_feed_guid_since']))) ?>.
+          </p>
+        <?php else: ?>
+          <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per usare sempre la pagina normale.</p>
+        <?php endif; ?>
+      </div>
+    </div>
 
     <button type="submit" class="btn">Pubblica</button>
   </form>
+
+  <div class="card">
+    <strong>Il tuo feed:</strong><br>
+    <a href="/<?= e($profile['slug']) ?>/feed" target="_blank"><?= e(siteName()) ?>/<?= e($profile['slug']) ?>/feed</a>
+  </div>
 
   <div class="section-title">I tuoi aggiornamenti (<?= count($posts) ?>)</div>
   <?php foreach ($posts as $p): ?>

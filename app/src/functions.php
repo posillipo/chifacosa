@@ -280,7 +280,7 @@ function getActingProfile(array $loggedInUser): array {
         unset($_SESSION['acting_as_user_id']);
         return $loggedInUser;
     }
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since
                               FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
     $stmt->execute([(int) $actingId]);
     $profile = $stmt->fetch();
@@ -344,7 +344,7 @@ function siteName(): string {
     return $name !== '' ? $name : 'Chi Fa Cosa';
 }
 
-// Se il profilo ha un link personalizzato per il feed attivo (Dashboard → Feed RSS) e questo
+// Se il profilo ha un link personalizzato per il feed attivo (Dashboard → Timeline) e questo
 // contenuto è stato pubblicato da quando è stato impostato, reindirizza i visitatori umani
 // all'URL esterno via JS non appena la pagina carica. I bot che leggono solo l'HTML statico
 // (Metricool e la maggior parte degli scraper Open Graph) non eseguono JavaScript e continuano
