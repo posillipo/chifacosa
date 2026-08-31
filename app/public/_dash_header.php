@@ -234,7 +234,8 @@ document.addEventListener('click', function (e) {
 </script>
 
 <div class="container">
-  <div class="tabs-wrap">
+  <div class="tabs-wrap" id="dash-tabs-wrap">
+  <button type="button" class="tabs-scroll-btn left" id="dash-tabs-prev" aria-label="Scorri a sinistra"><i class="fa-solid fa-chevron-left"></i></button>
   <div class="tabs" id="dash-tabs">
     <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">Feed</a>
     <?php if ($navVisibility['Timeline'] ?? 1): ?>
@@ -266,20 +267,40 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_contacts.php" class="<?= $activeTab==='contacts'?'active':'' ?>">Contatti</a>
     <?php endif; ?>
   </div>
+  <button type="button" class="tabs-scroll-btn right" id="dash-tabs-next" aria-label="Scorri a destra"><i class="fa-solid fa-chevron-right"></i></button>
   </div>
   <script>
   (function () {
+    var wrap = document.getElementById('dash-tabs-wrap');
+    var tabs = document.getElementById('dash-tabs');
+    var prevBtn = document.getElementById('dash-tabs-prev');
+    var nextBtn = document.getElementById('dash-tabs-next');
+    if (!wrap || !tabs) return;
+
     // Su desktop non c'è modo ovvio di scorrere una riga orizzontale col mouse: niente
     // barra di scorrimento visibile (nascosta di proposito, vedi CSS) e la rotellina scorre
     // la pagina, non la riga. Traduciamo lo scroll verticale in orizzontale quando il
-    // puntatore è sopra le schede, così la rotellina "normale" funziona comunque.
-    var tabs = document.getElementById('dash-tabs');
-    if (!tabs) return;
+    // puntatore è sopra le schede, così la rotellina "normale" funziona comunque — e in più
+    // due tastini veri e propri per chi preferisce cliccare, come nel menu pubblico.
     tabs.addEventListener('wheel', function (e) {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // scroll già orizzontale (trackpad): lascia fare al browser
       if (tabs.scrollWidth <= tabs.clientWidth) return; // niente da scorrere
       e.preventDefault();
       tabs.scrollLeft += e.deltaY;
     }, { passive: false });
+
+    function updateState() {
+      var overflowing = tabs.scrollWidth > tabs.clientWidth + 4;
+      wrap.classList.toggle('no-overflow', !overflowing);
+      wrap.classList.toggle('at-start', tabs.scrollLeft <= 4);
+      wrap.classList.toggle('at-end', tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 4);
+    }
+    updateState();
+    tabs.addEventListener('scroll', updateState, { passive: true });
+    window.addEventListener('resize', updateState);
+    window.addEventListener('load', updateState);
+
+    if (prevBtn) prevBtn.addEventListener('click', function () { tabs.scrollBy({ left: -180, behavior: 'smooth' }); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { tabs.scrollBy({ left: 180, behavior: 'smooth' }); });
   })();
   </script>
