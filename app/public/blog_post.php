@@ -83,7 +83,10 @@ $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_p
 <div class="container">
   <?= publicProfileHeader($artist, 'blog') ?>
 
-  <article class="blog-item card" style="border-bottom:none;">
+  <?php // .blog-item (pensata per le righe della lista, senza margini laterali) qui vince
+        // su .card nel CSS e azzera il padding orizzontale: va ripristinato esplicitamente,
+        // altrimenti il testo dell'articolo tocca i bordi del riquadro. ?>
+  <article class="blog-item card" style="border-bottom:none;padding:26px 24px;">
     <?php if ($post['cover_path']): ?>
       <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>"
            style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
