@@ -19,7 +19,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $telefono = trim($_POST['telefono'] ?? '');
     $avatarPath = $profile['avatar_path'];
 
-    if (!empty($_FILES['avatar']['name'])) {
+    // Il ritaglio avviene nel browser (canvas): arriva già pronto come immagine JPEG in
+    // base64 in questo campo nascosto, prodotto da cropper.js quando l'utente conferma il
+    // ritaglio — niente elaborazione immagini lato server, non serve GD/Imagick. Se per
+    // qualunque motivo il JavaScript non parte (script bloccato, browser molto vecchio...),
+    // il campo resta vuoto e si ricade sul caricamento diretto del file come prima, senza
+    // ritaglio ma comunque funzionante.
+    $croppedData = $_POST['avatar_cropped_data'] ?? '';
+    if ($croppedData !== '' && preg_match('#^data:image/(jpeg|png);base64,#', $croppedData, $m)) {
+        $raw = base64_decode(substr($croppedData, strpos($croppedData, ',') + 1), true);
+        if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 8 * 1024 * 1024) {
+            $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
+            $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
+            if (!is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+            $dest = $dir . '/' . $fname;
+            if (file_put_contents($dest, $raw) !== false) {
+                $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
+            }
+        } else {
+            $error = 'Il ritaglio non è riuscito, riprova.';
+        }
+    } elseif (!empty($_FILES['avatar']['name'])) {
         $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, ['jpg','jpeg','png','webp'], true) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.' . $ext;
@@ -74,13 +96,43 @@ include __DIR__ . '/_dash_header.php';
     <input type="color" name="theme_color" value="<?= e($profile['theme_color'] ?? '#6C5CE7') ?>" style="width:80px;height:44px;padding:4px;">
 
     <label>Foto profilo</label>
-    <?php if ($profile['avatar_path']): ?>
-      <img src="/<?= e($profile['avatar_path']) ?>" style="width:70px;height:70px;border-radius:50%;object-fit:cover;margin-bottom:10px;">
-    <?php endif; ?>
-    <input type="file" name="avatar" accept="image/*">
+    <img id="avatar-preview" src="<?= $profile['avatar_path'] ? e('/' . $profile['avatar_path']) : '' ?>"
+         style="width:70px;height:70px;border-radius:50%;object-fit:cover;margin-bottom:10px;<?= $profile['avatar_path'] ? '' : 'display:none;' ?>">
+    <input type="file" id="avatar-input" name="avatar" accept="image/*">
+    <input type="hidden" name="avatar_cropped_data" id="avatar-cropped-data">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Dopo aver scelto una foto potrai ritagliarla prima di salvarla.</p>
 
     <button type="submit" class="btn">Salva profilo</button>
   </form>
+
+  <!-- Finestra di ritaglio della foto profilo: appare solo dopo aver scelto un file, si chiude
+       da sola alla conferma. Il ritaglio avviene per intero nel browser (canvas), il server
+       riceve già l'immagine quadrata pronta in base64 — vedi commento nel gestore POST sopra. -->
+  <div id="avatar-crop-modal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:12px;padding:18px;max-width:420px;width:100%;">
+      <strong>Ritaglia la foto profilo</strong>
+      <p style="color:var(--text-muted);font-size:12.5px;margin:4px 0 12px;">Trascina per spostare, usa la rotellina o pizzica per ingrandire.</p>
+      <div style="max-height:60vh;overflow:hidden;">
+        <img id="avatar-crop-image" src="" style="max-width:100%;display:block;">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button type="button" id="avatar-crop-cancel" class="btn secondary small">Annulla</button>
+        <button type="button" id="avatar-crop-confirm" class="btn small">Ritaglia e usa</button>
+      </div>
+    </div>
+  </div>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+  <style>
+    /* L'avatar è sempre mostrato come cerchio: la selezione di ritaglio lo mostra allo stesso
+       modo (solo l'inquadratura visiva — il ritaglio salvato resta un quadrato, i cerchi CSS
+       normalmente partono comunque da un'immagine quadrata). */
+    #avatar-crop-modal .cropper-view-box,
+    #avatar-crop-modal .cropper-face { border-radius: 50%; }
+    #avatar-crop-modal .cropper-view-box { outline: 0; box-shadow: 0 0 0 1px var(--accent); }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script src="<?= assetUrl('/assets/js/avatar-crop.js') ?>" defer></script>
 
   <div class="card">
     <strong>Il tuo link pubblico:</strong><br>
