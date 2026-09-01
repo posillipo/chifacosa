@@ -422,6 +422,19 @@ automaticamente un evento quando qualcuno segue quel profilo (`follow_account.ph
 `follow_confirm.php`), scrive dal form Contatti (`contatti.php`) o prenota un tavolo/posto a un
 suo evento (`reserve_table.php`).
 
+## 31. Assistente AI (Google Gemini) per generare i testi della Timeline
+
+Nessuna migrazione SQL: riusa la tabella `site_settings` già esistente (chiave
+`gemini_api_key`, impostata da `admin_gemini.php`, nessuna `ALTER TABLE` necessaria).
+
+Aggiunge un pulsante "✨ Genera con AI" nel modulo Timeline (`dashboard_post.php`): l'utente
+scrive qualche parola chiave, `dashboard_ai_caption.php` (endpoint AJAX, stesso profilo/CSRF di
+sempre) chiama `geminiGenerateText()` in `app/src/gemini.php` — un client minimale per l'API REST
+di Google Gemini (livello gratuito, chiave da aistudio.google.com/apikey, stesso pattern già
+usato per Spotify/YouTube: solo `httpRequest()`, nessuna libreria esterna) — e restituisce un
+testo pronto che l'utente può modificare liberamente prima di pubblicare. Chiave unica
+condivisa da tutti i profili (come Spotify/YouTube), impostata in ADMIN → Assistente AI.
+
 ---
 
 ## Come aggiungere una nuova voce

@@ -94,6 +94,11 @@ include __DIR__ . '/_dash_header.php';
       l'immagine caricata qui, per restare compatibile con strumenti come Metricool. Vale finché
       non lo modifichi o lo svuoti — non serve ripeterlo a ogni pubblicazione.
     </p>
+    <p style="color:var(--text-muted)">
+      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di testo a partire da poche
+      parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi modificare
+      liberamente prima di pubblicare.
+    </p>
   </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -103,7 +108,19 @@ include __DIR__ . '/_dash_header.php';
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
     <label>Cosa vuoi condividere?</label>
-    <textarea name="testo" rows="3" placeholder="Scrivilo qui..."></textarea>
+    <textarea name="testo" id="ai-testo" rows="3" placeholder="Scrivilo qui..."></textarea>
+    <div id="ai-caption-box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="ai-caption-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="ai-caption-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <input type="text" id="ai-caption-keywords" placeholder="es. annuncio nuovo concerto sabato 14 a Milano">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="ai-caption-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="ai-caption-cancel">Annulla</button>
+      </div>
+      <p id="ai-caption-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
     <label>Foto (opzionale)</label>
     <input type="file" name="image" accept="image/*">
 
@@ -179,4 +196,56 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+
+  <script>
+    (function () {
+      const toggleBtn = document.getElementById('ai-caption-toggle');
+      const panel = document.getElementById('ai-caption-panel');
+      const cancelBtn = document.getElementById('ai-caption-cancel');
+      const generateBtn = document.getElementById('ai-caption-generate');
+      const keywordsInput = document.getElementById('ai-caption-keywords');
+      const statusEl = document.getElementById('ai-caption-status');
+      const textarea = document.getElementById('ai-testo');
+      const csrfInput = document.querySelector('#ai-caption-toggle').closest('form').querySelector('input[name="csrf"]');
+
+      toggleBtn.addEventListener('click', function () {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        if (panel.style.display === 'block') keywordsInput.focus();
+      });
+      cancelBtn.addEventListener('click', function () {
+        panel.style.display = 'none';
+        statusEl.textContent = '';
+      });
+
+      generateBtn.addEventListener('click', function () {
+        const keywords = keywordsInput.value.trim();
+        if (!keywords) {
+          statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+          return;
+        }
+        generateBtn.disabled = true;
+        statusEl.textContent = 'Generazione in corso...';
+
+        const body = new URLSearchParams();
+        body.set('csrf', csrfInput.value);
+        body.set('keywords', keywords);
+
+        fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            generateBtn.disabled = false;
+            if (data.ok) {
+              textarea.value = data.text;
+              statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+            } else {
+              statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+            }
+          })
+          .catch(function () {
+            generateBtn.disabled = false;
+            statusEl.textContent = 'Errore di connessione. Riprova.';
+          });
+      });
+    })();
+  </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

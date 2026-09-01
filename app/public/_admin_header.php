@@ -9,6 +9,7 @@ $navItems = [
     'smtp'      => ['url' => '/admin_smtp.php',      'icon' => 'fas fa-paper-plane', 'label' => 'Email / SMTP'],
     'spotify'   => ['url' => '/admin_spotify.php',   'icon' => 'fa-brands fa-spotify', 'label' => 'Spotify'],
     'youtube'   => ['url' => '/admin_youtube.php',   'icon' => 'fa-brands fa-youtube', 'label' => 'YouTube'],
+    'gemini'    => ['url' => '/admin_gemini.php',    'icon' => 'fas fa-wand-magic-sparkles', 'label' => 'Assistente AI'],
     'import_legacy' => ['url' => '/admin_import_legacy.php', 'icon' => 'fas fa-file-import', 'label' => 'Import legacy'],
     'reviews' => ['url' => '/admin_reviews.php', 'icon' => 'fas fa-star', 'label' => 'Recensioni'],
     'access_requests' => ['url' => '/admin_access_requests.php', 'icon' => 'fas fa-user-check', 'label' => 'Richieste di accesso'],
