@@ -22,7 +22,10 @@ function geminiGenerateText(string $prompt): ?string {
     if (!$apiKey) {
         return null;
     }
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' . urlencode($apiKey);
+    // "-latest" invece di un nome di modello fisso: quando Google dismette una versione (come
+    // già successo una volta con gemini-2.0-flash), l'alias viene ripuntato automaticamente
+    // alla versione corrente, senza bisogno di un altro intervento manuale qui.
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=' . urlencode($apiKey);
     $body = json_encode([
         'contents' => [['parts' => [['text' => $prompt]]]],
         // Senza questo, il modello fa un "ragionamento" interno molto più lungo (centinaia di
