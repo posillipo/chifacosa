@@ -397,6 +397,31 @@ i co-admin; questa migrazione lo estende con lo stesso meccanismo (`getActingPro
 le pagine di gestione contenuti, ma solo per chi ha `role='owner'` (o è il titolare) — i co-admin
 restano limitati esattamente come prima, nessuna modifica al loro perimetro.
 
+## 30. Privacy/Cookie e Tracking personalizzabili per profilo
+```sql
+ALTER TABLE profiles ADD COLUMN privacy_tracking_settings TEXT DEFAULT NULL;
+```
+Un unico campo JSON (invece di tante colonne separate, per non richiedere una nuova migrazione a
+ogni parametro futuro) con le chiavi: `privacy_script`, `privacy_policy_url`,
+`ga_measurement_id`, `gtm_head_script`, `gtm_body_script`, `fb_pixel_script`, `fb_pixel_id`,
+`fb_capi_token`. Gestito da `dashboard_privacy_tracking.php` (Dashboard → menu hamburger →
+Privacy e Tracking), decodificato da `getProfileTracking()` in `functions.php`.
+
+Per impostazione predefinita ogni pagina pubblica usa le impostazioni generali del sito (pannello
+ADMIN → Privacy/Cookie, Tracking). Se il profilo compila un campo qui, **solo quel campo**
+prevale su quello generale del sito per le sue pagine pubbliche — gli altri campi lasciati vuoti
+continuano a usare quelli del sito (fallback per-campo, non tutto-o-niente). Le funzioni
+`embedPrivacyScript()`, `embedTrackingHead()`, `embedTrackingBodyStart()`,
+`embedGoogleAnalytics()`, `renderSiteFooterBar()`, `sendMetaConversionEvent()` e
+`embedClientSideConversionEvent()` accettano ora un parametro opzionale `$profile` proprio per
+questo — omesso (pagine di sistema come login/registrazione, senza un profilo specifico) restano
+col comportamento di sempre, solo le impostazioni dell'admin.
+
+La Meta Conversions API del profilo (se `fb_pixel_id`+`fb_capi_token` sono compilati) invia
+automaticamente un evento quando qualcuno segue quel profilo (`follow_account.php`,
+`follow_confirm.php`), scrive dal form Contatti (`contatti.php`) o prenota un tavolo/posto a un
+suo evento (`reserve_table.php`).
+
 ---
 
 ## Come aggiungere una nuova voce

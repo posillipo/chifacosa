@@ -280,7 +280,7 @@ function getActingProfile(array $loggedInUser): array {
         unset($_SESSION['acting_as_user_id']);
         return $loggedInUser;
     }
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings
                               FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
     $stmt->execute([(int) $actingId]);
     $profile = $stmt->fetch();
@@ -360,9 +360,29 @@ function emitCustomFeedLinkRedirect(?string $customFeedLink, ?string $customFeed
     echo '<script>location.replace(' . json_encode($customFeedLink) . ');</script>' . "\n";
 }
 
-// Restituisce lo script privacy/cookie (es. Iubenda) impostato dall'admin, pronto per essere
-// stampato nell'<head> di ogni pagina pubblica. Contenuto fidato: inserito solo dall'amministratore.
-function embedPrivacyScript(): string {
+// Decodifica le impostazioni Privacy/Cookie e Tracking personalizzate di UN profilo (Dashboard
+// → Privacy e Tracking) — salvate come un unico campo JSON invece di tante colonne separate,
+// per non dover aggiungere una colonna a ogni nuovo parametro futuro. Vuoto/non impostato se il
+// profilo non ha compilato nulla, o se la query che ha caricato $profile non porta con sé questa
+// colonna (pagine di sistema senza un profilo specifico, es. login/registrazione).
+function getProfileTracking(?array $profile): array {
+    $raw = $profile['privacy_tracking_settings'] ?? null;
+    if (!$raw) {
+        return [];
+    }
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
+}
+
+// Restituisce lo script privacy/cookie (es. Iubenda) da stampare nell'<head> di una pagina
+// pubblica: quello del PROFILO se lo ha impostato lui stesso (Dashboard → Privacy e Tracking),
+// altrimenti quello impostato dall'admin per l'intero sito. Senza un profilo (pagine di sistema
+// come login/registrazione) resta il comportamento di sempre, solo quello dell'admin.
+function embedPrivacyScript(?array $profile = null): string {
+    $own = trim(getProfileTracking($profile)['privacy_script'] ?? '');
+    if ($own !== '') {
+        return $own;
+    }
     return getSiteSetting('privacy_script') ?: '';
 }
 
@@ -452,8 +472,11 @@ function embedThemeCSS(): string {
     </style>';
 }
 
-function embedGoogleAnalytics(): string {
-    $id = trim(getSiteSetting('ga_measurement_id') ?: '');
+function embedGoogleAnalytics(?array $profile = null): string {
+    $id = trim(getProfileTracking($profile)['ga_measurement_id'] ?? '');
+    if ($id === '') {
+        $id = trim(getSiteSetting('ga_measurement_id') ?: '');
+    }
     if ($id === '') {
         return '';
     }
@@ -1303,8 +1326,11 @@ function renderFloatingButtons(): string {
     </script>';
 }
 
-function renderSiteFooterBar(): string {
-    $privacyUrl = getSiteSetting('privacy_policy_url') ?: '';
+function renderSiteFooterBar(?array $profile = null): string {
+    $privacyUrl = trim(getProfileTracking($profile)['privacy_policy_url'] ?? '');
+    if ($privacyUrl === '') {
+        $privacyUrl = getSiteSetting('privacy_policy_url') ?: '';
+    }
     $parts = [];
     // CookieYes intercetta automaticamente qualsiasi elemento con questa classe per riaprire
     // il pannello delle preferenze cookie — non serve nessuna chiamata JavaScript esplicita.
@@ -1568,13 +1594,18 @@ function notifyPasswordReset(string $toEmail, string $toName, string $token): bo
 
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
 }
-function embedTrackingHead(): string {
-    $gtm = getSiteSetting('gtm_head_script') ?: '';
-    $pixel = getSiteSetting('fb_pixel_script') ?: '';
+function embedTrackingHead(?array $profile = null): string {
+    $t = getProfileTracking($profile);
+    $gtm = trim($t['gtm_head_script'] ?? '') !== '' ? $t['gtm_head_script'] : (getSiteSetting('gtm_head_script') ?: '');
+    $pixel = trim($t['fb_pixel_script'] ?? '') !== '' ? $t['fb_pixel_script'] : (getSiteSetting('fb_pixel_script') ?: '');
     return $gtm . "\n" . $pixel;
 }
 
-function embedTrackingBodyStart(): string {
+function embedTrackingBodyStart(?array $profile = null): string {
+    $own = trim(getProfileTracking($profile)['gtm_body_script'] ?? '');
+    if ($own !== '') {
+        return $own;
+    }
     return getSiteSetting('gtm_body_script') ?: '';
 }
 
@@ -1594,9 +1625,10 @@ function generateEventId(): string {
 // restrizioni Safari/iOS. Non fa nulla se Pixel ID o token non sono configurati, e non lancia
 // mai errori: un fallimento qui non deve mai bloccare l'azione dell'utente (registrazione,
 // voto, ecc.), è solo tracciamento accessorio.
-function sendMetaConversionEvent(string $eventName, string $eventId, ?string $userEmail = null): void {
-    $pixelId = getSiteSetting('fb_pixel_id') ?: '';
-    $token = getSiteSetting('fb_capi_token') ?: '';
+function sendMetaConversionEvent(string $eventName, string $eventId, ?string $userEmail = null, ?array $profile = null): void {
+    $t = getProfileTracking($profile);
+    $pixelId = trim($t['fb_pixel_id'] ?? '') !== '' ? $t['fb_pixel_id'] : (getSiteSetting('fb_pixel_id') ?: '');
+    $token = trim($t['fb_capi_token'] ?? '') !== '' ? $t['fb_capi_token'] : (getSiteSetting('fb_capi_token') ?: '');
     if ($pixelId === '' || $token === '') {
         return;
     }
@@ -1637,8 +1669,9 @@ function sendMetaConversionEvent(string $eventName, string $eventId, ?string $us
 // Restituisce lo script <script> da stampare subito dopo un'azione (registrazione completata,
 // richiesta di accesso inviata) per notificare lo stesso evento anche al Pixel lato browser,
 // con lo stesso event_id passato al server — necessario per la deduplicazione.
-function embedClientSideConversionEvent(string $eventName, string $eventId): string {
-    if ((getSiteSetting('fb_pixel_id') ?: '') === '') {
+function embedClientSideConversionEvent(string $eventName, string $eventId, ?array $profile = null): string {
+    $ownId = trim(getProfileTracking($profile)['fb_pixel_id'] ?? '');
+    if ($ownId === '' && (getSiteSetting('fb_pixel_id') ?: '') === '') {
         return '';
     }
     return "<script>if (typeof fbq === 'function') { fbq('track', '" . addslashes($eventName) . "', {}, {eventID: '" . addslashes($eventId) . "'}); }</script>";

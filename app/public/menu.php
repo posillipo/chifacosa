@@ -7,7 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -110,9 +110,9 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
     }
 }
 </style>
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
 </head>
 <body class="<?= e(getPageThemeClass($artist['page_theme'] ?? 'colorful')) ?>">
 <?php if (str_starts_with($artist['page_theme'] ?? 'colorful', 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $artist['page_theme']) ?><?php endif; ?>
@@ -121,7 +121,7 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
 <?php if (($artist['page_theme'] ?? 'colorful') === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
-<?= embedTrackingBodyStart() ?>
+<?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'menu') ?>
 
@@ -166,7 +166,7 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
 </div>
 
 <?= renderFloatingButtons() ?>
-<?= renderSiteFooterBar($slug) ?>
+<?= renderSiteFooterBar($artist) ?>
 
 <script>
 // Menu tabs functionality

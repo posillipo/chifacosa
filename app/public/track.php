@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $trackId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, t.*
+$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings, t.*
                           FROM audio_tracks t
                           JOIN users u ON u.id = t.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -33,6 +33,7 @@ $artist = [
     'page_theme' => $track['page_theme'] ?? 'colorful',
     'genere' => $track['genere'],
     'youtube_channel_id' => $track['youtube_channel_id'],
+    'privacy_tracking_settings' => $track['privacy_tracking_settings'] ?? null,
 ];
 
 $pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId);
@@ -69,9 +70,9 @@ $ogDescription = $track['display_name'] . ' — ascolta "' . $track['title'] . '
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <style>:root { --accent: <?= e($track['theme_color'] ?: '#6C5CE7') ?>; --accent-text: <?= e(getContrastTextColor($track['theme_color'])) ?>; }</style>
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
 </head>
 <body class="<?= e(getPageThemeClass($artist['page_theme'] ?? 'colorful')) ?>">
 <?php if (str_starts_with($artist['page_theme'] ?? 'colorful', 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $artist['page_theme']) ?><?php endif; ?>
@@ -80,7 +81,7 @@ $ogDescription = $track['display_name'] . ' — ascolta "' . $track['title'] . '
 <?php if (($artist['page_theme'] ?? 'colorful') === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
-<?= embedTrackingBodyStart() ?>
+<?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'brani') ?>
 
@@ -97,6 +98,6 @@ $ogDescription = $track['display_name'] . ' — ascolta "' . $track['title'] . '
   <p><a href="/<?= e($slug) ?>/brani">← Tutti i brani di <?= e($track['display_name']) ?></a></p>
 </div>
 <?= renderFloatingButtons() ?>
-<?= renderSiteFooterBar($slug) ?>
+<?= renderSiteFooterBar($artist) ?>
 </body>
 </html>

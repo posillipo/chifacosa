@@ -5,7 +5,7 @@ require_once __DIR__ . '/../src/functions.php';
 $slug = $_POST['slug'] ?? $_GET['slug'] ?? '';
 $eventId = (int) ($_POST['event_id'] ?? $_GET['event_id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.email, p.display_name
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.email, p.display_name, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -61,6 +61,7 @@ if ($guestName === '' || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
     $reservationsUrl = siteUrl('/dashboard_reservations.php');
     notifyNewReservation($owner['email'], $owner['display_name'], $event['title'], $guestName, $guestEmail, $guestPhone ?: null, $partySize, $notes ?: null, $reservationsUrl);
     notifyReservationConfirmation($guestEmail, $guestName, $owner['display_name'], $event['title'], date('d/m/Y H:i', strtotime($event['event_date'])), $partySize);
+    sendMetaConversionEvent('Schedule', generateEventId(), $guestEmail, $owner);
 
     $message = 'Prenotazione ricevuta! Controlla la tua email per la conferma.';
 }

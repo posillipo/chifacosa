@@ -6,7 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $userSlug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, u.email, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, u.email, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$userSlug]);
@@ -41,6 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message,
             siteUrl('/' . $userSlug)
         );
+
+        $conversionEventId = generateEventId();
+        sendMetaConversionEvent('Contact', $conversionEventId, $email, $artist);
     }
 }
 
@@ -59,9 +62,9 @@ $pageUrl = siteUrl('/' . $userSlug . '/contatti');
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <style>:root { --accent: <?= e($artist['theme_color'] ?: '#6C5CE7') ?>; --accent-text: <?= e(getContrastTextColor($artist['theme_color'])) ?>; }</style>
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
 </head>
 <body class="<?= e(getPageThemeClass($artist['page_theme'] ?? 'colorful')) ?>">
 <?php if (str_starts_with($artist['page_theme'] ?? 'colorful', 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $artist['page_theme']) ?><?php endif; ?>
@@ -70,12 +73,13 @@ $pageUrl = siteUrl('/' . $userSlug . '/contatti');
 <?php if (($artist['page_theme'] ?? 'colorful') === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
-<?= embedTrackingBodyStart() ?>
+<?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'contatti') ?>
 
   <?php if ($formSent): ?>
     <div class="alert success">Messaggio inviato! Grazie, verrai ricontattato al più presto.</div>
+    <?= embedClientSideConversionEvent('Contact', $conversionEventId, $artist) ?>
   <?php else: ?>
     <?php if ($formError): ?><div class="alert error"><?= e($formError) ?></div><?php endif; ?>
     <form method="post" class="card">
@@ -91,6 +95,6 @@ $pageUrl = siteUrl('/' . $userSlug . '/contatti');
   <?php endif; ?>
 </div>
 <?= renderFloatingButtons() ?>
-<?= renderSiteFooterBar($userSlug) ?>
+<?= renderSiteFooterBar($artist) ?>
 </body>
 </html>

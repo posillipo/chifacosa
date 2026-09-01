@@ -14,11 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('INSERT IGNORE INTO account_follows (follower_user_id, followed_user_id) VALUES (?, ?)');
             $stmt->execute([$user['id'], $targetId]);
             if ($stmt->rowCount() > 0) {
-                $stmt = getDB()->prepare('SELECT u.email, p.display_name FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
+                $stmt = getDB()->prepare('SELECT u.email, p.display_name, p.privacy_tracking_settings FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
                 $stmt->execute([$targetId]);
                 $target = $stmt->fetch();
                 if ($target) {
                     notifyNewFollower($target['email'], $target['display_name'], $user['slug'], $user['display_name']);
+                    sendMetaConversionEvent('Follow', generateEventId(), $user['email'] ?? null, $target);
                 }
             }
         } elseif ($action === 'unfollow') {

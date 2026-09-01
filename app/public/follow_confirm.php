@@ -10,7 +10,7 @@ $artistName = '';
 $artistSlug = '';
 
 if ($token !== '') {
-    $stmt = getDB()->prepare('SELECT f.id, f.user_id, p.display_name, u.slug
+    $stmt = getDB()->prepare('SELECT f.id, f.user_id, f.email, p.display_name, p.privacy_tracking_settings, u.slug
                               FROM followers f
                               JOIN users u ON u.id = f.user_id
                               JOIN profiles p ON p.user_id = u.id
@@ -23,6 +23,7 @@ if ($token !== '') {
         $success = true;
         $artistName = $row['display_name'];
         $artistSlug = $row['slug'];
+        sendMetaConversionEvent('Follow', generateEventId(), $row['email'] ?? null, $row);
     }
 }
 ?>

@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     telefono VARCHAR(50) DEFAULT NULL,
     custom_feed_guid VARCHAR(500) DEFAULT NULL,
     custom_feed_guid_since DATETIME DEFAULT NULL,
+    privacy_tracking_settings TEXT DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

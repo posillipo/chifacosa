@@ -7,7 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id
+$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -140,9 +140,9 @@ $bandReviewers = $bandReviewers->fetchAll();
     --cf-1: #FFD6A5; --cf-2: #A0C4FF; --cf-3: #BDB2FF;
   }
 </style>
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
 </head>
 <body class="<?= e(getPageThemeClass($artist['page_theme'] ?? 'colorful')) ?>">
 <?php if (str_starts_with($artist['page_theme'] ?? 'colorful', 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $artist['page_theme']) ?><?php endif; ?>
@@ -151,7 +151,7 @@ $bandReviewers = $bandReviewers->fetchAll();
 <?php if (($artist['page_theme'] ?? 'colorful') === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
-<?= embedTrackingBodyStart() ?>
+<?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'home', true) ?>
 
@@ -283,6 +283,6 @@ $bandReviewers = $bandReviewers->fetchAll();
   </div>
 </div>
 <?= renderFloatingButtons() ?>
-<?= renderSiteFooterBar($slug) ?>
+<?= renderSiteFooterBar($artist) ?>
 </body>
 </html>
