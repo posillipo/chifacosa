@@ -56,6 +56,7 @@ $themePickerBackgrounds = [
     'polka' => 'radial-gradient(circle, #fff 22%, transparent 24%) 0 0/34px 34px, #FFD23F',
     'meme67' => 'repeating-conic-gradient(from 0deg at 50% 10%, #1c1c1c 0deg 8deg, #111 8deg 16deg)',
     'napoli' => 'linear-gradient(180deg, #063b66 0%, #0f7ac2 45%, #2aa8e0 70%, #f2b552 100%)',
+    'cinemapop' => 'linear-gradient(180deg, #14100a 0%, #3a2205 45%, #8a4a05 78%, #f5921f 100%)',
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'garden-anomaly' => 'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.55), transparent 60%), linear-gradient(160deg,#eef1f5,#c9d2de)',
@@ -243,6 +244,14 @@ include __DIR__ . '/_dash_header.php';
                 <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #FFD447;box-shadow:0 0 10px #FFD447;"></div>
                 <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;margin-bottom:4px;"></div>
                 <div style="position:relative;background:rgba(255,255,255,0.85);border:1.5px solid #fff;border-radius:999px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'cinemapop'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <div style="position:absolute;left:0;right:0;top:0;height:8px;background:#0a0806;background-image:repeating-radial-gradient(circle, rgba(255,248,234,0.75) 0 1.5px, transparent 1.5px 9px);"></div>
+                <div style="position:absolute;left:0;right:0;bottom:0;height:8px;background:#0a0806;background-image:repeating-radial-gradient(circle, rgba(255,248,234,0.75) 0 1.5px, transparent 1.5px 9px);"></div>
+                <div style="position:relative;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle, rgba(255,199,56,0.55), transparent 70%);margin:8px auto 8px;"></div>
+                <div style="position:relative;background:repeating-linear-gradient(90deg,#fff8ea 0 6px,#ffc738 6px 12px);border:1.5px solid #2b1a04;border-radius:8px 8px 3px 3px;height:10px;margin-bottom:4px;"></div>
+                <div style="position:relative;background:repeating-linear-gradient(90deg,#fff8ea 0 6px,#ffc738 6px 12px);border:1.5px solid #2b1a04;border-radius:8px 8px 3px 3px;height:10px;"></div>
               </div>
             <?php elseif ($key === 'startrek'): ?>
               <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">

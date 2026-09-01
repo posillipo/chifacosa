@@ -556,6 +556,7 @@ const PAGE_THEMES = [
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
     'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
     'infinite-parallax' => ['label' => 'Scorrimento Infinito', 'description' => 'La Home diventa una serie di pannelli a schermo intero — il tuo profilo, poi una voce del menu ciascuno — con scorrimento morbido e continuo e un leggero effetto di profondità sulle immagini mentre scorri, in loop senza fine. Si tocca un pannello per andare alla vera pagina. Nessuna grafica 3D, leggero e affidabile ovunque', 'body_class' => 'infinite-parallax-page'],
+    'cinemapop' => ['label' => 'Cinema Pop', 'description' => 'Ispirato a una sala cinematografica: sfondo scuro con un bagliore arancione da faretto dietro l\'avatar, pellicola con fori da film in alto e in basso, popcorn dorati che salgono dal basso in continuo, pulsanti a righe come un secchiello di popcorn con un riflesso lucido che scorre — colori e atmosfera originali, nessun logo di alcun cinema', 'body_class' => 'cinemapop-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -602,6 +603,15 @@ function renderCircuitBackground(string $accentColor): string {
 function renderNapoliBackground(): string {
     return '<div id="napoli-bg"><div class="napoli-vesuvio"></div></div>
     <script src="' . assetUrl('/assets/js/napoli-fx.js') . '"></script>';
+}
+
+// Sfondo animato per il tema "Cinema Pop" — le due bande da pellicola cinematografica (fori
+// bianchi su nero) in alto e in fondo sono puro CSS, i popcorn dorati che salgono dal basso in
+// continuo sono generati da cinemapop-fx.js, stesso schema di napoli-fx.js (elementi CSS
+// animati riciclati uno alla volta, nessun canvas/WebGL).
+function renderCinemaPopBackground(): string {
+    return '<div id="cinemapop-bg"><div class="cinemapop-filmstrip top"></div><div class="cinemapop-filmstrip bottom"></div></div>
+    <script src="' . assetUrl('/assets/js/cinemapop-fx.js') . '"></script>';
 }
 
 // Sfondo animato per il tema "Frontiera Stellare" (ispirato a Star Trek) — campo stellare che
