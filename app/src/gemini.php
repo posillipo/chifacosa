@@ -19,7 +19,7 @@ function geminiGenerateText(string $prompt): ?string {
     if (!$apiKey) {
         return null;
     }
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . urlencode($apiKey);
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' . urlencode($apiKey);
     $body = json_encode([
         'contents' => [['parts' => [['text' => $prompt]]]],
     ]);
