@@ -47,6 +47,9 @@ RewriteRule ^([a-zA-Z0-9_-]+)/eventi/?$ eventi.php?slug=$1 [L,QSA]
 # /nomeartista/band-che-amo -> elenco completo band preferite
 RewriteRule ^([a-zA-Z0-9_-]+)/band-che-amo/?$ band_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/attori-che-amo -> elenco completo attori preferiti
+RewriteRule ^([a-zA-Z0-9_-]+)/attori-che-amo/?$ attori_che_amo.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 

@@ -456,6 +456,34 @@ miniatura. **La foto originale a piena qualità non viene mai toccata**: `timeli
 caricato — nessuna riduzione di peso o qualità aprendo il link. I post pubblicati prima di
 questa modifica (senza miniatura) continuano a funzionare col fallback su `image_path`.
 
+## 33. Nuovo modulo "Attori che amo" (`fan_favorite_actors`)
+
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_actors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tmdb_person_id VARCHAR(50) NOT NULL,
+    actor_name VARCHAR(200) NOT NULL,
+    actor_image VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_actor (user_id, tmdb_person_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Stesso principio di "Band che amo" (con Spotify), ma per attori/attrici via **TMDb (The Movie
+Database)**: `app/src/tmdb.php` è un client minimale (`getTmdbApiKey()`, `tmdbSearchPerson()`,
+via `httpRequest()` GET — nessuna libreria esterna), chiave configurata in ADMIN → TMDb
+(`site_settings.tmdb_api_key`, nessuna nuova colonna necessaria per quella). `dashboard_fan_actors.php`
+è il modulo di gestione con ricerca live via `fetch()` (stesso pattern appena introdotto per
+"Band che amo": parte da sola mentre si scrive, aggiungi/rimuovi aggiornano la lista senza
+ricaricare la pagina). `attori_che_amo.php` è la pagina pubblica dedicata
+(`/slug/attori-che-amo`), con un vero tab nel menu pubblico (`publicNav()`, chiave
+`attorichamo`) mostrato solo se il profilo ha almeno un attore aggiunto — stessa logica di
+attivazione/visibilità di "Band che amo", coerente anche nei temi "Giardino Anomalo"/"Scorrimento
+Infinito". Aggiunta anche una nuova voce in `PUBLIC_NAV_ITEM_KEYS`/`createDefaultProfileNavMenu()`.
+
 ---
 
 ## Come aggiungere una nuova voce
