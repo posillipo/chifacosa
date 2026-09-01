@@ -25,6 +25,10 @@ function geminiGenerateText(string $prompt): ?string {
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' . urlencode($apiKey);
     $body = json_encode([
         'contents' => [['parts' => [['text' => $prompt]]]],
+        // Senza questo, il modello fa un "ragionamento" interno molto più lungo (centinaia di
+        // token pensati anche per una frase banale) prima di rispondere — inutile per un testo
+        // social breve, e rischia di far scadere il timeout della richiesta.
+        'generationConfig' => ['thinkingConfig' => ['thinkingLevel' => 'low']],
     ]);
 
     $ch = curl_init($url);
@@ -33,7 +37,7 @@ function geminiGenerateText(string $prompt): ?string {
         CURLOPT_POSTFIELDS => $body,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 20,
+        CURLOPT_TIMEOUT => 30,
     ]);
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
