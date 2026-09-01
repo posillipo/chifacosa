@@ -31,25 +31,33 @@ function geminiGenerateText(string $prompt): ?string {
         'generationConfig' => ['thinkingConfig' => ['thinkingLevel' => 'low']],
     ]);
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $body,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 30,
-    ]);
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
+    // Un solo tentativo automatico in più in caso di blip di rete temporaneo (osservato in
+    // produzione: richieste identiche a volte vanno subito in timeout senza ricevere nulla,
+    // poi funzionano al tentativo successivo) — così l'utente non deve ricliccare a mano.
+    for ($attempt = 1; $attempt <= 2; $attempt++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 25,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+        ]);
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
 
-    if ($response === false || $status >= 400) {
-        error_log("[Gemini] richiesta fallita (HTTP {$status}): " . ($curlError ?: substr((string) $response, 0, 300)));
-        return null;
+        if ($response !== false && $status < 400) {
+            $data = json_decode($response, true);
+            $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            return $text !== null ? trim($text) : null;
+        }
+
+        error_log("[Gemini] tentativo {$attempt} fallito (HTTP {$status}): " . ($curlError ?: substr((string) $response, 0, 300)));
     }
 
-    $data = json_decode($response, true);
-    $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-    return $text !== null ? trim($text) : null;
+    return null;
 }
