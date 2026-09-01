@@ -39,3 +39,29 @@ function tmdbSearchPerson(string $query): array {
     }
     return $results;
 }
+
+// Cerca un film per titolo. Stessa forma di tmdbSearchPerson(), immagine = locandina invece
+// della foto profilo.
+function tmdbSearchMovie(string $query): array {
+    $apiKey = getTmdbApiKey();
+    if (!$apiKey || trim($query) === '') {
+        return [];
+    }
+    $url = 'https://api.themoviedb.org/3/search/movie?api_key=' . urlencode($apiKey)
+         . '&language=it-IT&include_adult=false&query=' . urlencode($query);
+    $response = httpRequest('GET', $url);
+    if (!$response) {
+        return [];
+    }
+    $data = json_decode($response, true);
+    $results = [];
+    foreach (array_slice($data['results'] ?? [], 0, 10) as $m) {
+        $results[] = [
+            'id' => (string) $m['id'],
+            'name' => $m['title'],
+            'image' => !empty($m['poster_path']) ? (TMDB_IMAGE_BASE . $m['poster_path']) : null,
+            'tmdb_url' => 'https://www.themoviedb.org/movie/' . $m['id'],
+        ];
+    }
+    return $results;
+}

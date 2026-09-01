@@ -484,6 +484,29 @@ ricaricare la pagina). `attori_che_amo.php` è la pagina pubblica dedicata
 attivazione/visibilità di "Band che amo", coerente anche nei temi "Giardino Anomalo"/"Scorrimento
 Infinito". Aggiunta anche una nuova voce in `PUBLIC_NAV_ITEM_KEYS`/`createDefaultProfileNavMenu()`.
 
+## 34. Nuovo modulo "Film che amo" (`fan_favorite_movies`)
+
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_movies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tmdb_movie_id VARCHAR(50) NOT NULL,
+    movie_title VARCHAR(200) NOT NULL,
+    movie_image VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_movie (user_id, tmdb_movie_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Terzo modulo di questa famiglia (dopo "Band che amo" con Spotify e "Attori che amo" con TMDb),
+stessa identica architettura ma per film — `tmdbSearchMovie()` in `app/src/tmdb.php` (usa la
+stessa chiave TMDb già configurata, endpoint `/search/movie`, immagine = locandina invece della
+foto profilo). `dashboard_fan_movies.php` (ricerca live via `fetch()`), `film_che_amo.php`
+(pagina pubblica `/slug/film-che-amo`), tab pubblico condizionale (`filmcheamo` in
+`PUBLIC_NAV_ITEM_KEYS`/`publicNav()`, mostrato solo se il profilo ha almeno un film aggiunto).
+
 ---
 
 ## Come aggiungere una nuova voce

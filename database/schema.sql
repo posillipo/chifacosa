@@ -200,6 +200,18 @@ CREATE TABLE IF NOT EXISTS fan_favorite_actors (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS fan_favorite_movies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tmdb_movie_id VARCHAR(50) NOT NULL,
+    movie_title VARCHAR(200) NOT NULL,
+    movie_image VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_movie (user_id, tmdb_movie_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Segui tra account (chiunque può seguire chiunque, indipendentemente dal tipo di account),
 -- alimenta il feed "La mia Timeline" aggregato. Diverso dal "Segui via email" (tabella
 -- followers) che resta per i visitatori senza account.
