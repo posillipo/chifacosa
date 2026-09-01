@@ -1776,14 +1776,15 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.image_thumb_path, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM timeline_posts tp JOIN users u ON u.id = tp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
         ORDER BY tp.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
-            'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'], 'data' => $r['data'],
+            'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'],
+            'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/timeline/' . $r['id'],
         ];
@@ -1861,7 +1862,10 @@ function renderRatingForm(string $action, int $targetId, ?int $viewerId, int $ow
 }
 
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): string {
-    $coverSrc = $item['cover'] ? (str_starts_with($item['cover'], 'http') ? $item['cover'] : '/' . $item['cover']) : null;
+    // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
+    // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
+    $cover = $item['cover_thumb'] ?? $item['cover'];
+    $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
     $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
@@ -1886,7 +1890,9 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
 }
 
 function renderTimelineFeedItem(array $item): string {
-    $coverSrc = $item['cover'] ? (str_starts_with($item['cover'], 'http') ? $item['cover'] : '/' . $item['cover']) : null;
+    // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
+    $cover = $item['cover_thumb'] ?? $item['cover'];
+    $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
     $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';

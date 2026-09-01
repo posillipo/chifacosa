@@ -224,6 +224,7 @@ CREATE TABLE IF NOT EXISTS timeline_posts (
     user_id INT NOT NULL,
     testo TEXT DEFAULT NULL,
     image_path VARCHAR(255) DEFAULT NULL,
+    image_thumb_path VARCHAR(255) DEFAULT NULL,
     visibility ENUM('public','private') NOT NULL DEFAULT 'public',
     publish_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -435,6 +435,27 @@ usato per Spotify/YouTube: solo `httpRequest()`, nessuna libreria esterna) — e
 testo pronto che l'utente può modificare liberamente prima di pubblicare. Chiave unica
 condivisa da tutti i profili (come Spotify/YouTube), impostata in ADMIN → Assistente AI.
 
+## 32. Miniatura leggera per le foto della Timeline (`timeline_posts.image_thumb_path`)
+
+```sql
+ALTER TABLE timeline_posts ADD COLUMN image_thumb_path VARCHAR(255) DEFAULT NULL;
+```
+
+Le foto caricate da telefono/fotocamera possono pesare diversi MB, ma nella lista/feed della
+Timeline vengono mostrate solo come miniature 56-64px — scaricare il file intero solo per quello
+è uno spreco di banda, specie scorrendo molti post. Ora, quando si allega una foto in
+`dashboard_post.php`, il browser genera anche una miniatura leggera JPEG (max 320px, qualità
+0.82, via `<canvas>` — stesso approccio già usato per il ritaglio avatar, nessun GD/Imagick
+lato server) e la salva in `image_thumb_path`.
+
+`getTimelineFeedForUsers()` espone `cover_thumb` (= `image_thumb_path` se presente, altrimenti
+ricade su `image_path`) accanto al normale `cover`; `renderTimelineFeedItem()` e
+`renderDashboardTimelineItem()` (le liste pubblica e privata) usano `cover_thumb` per la
+miniatura. **La foto originale a piena qualità non viene mai toccata**: `timeline_post.php`
+(la pagina del singolo post) continua a mostrare sempre `image_path`, il file esattamente come
+caricato — nessuna riduzione di peso o qualità aprendo il link. I post pubblicati prima di
+questa modifica (senza miniatura) continuano a funzionare col fallback su `image_path`.
+
 ---
 
 ## Come aggiungere una nuova voce

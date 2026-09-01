@@ -34,6 +34,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $testo = trim($_POST['testo'] ?? '');
         $imagePath = handleCoverUpload($profile['slug'], 'image');
+
+        // Miniatura leggera per la lista/feed, generata nel browser (canvas) al momento della
+        // selezione del file — vedi commento analogo per il ritaglio avatar in
+        // dashboard_profile.php: niente elaborazione lato server, non serve GD/Imagick. La foto
+        // originale caricata sopra resta intatta ed è quella mostrata aprendo il post.
+        $imageThumbPath = null;
+        if ($imagePath) {
+            $thumbData = $_POST['image_thumb_data'] ?? '';
+            if ($thumbData !== '' && preg_match('#^data:image/jpeg;base64,#', $thumbData)) {
+                $raw = base64_decode(substr($thumbData, strpos($thumbData, ',') + 1), true);
+                if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 2 * 1024 * 1024) {
+                    $fname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
+                    $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0775, true);
+                    }
+                    if (file_put_contents($dir . '/' . $fname, $raw) !== false) {
+                        $imageThumbPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
+                    }
+                }
+            }
+        }
+
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         $scheduleRaw = trim($_POST['publish_at'] ?? '');
         $publishAt = null;
@@ -47,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($testo === '' && !$imagePath) {
             $error = 'Scrivi qualcosa o allega una foto.';
         } else {
-            $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, visibility, publish_at) VALUES (?,?,?,?,?)');
-            $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $visibility, $publishAt]);
+            $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, publish_at) VALUES (?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $publishAt]);
             logAdminAction((int) $profile['id'], (int) $user['id'], 'Nuovo aggiornamento in Timeline', $testo !== '' ? textExcerpt($testo, 60) : 'Foto pubblicata');
 
             // Niente notifica ai follower se il post è privato o programmato per il futuro —
@@ -62,10 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
-        $stmt = getDB()->prepare('SELECT image_path FROM timeline_posts WHERE id=? AND user_id=?');
+        $stmt = getDB()->prepare('SELECT image_path, image_thumb_path FROM timeline_posts WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['image_path']);
+            deleteCoverFile($row['image_thumb_path']);
         }
         $stmt = getDB()->prepare('DELETE FROM timeline_posts WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
@@ -122,7 +146,8 @@ include __DIR__ . '/_dash_header.php';
       <p id="ai-caption-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
     </div>
     <label>Foto (opzionale)</label>
-    <input type="file" name="image" accept="image/*">
+    <input type="file" name="image" id="post-image-input" accept="image/*">
+    <input type="hidden" name="image_thumb_data" id="post-image-thumb-data">
 
     <label>Privacy</label>
     <div style="display:flex;gap:16px;margin-bottom:14px;">
@@ -169,7 +194,7 @@ include __DIR__ . '/_dash_header.php';
     ?>
     <div class="card" style="display:flex;gap:14px;align-items:flex-start;<?= $isScheduled ? 'border:1px solid #f0ad4e;' : '' ?>">
       <?php if ($p['image_path']): ?>
-        <img src="/<?= e($p['image_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+        <img src="/<?= e($p['image_thumb_path'] ?: $p['image_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
@@ -198,6 +223,37 @@ include __DIR__ . '/_dash_header.php';
   <?php endforeach; ?>
 
   <script>
+    // Genera nel browser una miniatura JPEG leggera (max 320px, qualità 0.82) dalla foto
+    // selezionata, per alleggerire la lista/feed — l'originale caricato resta a piena qualità.
+    (function () {
+      const imageInput = document.getElementById('post-image-input');
+      const thumbDataInput = document.getElementById('post-image-thumb-data');
+      if (!imageInput || !thumbDataInput) return;
+
+      imageInput.addEventListener('change', function () {
+        thumbDataInput.value = '';
+        const file = imageInput.files && imageInput.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          img.onload = function () {
+            const maxDim = 320;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            thumbDataInput.value = canvas.toDataURL('image/jpeg', 0.82);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    })();
+
     (function () {
       const toggleBtn = document.getElementById('ai-caption-toggle');
       const panel = document.getElementById('ai-caption-panel');
