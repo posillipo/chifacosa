@@ -667,6 +667,9 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
 
     $items = [];
+    if (!empty($artist['id']) && hasFanFavoriteBands((int) $artist['id'])) {
+        $items['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo'];
+    }
     $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
     if (!empty($artist['spotify_artist_id']) && $isBandOrLabel) {
         $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
@@ -1181,9 +1184,15 @@ function menuHasItems(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoriteBands(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_bands WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasFanFavorites = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1200,6 +1209,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     // con l'ordine mostrato nella checklist di dashboard_nav_menu.php.
     $tabs = [];
     $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug, 'icon' => 'fas fa-house'];
+    if ($hasFanFavorites) {
+        $tabs['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo', 'icon' => 'fas fa-heart-circle-check'];
+    }
     $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasSpotify && $isBandOrLabel) {
         $tabs['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify', 'icon' => 'fa-brands fa-spotify'];
@@ -1284,7 +1296,8 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $html .= '</p>';
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu);
+    $hasFanFavorites = $ownerId ? hasFanFavoriteBands($ownerId) : false;
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasFanFavorites);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';

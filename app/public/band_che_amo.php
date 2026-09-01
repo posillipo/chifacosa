@@ -49,7 +49,7 @@ $pageUrl = siteUrl('/' . $slug . '/band-che-amo');
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
 <?= embedTrackingBodyStart($artist) ?>
 <div class="container">
-  <?= publicProfileHeader($artist, 'home') ?>
+  <?= publicProfileHeader($artist, 'bandcheamo') ?>
 
   <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">
     Tutte le band che ama (<?= count($favorites) ?>)
