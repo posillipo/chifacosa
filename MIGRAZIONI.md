@@ -553,6 +553,70 @@ elementi restano comunque nella lista/pagina di dettaglio del profilo: la colonn
 `getTimelineFeedForUsers()`, che ora filtra `WHERE ... show_in_feed = 1`. Default `1` per non
 alterare il comportamento degli elementi già aggiunti.
 
+## 37. Logica di pubblicazione stile Timeline per Band/Attori/Film/Brani che amo
+
+```sql
+ALTER TABLE fan_favorite_bands
+  ADD COLUMN image_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN image_thumb_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN publish_at DATETIME DEFAULT NULL;
+
+ALTER TABLE fan_favorite_actors
+  ADD COLUMN image_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN image_thumb_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN publish_at DATETIME DEFAULT NULL;
+
+ALTER TABLE fan_favorite_movies
+  ADD COLUMN image_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN image_thumb_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN publish_at DATETIME DEFAULT NULL;
+
+ALTER TABLE favorite_tracks
+  ADD COLUMN note TEXT DEFAULT NULL,
+  ADD COLUMN show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN image_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN image_thumb_path VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN publish_at DATETIME DEFAULT NULL;
+
+UPDATE profile_navigation_menu SET name = 'Brani che amo' WHERE name = 'Brani';
+```
+
+Estende i quattro moduli "che amo" con la stessa logica di pubblicazione già usata nella Timeline
+(vedi `dashboard_post.php`), sostituendo il precedente pulsante rapido **+Feed** con un pannello
+completo "✏️ Gestisci pubblicazione" per ciascun elemento:
+
+1. **Testo con AI**: la nota personale esistente diventa anche il testo del post, con il pulsante
+   **✨ Genera con AI** (stesso `/dashboard_ai_caption.php` della Timeline) per scrivere una bozza
+   a partire da qualche parola chiave.
+2. **Foto opzionale**: si può caricare una foto personale per l'elemento (con miniatura generata
+   nel browser, come i post della Timeline) — se presente, viene usata al posto della cover
+   ufficiale (Spotify/TMDb) nel Feed e nella pagina di dettaglio; la cover ufficiale resta comunque
+   sempre visibile nella lista di gestione e come ripiego se non è stata caricata nessuna foto.
+3. **Pubblico / Solo io**: radio button che sostituisce il tasto +Feed — stesso significato di
+   prima (controlla solo `show_in_feed`, cioè la comparsa nel Feed aggregato), ma con la stessa
+   interfaccia della Timeline. L'elemento resta comunque sempre visibile nella sua lista pubblica
+   dedicata e nella pagina di dettaglio, "Solo io" lo nasconde solo dal Feed.
+4. **Programma la pubblicazione**: nuova colonna `publish_at` — se impostata, l'elemento compare
+   nel Feed solo a partire da quella data (`getTimelineFeedForUsers()` filtra
+   `publish_at IS NULL OR publish_at <= NOW()`), esattamente come i post programmati della Timeline.
+5. **Link personalizzato per il feed**: stessa impostazione di profilo già usata dalla Timeline
+   (`profiles.custom_feed_guid`/`custom_feed_guid_since`, nessuna colonna nuova) — resa disponibile
+   anche nei pannelli di Band/Attori/Film/Brani che amo, con lo stesso comportamento: chi clicca
+   sulla pagina di dettaglio di un elemento pubblicato da quel momento in poi viene reindirizzato
+   lì via JS (`emitCustomFeedLinkRedirect()`), mentre RSS/crawler vedono sempre il permalink interno
+   con l'immagine corretta.
+
+Inoltre, "Brani" diventa "Brani che amo" a tutti gli effetti (nav pubblica, dashboard, titoli),
+raggiunge la stessa parità delle altre tre sezioni (nota/testo, foto, pagina di dettaglio
+condivisibile, controllo Feed) e guadagna una pagina di dettaglio pubblica dedicata su
+`/slug/brani/ID/scheda` (nuovo file `favorite_track_item.php` — non può stare su `/slug/brani/ID`
+"nudo" perché quella route è già di `track.php`, funzione precedente e diversa per i brani
+caricati come file audio, tabella `audio_tracks`). L'RSS (`feed.php`) ora include anche i Brani che
+amo, dato che hanno finalmente una loro `og:image` propria da mostrare (prima erano esclusi perché
+linkavano direttamente a Spotify). L'`UPDATE` su `profile_navigation_menu` rinomina la voce di menu
+già salvata per i profili esistenti, altrimenti il controllo di visibilità di quella voce smetterebbe
+di funzionare per chi l'ha già personalizzata.
+
 ---
 
 ## Come aggiungere una nuova voce

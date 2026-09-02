@@ -12,7 +12,7 @@ $homeFeatures = [
     ['icon' => '🔗', 'title' => 'Link in Bio', 'desc' => 'Tutti i tuoi link importanti in una sola pagina, sempre a portata di condivisione.'],
     ['icon' => '🕒', 'title' => 'Timeline', 'desc' => 'Pubblica aggiornamenti e resta in contatto con chi ti segue.'],
     ['icon' => '📰', 'title' => 'Blog', 'desc' => 'Articoli con permalink dedicato, ottimizzati per la ricerca.'],
-    ['icon' => '🎧', 'title' => 'Brani', 'desc' => 'Vetrina dei brani che ami, collegata a Spotify.'],
+    ['icon' => '🎧', 'title' => 'Brani che amo', 'desc' => 'Vetrina dei brani che ami, collegata a Spotify.'],
     ['icon' => '📅', 'title' => 'Eventi', 'desc' => 'Calendario pubblico, condivisibile e sempre aggiornato.'],
     ['icon' => '🍽️', 'title' => 'Menù e Prenotazioni', 'desc' => 'Menù digitale e prenotazioni, pensati per locali e ristoranti.'],
     ['icon' => '❤️', 'title' => 'Follower', 'desc' => 'Chi ti segue riceve una notifica ad ogni tua novità.'],

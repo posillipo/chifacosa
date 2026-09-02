@@ -35,6 +35,11 @@ RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/votazioni/?$ track_review.php?slug=
 # /nomeartista/brani/ID/testo -> pagina dedicata al testo/ascolto del brano
 RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/testo/?$ track_lyrics.php?slug=$1&id=$2 [L,QSA]
 
+# /nomeartista/brani/ID/scheda -> pagina di dettaglio del singolo "Brano che amo" (condivisibile
+# sui social) — non può stare su /brani/ID "nudo" perché quella route è già di track.php (tabella
+# audio_tracks, funzione diversa e precedente: brani caricati come file, non brani Spotify).
+RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/scheda/?$ favorite_track_item.php?slug=$1&id=$2 [L,QSA]
+
 # /nomeartista/timeline/ID -> pagina dedicata al singolo aggiornamento (condivisibile sui social)
 RewriteRule ^([a-zA-Z0-9_-]+)/timeline/([0-9]+)/?$ timeline_post.php?slug=$1&id=$2 [L,QSA]
 

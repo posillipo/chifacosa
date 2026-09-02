@@ -57,7 +57,7 @@ if (!isset(FAN_FAVORITE_KINDS[$kind])) {
 }
 $cfg = FAN_FAVORITE_KINDS[$kind];
 
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -78,7 +78,7 @@ if (!$item) {
 }
 
 $name = $item[$cfg['name_col']];
-$image = $item[$cfg['image_col']] ?? null;
+$image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
 $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
 $note = trim($item['note'] ?? '');
 $externalUrl = $cfg['external_url'] . $item[$cfg['external_id_col']];
@@ -103,6 +103,7 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'], $artist['custom_feed_guid_since'], $item['created_at']); ?>
 <title><?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
 

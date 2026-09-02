@@ -9,6 +9,7 @@ $pageTitle = 'Attori che amo';
 
 $searchResults = [];
 $searchQuery = '';
+$error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
@@ -39,6 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'remove') {
         $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('SELECT image_path, image_thumb_path FROM fan_favorite_actors WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+        if ($row = $stmt->fetch()) {
+            deleteCoverFile($row['image_path']);
+            deleteCoverFile($row['image_thumb_path']);
+        }
         $stmt = getDB()->prepare('DELETE FROM fan_favorite_actors WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         if ($isAjax) {
@@ -46,26 +53,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => true]);
             exit;
         }
-    } elseif ($action === 'toggle_feed') {
+    } elseif ($action === 'save_details') {
+        // Pannello di pubblicazione per il singolo elemento: stessa logica della Timeline
+        // (testo con AI, foto opzionale, Pubblico/Solo io, programmazione, link personalizzato
+        // per il feed) — vedi dashboard_post.php per il modello originale.
         $id = (int) ($_POST['id'] ?? 0);
-        $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET show_in_feed = 1 - show_in_feed WHERE id=? AND user_id=?');
-        $stmt->execute([$id, $profile['id']]);
+        $note = trim($_POST['note'] ?? '');
+        $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
+        $showInFeed = $visibility === 'public' ? 1 : 0;
+
+        $scheduleRaw = trim($_POST['publish_at'] ?? '');
+        $publishAt = null;
+        if ($scheduleRaw !== '') {
+            $ts = strtotime($scheduleRaw);
+            if ($ts && $ts > time()) {
+                $publishAt = date('Y-m-d H:i:s', $ts);
+            }
+        }
+
+        // Link personalizzato per il feed: impostazione di profilo condivisa con la Timeline
+        // (non del singolo elemento) — cambiarlo da qui vale per tutti i contenuti.
+        $customFeedGuid = trim($_POST['custom_feed_guid'] ?? '');
+        if ($customFeedGuid !== '' && !filter_var($customFeedGuid, FILTER_VALIDATE_URL)) {
+            $error = 'Il link personalizzato per il feed non è un URL valido.';
+        } else {
+            $customFeedGuid = $customFeedGuid ?: null;
+            $customFeedGuidSince = $profile['custom_feed_guid_since'] ?? null;
+            if ($customFeedGuid !== ($profile['custom_feed_guid'] ?? null)) {
+                $customFeedGuidSince = $customFeedGuid ? date('Y-m-d H:i:s') : null;
+            }
+            $stmt = getDB()->prepare('UPDATE profiles SET custom_feed_guid=?, custom_feed_guid_since=? WHERE user_id=?');
+            $stmt->execute([$customFeedGuid, $customFeedGuidSince, $profile['id']]);
+            $user = currentUser();
+            $profile = getActingProfile($user);
+        }
+
+        $imagePath = handleCoverUpload($profile['slug'], 'image');
+        $imageThumbPath = null;
+        if ($imagePath) {
+            $thumbData = $_POST['image_thumb_data'] ?? '';
+            if ($thumbData !== '' && preg_match('#^data:image/jpeg;base64,#', $thumbData)) {
+                $raw = base64_decode(substr($thumbData, strpos($thumbData, ',') + 1), true);
+                if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 2 * 1024 * 1024) {
+                    $fname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
+                    $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0775, true);
+                    }
+                    if (file_put_contents($dir . '/' . $fname, $raw) !== false) {
+                        $imageThumbPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
+                    }
+                }
+            }
+            $stmt = getDB()->prepare('SELECT image_path, image_thumb_path FROM fan_favorite_actors WHERE id=? AND user_id=?');
+            $stmt->execute([$id, $profile['id']]);
+            if ($old = $stmt->fetch()) {
+                deleteCoverFile($old['image_path']);
+                deleteCoverFile($old['image_thumb_path']);
+            }
+            $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
+            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
+        } else {
+            $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
+        }
+
         if ($isAjax) {
-            $stmt = getDB()->prepare('SELECT show_in_feed FROM fan_favorite_actors WHERE id=? AND user_id=?');
+            $stmt = getDB()->prepare('SELECT * FROM fan_favorite_actors WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);
             $row = $stmt->fetch();
             header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => (bool) $row, 'show_in_feed' => $row ? (int) $row['show_in_feed'] : null]);
-            exit;
-        }
-    } elseif ($action === 'save_note') {
-        $id = (int) ($_POST['id'] ?? 0);
-        $note = trim($_POST['note'] ?? '');
-        $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET note=? WHERE id=? AND user_id=?');
-        $stmt->execute([$note !== '' ? $note : null, $id, $profile['id']]);
-        if ($isAjax) {
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => true, 'note' => $note]);
+            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error]);
             exit;
         }
     } elseif ($action === 'search') {
@@ -107,10 +165,14 @@ include __DIR__ . '/_dash_header.php';
     </p>
     <p style="color:var(--text-muted)">
       Ogni attore aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      condivisibile sui social con anteprima immagine/testo — puoi aggiungere una nota per
-      spiegare perché ti piace, mostrata proprio lì.
+      condivisibile sui social con anteprima immagine/testo. Da "✏️ Gestisci pubblicazione" puoi
+      scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
+      comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
+      impostare il link personalizzato per il feed — stessa logica della Timeline.
     </p>
   </details>
+
+  <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
   <form method="post" class="card" id="fa-search-form">
     <?= csrfField() ?>
@@ -151,8 +213,14 @@ include __DIR__ . '/_dash_header.php';
   <div id="fa-list-empty" class="alert error" style="<?= $favorites ? 'display:none;' : '' ?>">Nessun attore aggiunto ancora — cercalo qui sopra.</div>
   <div id="fa-list">
     <?php foreach ($favorites as $f): ?>
-      <?php $note = trim($f['note'] ?? ''); ?>
-      <div class="link-item" data-fa-favorite="<?= (int)$f['id'] ?>" data-fa-person-id="<?= e($f['tmdb_person_id']) ?>" data-fa-note="<?= e($note) ?>" style="flex-direction:column;align-items:stretch;gap:8px;">
+      <?php
+        $note = trim($f['note'] ?? '');
+        $isPrivate = !$f['show_in_feed'];
+        $isScheduled = $f['publish_at'] && strtotime($f['publish_at']) > time();
+      ?>
+      <div class="link-item" data-fa-favorite="<?= (int)$f['id'] ?>" data-fa-person-id="<?= e($f['tmdb_person_id']) ?>"
+           data-fa-note="<?= e($note) ?>" data-fa-has-image="<?= $f['image_path'] ? '1' : '0' ?>"
+           style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
           <a href="/<?= e($profile['slug']) ?>/attori-che-amo/<?= (int)$f['id'] ?>" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">
             <?php if ($f['actor_image']): ?>
@@ -160,24 +228,66 @@ include __DIR__ . '/_dash_header.php';
             <?php endif; ?>
             <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($f['actor_name']) ?></strong>
           </a>
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-            <button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>
-            <button type="button" class="btn small<?= $f['show_in_feed'] ? '' : ' secondary' ?> fa-feed-toggle" title="Mostra/nascondi questo elemento nella Timeline/Feed">+Feed</button>
-          </div>
+          <button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
-        <div class="fa-note-block">
+        <div class="fa-pub-badges" style="display:flex;gap:6px;flex-wrap:wrap;<?= (!$isScheduled && !$isPrivate) ? 'display:none;' : '' ?>">
+          <?php if ($isScheduled): ?><span class="fa-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il <?= e(date('d/m/Y H:i', strtotime($f['publish_at']))) ?></span><?php endif; ?>
+          <?php if ($isPrivate): ?><span class="fa-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span><?php endif; ?>
+        </div>
+        <div class="fa-pub-block">
           <?php if ($note !== ''): ?>
-            <p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);"><?= nl2br(e($note)) ?></p>
-            <button type="button" class="btn small secondary fa-note-toggle" style="margin-top:4px;">Modifica nota</button>
+            <p class="fa-pub-text" style="margin:0;font-size:14px;"><?= nl2br(e($note)) ?></p>
           <?php else: ?>
-            <p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>
-            <button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>
+            <p class="fa-pub-text" style="margin:0;font-size:14px;display:none;"></p>
           <?php endif; ?>
-          <form class="fa-note-editor" onsubmit="return false;" style="display:none;margin-top:6px;">
-            <textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
+          <button type="button" class="btn small secondary fa-pub-toggle">✏️ Gestisci pubblicazione</button>
+          <form class="fa-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">
+            <label>Racconta perché ti piace</label>
+            <textarea class="fa-pub-textarea" rows="3" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 12px;">
+              <button type="button" class="btn small secondary fa-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="fa-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-4px 0 12px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="fa-ai-keywords" rows="2" placeholder="es. la sua interpretazione in quel film mi ha conquistato"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small fa-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary fa-ai-cancel">Annulla</button>
+              </div>
+              <p class="fa-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
+
+            <label>Foto (opzionale)</label>
+            <input type="file" class="fa-pub-image-input" accept="image/*">
+            <input type="hidden" class="fa-pub-image-thumb-data">
+            <?php if ($f['image_path']): ?><p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p><?php endif; ?>
+
+            <label>Privacy (comparsa nel Feed)</label>
+            <div style="display:flex;gap:16px;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" class="fa-pub-visibility" name="visibility" value="public" <?= $isPrivate ? '' : 'checked' ?> style="width:auto;"> Pubblico
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" class="fa-pub-visibility" name="visibility" value="private" <?= $isPrivate ? 'checked' : '' ?> style="width:auto;"> Solo io
+              </label>
+            </div>
+
+            <label>Programma la comparsa nel Feed (opzionale)</label>
+            <input type="datetime-local" class="fa-pub-publish-at" value="<?= $f['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($f['publish_at']))) : '' ?>">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>
+
+            <label>Link personalizzato per il feed (opzionale)</label>
+            <input type="url" class="fa-pub-custom-link" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
+            <?php if (!empty($profile['custom_feed_guid_since'])): ?>
+              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Attivo dal <?= e(date('d/m/Y H:i', strtotime($profile['custom_feed_guid_since']))) ?>. Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
+            <?php else: ?>
+              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
+            <?php endif; ?>
+
+            <p class="fa-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>
             <div style="display:flex;gap:8px;margin-top:4px;">
-              <button type="button" class="btn small fa-note-save">Salva nota</button>
-              <button type="button" class="btn small secondary fa-note-cancel">Annulla</button>
+              <button type="button" class="btn small fa-pub-save">Salva</button>
+              <button type="button" class="btn small secondary fa-pub-cancel">Annulla</button>
             </div>
           </form>
         </div>
@@ -213,6 +323,12 @@ include __DIR__ . '/_dash_header.php';
       return fetch('/dashboard_fan_actors.php', { method: 'POST', body: params }).then(r => r.json());
     }
 
+    function postForm(formData) {
+      formData.set('csrf', csrfInput.value);
+      formData.set('ajax', '1');
+      return fetch('/dashboard_fan_actors.php', { method: 'POST', body: formData }).then(r => r.json());
+    }
+
     function markResultAsAdded(personId) {
       const row = resultsBox.querySelector('[data-fa-result="' + CSS.escape(personId) + '"]');
       if (!row) return;
@@ -233,21 +349,48 @@ include __DIR__ . '/_dash_header.php';
 
     function favoriteRowHtml(item) {
       const img = item.actor_image ? '<img src="' + escapeHtml(item.actor_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '';
+      const customLink = <?= json_encode($profile['custom_feed_guid'] ?? '') ?>;
+      const customLinkSince = <?= json_encode($profile['custom_feed_guid_since'] ?? '') ?>;
+      const sinceHint = customLinkSince
+        ? 'Attivo dal ' + escapeHtml(customLinkSince) + '. Vale per tutti i contenuti del profilo, non solo per questo elemento.'
+        : 'Vale per tutti i contenuti del profilo, non solo per questo elemento.';
       return '<div style="display:flex;align-items:center;gap:12px;">'
         + '<a href="/' + escapeHtml(profileSlug) + '/attori-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
         + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.actor_name) + '</strong></a>'
-        + '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
-        + '<button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>'
-        + '<button type="button" class="btn small fa-feed-toggle" title="Mostra/nascondi questo elemento nella Timeline/Feed">+Feed</button>'
-        + '</div></div>'
-        + '<div class="fa-note-block">'
-        + '<p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>'
-        + '<button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>'
-        + '<form class="fa-note-editor" onsubmit="return false;" style="display:none;margin-top:6px;">'
-        + '<textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"></textarea>'
+        + '<button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
+        + '<div class="fa-pub-badges" style="display:none;"></div>'
+        + '<div class="fa-pub-block">'
+        + '<p class="fa-pub-text" style="margin:0;font-size:14px;display:none;"></p>'
+        + '<button type="button" class="btn small secondary fa-pub-toggle">✏️ Gestisci pubblicazione</button>'
+        + '<form class="fa-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">'
+        + '<label>Racconta perché ti piace</label>'
+        + '<textarea class="fa-pub-textarea" rows="3" placeholder="Racconta perché ti piace"></textarea>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 12px;">'
+        + '<button type="button" class="btn small secondary fa-ai-toggle">✨ Genera con AI</button></div>'
+        + '<div class="fa-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-4px 0 12px;">'
+        + '<label>Qualche parola chiave o istruzione per l\'AI</label>'
+        + '<textarea class="fa-ai-keywords" rows="2" placeholder="es. la sua interpretazione in quel film mi ha conquistato"></textarea>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+        + '<button type="button" class="btn small fa-ai-generate">Genera testo</button>'
+        + '<button type="button" class="btn small secondary fa-ai-cancel">Annulla</button></div>'
+        + '<p class="fa-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p></div>'
+        + '<label>Foto (opzionale)</label>'
+        + '<input type="file" class="fa-pub-image-input" accept="image/*">'
+        + '<input type="hidden" class="fa-pub-image-thumb-data">'
+        + '<label>Privacy (comparsa nel Feed)</label>'
+        + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fa-pub-visibility" name="visibility" value="public" checked style="width:auto;"> Pubblico</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fa-pub-visibility" name="visibility" value="private" style="width:auto;"> Solo io</label></div>'
+        + '<label>Programma la comparsa nel Feed (opzionale)</label>'
+        + '<input type="datetime-local" class="fa-pub-publish-at">'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>'
+        + '<label>Link personalizzato per il feed (opzionale)</label>'
+        + '<input type="url" class="fa-pub-custom-link" value="' + escapeHtml(customLink) + '" placeholder="https://...">'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">' + sinceHint + '</p>'
+        + '<p class="fa-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>'
         + '<div style="display:flex;gap:8px;margin-top:4px;">'
-        + '<button type="button" class="btn small fa-note-save">Salva nota</button>'
-        + '<button type="button" class="btn small secondary fa-note-cancel">Annulla</button></div></form></div>';
+        + '<button type="button" class="btn small fa-pub-save">Salva</button>'
+        + '<button type="button" class="btn small secondary fa-pub-cancel">Annulla</button></div></form></div>';
     }
 
     function addFavoriteRow(item) {
@@ -256,6 +399,7 @@ include __DIR__ . '/_dash_header.php';
       div.setAttribute('data-fa-favorite', item.id);
       div.setAttribute('data-fa-person-id', item.tmdb_person_id);
       div.setAttribute('data-fa-note', '');
+      div.setAttribute('data-fa-has-image', '0');
       div.style.flexDirection = 'column';
       div.style.alignItems = 'stretch';
       div.style.gap = '8px';
@@ -285,13 +429,45 @@ include __DIR__ . '/_dash_header.php';
       }).catch(function () { btn.disabled = false; });
     });
 
-    // Rimuovi/nota (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
+    // Genera una miniatura JPEG leggera (max 320px) dalla foto selezionata, nel browser — vedi
+    // stessa logica in dashboard_post.php.
+    function generateThumb(file, callback) {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.onload = function () {
+          const maxDim = 320;
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          callback(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderBadges(item) {
+      const isScheduled = item.publish_at && new Date(item.publish_at.replace(' ', 'T')).getTime() > Date.now();
+      const isPrivate = !item.show_in_feed || item.show_in_feed == 0;
+      let html = '';
+      if (isScheduled) html += '<span class="fa-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il ' + escapeHtml(item.publish_at) + '</span>';
+      if (isPrivate) html += '<span class="fa-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span>';
+      return { html: html, visible: isScheduled || isPrivate };
+    }
+
+    // Rimuovi/pubblicazione (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
     listBox.addEventListener('click', function (e) {
       const removeBtn = e.target.closest('.fa-remove-btn');
-      const feedToggleBtn = e.target.closest('.fa-feed-toggle');
-      const noteToggleBtn = e.target.closest('.fa-note-toggle');
-      const noteCancelBtn = e.target.closest('.fa-note-cancel');
-      const noteSaveBtn = e.target.closest('.fa-note-save');
+      const pubToggleBtn = e.target.closest('.fa-pub-toggle');
+      const pubCancelBtn = e.target.closest('.fa-pub-cancel');
+      const pubSaveBtn = e.target.closest('.fa-pub-save');
+      const aiToggleBtn = e.target.closest('.fa-ai-toggle');
+      const aiCancelBtn = e.target.closest('.fa-ai-cancel');
+      const aiGenerateBtn = e.target.closest('.fa-ai-generate');
 
       if (removeBtn) {
         if (!confirm('Rimuovere questo attore dalla tua lista?')) return;
@@ -314,62 +490,129 @@ include __DIR__ . '/_dash_header.php';
         return;
       }
 
-      if (feedToggleBtn) {
-        const row = feedToggleBtn.closest('[data-fa-favorite]');
+      if (pubToggleBtn) {
+        const block = pubToggleBtn.closest('.fa-pub-block');
+        block.querySelector('.fa-pub-editor').style.display = 'block';
+        block.querySelector('.fa-pub-textarea').focus();
+        return;
+      }
+
+      if (pubCancelBtn) {
+        const block = pubCancelBtn.closest('.fa-pub-block');
+        const row = pubCancelBtn.closest('[data-fa-favorite]');
+        block.querySelector('.fa-pub-textarea').value = row.getAttribute('data-fa-note') || '';
+        block.querySelector('.fa-pub-editor').style.display = 'none';
+        return;
+      }
+
+      if (aiToggleBtn) {
+        const panel = aiToggleBtn.closest('.fa-pub-editor').querySelector('.fa-ai-panel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        if (panel.style.display === 'block') panel.querySelector('.fa-ai-keywords').focus();
+        return;
+      }
+
+      if (aiCancelBtn) {
+        const panel = aiCancelBtn.closest('.fa-ai-panel');
+        panel.style.display = 'none';
+        panel.querySelector('.fa-ai-status').textContent = '';
+        return;
+      }
+
+      if (aiGenerateBtn) {
+        const panel = aiGenerateBtn.closest('.fa-ai-panel');
+        const editor = aiGenerateBtn.closest('.fa-pub-editor');
+        const keywords = panel.querySelector('.fa-ai-keywords').value.trim();
+        const statusEl = panel.querySelector('.fa-ai-status');
+        if (!keywords) {
+          statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+          return;
+        }
+        aiGenerateBtn.disabled = true;
+        statusEl.textContent = 'Generazione in corso...';
+        const body = new URLSearchParams();
+        body.set('csrf', csrfInput.value);
+        body.set('keywords', keywords);
+        fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            aiGenerateBtn.disabled = false;
+            if (data.ok) {
+              editor.querySelector('.fa-pub-textarea').value = data.text;
+              statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+            } else {
+              statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+            }
+          })
+          .catch(function () {
+            aiGenerateBtn.disabled = false;
+            statusEl.textContent = 'Errore di connessione. Riprova.';
+          });
+        return;
+      }
+
+      if (pubSaveBtn) {
+        const editor = pubSaveBtn.closest('.fa-pub-editor');
+        const block = pubSaveBtn.closest('.fa-pub-block');
+        const row = pubSaveBtn.closest('[data-fa-favorite]');
         const id = row.getAttribute('data-fa-favorite');
-        feedToggleBtn.disabled = true;
-        const params = new URLSearchParams();
-        params.set('action', 'toggle_feed');
-        params.set('id', id);
-        post(params).then(function (data) {
-          feedToggleBtn.disabled = false;
-          if (!data.ok) return;
-          feedToggleBtn.classList.toggle('secondary', !data.show_in_feed);
-        }).catch(function () { feedToggleBtn.disabled = false; });
-        return;
-      }
+        const note = editor.querySelector('.fa-pub-textarea').value;
+        const visibility = editor.querySelector('.fa-pub-visibility:checked').value;
+        const publishAt = editor.querySelector('.fa-pub-publish-at').value;
+        const customLink = editor.querySelector('.fa-pub-custom-link').value;
+        const imageInput = editor.querySelector('.fa-pub-image-input');
+        const statusEl = editor.querySelector('.fa-pub-status');
+        const file = imageInput.files && imageInput.files[0];
 
-      if (noteToggleBtn) {
-        const block = noteToggleBtn.closest('.fa-note-block');
-        block.querySelector('.fa-note-editor').style.display = 'block';
-        block.querySelector('.fa-note-textarea').focus();
-        return;
-      }
-
-      if (noteCancelBtn) {
-        const block = noteCancelBtn.closest('.fa-note-block');
-        const row = noteCancelBtn.closest('[data-fa-favorite]');
-        block.querySelector('.fa-note-textarea').value = row.getAttribute('data-fa-note') || '';
-        block.querySelector('.fa-note-editor').style.display = 'none';
-        return;
-      }
-
-      if (noteSaveBtn) {
-        const block = noteSaveBtn.closest('.fa-note-block');
-        const row = noteSaveBtn.closest('[data-fa-favorite]');
-        const id = row.getAttribute('data-fa-favorite');
-        const note = block.querySelector('.fa-note-textarea').value;
-        noteSaveBtn.disabled = true;
-        const params = new URLSearchParams();
-        params.set('action', 'save_note');
-        params.set('id', id);
-        params.set('note', note);
-        post(params).then(function (data) {
-          noteSaveBtn.disabled = false;
-          if (!data.ok) return;
-          row.setAttribute('data-fa-note', note);
-          const textEl = block.querySelector('.fa-note-text');
-          const toggleEl = block.querySelector('.fa-note-toggle');
-          if (note.trim() !== '') {
-            textEl.innerHTML = escapeHtml(note).replace(/\n/g, '<br>');
-            textEl.style.display = 'block';
-            toggleEl.textContent = 'Modifica nota';
-          } else {
-            textEl.style.display = 'none';
-            toggleEl.textContent = '+ Aggiungi una nota (perché ti piace)';
+        function submit(thumbDataUrl) {
+          pubSaveBtn.disabled = true;
+          statusEl.textContent = 'Salvataggio...';
+          const formData = new FormData();
+          formData.set('action', 'save_details');
+          formData.set('id', id);
+          formData.set('note', note);
+          formData.set('visibility', visibility);
+          formData.set('publish_at', publishAt);
+          formData.set('custom_feed_guid', customLink);
+          if (file) {
+            formData.set('image', file);
+            formData.set('image_thumb_data', thumbDataUrl || '');
           }
-          block.querySelector('.fa-note-editor').style.display = 'none';
-        }).catch(function () { noteSaveBtn.disabled = false; });
+          postForm(formData).then(function (data) {
+            pubSaveBtn.disabled = false;
+            if (!data.ok) {
+              statusEl.textContent = data.error || 'Salvataggio non riuscito, riprova.';
+              return;
+            }
+            statusEl.textContent = data.error ? data.error : '';
+            row.setAttribute('data-fa-note', note);
+            row.setAttribute('data-fa-has-image', data.item.image_path ? '1' : '0');
+            const textEl = block.querySelector('.fa-pub-text');
+            const toggleEl = block.querySelector('.fa-pub-toggle');
+            if (note.trim() !== '') {
+              textEl.innerHTML = escapeHtml(note).replace(/\n/g, '<br>');
+              textEl.style.display = 'block';
+            } else {
+              textEl.style.display = 'none';
+            }
+            toggleEl.textContent = '✏️ Gestisci pubblicazione';
+            const badges = renderBadges(data.item);
+            const badgesBox = row.querySelector('.fa-pub-badges');
+            badgesBox.innerHTML = badges.html;
+            badgesBox.style.display = badges.visible ? 'flex' : 'none';
+            editor.style.display = 'none';
+          }).catch(function () {
+            pubSaveBtn.disabled = false;
+            statusEl.textContent = 'Errore di connessione. Riprova.';
+          });
+        }
+
+        if (file) {
+          generateThumb(file, submit);
+        } else {
+          submit(null);
+        }
+        return;
       }
     });
 

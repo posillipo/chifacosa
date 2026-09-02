@@ -23,10 +23,9 @@ if (!$artist) {
 // destinazione stessa (timeline_post.php, blog_post.php, evento.php) a reindirizzare i
 // visitatori reali all'URL esterno via JS — vedi emitCustomFeedLinkRedirect() in functions.php.
 
-// Stesso feed della Timeline, ma senza i Brani (link a Spotify, non a un contenuto editoriale
-// con la propria immagine di anteprima — vedi analisi di fattibilità).
+// I Brani che amo ora hanno una loro pagina di dettaglio con og:image propria (come gli altri
+// tipi "che amo"), quindi da qui in poi restano nel feed invece di essere esclusi.
 $feed = getTimelineFeedForUsers([$artist['id']], 30);
-$feed = array_values(array_filter($feed, fn($item) => $item['tipo'] !== 'brano'));
 
 $channelUrl = siteUrl('/' . $slug);
 $feedUrl = siteUrl('/' . $slug . '/feed');

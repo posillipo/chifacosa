@@ -28,9 +28,9 @@ $pageUrl = siteUrl('/' . $slug . '/brani');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brani di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<title>Brani che amo di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Brani di <?= e($artist['display_name']) ?>">
+<meta property="og:title" content="Brani che amo di <?= e($artist['display_name']) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
@@ -57,19 +57,19 @@ $pageUrl = siteUrl('/' . $slug . '/brani');
 
   <?php foreach ($tracks as $t): ?>
     <div class="card" style="display:flex;gap:14px;align-items:center;">
-      <a href="<?= e($t['spotify_url'] ?: '#') ?>" target="_blank" rel="noopener"
+      <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/scheda"
          style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;flex:1;min-width:0;">
         <?php if ($t['track_image']): ?>
           <img src="<?= e($t['track_image']) ?>" alt="<?= e($t['track_name']) ?>"
                style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;">
         <?php else: ?>
-          <div style="width:72px;height:72px;border-radius:10px;background:rgba(var(--text-rgb),0.15);flex-shrink:0;"></div>
+          <div style="width:72px;height:72px;border-radius:10px;opacity:0.15;background:currentColor;flex-shrink:0;"></div>
         <?php endif; ?>
         <div style="flex:1;min-width:0;">
           <strong><?= e($t['track_name']) ?></strong><br>
-          <small style="color:rgba(var(--text-rgb),0.7);"><?= e($t['artist_name']) ?></small><br>
+          <small style="opacity:0.7;"><?= e($t['artist_name']) ?></small><br>
           <?php $trackStats = getTrackRatingStats((int) $t['id']); ?>
-          <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span style="color:rgba(var(--text-rgb),0.55);">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small>
+          <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span style="opacity:0.55;">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small>
         </div>
         <i class="fa-brands fa-spotify" style="color:#1DB954;font-size:22px;flex-shrink:0;"></i>
       </a>
