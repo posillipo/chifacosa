@@ -23,9 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $movieImage = trim($_POST['movie_image'] ?? '');
         $addedRow = null;
         if ($movieId !== '') {
+            // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
+            // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT IGNORE INTO fan_favorite_movies
-                (user_id, tmdb_movie_id, movie_title, movie_image, sort_order)
-                VALUES (?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_movies WHERE user_id=?) t))');
+                (user_id, tmdb_movie_id, movie_title, movie_image, show_in_feed, sort_order)
+                VALUES (?, ?, ?, ?, 0, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_movies WHERE user_id=?) t))');
             $stmt->execute([$profile['id'], $movieId, $movieTitle, $movieImage ?: null, $profile['id']]);
             // Non ci si fida di lastInsertId(): con INSERT IGNORE su un duplicato resterebbe a 0
             // o non aggiornato — si rilegge sempre la riga vera dal database.
@@ -169,6 +171,11 @@ include __DIR__ . '/_dash_header.php';
       scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
       comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
       impostare il link personalizzato per il feed — stessa logica della Timeline.
+    </p>
+    <p style="color:var(--text-muted)">
+      Ogni nuovo elemento aggiunto parte impostato su <strong>Solo io</strong>: resta visibile
+      nella tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come
+      Pubblico da "✏️ Gestisci pubblicazione".
     </p>
   </details>
 
@@ -348,6 +355,7 @@ include __DIR__ . '/_dash_header.php';
     }
 
     function favoriteRowHtml(item) {
+      const badges = renderBadges(item);
       const img = item.movie_image ? '<img src="' + escapeHtml(item.movie_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '';
       const customLink = <?= json_encode($profile['custom_feed_guid'] ?? '') ?>;
       const customLinkSince = <?= json_encode($profile['custom_feed_guid_since'] ?? '') ?>;
@@ -358,7 +366,7 @@ include __DIR__ . '/_dash_header.php';
         + '<a href="/' + escapeHtml(profileSlug) + '/film-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
         + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.movie_title) + '</strong></a>'
         + '<button type="button" class="btn small danger fm-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
-        + '<div class="fm-pub-badges" style="display:none;"></div>'
+        + '<div class="fm-pub-badges" style="display:' + (badges.visible ? 'flex' : 'none') + ';gap:6px;flex-wrap:wrap;">' + badges.html + '</div>'
         + '<div class="fm-pub-block">'
         + '<p class="fm-pub-text" style="margin:0;font-size:14px;display:none;"></p>'
         + '<button type="button" class="btn small secondary fm-pub-toggle">✏️ Gestisci pubblicazione</button>'
@@ -379,8 +387,8 @@ include __DIR__ . '/_dash_header.php';
         + '<input type="hidden" class="fm-pub-image-thumb-data">'
         + '<label>Privacy (comparsa nel Feed)</label>'
         + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fm-pub-visibility" name="visibility" value="public" checked style="width:auto;"> Pubblico</label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fm-pub-visibility" name="visibility" value="private" style="width:auto;"> Solo io</label></div>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fm-pub-visibility" name="visibility" value="public"' + (item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="fm-pub-visibility" name="visibility" value="private"' + (!item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
         + '<label>Programma la comparsa nel Feed (opzionale)</label>'
         + '<input type="datetime-local" class="fm-pub-publish-at">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>'

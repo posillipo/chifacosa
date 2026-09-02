@@ -25,9 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $spotifyUrl = trim($_POST['spotify_url'] ?? '');
         $addedRow = null;
         if ($trackId !== '') {
+            // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
+            // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT IGNORE INTO favorite_tracks
-                (user_id, spotify_track_id, track_name, artist_name, track_image, spotify_url, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM favorite_tracks WHERE user_id=?) t))');
+                (user_id, spotify_track_id, track_name, artist_name, track_image, spotify_url, show_in_feed, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, 0, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM favorite_tracks WHERE user_id=?) t))');
             $stmt->execute([$profile['id'], $trackId, $trackName, $artistName, $trackImage ?: null, $spotifyUrl ?: null, $profile['id']]);
             // Non ci si fida di lastInsertId(): con INSERT IGNORE su un duplicato resterebbe a 0
             // o non aggiornato — si rilegge sempre la riga vera dal database.
@@ -181,6 +183,11 @@ include __DIR__ . '/_dash_header.php';
       comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
       impostare il link personalizzato per il feed — stessa logica della Timeline. Puoi anche
       aggiungere il testo del brano da "📝 Testo".
+    </p>
+    <p style="color:var(--text-muted)">
+      Ogni nuovo brano aggiunto parte impostato su <strong>Solo io</strong>: resta visibile nella
+      tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come Pubblico
+      da "✏️ Gestisci pubblicazione".
     </p>
   </details>
 
@@ -385,6 +392,7 @@ include __DIR__ . '/_dash_header.php';
     }
 
     function favoriteRowHtml(item) {
+      const badges = renderBadges(item);
       const img = item.track_image ? '<img src="' + escapeHtml(item.track_image) + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;">' : '';
       const customLink = <?= json_encode($profile['custom_feed_guid'] ?? '') ?>;
       const customLinkSince = <?= json_encode($profile['custom_feed_guid_since'] ?? '') ?>;
@@ -398,7 +406,7 @@ include __DIR__ . '/_dash_header.php';
         + '<div style="display:flex;gap:8px;flex-shrink:0;">'
         + '<button type="button" class="btn small ft-lyrics-toggle" style="background:#1DB954;color:#fff;">➕ Lyrics</button>'
         + '<button type="button" class="btn small danger ft-remove-btn">Rimuovi</button></div></div>'
-        + '<div class="ft-pub-badges" style="display:none;"></div>'
+        + '<div class="ft-pub-badges" style="display:' + (badges.visible ? 'flex' : 'none') + ';gap:6px;flex-wrap:wrap;">' + badges.html + '</div>'
         + '<div class="ft-lyrics-block" style="display:none;">'
         + '<label>Testo del brano</label>'
         + '<textarea class="ft-lyrics-textarea" rows="6" placeholder="Incolla o scrivi qui il testo..."></textarea>'
@@ -425,8 +433,8 @@ include __DIR__ . '/_dash_header.php';
         + '<input type="hidden" class="ft-pub-image-thumb-data">'
         + '<label>Privacy (comparsa nel Feed)</label>'
         + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="ft-pub-visibility" name="visibility" value="public" checked style="width:auto;"> Pubblico</label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="ft-pub-visibility" name="visibility" value="private" style="width:auto;"> Solo io</label></div>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="ft-pub-visibility" name="visibility" value="public"' + (item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="ft-pub-visibility" name="visibility" value="private"' + (!item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
         + '<label>Programma la comparsa nel Feed (opzionale)</label>'
         + '<input type="datetime-local" class="ft-pub-publish-at">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>'
