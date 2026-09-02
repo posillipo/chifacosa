@@ -46,6 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    } elseif ($action === 'save_note') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $stmt = getDB()->prepare('UPDATE fan_favorite_bands SET note=? WHERE id=? AND user_id=?');
+        $stmt->execute([$note !== '' ? $note : null, $id, $profile['id']]);
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => true, 'note' => $note]);
+            exit;
+        }
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
@@ -77,7 +87,14 @@ include __DIR__ . '/_dash_header.php';
       pagina pubblica come vetrina di ciò che ascolti. La ricerca parte da sola mentre scrivi,
       e aggiungere/rimuovere una band aggiorna la lista all'istante, senza ricaricare la pagina.
     </p>
+    <p style="color:var(--text-muted)">
+      Ogni band aggiunta ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
+      condivisibile sui social con anteprima immagine/testo — puoi aggiungere una nota per
+      spiegare perché ti piace, mostrata proprio lì.
+    </p>
   </details>
+
+  <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
   <form method="post" class="card" id="fb-search-form">
     <?= csrfField() ?>
@@ -118,14 +135,33 @@ include __DIR__ . '/_dash_header.php';
   <div id="fb-list-empty" class="alert error" style="<?= $favorites ? 'display:none;' : '' ?>">Nessuna band aggiunta ancora — cercala qui sopra.</div>
   <div id="fb-list">
     <?php foreach ($favorites as $f): ?>
-      <div class="link-item" data-fb-favorite="<?= (int)$f['id'] ?>" data-fb-artist-id="<?= e($f['spotify_artist_id']) ?>">
+      <?php $note = trim($f['note'] ?? ''); ?>
+      <div class="link-item" data-fb-favorite="<?= (int)$f['id'] ?>" data-fb-artist-id="<?= e($f['spotify_artist_id']) ?>" data-fb-note="<?= e($note) ?>" style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
-          <?php if ($f['artist_image']): ?>
-            <img src="<?= e($f['artist_image']) ?>" style="width:44px;height:44px;border-radius:50%;">
-          <?php endif; ?>
-          <strong><?= e($f['spotify_artist_name']) ?></strong>
+          <a href="/<?= e($profile['slug']) ?>/band-che-amo/<?= (int)$f['id'] ?>" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">
+            <?php if ($f['artist_image']): ?>
+              <img src="<?= e($f['artist_image']) ?>" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;">
+            <?php endif; ?>
+            <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($f['spotify_artist_name']) ?></strong>
+          </a>
+          <button type="button" class="btn small danger fb-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
-        <button type="button" class="btn small danger fb-remove-btn">Rimuovi</button>
+        <div class="fb-note-block">
+          <?php if ($note !== ''): ?>
+            <p class="fb-note-text" style="margin:0;font-size:13px;color:var(--text-muted);"><?= nl2br(e($note)) ?></p>
+            <button type="button" class="btn small secondary fb-note-toggle" style="margin-top:4px;">Modifica nota</button>
+          <?php else: ?>
+            <p class="fb-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>
+            <button type="button" class="btn small secondary fb-note-toggle">+ Aggiungi una nota (perché ti piace)</button>
+          <?php endif; ?>
+          <div class="fb-note-editor" style="display:none;margin-top:6px;">
+            <textarea class="fb-note-textarea" rows="2" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button type="button" class="btn small fb-note-save">Salva nota</button>
+              <button type="button" class="btn small secondary fb-note-cancel">Annulla</button>
+            </div>
+          </div>
+        </div>
       </div>
     <?php endforeach; ?>
   </div>
@@ -140,6 +176,7 @@ include __DIR__ . '/_dash_header.php';
     const listBox = document.getElementById('fb-list');
     const listTitle = document.getElementById('fb-list-title');
     const listEmpty = document.getElementById('fb-list-empty');
+    const profileSlug = <?= json_encode($profile['slug']) ?>;
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -175,15 +212,32 @@ include __DIR__ . '/_dash_header.php';
         + '" data-artist-name="' + escapeHtml(name) + '" data-artist-image="' + escapeHtml(img ? img.getAttribute('src') : '') + '">Aggiungi alla lista</button>';
     }
 
+    function favoriteRowHtml(item) {
+      const img = item.artist_image ? '<img src="' + escapeHtml(item.artist_image) + '" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;">' : '';
+      return '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<a href="/' + escapeHtml(profileSlug) + '/band-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
+        + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.spotify_artist_name) + '</strong></a>'
+        + '<button type="button" class="btn small danger fb-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
+        + '<div class="fb-note-block">'
+        + '<p class="fb-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>'
+        + '<button type="button" class="btn small secondary fb-note-toggle">+ Aggiungi una nota (perché ti piace)</button>'
+        + '<div class="fb-note-editor" style="display:none;margin-top:6px;">'
+        + '<textarea class="fb-note-textarea" rows="2" placeholder="Racconta perché ti piace"></textarea>'
+        + '<div style="display:flex;gap:8px;margin-top:4px;">'
+        + '<button type="button" class="btn small fb-note-save">Salva nota</button>'
+        + '<button type="button" class="btn small secondary fb-note-cancel">Annulla</button></div></div></div>';
+    }
+
     function addFavoriteRow(item) {
       const div = document.createElement('div');
       div.className = 'link-item';
       div.setAttribute('data-fb-favorite', item.id);
       div.setAttribute('data-fb-artist-id', item.spotify_artist_id);
-      div.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">'
-        + (item.artist_image ? '<img src="' + escapeHtml(item.artist_image) + '" style="width:44px;height:44px;border-radius:50%;">' : '')
-        + '<strong>' + escapeHtml(item.spotify_artist_name) + '</strong></div>'
-        + '<button type="button" class="btn small danger fb-remove-btn">Rimuovi</button>';
+      div.setAttribute('data-fb-note', '');
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'stretch';
+      div.style.gap = '8px';
+      div.innerHTML = favoriteRowHtml(item);
       listBox.prepend(div);
       updateListTitle();
     }
@@ -209,27 +263,77 @@ include __DIR__ . '/_dash_header.php';
       }).catch(function () { btn.disabled = false; });
     });
 
-    // Rimuovi (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
+    // Rimuovi/nota (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
     listBox.addEventListener('click', function (e) {
-      const btn = e.target.closest('.fb-remove-btn');
-      if (!btn) return;
-      if (!confirm('Rimuovere questa band dalla tua lista?')) return;
-      const row = btn.closest('[data-fb-favorite]');
-      const id = row.getAttribute('data-fb-favorite');
-      const artistId = row.getAttribute('data-fb-artist-id');
-      btn.disabled = true;
-      const params = new URLSearchParams();
-      params.set('action', 'remove');
-      params.set('id', id);
-      post(params).then(function (data) {
-        if (data.ok) {
-          row.remove();
-          updateListTitle();
-          markResultAsRemovable(artistId);
-        } else {
-          btn.disabled = false;
-        }
-      }).catch(function () { btn.disabled = false; });
+      const removeBtn = e.target.closest('.fb-remove-btn');
+      const noteToggleBtn = e.target.closest('.fb-note-toggle');
+      const noteCancelBtn = e.target.closest('.fb-note-cancel');
+      const noteSaveBtn = e.target.closest('.fb-note-save');
+
+      if (removeBtn) {
+        if (!confirm('Rimuovere questa band dalla tua lista?')) return;
+        const row = removeBtn.closest('[data-fb-favorite]');
+        const id = row.getAttribute('data-fb-favorite');
+        const artistId = row.getAttribute('data-fb-artist-id');
+        removeBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'remove');
+        params.set('id', id);
+        post(params).then(function (data) {
+          if (data.ok) {
+            row.remove();
+            updateListTitle();
+            markResultAsRemovable(artistId);
+          } else {
+            removeBtn.disabled = false;
+          }
+        }).catch(function () { removeBtn.disabled = false; });
+        return;
+      }
+
+      if (noteToggleBtn) {
+        const block = noteToggleBtn.closest('.fb-note-block');
+        block.querySelector('.fb-note-editor').style.display = 'block';
+        const ta = block.querySelector('.fb-note-textarea');
+        ta.focus();
+        return;
+      }
+
+      if (noteCancelBtn) {
+        const block = noteCancelBtn.closest('.fb-note-block');
+        const row = noteCancelBtn.closest('[data-fb-favorite]');
+        block.querySelector('.fb-note-textarea').value = row.getAttribute('data-fb-note') || '';
+        block.querySelector('.fb-note-editor').style.display = 'none';
+        return;
+      }
+
+      if (noteSaveBtn) {
+        const block = noteSaveBtn.closest('.fb-note-block');
+        const row = noteSaveBtn.closest('[data-fb-favorite]');
+        const id = row.getAttribute('data-fb-favorite');
+        const note = block.querySelector('.fb-note-textarea').value;
+        noteSaveBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'save_note');
+        params.set('id', id);
+        params.set('note', note);
+        post(params).then(function (data) {
+          noteSaveBtn.disabled = false;
+          if (!data.ok) return;
+          row.setAttribute('data-fb-note', note);
+          const textEl = block.querySelector('.fb-note-text');
+          const toggleEl = block.querySelector('.fb-note-toggle');
+          if (note.trim() !== '') {
+            textEl.innerHTML = escapeHtml(note).replace(/\n/g, '<br>');
+            textEl.style.display = 'block';
+            toggleEl.textContent = 'Modifica nota';
+          } else {
+            textEl.style.display = 'none';
+            toggleEl.textContent = '+ Aggiungi una nota (perché ti piace)';
+          }
+          block.querySelector('.fb-note-editor').style.display = 'none';
+        }).catch(function () { noteSaveBtn.disabled = false; });
+      }
     });
 
     // Ricerca live: parte da sola mentre scrivi (con una breve pausa), oltre al pulsante "Cerca"

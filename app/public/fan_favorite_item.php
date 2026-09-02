@@ -1,0 +1,179 @@
+<?php
+session_start();
+require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/spotify.php';
+require_once __DIR__ . '/../src/tmdb.php';
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+// Pagina di dettaglio condivisa dai tre moduli "che amo" (Band/Attori/Film) — un solo file
+// invece di tre pressoché identici, dato che aumenteranno: la configurazione per tipo (tabella,
+// nomi colonna, link esterno, dettagli live dall'API) è tutta qui sotto; aggiungere un quarto
+// modulo in futuro significa solo aggiungere una voce a questo array.
+const FAN_FAVORITE_KINDS = [
+    'band' => [
+        'table' => 'fan_favorite_bands',
+        'external_id_col' => 'spotify_artist_id',
+        'name_col' => 'spotify_artist_name',
+        'image_col' => 'artist_image',
+        'label' => 'Band che amo',
+        'nav_key' => 'bandcheamo',
+        'list_url_segment' => 'band-che-amo',
+        'external_label' => 'Vedi su Spotify',
+        'external_url' => 'https://open.spotify.com/artist/',
+    ],
+    'actor' => [
+        'table' => 'fan_favorite_actors',
+        'external_id_col' => 'tmdb_person_id',
+        'name_col' => 'actor_name',
+        'image_col' => 'actor_image',
+        'label' => 'Attori che amo',
+        'nav_key' => 'attorichamo',
+        'list_url_segment' => 'attori-che-amo',
+        'external_label' => 'Vedi su TMDb',
+        'external_url' => 'https://www.themoviedb.org/person/',
+    ],
+    'movie' => [
+        'table' => 'fan_favorite_movies',
+        'external_id_col' => 'tmdb_movie_id',
+        'name_col' => 'movie_title',
+        'image_col' => 'movie_image',
+        'label' => 'Film che amo',
+        'nav_key' => 'filmcheamo',
+        'list_url_segment' => 'film-che-amo',
+        'external_label' => 'Vedi su TMDb',
+        'external_url' => 'https://www.themoviedb.org/movie/',
+    ],
+];
+
+$slug = $_GET['slug'] ?? '';
+$kind = $_GET['kind'] ?? '';
+$itemId = (int) ($_GET['id'] ?? 0);
+
+if (!isset(FAN_FAVORITE_KINDS[$kind])) {
+    http_response_code(404);
+    exit('Pagina non trovata.');
+}
+$cfg = FAN_FAVORITE_KINDS[$kind];
+
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere
+                          FROM users u JOIN profiles p ON p.user_id = u.id
+                          WHERE u.slug = ? AND u.is_active = 1');
+$stmt->execute([$slug]);
+$artist = $stmt->fetch();
+
+if (!$artist) {
+    http_response_code(404);
+    exit('Pagina non trovata.');
+}
+
+$stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE id = ? AND user_id = ?");
+$stmt->execute([$itemId, $artist['id']]);
+$item = $stmt->fetch();
+
+if (!$item) {
+    http_response_code(404);
+    exit('Elemento non trovato.');
+}
+
+$name = $item[$cfg['name_col']];
+$image = $item[$cfg['image_col']] ?? null;
+$imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
+$note = trim($item['note'] ?? '');
+$externalUrl = $cfg['external_url'] . $item[$cfg['external_id_col']];
+
+// Info aggiuntive recuperate in tempo reale dall'API (biografia, generi, ecc.) — non salvate nel
+// nostro database: restano sempre aggiornate, e se l'API non risponde la pagina funziona
+// comunque con solo nome/immagine/nota già salvati.
+$apiDetails = null;
+if ($kind === 'band') {
+    $apiDetails = spotifyGetArtist($item[$cfg['external_id_col']]);
+} elseif ($kind === 'actor') {
+    $apiDetails = tmdbGetPersonDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'movie') {
+    $apiDetails = tmdbGetMovieDetails($item[$cfg['external_id_col']]);
+}
+
+$pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $itemId);
+$ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
+?>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+
+<!-- Open Graph / condivisione social -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($imageUrl): ?>
+<meta property="og:image" content="<?= e($imageUrl) ?>">
+<?php endif; ?>
+
+<meta name="twitter:card" content="<?= $imageUrl ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<?php if ($imageUrl): ?><meta name="twitter:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+<style>:root { --accent: <?= e($artist['theme_color'] ?: '#6C5CE7') ?>; --accent-text: <?= e(getContrastTextColor($artist['theme_color'])) ?>; }</style>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="<?= e(getPageThemeClass($artist['page_theme'] ?? 'colorful')) ?>">
+<?php if (str_starts_with($artist['page_theme'] ?? 'colorful', 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $artist['page_theme']) ?><?php endif; ?>
+<?php if (($artist['page_theme'] ?? 'colorful') === 'circuit'): ?><?= renderCircuitBackground($artist['theme_color'] ?? '#6C5CE7') ?><?php endif; ?>
+<?php if (($artist['page_theme'] ?? 'colorful') === 'napoli'): ?><?= renderNapoliBackground() ?><?php endif; ?>
+<?php if (($artist['page_theme'] ?? 'colorful') === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
+<?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
+<?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
+<?= embedTrackingBodyStart($artist) ?>
+<div class="container">
+  <?= publicProfileHeader($artist, $cfg['nav_key']) ?>
+
+  <div class="card" style="text-align:center;">
+    <?php if ($imageUrl): ?>
+      <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
+           style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+    <?php endif; ?>
+    <h1 style="font-size:22px;margin:0 0 4px;"><?= e($name) ?></h1>
+    <p style="color:rgba(var(--text-rgb),0.7);margin-top:0;">
+      <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
+      <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
+      <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
+    </p>
+
+    <?php if ($note !== ''): ?>
+      <div class="card" style="text-align:left;background:var(--bg-alt,#f7f7f9);margin-top:14px;">
+        <strong>Perché <?= e($artist['display_name']) ?> lo ama</strong>
+        <p style="margin:6px 0 0;"><?= nl2br(e($note)) ?></p>
+      </div>
+    <?php endif; ?>
+
+    <?php if (!empty($apiDetails['genres'])): ?>
+      <p style="margin-top:14px;"><em><?= e(implode(', ', $apiDetails['genres'])) ?></em></p>
+    <?php endif; ?>
+    <?php if (!empty($apiDetails['overview'])): ?>
+      <p style="text-align:left;margin-top:10px;color:rgba(var(--text-rgb),0.8);"><?= nl2br(e($apiDetails['overview'])) ?></p>
+    <?php elseif (!empty($apiDetails['biography'])): ?>
+      <p style="text-align:left;margin-top:10px;color:rgba(var(--text-rgb),0.8);"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
+    <?php endif; ?>
+
+    <p style="margin-top:16px;"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn small"><?= e($cfg['external_label']) ?></a></p>
+  </div>
+
+  <p><a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>">← Tutti gli elementi di <?= e(strtolower($cfg['label'])) ?> di <?= e($artist['display_name']) ?></a></p>
+</div>
+<?= renderFloatingButtons() ?>
+<?= renderSiteFooterBar($artist) ?>
+</body>
+</html>

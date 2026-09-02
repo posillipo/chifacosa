@@ -65,3 +65,52 @@ function tmdbSearchMovie(string $query): array {
     }
     return $results;
 }
+
+// Dettagli di una persona (usata nella pagina dedicata di "Attori che amo" per mostrare
+// biografia/professione oltre al nome e alla foto già salvati).
+function tmdbGetPersonDetails(string $personId): ?array {
+    $apiKey = getTmdbApiKey();
+    if (!$apiKey || trim($personId) === '') {
+        return null;
+    }
+    $url = 'https://api.themoviedb.org/3/person/' . urlencode($personId) . '?api_key=' . urlencode($apiKey) . '&language=it-IT';
+    $response = httpRequest('GET', $url);
+    if (!$response) {
+        return null;
+    }
+    $p = json_decode($response, true);
+    if (!$p || empty($p['id'])) {
+        return null;
+    }
+    return [
+        'biography' => trim($p['biography'] ?? ''),
+        'known_for_department' => $p['known_for_department'] ?? null,
+        'birthday' => $p['birthday'] ?? null,
+        'place_of_birth' => $p['place_of_birth'] ?? null,
+        'tmdb_url' => 'https://www.themoviedb.org/person/' . $p['id'],
+    ];
+}
+
+// Dettagli di un film (usata nella pagina dedicata di "Film che amo").
+function tmdbGetMovieDetails(string $movieId): ?array {
+    $apiKey = getTmdbApiKey();
+    if (!$apiKey || trim($movieId) === '') {
+        return null;
+    }
+    $url = 'https://api.themoviedb.org/3/movie/' . urlencode($movieId) . '?api_key=' . urlencode($apiKey) . '&language=it-IT';
+    $response = httpRequest('GET', $url);
+    if (!$response) {
+        return null;
+    }
+    $m = json_decode($response, true);
+    if (!$m || empty($m['id'])) {
+        return null;
+    }
+    return [
+        'overview' => trim($m['overview'] ?? ''),
+        'release_date' => $m['release_date'] ?? null,
+        'genres' => array_column($m['genres'] ?? [], 'name'),
+        'vote_average' => $m['vote_average'] ?? null,
+        'tmdb_url' => 'https://www.themoviedb.org/movie/' . $m['id'],
+    ];
+}

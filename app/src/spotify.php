@@ -121,6 +121,9 @@ function spotifyGetArtist(string $artistId): ?array {
         'name' => $a['name'] ?? '',
         'image' => $a['images'][0]['url'] ?? ($a['images'][1]['url'] ?? null),
         'spotify_url' => $a['external_urls']['spotify'] ?? null,
+        'genres' => $a['genres'] ?? [],
+        'followers' => $a['followers']['total'] ?? null,
+        'popularity' => $a['popularity'] ?? null,
     ];
 }
 

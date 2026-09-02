@@ -1829,6 +1829,42 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_bands fb JOIN users u ON u.id = fb.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fb.user_id IN ($placeholders) ORDER BY fb.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $items[] = [
+            'tipo' => 'band_favorita', 'titolo' => $r['spotify_artist_name'], 'cover' => $r['artist_image'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/band-che-amo/' . $r['id'],
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_actors fa JOIN users u ON u.id = fa.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fa.user_id IN ($placeholders) ORDER BY fa.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $items[] = [
+            'tipo' => 'attore_favorito', 'titolo' => $r['actor_name'], 'cover' => $r['actor_image'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/attori-che-amo/' . $r['id'],
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_movies fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fm.user_id IN ($placeholders) ORDER BY fm.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $items[] = [
+            'tipo' => 'film_favorito', 'titolo' => $r['movie_title'], 'cover' => $r['movie_image'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/film-che-amo/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -1905,7 +1941,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -1932,7 +1968,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -2039,7 +2075,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_messages','dashboard_chat','menu','dashboard_menu',
     'reserve_table','dashboard_reservations','dashboard_profiles','dashboard_feed','sitemap','robots',
     'dashboard_fan_actors','attori_che_amo','admin_gemini','dashboard_ai_caption','admin_tmdb',
-    'dashboard_fan_movies','film_che_amo'];
+    'dashboard_fan_movies','film_che_amo','fan_favorite_item'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

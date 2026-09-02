@@ -44,11 +44,20 @@ RewriteRule ^([a-zA-Z0-9_-]+)/timeline/?$ timeline.php?slug=$1 [L,QSA]
 # /nomeartista/eventi -> pagina concerti
 RewriteRule ^([a-zA-Z0-9_-]+)/eventi/?$ eventi.php?slug=$1 [L,QSA]
 
+# /nomeartista/band-che-amo/ID -> pagina dedicata alla singola band preferita (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/band-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=band&id=$2 [L,QSA]
+
 # /nomeartista/band-che-amo -> elenco completo band preferite
 RewriteRule ^([a-zA-Z0-9_-]+)/band-che-amo/?$ band_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/attori-che-amo/ID -> pagina dedicata al singolo attore preferito (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/attori-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=actor&id=$2 [L,QSA]
+
 # /nomeartista/attori-che-amo -> elenco completo attori preferiti
 RewriteRule ^([a-zA-Z0-9_-]+)/attori-che-amo/?$ attori_che_amo.php?slug=$1 [L,QSA]
+
+# /nomeartista/film-che-amo/ID -> pagina dedicata al singolo film preferito (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/film-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=movie&id=$2 [L,QSA]
 
 # /nomeartista/film-che-amo -> elenco completo film preferiti
 RewriteRule ^([a-zA-Z0-9_-]+)/film-che-amo/?$ film_che_amo.php?slug=$1 [L,QSA]

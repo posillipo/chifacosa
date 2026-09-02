@@ -46,6 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    } elseif ($action === 'save_note') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET note=? WHERE id=? AND user_id=?');
+        $stmt->execute([$note !== '' ? $note : null, $id, $profile['id']]);
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => true, 'note' => $note]);
+            exit;
+        }
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
@@ -82,6 +92,11 @@ include __DIR__ . '/_dash_header.php';
       TMDb, non solo persone registrate su <?= e(siteName()) ?>. Comparirà sulla tua pagina
       pubblica come vetrina di ciò che ami guardare. La ricerca parte da sola mentre scrivi,
       e aggiungere/rimuovere un attore aggiorna la lista all'istante, senza ricaricare la pagina.
+    </p>
+    <p style="color:var(--text-muted)">
+      Ogni attore aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
+      condivisibile sui social con anteprima immagine/testo — puoi aggiungere una nota per
+      spiegare perché ti piace, mostrata proprio lì.
     </p>
   </details>
 
@@ -124,14 +139,33 @@ include __DIR__ . '/_dash_header.php';
   <div id="fa-list-empty" class="alert error" style="<?= $favorites ? 'display:none;' : '' ?>">Nessun attore aggiunto ancora — cercalo qui sopra.</div>
   <div id="fa-list">
     <?php foreach ($favorites as $f): ?>
-      <div class="link-item" data-fa-favorite="<?= (int)$f['id'] ?>" data-fa-person-id="<?= e($f['tmdb_person_id']) ?>">
+      <?php $note = trim($f['note'] ?? ''); ?>
+      <div class="link-item" data-fa-favorite="<?= (int)$f['id'] ?>" data-fa-person-id="<?= e($f['tmdb_person_id']) ?>" data-fa-note="<?= e($note) ?>" style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
-          <?php if ($f['actor_image']): ?>
-            <img src="<?= e($f['actor_image']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-          <?php endif; ?>
-          <strong><?= e($f['actor_name']) ?></strong>
+          <a href="/<?= e($profile['slug']) ?>/attori-che-amo/<?= (int)$f['id'] ?>" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">
+            <?php if ($f['actor_image']): ?>
+              <img src="<?= e($f['actor_image']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <?php endif; ?>
+            <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($f['actor_name']) ?></strong>
+          </a>
+          <button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
-        <button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>
+        <div class="fa-note-block">
+          <?php if ($note !== ''): ?>
+            <p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);"><?= nl2br(e($note)) ?></p>
+            <button type="button" class="btn small secondary fa-note-toggle" style="margin-top:4px;">Modifica nota</button>
+          <?php else: ?>
+            <p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>
+            <button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>
+          <?php endif; ?>
+          <div class="fa-note-editor" style="display:none;margin-top:6px;">
+            <textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button type="button" class="btn small fa-note-save">Salva nota</button>
+              <button type="button" class="btn small secondary fa-note-cancel">Annulla</button>
+            </div>
+          </div>
+        </div>
       </div>
     <?php endforeach; ?>
   </div>
@@ -146,6 +180,7 @@ include __DIR__ . '/_dash_header.php';
     const listBox = document.getElementById('fa-list');
     const listTitle = document.getElementById('fa-list-title');
     const listEmpty = document.getElementById('fa-list-empty');
+    const profileSlug = <?= json_encode($profile['slug']) ?>;
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -181,15 +216,32 @@ include __DIR__ . '/_dash_header.php';
         + '" data-person-name="' + escapeHtml(name) + '" data-person-image="' + escapeHtml(img ? img.getAttribute('src') : '') + '">Aggiungi alla lista</button>';
     }
 
+    function favoriteRowHtml(item) {
+      const img = item.actor_image ? '<img src="' + escapeHtml(item.actor_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '';
+      return '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<a href="/' + escapeHtml(profileSlug) + '/attori-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
+        + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.actor_name) + '</strong></a>'
+        + '<button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
+        + '<div class="fa-note-block">'
+        + '<p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>'
+        + '<button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>'
+        + '<div class="fa-note-editor" style="display:none;margin-top:6px;">'
+        + '<textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"></textarea>'
+        + '<div style="display:flex;gap:8px;margin-top:4px;">'
+        + '<button type="button" class="btn small fa-note-save">Salva nota</button>'
+        + '<button type="button" class="btn small secondary fa-note-cancel">Annulla</button></div></div></div>';
+    }
+
     function addFavoriteRow(item) {
       const div = document.createElement('div');
       div.className = 'link-item';
       div.setAttribute('data-fa-favorite', item.id);
       div.setAttribute('data-fa-person-id', item.tmdb_person_id);
-      div.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">'
-        + (item.actor_image ? '<img src="' + escapeHtml(item.actor_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">' : '')
-        + '<strong>' + escapeHtml(item.actor_name) + '</strong></div>'
-        + '<button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>';
+      div.setAttribute('data-fa-note', '');
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'stretch';
+      div.style.gap = '8px';
+      div.innerHTML = favoriteRowHtml(item);
       listBox.prepend(div);
       updateListTitle();
     }
@@ -215,27 +267,76 @@ include __DIR__ . '/_dash_header.php';
       }).catch(function () { btn.disabled = false; });
     });
 
-    // Rimuovi (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
+    // Rimuovi/nota (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
     listBox.addEventListener('click', function (e) {
-      const btn = e.target.closest('.fa-remove-btn');
-      if (!btn) return;
-      if (!confirm('Rimuovere questo attore dalla tua lista?')) return;
-      const row = btn.closest('[data-fa-favorite]');
-      const id = row.getAttribute('data-fa-favorite');
-      const personId = row.getAttribute('data-fa-person-id');
-      btn.disabled = true;
-      const params = new URLSearchParams();
-      params.set('action', 'remove');
-      params.set('id', id);
-      post(params).then(function (data) {
-        if (data.ok) {
-          row.remove();
-          updateListTitle();
-          markResultAsRemovable(personId);
-        } else {
-          btn.disabled = false;
-        }
-      }).catch(function () { btn.disabled = false; });
+      const removeBtn = e.target.closest('.fa-remove-btn');
+      const noteToggleBtn = e.target.closest('.fa-note-toggle');
+      const noteCancelBtn = e.target.closest('.fa-note-cancel');
+      const noteSaveBtn = e.target.closest('.fa-note-save');
+
+      if (removeBtn) {
+        if (!confirm('Rimuovere questo attore dalla tua lista?')) return;
+        const row = removeBtn.closest('[data-fa-favorite]');
+        const id = row.getAttribute('data-fa-favorite');
+        const personId = row.getAttribute('data-fa-person-id');
+        removeBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'remove');
+        params.set('id', id);
+        post(params).then(function (data) {
+          if (data.ok) {
+            row.remove();
+            updateListTitle();
+            markResultAsRemovable(personId);
+          } else {
+            removeBtn.disabled = false;
+          }
+        }).catch(function () { removeBtn.disabled = false; });
+        return;
+      }
+
+      if (noteToggleBtn) {
+        const block = noteToggleBtn.closest('.fa-note-block');
+        block.querySelector('.fa-note-editor').style.display = 'block';
+        block.querySelector('.fa-note-textarea').focus();
+        return;
+      }
+
+      if (noteCancelBtn) {
+        const block = noteCancelBtn.closest('.fa-note-block');
+        const row = noteCancelBtn.closest('[data-fa-favorite]');
+        block.querySelector('.fa-note-textarea').value = row.getAttribute('data-fa-note') || '';
+        block.querySelector('.fa-note-editor').style.display = 'none';
+        return;
+      }
+
+      if (noteSaveBtn) {
+        const block = noteSaveBtn.closest('.fa-note-block');
+        const row = noteSaveBtn.closest('[data-fa-favorite]');
+        const id = row.getAttribute('data-fa-favorite');
+        const note = block.querySelector('.fa-note-textarea').value;
+        noteSaveBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'save_note');
+        params.set('id', id);
+        params.set('note', note);
+        post(params).then(function (data) {
+          noteSaveBtn.disabled = false;
+          if (!data.ok) return;
+          row.setAttribute('data-fa-note', note);
+          const textEl = block.querySelector('.fa-note-text');
+          const toggleEl = block.querySelector('.fa-note-toggle');
+          if (note.trim() !== '') {
+            textEl.innerHTML = escapeHtml(note).replace(/\n/g, '<br>');
+            textEl.style.display = 'block';
+            toggleEl.textContent = 'Modifica nota';
+          } else {
+            textEl.style.display = 'none';
+            toggleEl.textContent = '+ Aggiungi una nota (perché ti piace)';
+          }
+          block.querySelector('.fa-note-editor').style.display = 'none';
+        }).catch(function () { noteSaveBtn.disabled = false; });
+      }
     });
 
     // Ricerca live: parte da sola mentre scrivi (con una breve pausa), oltre al pulsante "Cerca"

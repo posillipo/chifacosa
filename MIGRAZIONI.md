@@ -507,6 +507,37 @@ foto profilo). `dashboard_fan_movies.php` (ricerca live via `fetch()`), `film_ch
 (pagina pubblica `/slug/film-che-amo`), tab pubblico condizionale (`filmcheamo` in
 `PUBLIC_NAV_ITEM_KEYS`/`publicNav()`, mostrato solo se il profilo ha almeno un film aggiunto).
 
+## 35. Nota personale + pagina di dettaglio condivisibile per Band/Attori/Film che amo
+
+```sql
+ALTER TABLE fan_favorite_bands ADD COLUMN note TEXT DEFAULT NULL;
+ALTER TABLE fan_favorite_actors ADD COLUMN note TEXT DEFAULT NULL;
+ALTER TABLE fan_favorite_movies ADD COLUMN note TEXT DEFAULT NULL;
+```
+
+Estende i tre moduli "che amo" con 4 funzionalità richieste per tutti (presenti e futuri):
+
+1. **Nota personale**: in ciascuna delle tre pagine dashboard, ogni elemento della lista ha ora
+   un editor inline ("+ Aggiungi una nota" / "Modifica nota") per spiegare perché piace —
+   salvata via `fetch()` (azione `save_note`) senza ricaricare la pagina, colonna `note` sulle
+   tre tabelle.
+2. **Pagina di dettaglio condivisa**: `fan_favorite_item.php` (un solo file per tutti e tre i
+   tipi, invece di tre quasi identici — la configurazione per tipo, tutta lì dentro, rende
+   banale aggiungere un quarto modulo in futuro) mostra immagine, nota personale, e info
+   aggiuntive **recuperate in tempo reale dall'API** (non salvate nel database: sempre
+   aggiornate, e la pagina funziona comunque se l'API non risponde) — `spotifyGetArtist()`
+   esteso con generi/follower/popolarità, nuove `tmdbGetPersonDetails()`/`tmdbGetMovieDetails()`
+   in `app/src/tmdb.php` per biografia/trama.
+3. **URL dedicato e condivisibile**: `/slug/band-che-amo/ID`, `/slug/attori-che-amo/ID`,
+   `/slug/film-che-amo/ID` (nuove regole in `.htaccess`, prima di quelle dell'elenco), con
+   `og:title`/`og:description`/`og:image`/Twitter Card completi per l'anteprima sui social —
+   cliccare un elemento nelle tre pagine-elenco ora porta qui invece che direttamente a
+   Spotify/TMDb (il link esterno resta comunque disponibile nella pagina di dettaglio).
+4. **Feed unificato**: `getTimelineFeedForUsers()` include ora anche band/attori/film aggiunti
+   di recente (tipi `band_favorita`/`attore_favorito`/`film_favorito`), con link alla nuova
+   pagina di dettaglio — compaiono quindi nella Timeline pubblica e nel Feed della dashboard
+   come qualsiasi altro contenuto pubblicato.
+
 ---
 
 ## Come aggiungere una nuova voce

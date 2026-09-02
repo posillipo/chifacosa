@@ -46,6 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    } elseif ($action === 'save_note') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $stmt = getDB()->prepare('UPDATE fan_favorite_movies SET note=? WHERE id=? AND user_id=?');
+        $stmt->execute([$note !== '' ? $note : null, $id, $profile['id']]);
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => true, 'note' => $note]);
+            exit;
+        }
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
@@ -82,6 +92,11 @@ include __DIR__ . '/_dash_header.php';
       Comparirà sulla tua pagina pubblica come vetrina di ciò che ami guardare. La ricerca parte
       da sola mentre scrivi, e aggiungere/rimuovere un film aggiorna la lista all'istante, senza
       ricaricare la pagina.
+    </p>
+    <p style="color:var(--text-muted)">
+      Ogni film aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
+      condivisibile sui social con anteprima immagine/testo — puoi aggiungere una nota per
+      spiegare perché ti piace, mostrata proprio lì.
     </p>
   </details>
 
@@ -124,14 +139,33 @@ include __DIR__ . '/_dash_header.php';
   <div id="fm-list-empty" class="alert error" style="<?= $favorites ? 'display:none;' : '' ?>">Nessun film aggiunto ancora — cercalo qui sopra.</div>
   <div id="fm-list">
     <?php foreach ($favorites as $f): ?>
-      <div class="link-item" data-fm-favorite="<?= (int)$f['id'] ?>" data-fm-movie-id="<?= e($f['tmdb_movie_id']) ?>">
+      <?php $note = trim($f['note'] ?? ''); ?>
+      <div class="link-item" data-fm-favorite="<?= (int)$f['id'] ?>" data-fm-movie-id="<?= e($f['tmdb_movie_id']) ?>" data-fm-note="<?= e($note) ?>" style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
-          <?php if ($f['movie_image']): ?>
-            <img src="<?= e($f['movie_image']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-          <?php endif; ?>
-          <strong><?= e($f['movie_title']) ?></strong>
+          <a href="/<?= e($profile['slug']) ?>/film-che-amo/<?= (int)$f['id'] ?>" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">
+            <?php if ($f['movie_image']): ?>
+              <img src="<?= e($f['movie_image']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <?php endif; ?>
+            <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($f['movie_title']) ?></strong>
+          </a>
+          <button type="button" class="btn small danger fm-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
-        <button type="button" class="btn small danger fm-remove-btn">Rimuovi</button>
+        <div class="fm-note-block">
+          <?php if ($note !== ''): ?>
+            <p class="fm-note-text" style="margin:0;font-size:13px;color:var(--text-muted);"><?= nl2br(e($note)) ?></p>
+            <button type="button" class="btn small secondary fm-note-toggle" style="margin-top:4px;">Modifica nota</button>
+          <?php else: ?>
+            <p class="fm-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>
+            <button type="button" class="btn small secondary fm-note-toggle">+ Aggiungi una nota (perché ti piace)</button>
+          <?php endif; ?>
+          <div class="fm-note-editor" style="display:none;margin-top:6px;">
+            <textarea class="fm-note-textarea" rows="2" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button type="button" class="btn small fm-note-save">Salva nota</button>
+              <button type="button" class="btn small secondary fm-note-cancel">Annulla</button>
+            </div>
+          </div>
+        </div>
       </div>
     <?php endforeach; ?>
   </div>
@@ -146,6 +180,7 @@ include __DIR__ . '/_dash_header.php';
     const listBox = document.getElementById('fm-list');
     const listTitle = document.getElementById('fm-list-title');
     const listEmpty = document.getElementById('fm-list-empty');
+    const profileSlug = <?= json_encode($profile['slug']) ?>;
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -181,15 +216,32 @@ include __DIR__ . '/_dash_header.php';
         + '" data-movie-title="' + escapeHtml(title) + '" data-movie-image="' + escapeHtml(img ? img.getAttribute('src') : '') + '">Aggiungi alla lista</button>';
     }
 
+    function favoriteRowHtml(item) {
+      const img = item.movie_image ? '<img src="' + escapeHtml(item.movie_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '';
+      return '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<a href="/' + escapeHtml(profileSlug) + '/film-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
+        + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.movie_title) + '</strong></a>'
+        + '<button type="button" class="btn small danger fm-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
+        + '<div class="fm-note-block">'
+        + '<p class="fm-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>'
+        + '<button type="button" class="btn small secondary fm-note-toggle">+ Aggiungi una nota (perché ti piace)</button>'
+        + '<div class="fm-note-editor" style="display:none;margin-top:6px;">'
+        + '<textarea class="fm-note-textarea" rows="2" placeholder="Racconta perché ti piace"></textarea>'
+        + '<div style="display:flex;gap:8px;margin-top:4px;">'
+        + '<button type="button" class="btn small fm-note-save">Salva nota</button>'
+        + '<button type="button" class="btn small secondary fm-note-cancel">Annulla</button></div></div></div>';
+    }
+
     function addFavoriteRow(item) {
       const div = document.createElement('div');
       div.className = 'link-item';
       div.setAttribute('data-fm-favorite', item.id);
       div.setAttribute('data-fm-movie-id', item.tmdb_movie_id);
-      div.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">'
-        + (item.movie_image ? '<img src="' + escapeHtml(item.movie_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">' : '')
-        + '<strong>' + escapeHtml(item.movie_title) + '</strong></div>'
-        + '<button type="button" class="btn small danger fm-remove-btn">Rimuovi</button>';
+      div.setAttribute('data-fm-note', '');
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'stretch';
+      div.style.gap = '8px';
+      div.innerHTML = favoriteRowHtml(item);
       listBox.prepend(div);
       updateListTitle();
     }
@@ -215,27 +267,76 @@ include __DIR__ . '/_dash_header.php';
       }).catch(function () { btn.disabled = false; });
     });
 
-    // Rimuovi (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
+    // Rimuovi/nota (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
     listBox.addEventListener('click', function (e) {
-      const btn = e.target.closest('.fm-remove-btn');
-      if (!btn) return;
-      if (!confirm('Rimuovere questo film dalla tua lista?')) return;
-      const row = btn.closest('[data-fm-favorite]');
-      const id = row.getAttribute('data-fm-favorite');
-      const movieId = row.getAttribute('data-fm-movie-id');
-      btn.disabled = true;
-      const params = new URLSearchParams();
-      params.set('action', 'remove');
-      params.set('id', id);
-      post(params).then(function (data) {
-        if (data.ok) {
-          row.remove();
-          updateListTitle();
-          markResultAsRemovable(movieId);
-        } else {
-          btn.disabled = false;
-        }
-      }).catch(function () { btn.disabled = false; });
+      const removeBtn = e.target.closest('.fm-remove-btn');
+      const noteToggleBtn = e.target.closest('.fm-note-toggle');
+      const noteCancelBtn = e.target.closest('.fm-note-cancel');
+      const noteSaveBtn = e.target.closest('.fm-note-save');
+
+      if (removeBtn) {
+        if (!confirm('Rimuovere questo film dalla tua lista?')) return;
+        const row = removeBtn.closest('[data-fm-favorite]');
+        const id = row.getAttribute('data-fm-favorite');
+        const movieId = row.getAttribute('data-fm-movie-id');
+        removeBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'remove');
+        params.set('id', id);
+        post(params).then(function (data) {
+          if (data.ok) {
+            row.remove();
+            updateListTitle();
+            markResultAsRemovable(movieId);
+          } else {
+            removeBtn.disabled = false;
+          }
+        }).catch(function () { removeBtn.disabled = false; });
+        return;
+      }
+
+      if (noteToggleBtn) {
+        const block = noteToggleBtn.closest('.fm-note-block');
+        block.querySelector('.fm-note-editor').style.display = 'block';
+        block.querySelector('.fm-note-textarea').focus();
+        return;
+      }
+
+      if (noteCancelBtn) {
+        const block = noteCancelBtn.closest('.fm-note-block');
+        const row = noteCancelBtn.closest('[data-fm-favorite]');
+        block.querySelector('.fm-note-textarea').value = row.getAttribute('data-fm-note') || '';
+        block.querySelector('.fm-note-editor').style.display = 'none';
+        return;
+      }
+
+      if (noteSaveBtn) {
+        const block = noteSaveBtn.closest('.fm-note-block');
+        const row = noteSaveBtn.closest('[data-fm-favorite]');
+        const id = row.getAttribute('data-fm-favorite');
+        const note = block.querySelector('.fm-note-textarea').value;
+        noteSaveBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'save_note');
+        params.set('id', id);
+        params.set('note', note);
+        post(params).then(function (data) {
+          noteSaveBtn.disabled = false;
+          if (!data.ok) return;
+          row.setAttribute('data-fm-note', note);
+          const textEl = block.querySelector('.fm-note-text');
+          const toggleEl = block.querySelector('.fm-note-toggle');
+          if (note.trim() !== '') {
+            textEl.innerHTML = escapeHtml(note).replace(/\n/g, '<br>');
+            textEl.style.display = 'block';
+            toggleEl.textContent = 'Modifica nota';
+          } else {
+            textEl.style.display = 'none';
+            toggleEl.textContent = '+ Aggiungi una nota (perché ti piace)';
+          }
+          block.querySelector('.fm-note-editor').style.display = 'none';
+        }).catch(function () { noteSaveBtn.disabled = false; });
+      }
     });
 
     // Ricerca live: parte da sola mentre scrivi (con una breve pausa), oltre al pulsante "Cerca"

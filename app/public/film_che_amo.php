@@ -58,7 +58,7 @@ $pageUrl = siteUrl('/' . $slug . '/film-che-amo');
   <?php if ($favorites): ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
       <?php foreach ($favorites as $f): ?>
-        <a href="https://www.themoviedb.org/movie/<?= e($f['tmdb_movie_id']) ?>" target="_blank" rel="noopener"
+        <a href="/<?= e($slug) ?>/film-che-amo/<?= (int)$f['id'] ?>"
            class="card" style="text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
           <?php if ($f['movie_image']): ?>
             <img src="<?= e($f['movie_image']) ?>" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;">
