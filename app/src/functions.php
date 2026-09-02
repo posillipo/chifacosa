@@ -1790,13 +1790,17 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT tr.id, tr.track_name, tr.track_image, tr.artist_name, tr.image_path, tr.image_thumb_path, tr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT tr.id, tr.track_name, tr.track_image, tr.artist_name, tr.note, tr.image_path, tr.image_thumb_path, tr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM favorite_tracks tr JOIN users u ON u.id = tr.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tr.user_id IN ($placeholders) AND tr.show_in_feed = 1 AND (tr.publish_at IS NULL OR tr.publish_at <= NOW()) ORDER BY tr.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
+        $brTitolo = $r['track_name'] . ' — ' . $r['artist_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $brTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
         $items[] = [
-            'tipo' => 'brano', 'titolo' => $r['track_name'] . ' — ' . $r['artist_name'], 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['track_image']), 'data' => $r['data'],
+            'tipo' => 'brano', 'titolo' => $brTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['track_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/brani/' . $r['id'] . '/scheda',
         ];
@@ -1829,37 +1833,49 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.image_path, fb.image_thumb_path, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.note, fb.image_path, fb.image_thumb_path, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_bands fb JOIN users u ON u.id = fb.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fb.user_id IN ($placeholders) AND fb.show_in_feed = 1 AND (fb.publish_at IS NULL OR fb.publish_at <= NOW()) ORDER BY fb.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
+        $fbTitolo = $r['spotify_artist_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fbTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
         $items[] = [
-            'tipo' => 'band_favorita', 'titolo' => $r['spotify_artist_name'], 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['artist_image']), 'data' => $r['data'],
+            'tipo' => 'band_favorita', 'titolo' => $fbTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['artist_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/band-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.image_path, fa.image_thumb_path, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.note, fa.image_path, fa.image_thumb_path, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_actors fa JOIN users u ON u.id = fa.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fa.user_id IN ($placeholders) AND fa.show_in_feed = 1 AND (fa.publish_at IS NULL OR fa.publish_at <= NOW()) ORDER BY fa.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
+        $faTitolo = $r['actor_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $faTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
         $items[] = [
-            'tipo' => 'attore_favorito', 'titolo' => $r['actor_name'], 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['actor_image']), 'data' => $r['data'],
+            'tipo' => 'attore_favorito', 'titolo' => $faTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['actor_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/attori-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.image_path, fm.image_thumb_path, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.note, fm.image_path, fm.image_thumb_path, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_movies fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fm.user_id IN ($placeholders) AND fm.show_in_feed = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
+        $fmTitolo = $r['movie_title'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fmTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
         $items[] = [
-            'tipo' => 'film_favorito', 'titolo' => $r['movie_title'], 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['movie_image']), 'data' => $r['data'],
+            'tipo' => 'film_favorito', 'titolo' => $fmTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['movie_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/film-che-amo/' . $r['id'],
         ];
