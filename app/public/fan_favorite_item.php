@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/tmdb.php';
+require_once __DIR__ . '/../src/googlebooks.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -44,6 +45,18 @@ const FAN_FAVORITE_KINDS = [
         'list_url_segment' => 'film-che-amo',
         'external_label' => 'Vedi su TMDb',
         'external_url' => 'https://www.themoviedb.org/movie/',
+    ],
+    'book' => [
+        'table' => 'fan_favorite_books',
+        'external_id_col' => 'google_books_id',
+        'name_col' => 'book_title',
+        'image_col' => 'book_image',
+        'label' => 'Libri che amo',
+        'nav_key' => 'libricheamo',
+        'list_url_segment' => 'libri-che-amo',
+        'external_label' => 'Vedi su Google Books',
+        'external_url' => 'https://books.google.com/books?id=',
+        'image_shape' => 'book', // copertina rettangolare invece del cerchio, più adatta a un libro
     ],
 ];
 
@@ -93,6 +106,8 @@ if ($kind === 'band') {
     $apiDetails = tmdbGetPersonDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'movie') {
     $apiDetails = tmdbGetMovieDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'book') {
+    $apiDetails = googleBooksGetVolumeDetails($item[$cfg['external_id_col']]);
 }
 
 $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $itemId);
@@ -143,12 +158,18 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 
   <div class="card" style="text-align:center;">
     <?php if ($imageUrl): ?>
-      <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
-           style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+      <?php if (($cfg['image_shape'] ?? 'circle') === 'book'): ?>
+        <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
+             style="width:140px;height:190px;border-radius:8px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+      <?php else: ?>
+        <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
+             style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+      <?php endif; ?>
     <?php endif; ?>
     <h1 style="font-size:22px;margin:0 0 4px;"><?= e($name) ?></h1>
     <p style="opacity:0.75;margin-top:0;">
       <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
+      <?php if (!empty($apiDetails['authors'])): ?> · <?= e($apiDetails['authors']) ?><?php endif; ?>
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
     </p>

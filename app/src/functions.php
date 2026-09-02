@@ -676,6 +676,9 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
     if (!empty($artist['id']) && hasFanFavoriteMovies((int) $artist['id'])) {
         $items['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/' . $slug . '/film-che-amo'];
     }
+    if (!empty($artist['id']) && hasFanFavoriteBooks((int) $artist['id'])) {
+        $items['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/' . $slug . '/libri-che-amo'];
+    }
     $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
     if (!empty($artist['spotify_artist_id']) && $isBandOrLabel) {
         $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
@@ -1208,9 +1211,15 @@ function hasFanFavoriteMovies(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoriteBooks(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_books WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasFanFavorites = false, bool $hasFanActors = false, bool $hasFanMovies = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasFanFavorites = false, bool $hasFanActors = false, bool $hasFanMovies = false, bool $hasFanBooks = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1235,6 +1244,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     }
     if ($hasFanMovies) {
         $tabs['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/' . $slug . '/film-che-amo', 'icon' => 'fas fa-film'];
+    }
+    if ($hasFanBooks) {
+        $tabs['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/' . $slug . '/libri-che-amo', 'icon' => 'fas fa-book'];
     }
     $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasSpotify && $isBandOrLabel) {
@@ -1323,7 +1335,8 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $hasFanFavorites = $ownerId ? hasFanFavoriteBands($ownerId) : false;
     $hasFanActors = $ownerId ? hasFanFavoriteActors($ownerId) : false;
     $hasFanMovies = $ownerId ? hasFanFavoriteMovies($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasFanFavorites, $hasFanActors, $hasFanMovies);
+    $hasFanBooks = $ownerId ? hasFanFavoriteBooks($ownerId) : false;
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasFanFavorites, $hasFanActors, $hasFanMovies, $hasFanBooks);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
@@ -1881,6 +1894,22 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fk.id, fk.book_title, fk.book_image, fk.note, fk.image_path, fk.image_thumb_path, fk.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_books fk JOIN users u ON u.id = fk.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fk.user_id IN ($placeholders) AND fk.show_in_feed = 1 AND (fk.publish_at IS NULL OR fk.publish_at <= NOW()) ORDER BY fk.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $fkTitolo = $r['book_title'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fkTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'libro_favorito', 'titolo' => $fkTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['book_image']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/libri-che-amo/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -1957,7 +1986,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -1984,7 +2013,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -2091,7 +2120,9 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_messages','dashboard_chat','menu','dashboard_menu',
     'reserve_table','dashboard_reservations','dashboard_profiles','dashboard_feed','sitemap','robots',
     'dashboard_fan_actors','attori_che_amo','admin_gemini','dashboard_ai_caption','admin_tmdb',
-    'dashboard_fan_movies','film_che_amo','fan_favorite_item'];
+    'dashboard_fan_movies','film_che_amo','fan_favorite_item',
+    'dashboard_fan_books','libri_che_amo','admin_googlebooks',
+    'dashboard_cinema','cron_cinema_sync','favorite_track_item'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {
@@ -2175,6 +2206,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Band che amo' => 'bandcheamo',
     'Attori che amo' => 'attorichamo',
     'Film che amo' => 'filmcheamo',
+    'Libri che amo' => 'libricheamo',
     'Timeline' => 'timeline',
     'Spotify' => 'spotify',
     'Podcast' => 'podcast',
@@ -2201,16 +2233,17 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 3],
         ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 4],
         ['Film che amo', 'fas fa-film', '/' . $slug, 5],
-        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 6],
-        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 7],
-        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 8],
-        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 9],
-        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 10],
-        ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 11],
-        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 12],
-        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 13],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 14],
-        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 15],
+        ['Libri che amo', 'fas fa-book', '/' . $slug, 6],
+        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 7],
+        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 8],
+        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 9],
+        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 10],
+        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 11],
+        ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 12],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 13],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 14],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 15],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 16],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

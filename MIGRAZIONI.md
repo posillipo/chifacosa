@@ -651,6 +651,40 @@ Due modalità di sincronizzazione, entrambe disponibili dalla stessa pagina:
    non solo uno. Il comando esatto (con token) è mostrato nella pagina Cinema di ogni profilo che
    ha già impostato un URL.
 
+## 39. Nuovo modulo "Libri che amo" (Google Books API)
+
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_books (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    google_books_id VARCHAR(50) NOT NULL,
+    book_title VARCHAR(200) NOT NULL,
+    book_image VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_book (user_id, google_books_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Quarto modulo "che amo" (dopo Band/Attori/Film), stessa parità fin dall'inizio invece che a
+tappe: ricerca live (Google Books API, gratuita fino a 1000 richieste/giorno — chiave da
+ADMIN → Google Books, `admin_googlebooks.php`), pannello "✏️ Gestisci pubblicazione" completo
+(testo con ✨ Genera con AI, foto opzionale, Pubblico/Solo io, programmazione, link
+personalizzato per il feed — tutto come Band/Attori/Film/Brani che amo), pagina di dettaglio
+pubblica condivisibile su `/slug/libri-che-amo/ID` (estende `fan_favorite_item.php`, con
+copertina rettangolare invece che circolare — più adatta a un libro), integrazione nel Feed con
+titolo "Titolo: testo", tab nel menu pubblico (mostrato solo se il profilo ha almeno un libro
+aggiunto, come gli altri) su tutti e tre gli stili di navigazione (`publicNav()`, tema Giardino
+Anomalo, tema Scorrimento Infinito), voce "Libri che amo" nel menu di navigazione personalizzabile
+(si aggiunge da sola ai profili esistenti al primo accesso a Dashboard → Menu di Navigazione,
+nessuna riga da inserire a mano). Elenco pubblico a mattonelle come Attori/Film che amo.
+
 ---
 
 ## Come aggiungere una nuova voce

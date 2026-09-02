@@ -67,6 +67,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/film-che-amo/([0-9]+)/?$ fan_favorite_item.php?slu
 # /nomeartista/film-che-amo -> elenco completo film preferiti
 RewriteRule ^([a-zA-Z0-9_-]+)/film-che-amo/?$ film_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/libri-che-amo/ID -> pagina dedicata al singolo libro preferito (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/libri-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=book&id=$2 [L,QSA]
+
+# /nomeartista/libri-che-amo -> elenco completo libri preferiti
+RewriteRule ^([a-zA-Z0-9_-]+)/libri-che-amo/?$ libri_che_amo.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 
