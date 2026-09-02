@@ -1831,7 +1831,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_bands fb JOIN users u ON u.id = fb.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fb.user_id IN ($placeholders) ORDER BY fb.created_at DESC LIMIT 200");
+        WHERE fb.user_id IN ($placeholders) AND fb.show_in_feed = 1 ORDER BY fb.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -1843,7 +1843,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_actors fa JOIN users u ON u.id = fa.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fa.user_id IN ($placeholders) ORDER BY fa.created_at DESC LIMIT 200");
+        WHERE fa.user_id IN ($placeholders) AND fa.show_in_feed = 1 ORDER BY fa.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -1855,7 +1855,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM fan_favorite_movies fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fm.user_id IN ($placeholders) ORDER BY fm.created_at DESC LIMIT 200");
+        WHERE fm.user_id IN ($placeholders) AND fm.show_in_feed = 1 ORDER BY fm.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [

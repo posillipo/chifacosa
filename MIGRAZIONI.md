@@ -538,6 +538,21 @@ Estende i tre moduli "che amo" con 4 funzionalità richieste per tutti (presenti
    pagina di dettaglio — compaiono quindi nella Timeline pubblica e nel Feed della dashboard
    come qualsiasi altro contenuto pubblicato.
 
+## 36. Controllo visibilità nel Feed per Band/Attori/Film che amo
+
+```sql
+ALTER TABLE fan_favorite_bands ADD COLUMN show_in_feed TINYINT(1) NOT NULL DEFAULT 1;
+ALTER TABLE fan_favorite_actors ADD COLUMN show_in_feed TINYINT(1) NOT NULL DEFAULT 1;
+ALTER TABLE fan_favorite_movies ADD COLUMN show_in_feed TINYINT(1) NOT NULL DEFAULT 1;
+```
+
+Nelle tre pagine dashboard, sotto "Rimuovi" compare ora un pulsante **+Feed** che attiva/disattiva
+(via `fetch()`, azione `toggle_feed`) la comparsa del singolo elemento nella Timeline pubblica e
+nel Feed della dashboard — colorato quando attivo, grigio ("secondary") quando disattivo. Gli
+elementi restano comunque nella lista/pagina di dettaglio del profilo: la colonna controlla solo
+`getTimelineFeedForUsers()`, che ora filtra `WHERE ... show_in_feed = 1`. Default `1` per non
+alterare il comportamento degli elementi già aggiunti.
+
 ---
 
 ## Come aggiungere una nuova voce

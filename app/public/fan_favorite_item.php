@@ -146,26 +146,26 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
            style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
     <?php endif; ?>
     <h1 style="font-size:22px;margin:0 0 4px;"><?= e($name) ?></h1>
-    <p style="color:rgba(var(--text-rgb),0.7);margin-top:0;">
+    <p style="opacity:0.75;margin-top:0;">
       <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
     </p>
 
     <?php if ($note !== ''): ?>
-      <div class="card" style="text-align:left;background:var(--bg-alt,#f7f7f9);margin-top:14px;">
+      <div class="card" style="text-align:left;margin-top:14px;">
         <strong>Perché <?= e($artist['display_name']) ?> lo ama</strong>
         <p style="margin:6px 0 0;"><?= nl2br(e($note)) ?></p>
       </div>
     <?php endif; ?>
 
     <?php if (!empty($apiDetails['genres'])): ?>
-      <p style="margin-top:14px;"><em><?= e(implode(', ', $apiDetails['genres'])) ?></em></p>
+      <p style="margin-top:14px;opacity:0.85;"><em><?= e(implode(', ', $apiDetails['genres'])) ?></em></p>
     <?php endif; ?>
     <?php if (!empty($apiDetails['overview'])): ?>
-      <p style="text-align:left;margin-top:10px;color:rgba(var(--text-rgb),0.8);"><?= nl2br(e($apiDetails['overview'])) ?></p>
+      <p style="text-align:left;margin-top:10px;opacity:0.9;"><?= nl2br(e($apiDetails['overview'])) ?></p>
     <?php elseif (!empty($apiDetails['biography'])): ?>
-      <p style="text-align:left;margin-top:10px;color:rgba(var(--text-rgb),0.8);"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
+      <p style="text-align:left;margin-top:10px;opacity:0.9;"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
     <?php endif; ?>
 
     <p style="margin-top:16px;"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn small"><?= e($cfg['external_label']) ?></a></p>

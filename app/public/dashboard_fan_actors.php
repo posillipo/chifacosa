@@ -46,6 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => true]);
             exit;
         }
+    } elseif ($action === 'toggle_feed') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('UPDATE fan_favorite_actors SET show_in_feed = 1 - show_in_feed WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+        if ($isAjax) {
+            $stmt = getDB()->prepare('SELECT show_in_feed FROM fan_favorite_actors WHERE id=? AND user_id=?');
+            $stmt->execute([$id, $profile['id']]);
+            $row = $stmt->fetch();
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => (bool) $row, 'show_in_feed' => $row ? (int) $row['show_in_feed'] : null]);
+            exit;
+        }
     } elseif ($action === 'save_note') {
         $id = (int) ($_POST['id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
@@ -148,7 +160,10 @@ include __DIR__ . '/_dash_header.php';
             <?php endif; ?>
             <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($f['actor_name']) ?></strong>
           </a>
-          <button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+            <button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>
+            <button type="button" class="btn small<?= $f['show_in_feed'] ? '' : ' secondary' ?> fa-feed-toggle" title="Mostra/nascondi questo elemento nella Timeline/Feed">+Feed</button>
+          </div>
         </div>
         <div class="fa-note-block">
           <?php if ($note !== ''): ?>
@@ -158,13 +173,13 @@ include __DIR__ . '/_dash_header.php';
             <p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>
             <button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>
           <?php endif; ?>
-          <div class="fa-note-editor" style="display:none;margin-top:6px;">
+          <form class="fa-note-editor" onsubmit="return false;" style="display:none;margin-top:6px;">
             <textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"><?= e($note) ?></textarea>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <button type="button" class="btn small fa-note-save">Salva nota</button>
               <button type="button" class="btn small secondary fa-note-cancel">Annulla</button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     <?php endforeach; ?>
@@ -221,15 +236,18 @@ include __DIR__ . '/_dash_header.php';
       return '<div style="display:flex;align-items:center;gap:12px;">'
         + '<a href="/' + escapeHtml(profileSlug) + '/attori-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
         + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.actor_name) + '</strong></a>'
-        + '<button type="button" class="btn small danger fa-remove-btn" style="flex-shrink:0;">Rimuovi</button></div>'
+        + '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
+        + '<button type="button" class="btn small danger fa-remove-btn">Rimuovi</button>'
+        + '<button type="button" class="btn small fa-feed-toggle" title="Mostra/nascondi questo elemento nella Timeline/Feed">+Feed</button>'
+        + '</div></div>'
         + '<div class="fa-note-block">'
         + '<p class="fa-note-text" style="margin:0;font-size:13px;color:var(--text-muted);display:none;"></p>'
         + '<button type="button" class="btn small secondary fa-note-toggle">+ Aggiungi una nota (perché ti piace)</button>'
-        + '<div class="fa-note-editor" style="display:none;margin-top:6px;">'
+        + '<form class="fa-note-editor" onsubmit="return false;" style="display:none;margin-top:6px;">'
         + '<textarea class="fa-note-textarea" rows="2" placeholder="Racconta perché ti piace"></textarea>'
         + '<div style="display:flex;gap:8px;margin-top:4px;">'
         + '<button type="button" class="btn small fa-note-save">Salva nota</button>'
-        + '<button type="button" class="btn small secondary fa-note-cancel">Annulla</button></div></div></div>';
+        + '<button type="button" class="btn small secondary fa-note-cancel">Annulla</button></div></form></div>';
     }
 
     function addFavoriteRow(item) {
@@ -270,6 +288,7 @@ include __DIR__ . '/_dash_header.php';
     // Rimuovi/nota (delegato: sia le voci già presenti al caricamento, sia quelle aggiunte dopo)
     listBox.addEventListener('click', function (e) {
       const removeBtn = e.target.closest('.fa-remove-btn');
+      const feedToggleBtn = e.target.closest('.fa-feed-toggle');
       const noteToggleBtn = e.target.closest('.fa-note-toggle');
       const noteCancelBtn = e.target.closest('.fa-note-cancel');
       const noteSaveBtn = e.target.closest('.fa-note-save');
@@ -292,6 +311,21 @@ include __DIR__ . '/_dash_header.php';
             removeBtn.disabled = false;
           }
         }).catch(function () { removeBtn.disabled = false; });
+        return;
+      }
+
+      if (feedToggleBtn) {
+        const row = feedToggleBtn.closest('[data-fa-favorite]');
+        const id = row.getAttribute('data-fa-favorite');
+        feedToggleBtn.disabled = true;
+        const params = new URLSearchParams();
+        params.set('action', 'toggle_feed');
+        params.set('id', id);
+        post(params).then(function (data) {
+          feedToggleBtn.disabled = false;
+          if (!data.ok) return;
+          feedToggleBtn.classList.toggle('secondary', !data.show_in_feed);
+        }).catch(function () { feedToggleBtn.disabled = false; });
         return;
       }
 
