@@ -86,12 +86,12 @@ $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di '
 // dagli altri (pulsante colorato grande) — include eventuali social ripetuti
 [$socialLinks, $actionLinks] = splitSocialAndActionLinks($links);
 
-// I pulsanti dei film (sincronizzati da Dashboard → Cinema) compaiono sempre in fondo
-// all'elenco, dopo tutti gli altri link pubblicati, indipendentemente dal loro sort_order.
+// I pulsanti dei film (sincronizzati da Dashboard → Cinema) vivono in una loro griglia a
+// mattonelle separata (stesso stile di Attori che amo/Film che amo), mostrata sempre in fondo
+// dopo tutti gli altri link pubblicati — non nell'elenco a pulsanti pieni normale.
 $filmActionLinks = array_values(array_filter($actionLinks, fn ($l) => ($l['link_type'] ?? 'link') === 'film'));
 if ($filmActionLinks) {
     $actionLinks = array_values(array_filter($actionLinks, fn ($l) => ($l['link_type'] ?? 'link') !== 'film'));
-    $actionLinks = array_merge($actionLinks, $filmActionLinks);
 }
 
 $followerCount = getFollowerCount($uid);
@@ -230,6 +230,21 @@ $bandReviewers = $bandReviewers->fetchAll();
         <?php $colorIdx++; ?>
       <?php endif; ?>
     <?php endforeach; ?>
+  <?php endif; ?>
+
+  <?php if ($filmActionLinks): ?>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Film in programmazione</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
+      <?php foreach ($filmActionLinks as $l): ?>
+        <a href="/link.php?id=<?= (int)$l['id'] ?>" target="_blank" rel="noopener"
+           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
+          <?php if ($l['cover_path']): ?>
+            <img src="/<?= e($l['cover_path']) ?>" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;">
+          <?php endif; ?>
+          <div style="font-weight:700;font-size:13px;"><?= e($l['label']) ?></div>
+        </a>
+      <?php endforeach; ?>
+    </div>
   <?php endif; ?>
   <?php endif; ?>
 

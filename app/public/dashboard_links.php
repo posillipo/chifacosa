@@ -34,12 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'add_map') {
         $address = trim($_POST['address'] ?? '');
         $label = trim($_POST['label'] ?? '');
-        $geo = geocodeAddress($address);
-        if (!$geo) {
-            header('Location: /dashboard_links.php?geocode_error=1');
+        $latRaw = str_replace(',', '.', trim($_POST['map_lat'] ?? ''));
+        $lngRaw = str_replace(',', '.', trim($_POST['map_lng'] ?? ''));
+
+        if ($latRaw !== '' && $lngRaw !== '' && is_numeric($latRaw) && is_numeric($lngRaw)) {
+            $geo = ['lat' => (float) $latRaw, 'lng' => (float) $lngRaw, 'display_name' => null];
+        } elseif ($address !== '') {
+            $geo = geocodeAddress($address);
+            if (!$geo) {
+                header('Location: /dashboard_links.php?geocode_error=1');
+                exit;
+            }
+        } else {
+            header('Location: /dashboard_links.php?map_input_error=1');
             exit;
         }
-        $mapLabel = $label !== '' ? $label : $geo['display_name'];
+        $mapLabel = $label !== '' ? $label : ($geo['display_name'] ?? (number_format($geo['lat'], 5) . ', ' . number_format($geo['lng'], 5)));
         $stmt = getDB()->prepare("INSERT INTO links (user_id, label, url, link_type, map_lat, map_lng, sort_order) VALUES (?,?,'','map',?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM links WHERE user_id=?) t))");
         $stmt->execute([$profile['id'], $mapLabel, $geo['lat'], $geo['lng'], $profile['id']]);
     } elseif ($action === 'update_link') {
@@ -74,7 +84,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int) ($_POST['id'] ?? 0);
         $label = trim($_POST['label'] ?? '');
         $address = trim($_POST['address'] ?? '');
-        if ($address !== '') {
+        $latRaw = str_replace(',', '.', trim($_POST['map_lat'] ?? ''));
+        $lngRaw = str_replace(',', '.', trim($_POST['map_lng'] ?? ''));
+        if ($latRaw !== '' && $lngRaw !== '' && is_numeric($latRaw) && is_numeric($lngRaw)) {
+            if ($label !== '') {
+                $stmt = getDB()->prepare("UPDATE links SET label=?, map_lat=?, map_lng=? WHERE id=? AND user_id=? AND link_type='map'");
+                $stmt->execute([$label, (float) $latRaw, (float) $lngRaw, $id, $profile['id']]);
+            } else {
+                $stmt = getDB()->prepare("UPDATE links SET map_lat=?, map_lng=? WHERE id=? AND user_id=? AND link_type='map'");
+                $stmt->execute([(float) $latRaw, (float) $lngRaw, $id, $profile['id']]);
+            }
+        } elseif ($address !== '') {
             $geo = geocodeAddress($address);
             if (!$geo) {
                 header('Location: /dashboard_links.php?edit=' . $id . '&geocode_error=1');
@@ -225,7 +245,8 @@ include __DIR__ . '/_dash_header.php';
   </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['error'])): ?><div class="alert error">Inserisci un'etichetta e un URL valido.</div><?php endif; ?>
-  <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città).</div><?php endif; ?>
+  <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città), oppure inserisci direttamente le coordinate.</div><?php endif; ?>
+  <?php if (isset($_GET['map_input_error'])): ?><div class="alert error">Inserisci un indirizzo oppure delle coordinate (latitudine e longitudine).</div><?php endif; ?>
 
   <?php if ($editingLink && ($editingLink['link_type'] ?? 'link') === 'divider'): ?>
   <form method="post" class="card">
@@ -250,6 +271,17 @@ include __DIR__ . '/_dash_header.php';
     <input type="text" name="label" value="<?= e($editingLink['label']) ?>">
     <label>Nuovo indirizzo (lascia vuoto per non spostare la mappa)</label>
     <input type="text" name="address" placeholder="Via Roma 1, Napoli">
+    <p style="color:var(--text-muted);font-size:12px;margin-top:-8px;">oppure, in alternativa, inserisci direttamente le coordinate:</p>
+    <div style="display:flex;gap:10px;">
+      <div style="flex:1;">
+        <label>Latitudine</label>
+        <input type="text" name="map_lat" placeholder="es. 40.85216" inputmode="decimal">
+      </div>
+      <div style="flex:1;">
+        <label>Longitudine</label>
+        <input type="text" name="map_lng" placeholder="es. 14.26811" inputmode="decimal">
+      </div>
+    </div>
     <p style="color:var(--text-muted);font-size:12px;">
       Posizione attuale: <?= number_format((float)$editingLink['map_lat'], 5) ?>, <?= number_format((float)$editingLink['map_lng'], 5) ?>
     </p>
@@ -319,7 +351,9 @@ include __DIR__ . '/_dash_header.php';
     <p style="color:var(--text-muted);font-size:13px;">
       Cerca un indirizzo e mostra una mappa interattiva sulla tua pagina pubblica — tramite
       OpenStreetMap, un servizio completamente gratuito, senza chiave API e senza costi anche con
-      molte visite (a differenza di Google Maps).
+      molte visite (a differenza di Google Maps). In alternativa all'indirizzo puoi inserire
+      direttamente le coordinate (utile se l'indirizzo non viene trovato, o se il punto esatto
+      non ha un indirizzo preciso).
     </p>
     <form method="post" style="margin-top:10px;">
       <?= csrfField() ?>
@@ -327,7 +361,18 @@ include __DIR__ . '/_dash_header.php';
       <label>Etichetta (opzionale)</label>
       <input type="text" name="label" placeholder="La nostra sede">
       <label>Indirizzo</label>
-      <input type="text" name="address" placeholder="Via Roma 1, Napoli" required>
+      <input type="text" name="address" placeholder="Via Roma 1, Napoli">
+      <p style="color:var(--text-muted);font-size:12px;margin-top:-8px;">oppure, in alternativa, inserisci direttamente le coordinate:</p>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;">
+          <label>Latitudine</label>
+          <input type="text" name="map_lat" placeholder="es. 40.85216" inputmode="decimal">
+        </div>
+        <div style="flex:1;">
+          <label>Longitudine</label>
+          <input type="text" name="map_lng" placeholder="es. 14.26811" inputmode="decimal">
+        </div>
+      </div>
       <button type="submit" class="btn secondary">Trova e aggiungi mappa</button>
     </form>
   </details>
