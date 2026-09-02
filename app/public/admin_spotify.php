@@ -43,7 +43,7 @@ include __DIR__ . '/_admin_header.php';
   <div class="card">
     <strong>Come funziona</strong>
     <p style="color:var(--text-muted)">
-      Questa integrazione permette ad ogni band manager di collegare (dalla propria dashboard)
+      Questa integrazione permette ad ogni profilo di collegare (dalla propria dashboard)
       il proprio profilo Artista su Spotify, e mostra automaticamente album e brani più
       ascoltati su una pagina pubblica dedicata (<code><?= e(siteName()) ?>/slug/spotify</code>). Non
       richiede il login Spotify degli utenti: usa solo l'accesso al catalogo pubblico.

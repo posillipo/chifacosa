@@ -74,7 +74,7 @@ include __DIR__ . '/_dash_header.php';
 
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
-    <label>Nome d'arte / Band</label>
+    <label>Nome / Nome d'arte</label>
     <input type="text" name="display_name" value="<?= e($profile['display_name']) ?>" required>
 
     <label>Bio</label>

@@ -126,10 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="post">
           <?= csrfField() ?>
           <input type="hidden" name="invite" value="<?= e($token) ?>">
-          <label>Nome d'arte / Band</label>
+          <label>Nome / Nome d'arte</label>
           <input type="text" name="display_name" required value="<?= e($_POST['display_name'] ?? $invite['band_name'] ?? '') ?>">
           <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
-          <input type="text" name="slug" placeholder="es. marco-rossi-band" value="<?= e($_POST['slug'] ?? '') ?>">
+          <input type="text" name="slug" placeholder="es. marco-rossi" value="<?= e($_POST['slug'] ?? '') ?>">
           <label>Password (min. 8 caratteri)</label>
           <input type="password" name="password" required>
           <button type="submit" class="btn-dark">Crea pagina</button>

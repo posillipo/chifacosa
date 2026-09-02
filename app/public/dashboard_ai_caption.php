@@ -28,11 +28,11 @@ if ($keywords === '') {
 
 $context = 'Sei l\'assistente social di "' . $profile['display_name'] . '"'
     . (!empty($profile['genere']) ? ' (' . $profile['genere'] . ')' : '')
-    . ' su un sito per artisti/band chiamato ' . siteName() . '.';
+    . ' su ' . siteName() . ', un sito dove chiunque (band, attori, locali, appassionati di ogni genere) ha una propria pagina.';
 
 $prompt = $context . " Scrivi un breve post per i social (massimo 2-3 frasi, tono naturale e coinvolgente, "
     . "niente hashtag a meno che non siano espliciti nelle parole chiave, nessun emoji eccessivo) "
-    . "a partire da queste parole chiave/istruzioni dell'artista: \"" . $keywords . "\". "
+    . "a partire da queste parole chiave/istruzioni: \"" . $keywords . "\". "
     . "Rispondi SOLO con il testo del post, senza virgolette, senza titoli, senza commenti.";
 
 $text = geminiGenerateText($prompt);

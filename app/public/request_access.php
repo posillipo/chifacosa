@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="text" name="name" required>
           <label>Email</label>
           <input type="email" name="email" required>
-          <label>Nome della band/progetto (opzionale)</label>
+          <label>Nome dell'attività o del progetto (opzionale)</label>
           <input type="text" name="band_name">
           <label>Raccontaci brevemente di te (opzionale)</label>
           <textarea name="message" rows="3"></textarea>

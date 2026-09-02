@@ -3,7 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 $admin = requireAdmin();
 $activeAdminTab = 'users';
-$pageTitle = 'Utenti iscritti (band manager)';
+$pageTitle = 'Utenti iscritti';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
@@ -141,7 +141,7 @@ include __DIR__ . '/_admin_header.php';
       <thead>
         <tr>
           <th><?= sortHeader('ID', 'id', $sort, $dir) ?></th>
-          <th><?= sortHeader('Nome band', 'display_name', $sort, $dir) ?></th>
+          <th><?= sortHeader('Nome', 'display_name', $sort, $dir) ?></th>
           <th><?= sortHeader('Email', 'email', $sort, $dir) ?></th>
           <th><?= sortHeader('Slug', 'slug', $sort, $dir) ?></th>
           <th><?= sortHeader('Città', 'citta', $sort, $dir) ?></th>

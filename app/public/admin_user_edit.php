@@ -58,7 +58,7 @@ include __DIR__ . '/_admin_header.php';
     <?= csrfField() ?>
     <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
 
-    <label>Nome d'arte / Band</label>
+    <label>Nome / Nome d'arte</label>
     <input type="text" name="display_name" value="<?= e($u['display_name']) ?>" required>
 
     <label>Email</label>

@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 <div class="auth-split">
   <div class="auth-split-brand">
-    <div class="logo">my<span>Band</span>.it</div>
+    <div class="logo"><?= e(siteName()) ?></div>
     <h1>Accedi con un <span class="highlight">codice</span><br>via email.</h1>
   </div>
   <div class="auth-split-form">

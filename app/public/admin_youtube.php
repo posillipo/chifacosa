@@ -35,7 +35,7 @@ include __DIR__ . '/_admin_header.php';
   <div class="card">
     <strong>Come funziona</strong>
     <p style="color:var(--text-muted)">
-      Permette a ogni band manager di collegare (dalla propria dashboard) il proprio canale
+      Permette a ogni profilo di collegare (dalla propria dashboard) il proprio canale
       YouTube incollando semplicemente il link, mostrando automaticamente i video più recenti su
       una pagina pubblica dedicata (<code><?= e(siteName()) ?>/slug/video</code>). Non richiede il login
       YouTube/Google degli utenti: usa solo l'accesso al catalogo pubblico tramite una API Key.

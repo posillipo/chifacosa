@@ -50,12 +50,12 @@ function qsProfiles(array $overrides = []): string {
 include __DIR__ . '/_admin_header.php';
 ?>
   <div class="card">
-    <a href="/admin_users.php" class="btn btn-secondary btn-sm">← Vedi tabella account/band manager</a>
+    <a href="/admin_users.php" class="btn btn-secondary btn-sm">← Vedi tabella account</a>
   </div>
 
   <form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
     <div style="flex:1;min-width:200px;">
-      <label class="mb-1 d-block">Cerca (nome band, città, slug)</label>
+      <label class="mb-1 d-block">Cerca (nome, città, slug)</label>
       <input type="text" class="form-control" name="q" value="<?= e($q) ?>" placeholder="es. Napoli">
     </div>
     <div style="min-width:200px;">
@@ -77,7 +77,7 @@ include __DIR__ . '/_admin_header.php';
       <thead>
         <tr>
           <th>Avatar</th>
-          <th>Nome band</th>
+          <th>Nome</th>
           <th>Genere</th>
           <th>Città</th>
           <th>Provincia</th>
