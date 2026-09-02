@@ -138,7 +138,7 @@ include __DIR__ . '/_dash_header.php';
     </div>
     <div id="ai-caption-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
       <label>Qualche parola chiave o istruzione per l'AI</label>
-      <input type="text" id="ai-caption-keywords" placeholder="es. annuncio nuovo concerto sabato 14 a Milano">
+      <textarea id="ai-caption-keywords" rows="2" placeholder="es. annuncio nuovo concerto sabato 14 a Milano"></textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button type="button" class="btn small" id="ai-caption-generate">Genera testo</button>
         <button type="button" class="btn small secondary" id="ai-caption-cancel">Annulla</button>
