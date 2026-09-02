@@ -13,6 +13,19 @@ function getGoogleBooksApiKey(): ?string {
     return $key !== '' ? $key : null;
 }
 
+// La descrizione di Google Books è spesso HTML (paragrafi, grassetto, corsivo) pensato per un
+// sito che lo renderizza come tale — qui invece viene mostrato come testo semplice (nl2br + e()),
+// quindi va ripulito: <br>/</p> diventano un vero a capo, gli altri tag vengono rimossi, le
+// entità HTML (&amp; ecc.) decodificate, altrimenti comparirebbero come testo letterale.
+function cleanGoogleBooksDescription(string $html): string {
+    $html = preg_replace('#<br\s*/?>#i', "\n", $html);
+    $html = preg_replace('#</p>#i', "\n\n", $html);
+    $text = html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8');
+    $text = preg_replace('/[ \t]+/', ' ', $text);
+    $text = preg_replace('/\n{3,}/', "\n\n", $text);
+    return trim($text);
+}
+
 // Cerca un libro per titolo/autore. Restituisce fino a 10 risultati, scartando chi non ha
 // nessuna copertina (stessa scelta già fatta per TMDb: senza immagine il pulsante è spoglio).
 function googleBooksSearch(string $query): array {
@@ -68,7 +81,7 @@ function googleBooksGetVolumeDetails(string $volumeId): ?array {
         return null;
     }
     return [
-        'overview' => trim($info['description'] ?? ''),
+        'overview' => cleanGoogleBooksDescription($info['description'] ?? ''),
         'authors' => !empty($info['authors']) ? implode(', ', $info['authors']) : null,
         'publisher' => $info['publisher'] ?? null,
         'release_date' => $info['publishedDate'] ?? null,
