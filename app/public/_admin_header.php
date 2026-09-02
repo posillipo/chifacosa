@@ -12,6 +12,7 @@ $navItems = [
     'gemini'    => ['url' => '/admin_gemini.php',    'icon' => 'fas fa-wand-magic-sparkles', 'label' => 'Assistente AI'],
     'tmdb'      => ['url' => '/admin_tmdb.php',      'icon' => 'fas fa-clapperboard', 'label' => 'TMDb (Attori)'],
     'googlebooks' => ['url' => '/admin_googlebooks.php', 'icon' => 'fas fa-book', 'label' => 'Google Books (Libri)'],
+    'geoapify' => ['url' => '/admin_geoapify.php', 'icon' => 'fas fa-map-location-dot', 'label' => 'Geoapify (Viaggi)'],
     'import_legacy' => ['url' => '/admin_import_legacy.php', 'icon' => 'fas fa-file-import', 'label' => 'Import legacy'],
     'reviews' => ['url' => '/admin_reviews.php', 'icon' => 'fas fa-star', 'label' => 'Recensioni'],
     'access_requests' => ['url' => '/admin_access_requests.php', 'icon' => 'fas fa-user-check', 'label' => 'Richieste di accesso'],

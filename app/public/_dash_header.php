@@ -259,6 +259,9 @@ document.addEventListener('click', function (e) {
     <?php if ($navVisibility['Libri che amo'] ?? 1): ?>
     <a href="/dashboard_fan_books.php" class="<?= $activeTab==='fan_books'?'active':'' ?>">Libri che amo</a>
     <?php endif; ?>
+    <?php if ($navVisibility['Viaggi'] ?? 1): ?>
+    <a href="/dashboard_fan_trips.php" class="<?= $activeTab==='fan_trips'?'active':'' ?>">Viaggi</a>
+    <?php endif; ?>
     <?php if ($navVisibility['Blog'] ?? 1): ?>
     <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
     <?php endif; ?>

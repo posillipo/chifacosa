@@ -73,6 +73,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/libri-che-amo/([0-9]+)/?$ fan_favorite_item.php?sl
 # /nomeartista/libri-che-amo -> elenco completo libri preferiti
 RewriteRule ^([a-zA-Z0-9_-]+)/libri-che-amo/?$ libri_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/viaggi/ID -> pagina dedicata al singolo viaggio (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/viaggi/([0-9]+)/?$ viaggio_item.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/viaggi -> elenco completo viaggi
+RewriteRule ^([a-zA-Z0-9_-]+)/viaggi/?$ viaggi.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 

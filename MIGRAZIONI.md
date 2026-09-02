@@ -687,6 +687,48 @@ nessuna riga da inserire a mano). Elenco pubblico a mattonelle come Attori/Film 
 
 ---
 
+## 40. Nuovo modulo "Viaggi"
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_trips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    place_name VARCHAR(200) NOT NULL,
+    address VARCHAR(500) DEFAULT NULL,
+    lat DECIMAL(10,7) NOT NULL,
+    lng DECIMAL(10,7) NOT NULL,
+    map_image_path VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Quinto modulo "che amo" (dopo Band/Attori/Film/Libri), ma diverso dagli altri: non esiste un'API
+esterna gratuita con un ID canonico + foto per un luogo qualsiasi, quindi qui la ricerca resta su
+OpenStreetMap Nominatim (gratuita, nessuna chiave — già usata nel modulo Link, ora anche con più
+risultati tra cui scegliere), con in più la possibilità di inserire le coordinate a mano quando il
+posto non si trova. Niente `UNIQUE` sulla tabella: si può tornare nello stesso posto più volte e
+raccontarlo ogni volta in un elemento diverso. Per garantire che ogni viaggio abbia sempre
+un'immagine condivisibile sui social anche senza una foto propria caricata dal proprietario, viene
+generata automaticamente una miniatura statica della mappa (Geoapify, chiave da
+ADMIN → Geoapify, `admin_geoapify.php`, piano gratuito ~3000 richieste/giorno) salvata su disco
+come un file normale — la foto personale, quando c'è, ha comunque sempre la precedenza. Pannello
+"✏️ Gestisci pubblicazione" completo (testo con ✨ Genera con AI, foto opzionale, Pubblico/Solo io,
+programmazione, link personalizzato per il feed — come gli altri moduli che amo). Pagina di
+dettaglio pubblica dedicata `viaggio_item.php` (non nel generico `fan_favorite_item.php`, perché
+qui non c'è un dettaglio da un'API esterna ma una mappa interattiva OpenStreetMap incorporata),
+condivisibile su `/slug/viaggi/ID`, integrazione nel Feed, tab "Viaggi" nel menu pubblico (mostrato
+solo se il profilo ha almeno un viaggio aggiunto) su tutti e tre gli stili di navigazione, voce nel
+menu di navigazione personalizzabile (si aggiunge da sola ai profili esistenti, nessuna riga da
+inserire a mano). Elenco pubblico a mattonelle su `/slug/viaggi`.
+
+---
+
 ## Come aggiungere una nuova voce
 
 Quando una futura modifica tocca lo schema, aggiungi qui una nuova sezione numerata con il

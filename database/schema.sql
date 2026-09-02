@@ -250,6 +250,30 @@ CREATE TABLE IF NOT EXISTS fan_favorite_books (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- "Viaggi": diverso dagli altri moduli "che amo" perché non esiste un'API esterna gratuita con un
+-- ID canonico + foto per un luogo qualsiasi (a differenza di Spotify/TMDb/Google Books) — qui
+-- l'"entità" è la coppia di coordinate scelta dall'utente (ricerca libera via OpenStreetMap
+-- Nominatim, o inserite a mano), niente UNIQUE: si può tornare più volte nello stesso posto e
+-- raccontarlo ogni volta in un elemento diverso. map_image_path è la miniatura statica generata
+-- automaticamente (Geoapify) usata come og:image quando non c'è una foto propria in image_path.
+CREATE TABLE IF NOT EXISTS fan_favorite_trips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    place_name VARCHAR(200) NOT NULL,
+    address VARCHAR(500) DEFAULT NULL,
+    lat DECIMAL(10,7) NOT NULL,
+    lng DECIMAL(10,7) NOT NULL,
+    map_image_path VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Segui tra account (chiunque può seguire chiunque, indipendentemente dal tipo di account),
 -- alimenta il feed "La mia Timeline" aggregato. Diverso dal "Segui via email" (tabella
 -- followers) che resta per i visitatori senza account.

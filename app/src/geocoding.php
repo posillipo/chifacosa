@@ -36,6 +36,38 @@ function geocodeAddress(string $address): ?array {
     ];
 }
 
+// Come geocodeAddress() ma restituisce fino a $limit candidati invece di uno solo — usata nel
+// modulo Viaggi, dove un nome di luogo (es. "Duomo") può corrispondere a posti diversi e va
+// lasciato scegliere all'utente quale intendeva, invece di indovinare il primo risultato.
+function geocodeAddressMultiple(string $query, int $limit = 5): array {
+    $query = trim($query);
+    if ($query === '') {
+        return [];
+    }
+    $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=' . (int) $limit . '&q=' . urlencode($query);
+    $headers = ['User-Agent: ChiFaCosaApp/1.0 (' . siteUrl('/') . ')'];
+    $response = httpRequest('GET', $url, $headers);
+    if (!$response) {
+        return [];
+    }
+    $data = json_decode($response, true);
+    if (!is_array($data)) {
+        return [];
+    }
+    $results = [];
+    foreach ($data as $r) {
+        if (empty($r['lat']) || empty($r['lon']) || empty($r['display_name'])) {
+            continue;
+        }
+        $results[] = [
+            'lat' => (float) $r['lat'],
+            'lng' => (float) $r['lon'],
+            'display_name' => $r['display_name'],
+        ];
+    }
+    return $results;
+}
+
 // Mappa incorporata (iframe) centrata su lat/lng, con segnaposto — sempre OpenStreetMap, mai
 // Google Maps, per restare gratis su qualsiasi volume di visite alla pagina pubblica.
 function renderOsmEmbed(float $lat, float $lng): string {
