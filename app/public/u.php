@@ -86,6 +86,14 @@ $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di '
 // dagli altri (pulsante colorato grande) — include eventuali social ripetuti
 [$socialLinks, $actionLinks] = splitSocialAndActionLinks($links);
 
+// I pulsanti dei film (sincronizzati da Dashboard → Cinema) compaiono sempre in fondo
+// all'elenco, dopo tutti gli altri link pubblicati, indipendentemente dal loro sort_order.
+$filmActionLinks = array_values(array_filter($actionLinks, fn ($l) => ($l['link_type'] ?? 'link') === 'film'));
+if ($filmActionLinks) {
+    $actionLinks = array_values(array_filter($actionLinks, fn ($l) => ($l['link_type'] ?? 'link') !== 'film'));
+    $actionLinks = array_merge($actionLinks, $filmActionLinks);
+}
+
 $followerCount = getFollowerCount($uid);
 $followMsg = $_GET['follow_msg'] ?? '';
 $followErr = ($_GET['follow_err'] ?? '0') === '1';

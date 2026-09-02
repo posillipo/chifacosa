@@ -168,7 +168,8 @@ function renderLinkItem(array $l, int $idx, int $total): void {
         <strong><?= e($l['label']) ?></strong>
         <?php if ($type === 'divider'): ?><span style="color:var(--text-muted);font-size:12px;"> · separatore</span>
         <?php elseif ($type === 'map'): ?><span style="color:var(--text-muted);font-size:12px;"> · mappa</span>
-        <?php elseif ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span><?php endif; ?>
+        <?php elseif ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span>
+        <?php elseif ($type === 'film'): ?><span style="color:var(--text-muted);font-size:12px;"> · film (sincronizzato da Cinema)</span><?php endif; ?>
         <?php if (!$l['is_active']): ?><span style="color:#ff8a8a;font-size:12px;"> · nascosto</span><?php endif; ?>
         <br>
         <?php if ($type === 'divider'): ?>

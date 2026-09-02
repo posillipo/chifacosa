@@ -44,15 +44,19 @@ CREATE TABLE IF NOT EXISTS profiles (
     custom_feed_guid VARCHAR(500) DEFAULT NULL,
     custom_feed_guid_since DATETIME DEFAULT NULL,
     privacy_tracking_settings TEXT DEFAULT NULL,
+    cinema_films_json_url VARCHAR(500) DEFAULT NULL,
+    cinema_films_synced_at DATETIME DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- link_type distingue tre voci diverse nella stessa lista ordinabile: 'link' (pulsante normale,
+-- link_type distingue le voci diverse nella stessa lista ordinabile: 'link' (pulsante normale,
 -- comportamento originale), 'divider' (solo un titolo di sezione, non cliccabile, url resta ''),
--- 'map' (mappa OpenStreetMap incorporata, usa map_lat/map_lng invece di url). Tenerle nella
--- stessa tabella (invece di tabelle separate) permette di riordinarle tutte insieme con le
--- stesse frecce sposta-su/giù già esistenti.
+-- 'map' (mappa OpenStreetMap incorporata, usa map_lat/map_lng invece di url), 'film' (pulsante
+-- film in programmazione, creato/aggiornato automaticamente dalla sincronizzazione Cinema —
+-- vedi syncCinemaFilms() in functions.php — identificato da external_ref, sempre mostrato lato
+-- pubblico dopo tutti gli altri pulsanti). Tenerle nella stessa tabella (invece di tabelle
+-- separate) permette di riordinarle tutte insieme con le stesse frecce sposta-su/giù già esistenti.
 CREATE TABLE IF NOT EXISTS links (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -64,10 +68,12 @@ CREATE TABLE IF NOT EXISTS links (
     click_count INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     is_website_icon TINYINT(1) NOT NULL DEFAULT 0,
-    link_type ENUM('link','divider','map') NOT NULL DEFAULT 'link',
+    link_type ENUM('link','divider','map','film') NOT NULL DEFAULT 'link',
     map_lat DECIMAL(10,7) DEFAULT NULL,
     map_lng DECIMAL(10,7) DEFAULT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    external_ref VARCHAR(64) DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_user_external_ref (user_id, external_ref)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS audio_tracks (

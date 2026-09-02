@@ -617,6 +617,40 @@ linkavano direttamente a Spotify). L'`UPDATE` su `profile_navigation_menu` rinom
 già salvata per i profili esistenti, altrimenti il controllo di visibilità di quella voce smetterebbe
 di funzionare per chi l'ha già personalizzata.
 
+## 38. Sincronizzazione Cinema: film in programmazione nel modulo Link
+
+```sql
+ALTER TABLE profiles
+  ADD COLUMN cinema_films_json_url VARCHAR(500) DEFAULT NULL,
+  ADD COLUMN cinema_films_synced_at DATETIME DEFAULT NULL;
+
+ALTER TABLE links
+  MODIFY COLUMN link_type ENUM('link','divider','map','film') NOT NULL DEFAULT 'link',
+  ADD COLUMN external_ref VARCHAR(64) DEFAULT NULL,
+  ADD UNIQUE KEY uniq_user_external_ref (user_id, external_ref);
+```
+
+Nuova funzionalità dedicata ai profili cinema (Dashboard → menu hamburger → **Cinema**):
+incollando l'URL di un feed JSON film in programmazione (formato 18tickets, `{"films": [...]}`),
+il sito crea automaticamente un pulsante per film nel modulo **Link** — locandina (scaricata e
+salvata localmente, non hotlinkata), titolo e link alla pagina del film (`film_url`).
+
+È una **sincronizzazione vera** (`syncCinemaFilms()` in `functions.php`), non un semplice
+aggiungi: ogni volta aggiunge i film nuovi trovati nel JSON, aggiorna titolo/link di quelli già
+presenti, e **rimuove** quelli non più in programmazione — il modulo Link rispecchia sempre
+esattamente il JSON. I pulsanti creati così sono riconoscibili dalla colonna `link_type='film'`
+e dal loro `external_ref` (l'id del film nel JSON, usato per il confronto ad ogni sync); lato
+pubblico compaiono sempre **in fondo** all'elenco Link, dopo tutti gli altri pulsanti, a
+prescindere dal loro `sort_order`.
+
+Due modalità di sincronizzazione, entrambe disponibili dalla stessa pagina:
+1. **Manuale**: pulsante "Sincronizza ora".
+2. **Automatica periodica**: un nuovo endpoint pubblico `cron_cinema_sync.php`, protetto da un
+   token segreto (generato al primo utilizzo e salvato in `site_settings`), pensato per essere
+   richiamato da un cron di sistema — sincronizza tutti i profili che hanno un URL configurato,
+   non solo uno. Il comando esatto (con token) è mostrato nella pagina Cinema di ogni profilo che
+   ha già impostato un URL.
+
 ---
 
 ## Come aggiungere una nuova voce

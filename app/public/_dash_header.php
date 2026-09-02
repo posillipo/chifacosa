@@ -188,6 +188,9 @@ document.addEventListener('click', function (e) {
     <a href="/dashboard_privacy_tracking.php" class="account-sidebar-link <?= $activeTab==='privacy_tracking'?'active':'' ?>">
       <i class="fa-solid fa-shield-halved"></i> Privacy e Tracking
     </a>
+    <a href="/dashboard_cinema.php" class="account-sidebar-link <?= $activeTab==='cinema'?'active':'' ?>">
+      <i class="fa-solid fa-film"></i> Cinema
+    </a>
     <a href="/dashboard_invite.php" class="account-sidebar-link <?= $activeTab==='invite'?'active':'' ?>">
       <i class="fa-solid fa-user-plus"></i> Invita
     </a>
