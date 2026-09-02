@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/google_oauth.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -9,27 +10,39 @@ $error = null;
 $registered = false;
 $registeredEmailSent = false;
 
-// La registrazione è solo su invito: serve un token valido, generato da un'approvazione in
-// Area Admin (vedi admin_access_requests.php), non ancora usato.
+// Registrazione aperta a chiunque, nessun invito richiesto. Restano supportati due casi
+// opzionali: un vecchio link di invito già approvato e non ancora usato (?invite=token, per
+// compatibilità con email già inviate prima di questo cambiamento) — in quel caso l'email resta
+// quella della richiesta, non modificabile — e un link di invito "porta un amico" (?ref=slug),
+// che serve solo a far seguire automaticamente chi invita e chi si iscrive.
 $token = trim($_GET['invite'] ?? $_POST['invite'] ?? '');
-$stmt = getDB()->prepare("SELECT * FROM access_requests WHERE invite_token = ? AND status = 'approved' AND invite_used = 0");
-$stmt->execute([$token]);
-$invite = $token !== '' ? $stmt->fetch() : null;
+$invite = null;
+if ($token !== '') {
+    $stmt = getDB()->prepare("SELECT * FROM access_requests WHERE invite_token = ? AND status = 'approved' AND invite_used = 0");
+    $stmt->execute([$token]);
+    $invite = $stmt->fetch() ?: null;
+}
 
-if (!$invite) {
-    header('Location: /request_access.php');
-    exit;
+$refSlug = trim($_GET['ref'] ?? $_POST['ref'] ?? '');
+$referrerUserId = null;
+if ($refSlug !== '') {
+    $stmt = getDB()->prepare('SELECT id FROM users WHERE slug = ? AND is_active = 1');
+    $stmt->execute([$refSlug]);
+    $refUser = $stmt->fetch();
+    if ($refUser) {
+        $referrerUserId = (int) $refUser['id'];
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $displayName = trim($_POST['display_name'] ?? '');
-    $email = $invite['email']; // sempre quella della richiesta approvata, non modificabile
+    $email = $invite ? $invite['email'] : trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $slug = slugify($_POST['slug'] ?? $displayName);
 
-    if ($displayName === '' || $password === '' || $slug === '') {
-        $error = 'Compila tutti i campi.';
+    if ($displayName === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '' || $slug === '') {
+        $error = 'Compila tutti i campi con un\'email valida.';
     } elseif (strlen($password) < 8) {
         $error = 'La password deve avere almeno 8 caratteri.';
     } elseif (in_array($slug, RESERVED_SLUGS, true)) {
@@ -51,19 +64,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int) $db->lastInsertId();
             $stmt = $db->prepare('INSERT INTO profiles (user_id, display_name) VALUES (?, ?)');
             $stmt->execute([$userId, $displayName]);
-            $stmt = $db->prepare('UPDATE access_requests SET invite_used = 1 WHERE id = ?');
-            $stmt->execute([$invite['id']]);
+
+            $referrerId = null;
+            if ($invite) {
+                $stmt = $db->prepare('UPDATE access_requests SET invite_used = 1 WHERE id = ?');
+                $stmt->execute([$invite['id']]);
+                $referrerId = $invite['referrer_user_id'] ? (int) $invite['referrer_user_id'] : null;
+            } elseif ($referrerUserId) {
+                $referrerId = $referrerUserId;
+                // Nessuna "richiesta" da approvare in questo flusso aperto: la riga serve solo a
+                // tenere lo storico/le statistiche di chi si è iscritto tramite un link di invito
+                // (vedi dashboard_invite.php), riusando la stessa tabella del vecchio sistema.
+                $stmt = $db->prepare("INSERT INTO access_requests (name, email, referrer_user_id, status, invite_used, decided_at) VALUES (?, ?, ?, 'approved', 1, NOW())");
+                $stmt->execute([$displayName, $email, $referrerId]);
+            }
             $db->commit();
 
             $emailSent = notifyEmailVerification($email, $displayName, $verifyToken);
             notifyAdminsNewUser($email, $displayName, $slug);
 
-            // Se la registrazione arriva da un invito con un referrer riconosciuto, li facciamo
-            // seguire a vicenda automaticamente — chi invita quasi certamente conosce già la
-            // persona invitata, un collegamento reciproco dà a entrambi subito qualcosa nella
-            // propria Timeline invece di partire da una rete vuota.
-            if (!empty($invite['referrer_user_id'])) {
-                $referrerId = (int) $invite['referrer_user_id'];
+            // Chi invita e chi si iscrive tramite il suo link iniziano a seguirsi a vicenda in
+            // automatico — quasi certamente si conoscono già, un collegamento reciproco dà a
+            // entrambi subito qualcosa nella propria Timeline invece di partire da una rete vuota.
+            if ($referrerId) {
                 $stmt = $db->prepare('INSERT IGNORE INTO account_follows (follower_user_id, followed_user_id) VALUES (?, ?), (?, ?)');
                 $stmt->execute([$referrerId, $userId, $userId, $referrerId]);
 
@@ -89,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Completa la registrazione — <?= e(siteName()) ?></title>
+<title>Registrati — <?= e(siteName()) ?></title>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <?= embedPrivacyScript() ?>
 <?= embedTrackingHead() ?>
@@ -118,16 +141,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <p><a href="/login.php">Vai al login</a></p>
       <?php else: ?>
-        <p style="color:#444;font-size:14px;margin-bottom:20px;">
-          Invito confermato per <strong><?= e($invite['email']) ?></strong> — completa i dati
-          per creare la tua pagina.
-        </p>
+        <?php if ($invite): ?>
+          <p style="color:#444;font-size:14px;margin-bottom:20px;">
+            Invito confermato per <strong><?= e($invite['email']) ?></strong> — completa i dati
+            per creare la tua pagina.
+          </p>
+        <?php else: ?>
+          <p style="color:#444;font-size:14px;margin-bottom:20px;">
+            <?= e(siteName()) ?> è per tutti: crea la tua pagina in un minuto, nessun invito
+            necessario.
+          </p>
+        <?php endif; ?>
         <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+        <?php if (!$invite && getGoogleOAuthClientId() && getGoogleOAuthClientSecret()): ?>
+          <a href="/auth_google_start.php" class="btn-outline" style="display:block;text-align:center;margin-bottom:16px;">Registrati con Google</a>
+          <div class="auth-divider">oppure</div>
+        <?php endif; ?>
         <form method="post">
           <?= csrfField() ?>
-          <input type="hidden" name="invite" value="<?= e($token) ?>">
+          <?php if ($token): ?><input type="hidden" name="invite" value="<?= e($token) ?>"><?php endif; ?>
+          <?php if ($refSlug): ?><input type="hidden" name="ref" value="<?= e($refSlug) ?>"><?php endif; ?>
           <label>Nome / Nome d'arte</label>
-          <input type="text" name="display_name" required value="<?= e($_POST['display_name'] ?? $invite['band_name'] ?? '') ?>">
+          <input type="text" name="display_name" required value="<?= e($_POST['display_name'] ?? '') ?>">
+          <label>Email</label>
+          <?php if ($invite): ?>
+            <input type="email" name="email" value="<?= e($invite['email']) ?>" readonly>
+          <?php else: ?>
+            <input type="email" name="email" required value="<?= e($_POST['email'] ?? '') ?>">
+          <?php endif; ?>
           <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
           <input type="text" name="slug" placeholder="es. marco-rossi" value="<?= e($_POST['slug'] ?? '') ?>">
           <label>Password (min. 8 caratteri)</label>
@@ -135,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <button type="submit" class="btn-dark">Crea pagina</button>
         </form>
       <?php endif; ?>
+      <p style="margin-top:18px;font-size:14px;">Hai già un account? <a href="/login.php">Accedi</a></p>
     </div>
   </div>
 </div>

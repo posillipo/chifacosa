@@ -6,11 +6,7 @@ $profile = getActingProfile($user);
 $activeTab = 'invite';
 $pageTitle = 'Invita';
 
-$inviteLink = siteUrl('/request_access.php?ref=' . $profile['slug']);
-
-$stmt = getDB()->prepare('SELECT COUNT(*) c FROM access_requests WHERE referrer_user_id = ?');
-$stmt->execute([$profile['id']]);
-$totalInvited = (int) $stmt->fetch()['c'];
+$inviteLink = siteUrl('/register.php?ref=' . $profile['slug']);
 
 $stmt = getDB()->prepare("SELECT COUNT(*) c FROM access_requests WHERE referrer_user_id = ? AND invite_used = 1");
 $stmt->execute([$profile['id']]);
@@ -21,10 +17,9 @@ include __DIR__ . '/_dash_header.php';
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Condividi il tuo link personale con chi vuoi invitare su <?= e(siteName()) ?> — quando la persona lo
-      apre e invia la richiesta di accesso, sappiamo che viene da te. Se la richiesta viene
-      approvata e la persona completa la registrazione, inizierete a seguirvi a vicenda
-      automaticamente.
+      Condividi il tuo link personale con chi vuoi invitare su <?= e(siteName()) ?> — chi lo apre
+      può registrarsi subito, nessuna approvazione necessaria. Appena completa la registrazione,
+      inizierete a seguirvi a vicenda automaticamente.
     </p>
   </details>
 
@@ -37,7 +32,6 @@ include __DIR__ . '/_dash_header.php';
   </div>
 
   <div class="card">
-    <strong><?= $totalInvited ?></strong> persone hanno usato il tuo link ·
-    <strong><?= $totalJoined ?></strong> si sono iscritte
+    <strong><?= $totalJoined ?></strong> persone si sono iscritte grazie al tuo link
   </div>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

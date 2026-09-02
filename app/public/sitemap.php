@@ -26,7 +26,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <?php
 // Pagine statiche di primo livello
 sitemapUrl(siteUrl('/'), null, 'daily', '1.0');
-sitemapUrl(siteUrl('/request_access.php'), null, 'monthly', '0.3');
+sitemapUrl(siteUrl('/register.php'), null, 'monthly', '0.3');
 sitemapUrl(siteUrl('/credits.php'), null, 'yearly', '0.1');
 
 // Profili con almeno un piatto attivo nel menù — unico modo per sapere se /slug/menu è

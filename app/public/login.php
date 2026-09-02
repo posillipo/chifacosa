@@ -1,12 +1,16 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/google_oauth.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $error = null;
 $unverified = false;
+if (!empty($_GET['google_error'])) {
+    $error = 'Accesso con Google non riuscito. Riprova, o accedi con email e password.';
+}
 
 // Redirect opzionale verso la pagina di partenza (es. "Vota" quando non loggato) — accettiamo
 // solo percorsi interni relativi, mai URL esterni, per evitare un open-redirect.
@@ -89,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="auth-divider">oppure</div>
       <a href="/login_otp_request.php" class="btn-outline">✨ Accedi con un codice via email</a>
+      <?php if (getGoogleOAuthClientId() && getGoogleOAuthClientSecret()): ?>
+        <a href="/auth_google_start.php<?= $redirect ? '?redirect=' . urlencode($redirect) : '' ?>" class="btn-outline">Accedi con Google</a>
+      <?php endif; ?>
 
       <p style="margin-top:18px;font-size:14px;"><a href="/forgot_password.php">Password dimenticata?</a></p>
       <p style="font-size:14px;">Non hai un account? <a href="/register.php">Registrati</a></p>

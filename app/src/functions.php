@@ -1414,10 +1414,7 @@ function renderSiteFooterBar(?array $profile = null): string {
     }
     $parts[] = '<a href="/credits.php">Crediti</a>';
     $linksRow = '<div class="footer-links">' . implode('<span> · </span>', $parts) . '</div>';
-    // Testo statico "[nome sito]/tu" (non lo slug del profilo che si sta visitando): è un invito
-    // promozionale rivolto al visitatore, non un link di condivisione della pagina corrente.
-    $badge = '<a href="/register.php" class="short-link-badge">' . e(siteName()) . '/tu</a>';
-    return '<div class="site-footer-fixed">' . $badge . $linksRow . '</div>';
+    return '<div class="site-footer-fixed">' . $linksRow . '</div>';
 }
 
 // Legge la configurazione SMTP: priorità alle impostazioni salvate dall'admin nel database,
@@ -2152,7 +2149,8 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_movies','film_che_amo','fan_favorite_item',
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
-    'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify'];
+    'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
+    'auth_google_start','auth_google_callback','admin_google_login'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

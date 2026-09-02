@@ -40,9 +40,9 @@ include __DIR__ . '/_admin_header.php';
   <div class="card">
     <strong>Come funziona</strong>
     <p style="color:var(--text-muted)">
-      La registrazione a <?= e(siteName()) ?> è solo su invito. Le richieste ricevute dalla landing page
-      compaiono qui: approvandole, invii automaticamente un'email con un link di registrazione
-      valido una sola volta.
+      La registrazione a <?= e(siteName()) ?> è aperta a chiunque, non serve più un invito: questa
+      pagina non riceve più nuove richieste, resta solo come storico di quelle arrivate quando
+      l'accesso era ancora su invito.
     </p>
   </div>
 

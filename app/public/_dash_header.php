@@ -138,6 +138,9 @@ if ($actingAsId) {
           </a>
         </div>
       </details>
+      <a href="/<?= e($barSlug) ?>" target="_blank" title="Vedi la pagina pubblica del profilo attivo" style="font-size:17px;">
+        <i class="fa-solid fa-eye"></i>
+      </a>
     <?php else: ?>
       <a href="/<?= e($user['slug']) ?>" target="_blank" title="Vedi pagina pubblica" style="display:inline-flex;">
         <?php if (!empty($user['avatar_path'])): ?>
