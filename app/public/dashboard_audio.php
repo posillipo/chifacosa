@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order ASC');
+$stmt = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC');
 $stmt->execute([$profile['id']]);
 $tracks = $stmt->fetchAll();
 $trackIds = array_column($tracks, 'spotify_track_id');

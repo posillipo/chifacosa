@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order ASC');
+$stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order DESC');
 $stmt->execute([$profile['id']]);
 $favorites = $stmt->fetchAll();
 $favoriteIds = array_column($favorites, 'spotify_artist_id');

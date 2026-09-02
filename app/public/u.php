@@ -91,7 +91,7 @@ $followMsg = $_GET['follow_msg'] ?? '';
 $followErr = ($_GET['follow_err'] ?? '0') === '1';
 
 $fanFavorites = [];
-$stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order ASC');
+$stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order DESC');
 $stmt->execute([$uid]);
 $fanFavorites = $stmt->fetchAll();
 $fanFavoritesTotal = count($fanFavorites);

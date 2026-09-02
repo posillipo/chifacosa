@@ -17,7 +17,7 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$tracks = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order ASC, id DESC');
+$tracks = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC, id DESC');
 $tracks->execute([$artist['id']]);
 $tracks = $tracks->fetchAll();
 
