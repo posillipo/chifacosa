@@ -86,12 +86,14 @@ a { color: var(--accent); text-decoration: none; }
 
 .navbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  row-gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid #26262f;
 }
-.navbar .brand { font-weight: 700; font-size: 20px; }
+.navbar .brand { font-weight: 700; font-size: 20px; white-space: nowrap; }
 .navbar .brand span { color: var(--accent); }
 /* Logo della dashboard: "CHIFACOSA" tutto attaccato, con "FA" in risalto — carattere grassetto
    squadrato (Poppins Black), invece del font di sistema usato per il resto del testo. */
@@ -99,6 +101,16 @@ a { color: var(--accent); text-decoration: none; }
 .navbar .brand.brand-dash strong { font-weight: 900; color: var(--accent); }
 .navbar nav a { margin-left: 16px; color: var(--text-muted); }
 .navbar nav a:hover { color: var(--text); }
+/* Riga icone della dashboard (contatti, messaggi, switch profilo, occhiolino, "Esci"): con lo
+   spazio contato su schermi stretti, senza flex-wrap la riga veniva "schiacciata" e il testo
+   "Esci" finiva spezzato lettera per lettera invece di andare semplicemente a capo. */
+.dash-icons-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; row-gap: 10px; }
+.dash-icons-nav a { margin-left: 0; white-space: nowrap; }
+@media (max-width: 480px) {
+  .navbar { padding: 14px 16px; }
+  .navbar .brand.brand-dash { font-size: 18px; }
+  .dash-icons-nav { gap: 12px; }
+}
 
 .hero { text-align: center; padding: 60px 20px; }
 .hero h1 { font-size: 40px; margin-bottom: 12px; }

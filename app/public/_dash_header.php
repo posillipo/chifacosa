@@ -109,7 +109,7 @@ if ($actingAsId) {
     </button>
     <div class="brand brand-dash"><a href="/">CHI<strong>FA</strong>COSA</a></div>
   </div>
-  <nav style="display:flex;align-items:center;gap:18px;">
+  <nav class="dash-icons-nav">
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
