@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (in_array($type, ['band', 'fan', 'label'], true)) {
         $stmt = getDB()->prepare('UPDATE users SET account_type = ?, account_type_chosen = 1 WHERE id = ?');
         $stmt->execute([$type, $user['id']]);
-        header('Location: /dashboard.php');
+        header('Location: /onboarding_setup.php');
         exit;
     }
 }

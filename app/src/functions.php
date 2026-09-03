@@ -2150,7 +2150,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
-    'auth_google_start','auth_google_callback','admin_google_login'];
+    'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {
