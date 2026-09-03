@@ -38,6 +38,40 @@ $navVisibility = array_column(
     'name'
 );
 
+// Ordine delle schede in dashboard: lo stesso scelto in "Menu di Navigazione" (Dashboard →
+// menù hamburger, trascinando le voci o con "Ripristina l'ordine predefinito"), così le due
+// barre restano coerenti anche nell'ordine, non solo in quali schede mostrare. "Feed" non ha un
+// equivalente lì (è un'aggregazione, non una sezione della pagina pubblica) e resta sempre la
+// prima scheda, fissa.
+$dashTabs = [];
+$dashTabs['timeline'] = ['label' => 'Timeline', 'url' => '/dashboard_post.php', 'active' => 'post', 'visible' => $navVisibility['Timeline'] ?? 1];
+$dashTabs['link'] = ['label' => 'Link', 'url' => '/dashboard_links.php', 'active' => 'links', 'visible' => $navVisibility['Link'] ?? 1];
+$dashTabs['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/dashboard_fan_bands.php', 'active' => 'fan_bands', 'visible' => $navVisibility['Band che amo'] ?? 1];
+$dashTabs['attorichamo'] = ['label' => 'Attori che amo', 'url' => '/dashboard_fan_actors.php', 'active' => 'fan_actors', 'visible' => $navVisibility['Attori che amo'] ?? 1];
+$dashTabs['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/dashboard_fan_movies.php', 'active' => 'fan_movies', 'visible' => $navVisibility['Film che amo'] ?? 1];
+$dashTabs['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/dashboard_fan_books.php', 'active' => 'fan_books', 'visible' => $navVisibility['Libri che amo'] ?? 1];
+$dashTabs['viaggi'] = ['label' => 'Viaggi', 'url' => '/dashboard_fan_trips.php', 'active' => 'fan_trips', 'visible' => $navVisibility['Viaggi'] ?? 1];
+$dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active' => 'blog', 'visible' => $navVisibility['Blog'] ?? 1];
+$dashTabs['brani'] = ['label' => 'Brani che amo', 'url' => '/dashboard_audio.php', 'active' => 'audio', 'visible' => $navVisibility['Brani che amo'] ?? 1];
+$dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];
+$dashTabs['eventi'] = [
+    'label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events',
+    'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1),
+    'extra' => ['label' => 'Prenotazioni', 'url' => '/dashboard_reservations.php', 'active' => 'reservations'],
+];
+$dashTabs['segui'] = ['label' => 'Follower', 'url' => '/dashboard_followers.php', 'active' => 'followers', 'visible' => $navVisibility['Segui'] ?? 1];
+$dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
+
+$dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
+
+$dashNavOrder = getNavItemOrder($countsForId);
+$dashKeysInOrder = array_keys($dashTabs);
+uksort($dashTabs, function ($a, $b) use ($dashNavOrder, $dashKeysInOrder) {
+    $posA = $dashNavOrder[$a] ?? (1000 + array_search($a, $dashKeysInOrder, true));
+    $posB = $dashNavOrder[$b] ?? (1000 + array_search($b, $dashKeysInOrder, true));
+    return $posA <=> $posB;
+});
+
 // Avatar mostrato nella barra in alto: il proprio, a meno che non si stia gestendo un altro
 // profilo — in quel caso mostriamo l'avatar DI QUEL profilo, così è sempre chiaro a colpo
 // d'occhio su chi si sta agendo, senza dover aprire il menu.
@@ -244,46 +278,12 @@ document.addEventListener('click', function (e) {
   <button type="button" class="tabs-scroll-btn left" id="dash-tabs-prev" aria-label="Scorri a sinistra"><i class="fa-solid fa-chevron-left"></i></button>
   <div class="tabs" id="dash-tabs">
     <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">Feed</a>
-    <?php if ($navVisibility['Timeline'] ?? 1): ?>
-    <a href="/dashboard_post.php" class="<?= $activeTab==='post'?'active':'' ?>">Timeline</a>
+    <?php foreach ($dashTabs as $t): ?>
+    <a href="<?= e($t['url']) ?>" class="<?= $activeTab===$t['active']?'active':'' ?>"><?= e($t['label']) ?></a>
+    <?php if (!empty($t['extra'])): ?>
+    <a href="<?= e($t['extra']['url']) ?>" class="<?= $activeTab===$t['extra']['active']?'active':'' ?>"><?= e($t['extra']['label']) ?></a>
     <?php endif; ?>
-    <?php if ($navVisibility['Link'] ?? 1): ?>
-    <a href="/dashboard_links.php" class="<?= $activeTab==='links'?'active':'' ?>">Link</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Band che amo'] ?? 1): ?>
-    <a href="/dashboard_fan_bands.php" class="<?= $activeTab==='fan_bands'?'active':'' ?>">Band che amo</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Attori che amo'] ?? 1): ?>
-    <a href="/dashboard_fan_actors.php" class="<?= $activeTab==='fan_actors'?'active':'' ?>">Attori che amo</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Film che amo'] ?? 1): ?>
-    <a href="/dashboard_fan_movies.php" class="<?= $activeTab==='fan_movies'?'active':'' ?>">Film che amo</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Libri che amo'] ?? 1): ?>
-    <a href="/dashboard_fan_books.php" class="<?= $activeTab==='fan_books'?'active':'' ?>">Libri che amo</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Viaggi'] ?? 1): ?>
-    <a href="/dashboard_fan_trips.php" class="<?= $activeTab==='fan_trips'?'active':'' ?>">Viaggi</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Blog'] ?? 1): ?>
-    <a href="/dashboard_blog.php" class="<?= $activeTab==='blog'?'active':'' ?>">Blog</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Brani che amo'] ?? 1): ?>
-    <a href="/dashboard_audio.php" class="<?= $activeTab==='audio'?'active':'' ?>">Brani che amo</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Menù'] ?? 1): ?>
-    <a href="/dashboard_menu.php" class="<?= $activeTab==='menu'?'active':'' ?>">Menù</a>
-    <?php endif; ?>
-    <?php if ($isBandOrLabel && ($navVisibility['Eventi'] ?? 1)): ?>
-    <a href="/dashboard_events.php" class="<?= $activeTab==='events'?'active':'' ?>">Eventi</a>
-    <a href="/dashboard_reservations.php" class="<?= $activeTab==='reservations'?'active':'' ?>">Prenotazioni</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Segui'] ?? 1): ?>
-    <a href="/dashboard_followers.php" class="<?= $activeTab==='followers'?'active':'' ?>">Follower</a>
-    <?php endif; ?>
-    <?php if ($navVisibility['Contatti'] ?? 1): ?>
-    <a href="/dashboard_contacts.php" class="<?= $activeTab==='contacts'?'active':'' ?>">Contatti</a>
-    <?php endif; ?>
+    <?php endforeach; ?>
   </div>
   <button type="button" class="tabs-scroll-btn right" id="dash-tabs-next" aria-label="Scorri a destra"><i class="fa-solid fa-chevron-right"></i></button>
   </div>
