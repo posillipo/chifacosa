@@ -74,7 +74,7 @@ if ($u) {
 $_SESSION['user_id'] = $userId;
 
 if ($needsAccountType) {
-    header('Location: /choose_account_type.php');
+    header('Location: /onboarding_setup.php');
 } else {
     header('Location: ' . ($redirect ?: '/dashboard.php'));
 }

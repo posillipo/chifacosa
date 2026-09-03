@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             issueRememberToken((int) $u['id']);
         }
         if (!$u['account_type_chosen']) {
-            header('Location: /choose_account_type.php');
+            header('Location: /onboarding_setup.php');
         } else {
             header('Location: ' . ($redirect ?: '/dashboard.php'));
         }

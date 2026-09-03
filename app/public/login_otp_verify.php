@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['otp_email']);
 
         $_SESSION['user_id'] = $u['id'];
-        header('Location: ' . ($u['account_type_chosen'] ? '/dashboard.php' : '/choose_account_type.php'));
+        header('Location: ' . ($u['account_type_chosen'] ? '/dashboard.php' : '/onboarding_setup.php'));
         exit;
     }
 }
