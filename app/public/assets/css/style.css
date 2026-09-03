@@ -12,6 +12,11 @@
    del suo contenitore: senza questo, una foto grande caricata da chi gestisce il profilo poteva
    sfondare la larghezza della pagina su schermi stretti. */
 img, video { max-width: 100%; height: auto; }
+form input[type=file] { max-width: 100%; }
+/* La pagina non deve mai scorrere in orizzontale: bloccarlo solo su <body> (come fatto finora)
+   non basta su alcuni browser mobile, dove è <html> a scorrere davvero — va bloccato su
+   entrambi per essere sicuri che l'intera pagina resti ferma. */
+html { overflow-x: hidden; }
 
 body {
   margin: 0;
