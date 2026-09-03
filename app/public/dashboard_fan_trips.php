@@ -31,9 +31,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $latRaw = str_replace(',', '.', trim($_POST['lat'] ?? ''));
         $lngRaw = str_replace(',', '.', trim($_POST['lng'] ?? ''));
         $addedRow = null;
-        if ($placeName !== '' && is_numeric($latRaw) && is_numeric($lngRaw)) {
+        if (is_numeric($latRaw) && is_numeric($lngRaw)) {
             $lat = (float) $latRaw;
             $lng = (float) $lngRaw;
+
+            // Nessun nome del posto (caso "Condividi la tua posizione attuale": arrivano solo le
+            // coordinate dal GPS del telefono) — si prova a ricavarlo con la geocodifica inversa,
+            // altrimenti si ricade su un'etichetta generica con data/ora, senza mai bloccare il
+            // salvataggio per questo.
+            if ($placeName === '') {
+                $reverse = reverseGeocode($lat, $lng);
+                if ($reverse) {
+                    $placeName = tripsShortPlaceName($reverse);
+                    $address = $reverse;
+                } else {
+                    $placeName = 'Posizione del ' . date('d/m/Y H:i');
+                }
+            }
+
             // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
             // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT INTO fan_favorite_trips
@@ -203,6 +218,13 @@ include __DIR__ . '/_dash_header.php';
   </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+  <div class="card" style="text-align:center;">
+    <button type="button" class="btn" id="tr-geolocate-btn">📍 Condividi la tua posizione attuale</button>
+    <p id="tr-geolocate-status" style="color:var(--text-muted);font-size:12.5px;margin:10px 0 0;">
+      Il telefono chiederà il permesso di accedere alla posizione — il viaggio viene aggiunto subito, col nome del posto ricavato in automatico.
+    </p>
+  </div>
 
   <form method="post" class="card" id="tr-search-form">
     <?= csrfField() ?>
@@ -497,6 +519,33 @@ include __DIR__ . '/_dash_header.php';
           lngInput.value = '';
         }
       });
+    });
+
+    // Condividi la posizione attuale: il browser chiede il permesso di accedere al GPS del
+    // telefono (richiede HTTPS, già attivo sul sito) e il viaggio si aggiunge subito con le
+    // coordinate ricevute — il nome del posto lo ricava il server con la geocodifica inversa,
+    // non serve digitare nulla.
+    document.getElementById('tr-geolocate-btn').addEventListener('click', function () {
+      const btn = this;
+      const statusEl = document.getElementById('tr-geolocate-status');
+      if (!('geolocation' in navigator)) {
+        statusEl.textContent = 'Il tuo browser non supporta la geolocalizzazione.';
+        return;
+      }
+      btn.disabled = true;
+      statusEl.textContent = 'Recupero della posizione in corso...';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        addFromFields('', '', pos.coords.latitude, pos.coords.longitude, btn, statusEl).then(function (data) {
+          if (data && data.ok) {
+            statusEl.textContent = 'Fatto! Il viaggio con la tua posizione attuale è nella lista qui sotto.';
+          }
+        });
+      }, function (err) {
+        btn.disabled = false;
+        statusEl.textContent = err && err.code === 1
+          ? 'Permesso negato: consenti l\'accesso alla posizione dalle impostazioni del browser per usare questa funzione.'
+          : 'Non è stato possibile recuperare la posizione. Riprova.';
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     });
 
     // Genera una miniatura JPEG leggera (max 320px) dalla foto selezionata, nel browser — vedi

@@ -68,6 +68,21 @@ function geocodeAddressMultiple(string $query, int $limit = 5): array {
     return $results;
 }
 
+// Geocodifica inversa: da coordinate a un indirizzo leggibile. Usata dal modulo Viaggi quando si
+// condivide la posizione attuale dal cellulare (solo lat/lng dal browser, nessun nome del posto)
+// — restituisce null se il servizio non risponde o non trova nulla, senza bloccare comunque il
+// salvataggio del viaggio (il chiamante ricade su un nome generico).
+function reverseGeocode(float $lat, float $lng): ?string {
+    $url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' . $lat . '&lon=' . $lng;
+    $headers = ['User-Agent: ChiFaCosaApp/1.0 (' . siteUrl('/') . ')'];
+    $response = httpRequest('GET', $url, $headers);
+    if (!$response) {
+        return null;
+    }
+    $data = json_decode($response, true);
+    return !empty($data['display_name']) ? $data['display_name'] : null;
+}
+
 // Mappa incorporata (iframe) centrata su lat/lng, con segnaposto — sempre OpenStreetMap, mai
 // Google Maps, per restare gratis su qualsiasi volume di visite alla pagina pubblica.
 function renderOsmEmbed(float $lat, float $lng): string {
