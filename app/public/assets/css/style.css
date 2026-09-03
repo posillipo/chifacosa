@@ -86,6 +86,10 @@ a { color: var(--accent); text-decoration: none; }
 }
 .navbar .brand { font-weight: 700; font-size: 20px; }
 .navbar .brand span { color: var(--accent); }
+/* Logo della dashboard: "CHIFACOSA" tutto attaccato, con "FA" in risalto — carattere grassetto
+   squadrato (Poppins Black), invece del font di sistema usato per il resto del testo. */
+.navbar .brand.brand-dash { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 21px; letter-spacing: -0.3px; }
+.navbar .brand.brand-dash strong { font-weight: 900; color: var(--accent); }
 .navbar nav a { margin-left: 16px; color: var(--text-muted); }
 .navbar nav a:hover { color: var(--text); }
 

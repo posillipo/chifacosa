@@ -96,6 +96,8 @@ if ($actingAsId) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($pageTitle ?? 'Dashboard') ?> — <?= e(siteName()) ?></title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@800;900&display=swap">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 </head>
 <body class="<?= e($dashTheme) ?>">
@@ -105,7 +107,7 @@ if ($actingAsId) {
             style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:4px;">
       <i class="fa-solid fa-bars"></i>
     </button>
-    <div class="brand"><a href="/"><?= e(siteName()) ?></a></div>
+    <div class="brand brand-dash"><a href="/">CHI<strong>FA</strong>COSA</a></div>
   </div>
   <nav style="display:flex;align-items:center;gap:18px;">
     <?php if (!empty($user['is_admin'])): ?>
