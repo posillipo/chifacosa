@@ -666,7 +666,10 @@ function renderGalacticBackground(): string {
 function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu): array {
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
 
+    // Stesso ordine di publicNav()/PUBLIC_NAV_ITEM_KEYS, allineato a quello della barra di
+    // gestione in dashboard (_dash_header.php).
     $items = [];
+    $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
     if (!empty($artist['id']) && hasFanFavoriteBands((int) $artist['id'])) {
         $items['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo'];
     }
@@ -682,7 +685,6 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
     if (!empty($artist['id']) && hasFanFavoriteTrips((int) $artist['id'])) {
         $items['viaggi'] = ['label' => 'Viaggi', 'url' => '/' . $slug . '/viaggi'];
     }
-    $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
     if (!empty($artist['spotify_artist_id']) && $isBandOrLabel) {
         $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
     }
@@ -1241,10 +1243,12 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     }
     $canFollow = !$viewerId || !$ownerId || (int) $viewerId !== (int) $ownerId;
 
-    // Stesso ordine di PUBLIC_NAV_ITEM_KEYS/createDefaultProfileNavMenu(), per restare coerenti
-    // con l'ordine mostrato nella checklist di dashboard_nav_menu.php.
+    // Stesso ordine di PUBLIC_NAV_ITEM_KEYS/createDefaultProfileNavMenu(), allineato a quello
+    // della barra di gestione in dashboard (_dash_header.php), per restare coerenti anche tra
+    // parte pubblica e dashboard, non solo con la checklist di dashboard_nav_menu.php.
     $tabs = [];
     $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug, 'icon' => 'fas fa-house'];
+    $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasFanFavorites) {
         $tabs['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo', 'icon' => 'fas fa-heart-circle-check'];
     }
@@ -1260,7 +1264,6 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     if ($hasFanTrips) {
         $tabs['viaggi'] = ['label' => 'Viaggi', 'url' => '/' . $slug . '/viaggi', 'icon' => 'fas fa-plane'];
     }
-    $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
     if ($hasSpotify && $isBandOrLabel) {
         $tabs['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify', 'icon' => 'fa-brands fa-spotify'];
     }
@@ -1278,10 +1281,10 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     if ($isBandOrLabel) {
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
     }
-    $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti', 'icon' => 'fas fa-envelope'];
     if ($canFollow) {
         $tabs['segui'] = ['label' => $seguiLabel, 'url' => '/' . $slug . '#segui-widget', 'class' => 'nav-segui-tab'];
     }
+    $tabs['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti', 'icon' => 'fas fa-envelope'];
 
     // "Nascosto" vale sempre, anche per la pagina su cui ci si trova in quel momento: se il
     // profilo ha disattivato una voce, non deve comparire nel menu neppure arrivandoci tramite
@@ -2227,16 +2230,20 @@ function textExcerpt(string $text, int $length = 160): string {
 // publicNav() per identificare ciascun tab — tenerle distinte evita di legare lo schema del
 // database ai nomi visualizzati (che potrebbero cambiare) o a caratteri accentati nelle chiavi.
 // L'ordine qui rispecchia l'ordine con cui i tab compaiono davvero nel menu pubblico (publicNav())
-// e nella checklist di dashboard_nav_menu.php, per restare sempre coerenti tra loro.
+// e nella checklist di dashboard_nav_menu.php, allineato anche a quello della barra di gestione
+// in dashboard (_dash_header.php: Feed, Timeline, Link, Band/Attori/Film/Libri che amo, Viaggi,
+// Blog, Brani che amo, Menù, Eventi, Segui/Follower, Contatti) — Home apre l'elenco (non ha un
+// equivalente in dashboard) e Spotify/Podcast/Video (integrazioni senza una voce nella barra di
+// gestione) restano raggruppate subito dopo Viaggi, come già erano.
 const PUBLIC_NAV_ITEM_KEYS = [
     'Home' => 'home',
+    'Timeline' => 'timeline',
     'Link' => 'link',
     'Band che amo' => 'bandcheamo',
     'Attori che amo' => 'attorichamo',
     'Film che amo' => 'filmcheamo',
     'Libri che amo' => 'libricheamo',
     'Viaggi' => 'viaggi',
-    'Timeline' => 'timeline',
     'Spotify' => 'spotify',
     'Podcast' => 'podcast',
     'Video' => 'video',
@@ -2244,8 +2251,8 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Brani che amo' => 'brani',
     'Menù' => 'menu',
     'Eventi' => 'eventi',
-    'Contatti' => 'contatti',
     'Segui' => 'segui',
+    'Contatti' => 'contatti',
 ];
 
 /**
@@ -2258,13 +2265,13 @@ const PUBLIC_NAV_ITEM_KEYS = [
 function createDefaultProfileNavMenu(int $userId, string $slug): bool {
     $defaults = [
         ['Home', 'fas fa-home', '/' . $slug, 1],
-        ['Link', 'fas fa-link', '/' . $slug, 2],
-        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 3],
-        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 4],
-        ['Film che amo', 'fas fa-film', '/' . $slug, 5],
-        ['Libri che amo', 'fas fa-book', '/' . $slug, 6],
-        ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 7],
-        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 8],
+        ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
+        ['Link', 'fas fa-link', '/' . $slug, 3],
+        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 4],
+        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 5],
+        ['Film che amo', 'fas fa-film', '/' . $slug, 6],
+        ['Libri che amo', 'fas fa-book', '/' . $slug, 7],
+        ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 8],
         ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 9],
         ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 10],
         ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 11],
@@ -2272,8 +2279,8 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 13],
         ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 14],
         ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 15],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 16],
-        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 17],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 16],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 17],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {
@@ -2355,6 +2362,19 @@ function getNavItemOrder(int $userId): array {
         }
     }
     return $order;
+}
+
+// Riporta l'ordine delle voci di menu di un profilo a quello predefinito (PUBLIC_NAV_ITEM_KEYS),
+// senza toccare quali voci sono nascoste/visibili — utile a chi ha trascinato l'ordine in passato
+// e vuole tornare a quello standard (allineato alla barra di gestione in dashboard) con un click,
+// invece di ritrascinare a mano ogni voce.
+function resetProfileNavMenuOrder(int $userId): void {
+    $stmt = getDB()->prepare('UPDATE profile_navigation_menu SET sort_order = ? WHERE user_id = ? AND name = ?');
+    $order = 1;
+    foreach (array_keys(PUBLIC_NAV_ITEM_KEYS) as $name) {
+        $stmt->execute([$order, $userId, $name]);
+        $order++;
+    }
 }
 
 // ===== Cinema: sincronizzazione film in programmazione (modulo Link) =====

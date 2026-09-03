@@ -11,7 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? 'save_visibility';
 
-    if ($action === 'reorder') {
+    if ($action === 'reset_order') {
+        // Redirect dedicato (invece di proseguire come per save_visibility): questo invio non
+        // porta con sé nessuna casella "visibility[]", quindi lasciarlo continuare nel blocco
+        // sotto nasconderebbe per errore tutte le voci del menu.
+        resetProfileNavMenuOrder((int) $profile['id']);
+        header('Location: /dashboard_nav_menu.php?reset=1');
+        exit;
+    } elseif ($action === 'reorder') {
         // Chiamata via fetch() dal trascinamento delle voci (vedi JS più sotto): risponde in
         // JSON, non genera un vero page reload — l'ordine salvato è quello con cui l'utente ha
         // appena disposto le voci nella lista.
@@ -51,7 +58,14 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+  <?php if (!empty($_GET['reset'])): ?><div class="alert success">Ordine riportato a quello predefinito (uguale a quello della barra in cima alla dashboard).</div><?php endif; ?>
   <div id="nav-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
+
+  <form method="post" style="margin-bottom:16px;" onsubmit="return confirm('Riportare l\'ordine delle voci a quello predefinito? Le scelte di visibilità non cambiano.');">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="reset_order">
+    <button type="submit" class="btn small secondary">Ripristina l'ordine predefinito</button>
+  </form>
 
   <form method="post" class="card">
     <?= csrfField() ?>
