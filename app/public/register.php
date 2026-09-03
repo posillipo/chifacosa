@@ -153,28 +153,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </p>
         <?php endif; ?>
         <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-        <?php if (!$invite && getGoogleOAuthClientId() && getGoogleOAuthClientSecret()): ?>
-          <a href="/auth_google_start.php" class="btn-outline" style="display:block;text-align:center;margin-bottom:16px;">Registrati con Google</a>
-          <div class="auth-divider">oppure</div>
+        <?php $googleReady = getGoogleOAuthClientId() && getGoogleOAuthClientSecret(); ?>
+        <?php if (!$invite && $googleReady): ?>
+          <!-- Da qui in poi le nuove pagine si creano solo con Google — niente più email/password
+               per la registrazione. Resta l'unico modo per chi ha un vecchio invito da completare
+               ($invite) e come ripiego se Google non è configurato, così la registrazione non si
+               blocca mai del tutto. -->
+          <a href="/auth_google_start.php<?= $refSlug ? '?ref=' . urlencode($refSlug) : '' ?>" class="btn-dark" style="display:block;text-align:center;">Registrati con Google</a>
+        <?php else: ?>
+          <form method="post">
+            <?= csrfField() ?>
+            <?php if ($token): ?><input type="hidden" name="invite" value="<?= e($token) ?>"><?php endif; ?>
+            <?php if ($refSlug): ?><input type="hidden" name="ref" value="<?= e($refSlug) ?>"><?php endif; ?>
+            <label>Nome / Nome d'arte</label>
+            <input type="text" name="display_name" required value="<?= e($_POST['display_name'] ?? '') ?>">
+            <label>Email</label>
+            <?php if ($invite): ?>
+              <input type="email" name="email" value="<?= e($invite['email']) ?>" readonly>
+            <?php else: ?>
+              <input type="email" name="email" required value="<?= e($_POST['email'] ?? '') ?>">
+            <?php endif; ?>
+            <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
+            <input type="text" name="slug" placeholder="es. marco-rossi" value="<?= e($_POST['slug'] ?? '') ?>">
+            <label>Password (min. 8 caratteri)</label>
+            <input type="password" name="password" required>
+            <button type="submit" class="btn-dark">Crea pagina</button>
+          </form>
         <?php endif; ?>
-        <form method="post">
-          <?= csrfField() ?>
-          <?php if ($token): ?><input type="hidden" name="invite" value="<?= e($token) ?>"><?php endif; ?>
-          <?php if ($refSlug): ?><input type="hidden" name="ref" value="<?= e($refSlug) ?>"><?php endif; ?>
-          <label>Nome / Nome d'arte</label>
-          <input type="text" name="display_name" required value="<?= e($_POST['display_name'] ?? '') ?>">
-          <label>Email</label>
-          <?php if ($invite): ?>
-            <input type="email" name="email" value="<?= e($invite['email']) ?>" readonly>
-          <?php else: ?>
-            <input type="email" name="email" required value="<?= e($_POST['email'] ?? '') ?>">
-          <?php endif; ?>
-          <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
-          <input type="text" name="slug" placeholder="es. marco-rossi" value="<?= e($_POST['slug'] ?? '') ?>">
-          <label>Password (min. 8 caratteri)</label>
-          <input type="password" name="password" required>
-          <button type="submit" class="btn-dark">Crea pagina</button>
-        </form>
       <?php endif; ?>
       <p style="margin-top:18px;font-size:14px;">Hai già un account? <a href="/login.php">Accedi</a></p>
     </div>

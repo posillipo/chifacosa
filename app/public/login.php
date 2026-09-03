@@ -77,6 +77,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       <?php endif; ?>
 
+      <?php $googleReady = getGoogleOAuthClientId() && getGoogleOAuthClientSecret(); ?>
+      <?php if ($googleReady): ?>
+        <a href="/auth_google_start.php<?= $redirect ? '?redirect=' . urlencode($redirect) : '' ?>" class="btn-dark" style="display:block;text-align:center;">Accedi con Google</a>
+        <div class="auth-divider">oppure con email e password</div>
+      <?php endif; ?>
+
       <form method="post">
         <?= csrfField() ?>
         <?php if ($redirect): ?><input type="hidden" name="redirect" value="<?= e($redirect) ?>"><?php endif; ?>
@@ -88,14 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="checkbox" name="remember" value="1" style="width:auto;">
           Ricordami su questo dispositivo (resta connesso per 30 giorni)
         </label>
-        <button type="submit" class="btn-dark">Accedi</button>
+        <button type="submit" class="<?= $googleReady ? 'btn-outline' : 'btn-dark' ?>" style="cursor:pointer;">Accedi</button>
       </form>
 
       <div class="auth-divider">oppure</div>
       <a href="/login_otp_request.php" class="btn-outline">✨ Accedi con un codice via email</a>
-      <?php if (getGoogleOAuthClientId() && getGoogleOAuthClientSecret()): ?>
-        <a href="/auth_google_start.php<?= $redirect ? '?redirect=' . urlencode($redirect) : '' ?>" class="btn-outline">Accedi con Google</a>
-      <?php endif; ?>
 
       <p style="margin-top:18px;font-size:14px;"><a href="/forgot_password.php">Password dimenticata?</a></p>
       <p style="font-size:14px;">Non hai un account? <a href="/register.php">Registrati</a></p>

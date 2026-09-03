@@ -11,6 +11,9 @@ unset($_SESSION['google_oauth_state']);
 $redirect = $_SESSION['google_oauth_redirect'] ?? '';
 unset($_SESSION['google_oauth_redirect']);
 
+$refSlug = $_SESSION['google_oauth_ref'] ?? '';
+unset($_SESSION['google_oauth_ref']);
+
 if (!empty($_GET['error']) || $code === '' || $state === '' || $expectedState === '' || !hash_equals($expectedState, $state)) {
     header('Location: /login.php?google_error=1');
     exit;
@@ -63,11 +66,39 @@ if ($u) {
     $userId = (int) $db->lastInsertId();
     $stmt = $db->prepare('INSERT INTO profiles (user_id, display_name) VALUES (?, ?)');
     $stmt->execute([$userId, $name]);
+
+    // Link "porta un amico" (?ref=slug): stessa logica di register.php — nessuna "richiesta" da
+    // approvare, la riga serve solo allo storico/alle statistiche di dashboard_invite.php.
+    $referrerId = null;
+    if ($refSlug !== '') {
+        $stmt = $db->prepare('SELECT id FROM users WHERE slug = ? AND is_active = 1');
+        $stmt->execute([$refSlug]);
+        $refUser = $stmt->fetch();
+        if ($refUser) {
+            $referrerId = (int) $refUser['id'];
+            $stmt = $db->prepare("INSERT INTO access_requests (name, email, referrer_user_id, status, invite_used, decided_at) VALUES (?, ?, ?, 'approved', 1, NOW())");
+            $stmt->execute([$name, $email, $referrerId]);
+        }
+    }
     $db->commit();
 
     notifyAdminsNewUser($email, $name, $slug);
     $conversionEventId = generateEventId();
     sendMetaConversionEvent('CompleteRegistration', $conversionEventId, $email);
+
+    if ($referrerId) {
+        $stmt = $db->prepare('INSERT IGNORE INTO account_follows (follower_user_id, followed_user_id) VALUES (?, ?), (?, ?)');
+        $stmt->execute([$referrerId, $userId, $userId, $referrerId]);
+
+        $stmt = $db->prepare('SELECT u.email, u.slug, p.display_name FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
+        $stmt->execute([$referrerId]);
+        $referrer = $stmt->fetch();
+        if ($referrer) {
+            notifyNewFollower($referrer['email'], $referrer['display_name'], $slug, $name);
+            notifyNewFollower($email, $name, $referrer['slug'], $referrer['display_name']);
+        }
+    }
+
     $needsAccountType = true;
 }
 

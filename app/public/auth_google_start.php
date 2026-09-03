@@ -18,6 +18,15 @@ if ($isValidRedirect) {
     unset($_SESSION['google_oauth_redirect']);
 }
 
+// Link "porta un amico" (?ref=slug): se chi si iscrive tramite Google non ha ancora un account,
+// il callback lo userà per farli seguire a vicenda — stessa logica di register.php.
+$refSlug = trim($_GET['ref'] ?? '');
+if ($refSlug !== '') {
+    $_SESSION['google_oauth_ref'] = $refSlug;
+} else {
+    unset($_SESSION['google_oauth_ref']);
+}
+
 $state = bin2hex(random_bytes(16));
 $_SESSION['google_oauth_state'] = $state;
 
