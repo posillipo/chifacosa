@@ -223,6 +223,22 @@ form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-
   overflow: hidden;
   padding-bottom: 6px;
 }
+/* Su schermi stretti l'avatar che apre questo pannello non è detto che sia vicino al bordo
+   destro (nella barra della dashboard ci sono altre icone dopo di lui) — ancorare il pannello
+   alla sua destra poteva farlo partire fuori dallo schermo a sinistra, tagliando il testo.
+   Sotto i 480px lo si posiziona invece rispetto allo schermo intero, non più all'avatar. */
+@media (max-width: 480px) {
+  .profile-switcher-panel {
+    position: fixed;
+    top: 120px; /* sotto la barra in alto, che qui va spesso su due righe (logo + icone) */
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+}
 .profile-switcher-item {
   display: flex;
   align-items: center;

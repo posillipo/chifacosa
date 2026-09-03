@@ -198,6 +198,20 @@ document.addEventListener('click', function (e) {
     if (!el.contains(e.target)) el.removeAttribute('open');
   });
 });
+
+// Su schermi stretti il pannello diventa "fixed" rispetto a tutta la pagina (vedi CSS) invece
+// che ancorato all'avatar, per non rischiare di partire fuori dallo schermo — ma la barra in
+// alto può andare su una o due righe a seconda del contenuto, quindi il punto esatto sotto cui
+// posizionarlo va calcolato qui, non indovinato in CSS.
+var switcherEl = document.querySelector('.profile-switcher');
+var navbarEl = document.querySelector('.navbar');
+if (switcherEl && navbarEl) {
+  switcherEl.addEventListener('toggle', function () {
+    if (!switcherEl.open || window.innerWidth > 480) return;
+    var panel = switcherEl.querySelector('.profile-switcher-panel');
+    if (panel) panel.style.top = (navbarEl.getBoundingClientRect().bottom + 8) + 'px';
+  });
+}
 </script>
 <?php endif; ?>
 
