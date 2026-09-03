@@ -8,6 +8,10 @@
 }
 
 * { box-sizing: border-box; }
+/* Nessuna immagine (anteprima foto caricata, avatar, copertina...) deve poter essere più larga
+   del suo contenitore: senza questo, una foto grande caricata da chi gestisce il profilo poteva
+   sfondare la larghezza della pagina su schermi stretti. */
+img, video { max-width: 100%; height: auto; }
 
 body {
   margin: 0;
@@ -15,6 +19,9 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
+  /* Un testo lungo senza spazi (URL, slug, email) non deve mai spingere la pagina più larga
+     dello schermo: va a capo dentro il suo contenitore invece di farlo scorrere in orizzontale. */
+  overflow-wrap: anywhere;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -275,7 +282,12 @@ form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-
   border: 1px solid #26262f;
   border-radius: 10px;
   margin-bottom: 8px;
+  max-width: 100%;
 }
+/* Un elemento flex di default non si restringe mai sotto la larghezza del suo contenuto (es. un
+   titolo lungo, un URL) — senza min-width:0 continuava a spingere la riga oltre lo schermo anche
+   con flex-wrap attivo sul genitore. */
+.link-item > *, .list-item > * { min-width: 0; }
 
 /* Pagina pubblica profilo */
 .profile-header { text-align: center; margin-bottom: 28px; }
@@ -315,6 +327,9 @@ body.light-theme {
   --card-bg: #ffffff;
   --text: #1a1a1a;
   --text-muted: #5f5f66;
+  /* Come per i temi della pagina pubblica: la dashboard non deve mai scorrere in orizzontale
+     (evita lo "sbandamento" causato da testi lunghi su schermi stretti). */
+  overflow-x: hidden;
 }
 body.light-theme .navbar { border-bottom-color: #e2e2e7; }
 body.light-theme .card { border-color: #e2e2e7; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
