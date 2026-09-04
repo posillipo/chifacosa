@@ -47,12 +47,24 @@
   function init() {
     var N = Math.max(navItems.length, 1);
 
-    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    var renderer = new THREE.WebGLRenderer({ antialias: !isTouch, alpha: true, powerPreference: 'low-power' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.id = 'mg-canvas';
     document.body.appendChild(renderer.domElement);
+
+    // Il contesto WebGL può essere ucciso dal driver GPU (soprattutto su telefoni di fascia
+    // medio-bassa) se la scena è troppo pesante — senza questo listener la pagina resterebbe
+    // bloccata per sempre sull'ultimo fotogramma renderizzato, con lo schermo apparentemente
+    // "congelato" e nessun feedback all'utente. Qui invece fermiamo il loop e mostriamo la
+    // lista di link di riserva, esattamente come quando WebGL non è disponibile.
+    renderer.domElement.addEventListener('webglcontextlost', function (e) {
+      e.preventDefault();
+      running = false;
+      showFallback();
+    }, false);
 
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -103,17 +115,19 @@
     for (var i = 0; i < N; i++) {
       var item = navItems[i] || { label: '', url: '#', color: accent };
       var baseColor = new THREE.Color(item.color || accent).lerp(new THREE.Color('#ffffff'), 0.2);
+      // Niente "transmission": su three.js richiede di ri-renderizzare l'intera scena su una
+      // texture per OGNI barra ad ogni fotogramma — troppo pesante per GPU mobile di fascia
+      // medio-bassa (arrivava a mandare in crash/freeze il contesto WebGL). Il "vetro" qui è
+      // solo trasparenza + clearcoat (un singolo lobo speculare extra, economico), che dà
+      // comunque un effetto lucido/traslucido senza il costo della rifrazione reale.
       var mat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
         transparent: true,
-        opacity: 0.6,
-        roughness: 0.16,
+        opacity: 0.62,
+        roughness: 0.18,
         metalness: 0,
         clearcoat: 1,
-        clearcoatRoughness: 0.12,
-        transmission: 0.72,
-        thickness: 0.6,
-        ior: 1.42,
+        clearcoatRoughness: 0.15,
         side: THREE.DoubleSide,
       });
       var mesh = new THREE.Mesh(barGeo, mat);
@@ -242,8 +256,10 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    var running = true;
     var clock = new THREE.Clock();
     function animate() {
+      if (!running) return;
       requestAnimationFrame(animate);
       var t = clock.getElapsedTime();
 
