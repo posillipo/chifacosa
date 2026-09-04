@@ -12,10 +12,14 @@ $homeFeatures = [
     ['icon' => '🔗', 'title' => 'Link in Bio', 'desc' => 'Tutti i tuoi link importanti in una sola pagina, sempre a portata di condivisione.'],
     ['icon' => '🕒', 'title' => 'Timeline', 'desc' => 'Pubblica aggiornamenti e resta in contatto con chi ti segue.'],
     ['icon' => '📰', 'title' => 'Blog', 'desc' => 'Articoli con permalink dedicato, ottimizzati per la ricerca.'],
-    ['icon' => '🎧', 'title' => 'Brani che amo', 'desc' => 'Vetrina dei brani che ami, collegata a Spotify.'],
+    ['icon' => '❤️', 'title' => 'Che Amo', 'desc' => 'Band, attori, film, libri, viaggi e brani che ami, raccolti in un\'unica vetrina condivisibile.'],
+    ['icon' => '🗺️', 'title' => 'Viaggi', 'desc' => 'Racconta i posti in cui sei stato, con mappa e posizione in tempo reale.'],
     ['icon' => '📅', 'title' => 'Eventi', 'desc' => 'Calendario pubblico, condivisibile e sempre aggiornato.'],
     ['icon' => '🍽️', 'title' => 'Menù e Prenotazioni', 'desc' => 'Menù digitale e prenotazioni, pensati per locali e ristoranti.'],
-    ['icon' => '❤️', 'title' => 'Follower', 'desc' => 'Chi ti segue riceve una notifica ad ogni tua novità.'],
+    ['icon' => '🔑', 'title' => 'Accedi con Google', 'desc' => 'Registrazione e accesso in un clic, senza dover ricordare un\'altra password.'],
+    ['icon' => '🎙️', 'title' => 'Spotify, Podcast e Video', 'desc' => 'Collega i tuoi canali e mostrali direttamente sulla tua pagina.'],
+    ['icon' => '👥', 'title' => 'Follower', 'desc' => 'Chi ti segue riceve una notifica ad ogni tua novità.'],
+    ['icon' => '🤝', 'title' => 'Gestione multi-profilo', 'desc' => 'Invita co-amministratori e gestisci più profili da un unico account.'],
     ['icon' => '🎨', 'title' => 'Oltre 20 temi grafici', 'desc' => 'Scegli lo stile che rispecchia la tua identità.'],
 ];
 ?>
@@ -24,8 +28,8 @@ $homeFeatures = [
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= e($site) ?> — Link in Bio, timeline, blog, eventi e prenotazioni in un'unica pagina</title>
-<meta name="description" content="Crea in pochi minuti la tua pagina pubblica su <?= e($site) ?>: link, brani, eventi, blog, menù e prenotazioni in un unico posto, sempre aggiornato.">
+<title><?= e($site) ?> — Link in Bio, timeline, blog, Che Amo, eventi e prenotazioni in un'unica pagina</title>
+<meta name="description" content="Crea in pochi minuti la tua pagina pubblica su <?= e($site) ?>: link, Che Amo (band, attori, film, libri, viaggi, brani), eventi, blog, menù e prenotazioni in un unico posto, sempre aggiornato. Accesso rapido con Google.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <?= embedPrivacyScript() ?>
 <?= embedTrackingHead() ?>
@@ -131,8 +135,8 @@ $homeFeatures = [
     <h1>Una pagina.<br>Tutto quello che <span class="hl">fai</span>.</h1>
     <p class="lp-sub">
       Crea in pochi minuti la tua pagina pubblica su <?= e($site) ?>: link importanti, aggiornamenti
-      in timeline, blog, brani, eventi, menù e prenotazioni. Tutto da un unico posto, sempre
-      aggiornato.
+      in timeline, blog, Che Amo (band, attori, film, libri, viaggi, brani), eventi, menù e
+      prenotazioni. Tutto da un unico posto, sempre aggiornato — accesso rapido anche con Google.
     </p>
     <?php if ($user): ?>
       <div class="lp-cta-row">
@@ -146,14 +150,14 @@ $homeFeatures = [
     <?php endif; ?>
   </div>
   <div class="lp-illustration">
-    <div class="lp-float-card lp-float-1">🎵 Brani</div>
+    <div class="lp-float-card lp-float-1">❤️ Che Amo</div>
     <div class="lp-float-card lp-float-2">📅 Eventi</div>
     <div class="lp-float-card lp-float-3">✨ Segui</div>
     <div class="lp-phone">
       <div class="lp-avatar"></div>
       <div class="lp-name">Il Tuo Profilo</div>
       <div class="lp-handle">@tuoprofilo</div>
-      <div class="lp-pill-row"><span>Home</span><span>Timeline</span><span>Blog</span></div>
+      <div class="lp-pill-row"><span>Home</span><span>Timeline</span><span>Che Amo</span></div>
       <div class="lp-link-btn" style="background:#FFD6A5;">Il mio sito web</div>
       <div class="lp-link-btn" style="background:#CAFFBF;">Ascolta su Spotify</div>
       <div class="lp-link-btn" style="background:#9BF6FF;">Prenota adesso</div>
