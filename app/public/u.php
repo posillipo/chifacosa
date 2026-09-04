@@ -98,6 +98,13 @@ $followerCount = getFollowerCount($uid);
 $followMsg = $_GET['follow_msg'] ?? '';
 $followErr = ($_GET['follow_err'] ?? '0') === '1';
 
+// Coordinate dell'ultimo viaggio aggiunto — usate per far mostrare in automatico all'eventuale
+// link "mappa" (es. "Dove sono", impostato a mano in Dashboard → Link) la posizione più recente
+// invece di un punto fisso, indipendentemente da quali voci di menu sono nascoste.
+$stmt = getDB()->prepare('SELECT lat, lng FROM fan_favorite_trips WHERE user_id=? ORDER BY sort_order DESC, id DESC LIMIT 1');
+$stmt->execute([$uid]);
+$latestTripCoords = $stmt->fetch();
+
 // Vetrina "Che Amo" sulla Home: un tassello per categoria (non un elenco dei suoi elementi), con
 // la primissima cosa mai aggiunta come immagine di copertina — il clic porta all'elenco completo
 // di quella categoria, non al singolo elemento. Sostituisce la vecchia sezione "Band che amo" (un
@@ -248,7 +255,14 @@ $bandReviewers = $bandReviewers->fetchAll();
         <div class="link-divider"><span><?= e($l['label']) ?></span></div>
       <?php elseif (($l['link_type'] ?? 'link') === 'map'): ?>
         <?php if ($l['label']): ?><div class="link-map-label"><?= e($l['label']) ?></div><?php endif; ?>
-        <?= renderOsmEmbed((float)$l['map_lat'], (float)$l['map_lng']) ?>
+        <?php
+          // Se c'è almeno un viaggio, la mappa segue sempre l'ultimo punto aggiunto lì invece
+          // del punto fisso impostato a mano su questo link — così "Dove sono" resta aggiornata
+          // da sola.
+          $mapLat = $latestTripCoords ? (float) $latestTripCoords['lat'] : (float) $l['map_lat'];
+          $mapLng = $latestTripCoords ? (float) $latestTripCoords['lng'] : (float) $l['map_lng'];
+        ?>
+        <?= renderOsmEmbed($mapLat, $mapLng) ?>
       <?php else: ?>
         <a class="color-link-btn" style="background:<?= e(COLORFUL_PALETTE[$colorIdx % count(COLORFUL_PALETTE)]) ?>;"
            target="_blank" rel="noopener"
