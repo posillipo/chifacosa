@@ -132,8 +132,35 @@ function spotifyGetArtist(string $artistId): ?array {
     ];
 }
 
+// Cache in site_settings (stesso meccanismo già usato per il token app-to-app: valore + scadenza
+// come coppia di righe) dei risultati per artista più costosi/richiesti spesso — album e top
+// tracks, richiamati ad ogni visita della pagina pubblica Spotify di un profilo. Le app create di
+// recente (come questa) hanno un limite di richieste molto più basso delle app più vecchie e
+// vanno facilmente in "429 QUOTA_EXCEEDED" con poche visite ravvicinate: ogni chiamata risparmiata
+// conta. La cache viene riusata anche quando la chiamata fallisce (rate limit/errore momentaneo),
+// così non si martella l'API finché la finestra di limite non si libera da sola.
+function spotifyCacheGet(string $cacheKey): ?array {
+    $cached = getSiteSetting("spotify_cache_{$cacheKey}") ?: '';
+    $expires = getSiteSetting("spotify_cache_{$cacheKey}_expires") ?: '';
+    if ($cached === '' || $expires === '' || strtotime($expires) <= time()) {
+        return null;
+    }
+    $data = json_decode($cached, true);
+    return is_array($data) ? $data : null;
+}
+
+function spotifyCacheSet(string $cacheKey, array $data, int $ttlSeconds = 21600): void {
+    setSiteSetting("spotify_cache_{$cacheKey}", json_encode($data));
+    setSiteSetting("spotify_cache_{$cacheKey}_expires", date('Y-m-d H:i:s', time() + $ttlSeconds));
+}
+
 // Album e singoli pubblicati dall'artista (esclude le compilation di altri).
 function spotifyGetArtistAlbums(string $artistId): array {
+    $cacheKey = "albums_{$artistId}";
+    $cached = spotifyCacheGet($cacheKey);
+    if ($cached !== null) {
+        return $cached;
+    }
     $token = getSpotifyAppToken();
     if (!$token) {
         return [];
@@ -160,11 +187,22 @@ function spotifyGetArtistAlbums(string $artistId): array {
             'type' => $a['album_type'] ?? 'album',
         ];
     }
+    // Una risposta di errore (429/403 inclusi: httpRequest la restituisce comunque, non solo in
+    // caso di successo) non ha la chiave "items": l'elenco risulta vuoto per lo stesso motivo di
+    // un artista senza album pubblicati. Si tiene comunque in cache, ma per poco: evita di
+    // martellare l'API finché la finestra di limite non si libera, senza aspettare ore intere.
+    $ttl = isset($data['error']) ? 900 : 21600;
+    spotifyCacheSet($cacheKey, $albums, $ttl);
     return $albums;
 }
 
 // I brani più popolari dell'artista (top tracks).
 function spotifyGetArtistTopTracks(string $artistId): array {
+    $cacheKey = "toptracks_{$artistId}";
+    $cached = spotifyCacheGet($cacheKey);
+    if ($cached !== null) {
+        return $cached;
+    }
     $token = getSpotifyAppToken();
     if (!$token) {
         return [];
@@ -186,6 +224,8 @@ function spotifyGetArtistTopTracks(string $artistId): array {
             'preview_url' => $t['preview_url'] ?? null,
         ];
     }
+    $ttl = isset($data['error']) ? 900 : 21600;
+    spotifyCacheSet($cacheKey, $tracks, $ttl);
     return $tracks;
 }
 
