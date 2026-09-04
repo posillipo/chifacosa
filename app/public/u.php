@@ -119,7 +119,10 @@ foreach (CHE_AMO_MODULES as $key => $m) {
         continue;
     }
     $cfg = $cheAmoTableConfig[$key];
-    $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? ORDER BY sort_order ASC, id ASC LIMIT 1");
+    // Viaggi fa eccezione: mostra l'ultimo punto aggiunto (dove sei stato più di recente),
+    // non il primo — a differenza delle altre categorie, dove conta cosa hai amato per prima.
+    $order = $key === 'viaggi' ? 'sort_order DESC, id DESC' : 'sort_order ASC, id ASC';
+    $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? ORDER BY {$order} LIMIT 1");
     $stmt->execute([$uid]);
     $first = $stmt->fetch();
     if (!$first) {
@@ -294,7 +297,7 @@ $bandReviewers = $bandReviewers->fetchAll();
       </p>
     <?php endif; ?>
   <?php elseif ($cheAmoCarousel): ?>
-    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Che Amo</div>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;"><strong>Cose</strong> che amo</div>
     <div class="che-amo-home-carousel" style="display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:18px;">
       <?php foreach ($cheAmoCarousel as $c): ?>
         <a href="/<?= e($slug) ?>/<?= e($c['segment']) ?>"
