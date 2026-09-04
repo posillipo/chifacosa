@@ -7,13 +7,16 @@ RUN docker-php-ext-install pdo pdo_mysql mysqli \
 
 # GD: usata da compressImageToJpeg() (functions.php) per ricomprimere in JPEG sotto i 250KB ogni
 # foto caricata (moduli "che amo", link, blog, eventi, timeline, avatar) — libjpeg/libpng/libwebp
-# servono in fase di build per abilitare i formati corrispondenti, poi si tengono solo le librerie
-# runtime (togliendo i pacchetti "-dev" l'immagine finale resta più leggera).
+# servono sia in fase di build (per compilare l'estensione) sia a runtime (l'estensione compilata
+# ci si collega dinamicamente ogni volta che PHP parte): niente "apt-get purge" dei pacchetti dopo
+# la build, altrimenti l'estensione risulta installata ma non caricabile ("cannot open shared
+# object file libpng16.so.16" — errore reale riscontrato in produzione con la prima versione di
+# questo Dockerfile). La manciata di MB in più rispetto a poterle rimuovere è un compromesso
+# accettabile per l'affidabilità.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
     && docker-php-ext-install -j"$(nproc)" gd \
-    && apt-get purge -y --auto-remove libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia applicazione
