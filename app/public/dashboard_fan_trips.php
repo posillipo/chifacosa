@@ -5,7 +5,7 @@ require_once __DIR__ . '/../src/geocoding.php';
 require_once __DIR__ . '/../src/geoapify.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
-$activeTab = 'fan_trips';
+$activeTab = 'che_amo';
 $pageTitle = 'Viaggi';
 
 $searchResults = [];

@@ -50,9 +50,12 @@ include __DIR__ . '/_dash_header.php';
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
       Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica — anche
-      Spotify, Podcast, Video e il pulsante "Segui". Nota: Spotify/Podcast/Video/Menù/Band che amo
-      restano comunque visibili solo se hanno anche effettivamente del contenuto (collegamento
-      fatto, piatti attivi, band aggiunte) — spuntarli qui non basta da solo a farli comparire.
+      Spotify, Podcast, Video e il pulsante "Segui". Band/Attori/Film/Libri che amo, Viaggi e
+      Brani che amo non hanno più un tab a testa: sono raccolti dentro "Che Amo", ma restano
+      qui sotto singolarmente per decidere quali di loro compaiono come card in quella vetrina.
+      Nota: Spotify/Podcast/Video/Menù/Band/Attori/Film/Libri che amo/Viaggi restano comunque
+      visibili solo se hanno anche effettivamente del contenuto (collegamento fatto, piatti
+      attivi, elementi aggiunti) — spuntarli qui non basta da solo a farli comparire.
       Trascina una voce dall'icona <i class="fa-solid fa-grip-vertical"></i>
       per cambiarne l'ordine: si salva subito, senza bisogno di premere "Salva".
     </p>

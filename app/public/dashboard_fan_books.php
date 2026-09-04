@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/googlebooks.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
-$activeTab = 'fan_books';
+$activeTab = 'che_amo';
 $pageTitle = 'Libri che amo';
 
 $searchResults = [];

@@ -670,20 +670,9 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
     // gestione in dashboard (_dash_header.php).
     $items = [];
     $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
-    if (!empty($artist['id']) && hasFanFavoriteBands((int) $artist['id'])) {
-        $items['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo'];
-    }
-    if (!empty($artist['id']) && hasFanFavoriteActors((int) $artist['id'])) {
-        $items['attorichamo'] = ['label' => 'Attori che amo', 'url' => '/' . $slug . '/attori-che-amo'];
-    }
-    if (!empty($artist['id']) && hasFanFavoriteMovies((int) $artist['id'])) {
-        $items['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/' . $slug . '/film-che-amo'];
-    }
-    if (!empty($artist['id']) && hasFanFavoriteBooks((int) $artist['id'])) {
-        $items['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/' . $slug . '/libri-che-amo'];
-    }
-    if (!empty($artist['id']) && hasFanFavoriteTrips((int) $artist['id'])) {
-        $items['viaggi'] = ['label' => 'Viaggi', 'url' => '/' . $slug . '/viaggi'];
+    // Un solo tab per tutti i moduli "che amo" — vedi lo stesso commento in publicNav().
+    if (!empty($artist['id']) && hasAnyVisibleCheAmo((int) $artist['id'], $hiddenNavKeys)) {
+        $items['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo'];
     }
     if (!empty($artist['spotify_artist_id']) && $isBandOrLabel) {
         $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
@@ -695,7 +684,6 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
         $items['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
     }
     $items['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
-    $items['brani'] = ['label' => 'Brani che amo', 'url' => '/' . $slug . '/brani'];
     if ($hasMenu) {
         $items['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu'];
     }
@@ -1228,9 +1216,37 @@ function hasFanFavoriteTrips(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+// Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
+// — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
+// visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
+// amo" non ha una funzione di controllo contenuto: non l'ha mai avuta (era il modulo originale,
+// sempre mostrato), si mantiene lo stesso comportamento anche da dentro la vetrina.
+const CHE_AMO_MODULES = [
+    'bandcheamo' => ['label' => 'Band che amo', 'icon' => 'fas fa-heart-circle-check', 'check' => 'hasFanFavoriteBands', 'segment' => 'band-che-amo'],
+    'attorichamo' => ['label' => 'Attori che amo', 'icon' => 'fas fa-clapperboard', 'check' => 'hasFanFavoriteActors', 'segment' => 'attori-che-amo'],
+    'filmcheamo' => ['label' => 'Film che amo', 'icon' => 'fas fa-film', 'check' => 'hasFanFavoriteMovies', 'segment' => 'film-che-amo'],
+    'libricheamo' => ['label' => 'Libri che amo', 'icon' => 'fas fa-book', 'check' => 'hasFanFavoriteBooks', 'segment' => 'libri-che-amo'],
+    'viaggi' => ['label' => 'Viaggi', 'icon' => 'fas fa-plane', 'check' => 'hasFanFavoriteTrips', 'segment' => 'viaggi'],
+    'brani' => ['label' => 'Brani che amo', 'icon' => 'fas fa-music', 'check' => null, 'segment' => 'brani'],
+];
+
+// True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
+// contenuto — decide se mostrare il tab riepilogativo "Che Amo" nel menu pubblico.
+function hasAnyVisibleCheAmo(int $userId, array $hiddenKeys = []): bool {
+    foreach (CHE_AMO_MODULES as $key => $m) {
+        if (in_array($key, $hiddenKeys, true)) {
+            continue;
+        }
+        if ($m['check'] === null || $m['check']($userId)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasFanFavorites = false, bool $hasFanActors = false, bool $hasFanMovies = false, bool $hasFanBooks = false, bool $hasFanTrips = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1249,20 +1265,12 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     $tabs = [];
     $tabs['home'] = ['label' => 'Home', 'url' => '/' . $slug, 'icon' => 'fas fa-house'];
     $tabs['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline', 'icon' => 'fas fa-stream'];
-    if ($hasFanFavorites) {
-        $tabs['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/' . $slug . '/band-che-amo', 'icon' => 'fas fa-heart-circle-check'];
-    }
-    if ($hasFanActors) {
-        $tabs['attorichamo'] = ['label' => 'Attori che amo', 'url' => '/' . $slug . '/attori-che-amo', 'icon' => 'fas fa-clapperboard'];
-    }
-    if ($hasFanMovies) {
-        $tabs['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/' . $slug . '/film-che-amo', 'icon' => 'fas fa-film'];
-    }
-    if ($hasFanBooks) {
-        $tabs['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/' . $slug . '/libri-che-amo', 'icon' => 'fas fa-book'];
-    }
-    if ($hasFanTrips) {
-        $tabs['viaggi'] = ['label' => 'Viaggi', 'url' => '/' . $slug . '/viaggi', 'icon' => 'fas fa-plane'];
+    // Un solo tab per tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani che amo, e
+    // i futuri Playlist/Album che amo) — porta a una vetrina con una card per modulo, invece di
+    // un tab a testa: la lista dei moduli sarebbe altrimenti cresciuta indefinitamente. Ogni
+    // modulo resta gestito e mostrato esattamente come prima, cambia solo come ci si arriva.
+    if ($ownerId && hasAnyVisibleCheAmo($ownerId, $hiddenKeys)) {
+        $tabs['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo', 'icon' => 'fas fa-heart'];
     }
     if ($hasSpotify && $isBandOrLabel) {
         $tabs['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify', 'icon' => 'fa-brands fa-spotify'];
@@ -1274,7 +1282,6 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'icon' => 'fa-brands fa-youtube'];
     }
     $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'icon' => 'fas fa-newspaper'];
-    $tabs['brani'] = ['label' => 'Brani che amo', 'url' => '/' . $slug . '/brani', 'icon' => 'fas fa-music'];
     if ($hasMenu) {
         $tabs['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu', 'icon' => 'fas fa-utensils'];
     }
@@ -1347,12 +1354,7 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $html .= '</p>';
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
-    $hasFanFavorites = $ownerId ? hasFanFavoriteBands($ownerId) : false;
-    $hasFanActors = $ownerId ? hasFanFavoriteActors($ownerId) : false;
-    $hasFanMovies = $ownerId ? hasFanFavoriteMovies($ownerId) : false;
-    $hasFanBooks = $ownerId ? hasFanFavoriteBooks($ownerId) : false;
-    $hasFanTrips = $ownerId ? hasFanFavoriteTrips($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasFanFavorites, $hasFanActors, $hasFanMovies, $hasFanBooks, $hasFanTrips);
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
@@ -2153,7 +2155,8 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
-    'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup'];
+    'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
+    'dashboard_che_amo','che_amo'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {
@@ -2235,10 +2238,15 @@ function textExcerpt(string $text, int $length = 160): string {
 // Blog, Brani che amo, Menù, Eventi, Segui/Follower, Contatti) — Home apre l'elenco (non ha un
 // equivalente in dashboard) e Spotify/Podcast/Video (integrazioni senza una voce nella barra di
 // gestione) restano raggruppate subito dopo Viaggi, come già erano.
+// "Che Amo" è il tab riepilogativo (vetrina) che sostituisce quelli che una volta erano tab
+// individuali per Band/Attori/Film/Libri che amo, Viaggi e Brani che amo — quelle voci restano
+// comunque qui sotto: controllano se la card del singolo modulo compare nella vetrina, non più
+// se il modulo ha un proprio tab. Vedi CHE_AMO_MODULES più sopra per l'elenco completo.
 const PUBLIC_NAV_ITEM_KEYS = [
     'Home' => 'home',
     'Timeline' => 'timeline',
     'Link' => 'link',
+    'Che Amo' => 'cheamo',
     'Band che amo' => 'bandcheamo',
     'Attori che amo' => 'attorichamo',
     'Film che amo' => 'filmcheamo',
@@ -2267,20 +2275,21 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Home', 'fas fa-home', '/' . $slug, 1],
         ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
         ['Link', 'fas fa-link', '/' . $slug, 3],
-        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 4],
-        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 5],
-        ['Film che amo', 'fas fa-film', '/' . $slug, 6],
-        ['Libri che amo', 'fas fa-book', '/' . $slug, 7],
-        ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 8],
-        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 9],
-        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 10],
-        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 11],
-        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 12],
-        ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 13],
-        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 14],
-        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 15],
-        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 16],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 17],
+        ['Che Amo', 'fas fa-heart', '/' . $slug . '/che-amo', 4],
+        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 5],
+        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 6],
+        ['Film che amo', 'fas fa-film', '/' . $slug, 7],
+        ['Libri che amo', 'fas fa-book', '/' . $slug, 8],
+        ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 9],
+        ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 10],
+        ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 11],
+        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 12],
+        ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 13],
+        ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 14],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 15],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 16],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 17],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 18],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

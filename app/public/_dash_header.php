@@ -43,16 +43,22 @@ $navVisibility = array_column(
 // barre restano coerenti anche nell'ordine, non solo in quali schede mostrare. "Feed" non ha un
 // equivalente lì (è un'aggregazione, non una sezione della pagina pubblica) e resta sempre la
 // prima scheda, fissa.
+// Un solo tab "Che Amo" al posto di uno a modulo (Band/Attori/Film/Libri che amo, Viaggi, Brani
+// che amo, e i futuri Playlist/Album che amo): porta a dashboard_che_amo.php, una vetrina con
+// una card per modulo — visibile se almeno uno dei moduli non è stato nascosto da "Menu di
+// Navigazione". Ogni modulo resta gestito nella sua pagina di sempre, invariata.
+$hasVisibleCheAmoModule = false;
+foreach (CHE_AMO_MODULES as $m) {
+    if ($navVisibility[$m['label']] ?? 1) {
+        $hasVisibleCheAmoModule = true;
+        break;
+    }
+}
 $dashTabs = [];
 $dashTabs['timeline'] = ['label' => 'Timeline', 'url' => '/dashboard_post.php', 'active' => 'post', 'visible' => $navVisibility['Timeline'] ?? 1];
 $dashTabs['link'] = ['label' => 'Link', 'url' => '/dashboard_links.php', 'active' => 'links', 'visible' => $navVisibility['Link'] ?? 1];
-$dashTabs['bandcheamo'] = ['label' => 'Band che amo', 'url' => '/dashboard_fan_bands.php', 'active' => 'fan_bands', 'visible' => $navVisibility['Band che amo'] ?? 1];
-$dashTabs['attorichamo'] = ['label' => 'Attori che amo', 'url' => '/dashboard_fan_actors.php', 'active' => 'fan_actors', 'visible' => $navVisibility['Attori che amo'] ?? 1];
-$dashTabs['filmcheamo'] = ['label' => 'Film che amo', 'url' => '/dashboard_fan_movies.php', 'active' => 'fan_movies', 'visible' => $navVisibility['Film che amo'] ?? 1];
-$dashTabs['libricheamo'] = ['label' => 'Libri che amo', 'url' => '/dashboard_fan_books.php', 'active' => 'fan_books', 'visible' => $navVisibility['Libri che amo'] ?? 1];
-$dashTabs['viaggi'] = ['label' => 'Viaggi', 'url' => '/dashboard_fan_trips.php', 'active' => 'fan_trips', 'visible' => $navVisibility['Viaggi'] ?? 1];
+$dashTabs['cheamo'] = ['label' => 'Che Amo', 'url' => '/dashboard_che_amo.php', 'active' => 'che_amo', 'visible' => $hasVisibleCheAmoModule];
 $dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active' => 'blog', 'visible' => $navVisibility['Blog'] ?? 1];
-$dashTabs['brani'] = ['label' => 'Brani che amo', 'url' => '/dashboard_audio.php', 'active' => 'audio', 'visible' => $navVisibility['Brani che amo'] ?? 1];
 $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];
 $dashTabs['eventi'] = [
     'label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events',

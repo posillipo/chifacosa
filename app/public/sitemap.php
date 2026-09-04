@@ -65,8 +65,8 @@ foreach ($stmt->fetchAll() as $p) {
     if ($isBandOrLabel && !empty($p['youtube_channel_id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/video'), null, 'weekly', '0.5');
     }
-    if ($p['account_type'] === 'fan') {
-        sitemapUrl(siteUrl('/' . $slug . '/band-che-amo'), null, 'monthly', '0.4');
+    if (hasAnyVisibleCheAmo((int) $p['id'], getHiddenNavKeys((int) $p['id']))) {
+        sitemapUrl(siteUrl('/' . $slug . '/che-amo'), null, 'monthly', '0.4');
     }
 }
 

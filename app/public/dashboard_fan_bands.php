@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
-$activeTab = 'fan_bands';
+$activeTab = 'che_amo';
 $pageTitle = 'Band che amo';
 
 $searchResults = [];
