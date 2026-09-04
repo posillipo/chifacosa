@@ -26,6 +26,8 @@ $optionalModules = [
     ['name' => 'Libri che amo', 'icon' => 'fas fa-book', 'desc' => 'Vetrina dei libri che ami'],
     ['name' => 'Viaggi', 'icon' => 'fas fa-plane', 'desc' => 'Diario dei luoghi che hai visitato'],
     ['name' => 'Brani che amo', 'icon' => 'fas fa-music', 'desc' => 'Vetrina dei brani che ami'],
+    ['name' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'desc' => 'Vetrina delle playlist Spotify che ami'],
+    ['name' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'desc' => 'Vetrina degli album Spotify che ami'],
     ['name' => 'Menù', 'icon' => 'fas fa-utensils', 'desc' => 'Menù digitale (locali/ristoranti)'],
 ];
 if ($isBandOrLabel) {

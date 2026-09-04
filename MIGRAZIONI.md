@@ -727,6 +727,71 @@ solo se il profilo ha almeno un viaggio aggiunto) su tutti e tre gli stili di na
 menu di navigazione personalizzabile (si aggiunge da sola ai profili esistenti, nessuna riga da
 inserire a mano). Elenco pubblico a mattonelle su `/slug/viaggi`.
 
+## 41. Nuovo modulo "Playlist che amo"
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_playlists (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    spotify_playlist_id VARCHAR(50) NOT NULL,
+    playlist_name VARCHAR(200) NOT NULL,
+    playlist_image VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_playlist (user_id, spotify_playlist_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Sesto modulo "che amo" (dopo Band/Attori/Film/Libri/Viaggi), stessa parità fin dall'inizio: ricerca
+di playlist pubbliche via `spotifySearchPlaylist()`/dettaglio via `spotifyGetPlaylist()` (nuove
+funzioni in `app/src/spotify.php`, stesso Client Credentials Flow già usato per Band che amo — nessuna
+nuova chiave da configurare), pannello "✏️ Gestisci pubblicazione" completo (testo con ✨ Genera con
+AI, foto opzionale, Pubblico/Solo io, programmazione, link personalizzato per il feed), pagina di
+dettaglio pubblica su `fan_favorite_item.php?kind=playlist` (copertina quadrata, non il cerchio
+usato per band/attori — più corretta per una cover Spotify), condivisibile su
+`/slug/playlist-che-amo/ID`, integrazione nel Feed, card nella vetrina "Che Amo" (mostrata solo se
+il profilo ha almeno una playlist aggiunta), voce nel menu di navigazione personalizzabile (si
+aggiunge da sola ai profili esistenti). Elenco pubblico a mattonelle su `/slug/playlist-che-amo`.
+Niente player incorporato (richiesta esplicita): solo copertina, titolo, autore/proprietario,
+numero di brani e link "Ascolta su Spotify".
+
+## 42. Nuovo modulo "Album che amo"
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_albums (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    spotify_album_id VARCHAR(50) NOT NULL,
+    album_name VARCHAR(200) NOT NULL,
+    album_artist_name VARCHAR(200) DEFAULT NULL,
+    album_image VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_album (user_id, spotify_album_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Settimo modulo "che amo", stessa architettura di Playlist che amo (voce 41): ricerca via
+`spotifySearchAlbum()`/dettaglio via `spotifyGetAlbum()`. Unica differenza di schema rispetto agli
+altri moduli: `album_artist_name`, salvato al momento dell'aggiunta (un titolo album da solo è
+ambiguo — più artisti pubblicano album con lo stesso nome), mostrato sotto il titolo ovunque
+compaia l'album (dashboard, vetrina pubblica, pagina di dettaglio) senza bisogno di richiamare
+l'API a ogni visualizzazione. Pagina di dettaglio mostra anche i generi musicali (dall'API,
+`spotifyGetAlbum()['genres']`) e il numero di brani. Stessa pagina di dettaglio condivisa
+`fan_favorite_item.php?kind=album`, copertina quadrata come le playlist, condivisibile su
+`/slug/album-che-amo/ID`, integrazione nel Feed, card nella vetrina "Che Amo", elenco pubblico a
+mattonelle su `/slug/album-che-amo`.
+
 ---
 
 ## Come aggiungere una nuova voce

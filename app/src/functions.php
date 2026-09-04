@@ -1216,6 +1216,18 @@ function hasFanFavoriteTrips(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoritePlaylists(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_playlists WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+function hasFanFavoriteAlbums(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_albums WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
 // — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
 // visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
@@ -1228,6 +1240,8 @@ const CHE_AMO_MODULES = [
     'libricheamo' => ['label' => 'Libri che amo', 'icon' => 'fas fa-book', 'check' => 'hasFanFavoriteBooks', 'segment' => 'libri-che-amo'],
     'viaggi' => ['label' => 'Viaggi', 'icon' => 'fas fa-plane', 'check' => 'hasFanFavoriteTrips', 'segment' => 'viaggi'],
     'brani' => ['label' => 'Brani che amo', 'icon' => 'fas fa-music', 'check' => null, 'segment' => 'brani'],
+    'playlistcheamo' => ['label' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'check' => 'hasFanFavoritePlaylists', 'segment' => 'playlist-che-amo'],
+    'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -1941,6 +1955,38 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fp.id, fp.playlist_name, fp.playlist_image, fp.note, fp.image_path, fp.image_thumb_path, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_playlists fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fp.user_id IN ($placeholders) AND fp.show_in_feed = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $fpTitolo = $r['playlist_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fpTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'playlist_favorita', 'titolo' => $fpTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['playlist_image']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/playlist-che-amo/' . $r['id'],
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT fal.id, fal.album_name, fal.album_artist_name, fal.album_image, fal.note, fal.image_path, fal.image_thumb_path, fal.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+        FROM fan_favorite_albums fal JOIN users u ON u.id = fal.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fal.user_id IN ($placeholders) AND fal.show_in_feed = 1 AND (fal.publish_at IS NULL OR fal.publish_at <= NOW()) ORDER BY fal.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $falTitolo = $r['album_name'] . ($r['album_artist_name'] ? ' — ' . $r['album_artist_name'] : '');
+        if (trim($r['note'] ?? '') !== '') {
+            $falTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'album_favorito', 'titolo' => $falTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['album_image']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'url' => '/' . $r['user_slug'] . '/album-che-amo/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -2017,7 +2063,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -2044,7 +2090,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
@@ -2156,7 +2202,8 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
-    'dashboard_che_amo','che_amo'];
+    'dashboard_che_amo','che_amo',
+    'dashboard_fan_playlists','playlist_che_amo','dashboard_fan_albums','album_che_amo'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {
@@ -2257,6 +2304,8 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Video' => 'video',
     'Blog' => 'blog',
     'Brani che amo' => 'brani',
+    'Playlist che amo' => 'playlistcheamo',
+    'Album che amo' => 'albumcheamo',
     'Menù' => 'menu',
     'Eventi' => 'eventi',
     'Segui' => 'segui',
@@ -2289,10 +2338,12 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 12],
         ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 13],
         ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 14],
-        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 15],
-        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 16],
-        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 17],
-        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 18],
+        ['Playlist che amo', 'fas fa-list-ul', '/' . $slug . '/playlist-che-amo', 15],
+        ['Album che amo', 'fas fa-compact-disc', '/' . $slug . '/album-che-amo', 16],
+        ['Menù', 'fas fa-utensils', '/' . $slug . '/menu', 17],
+        ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 18],
+        ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 19],
+        ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 20],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

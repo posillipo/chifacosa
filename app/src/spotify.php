@@ -209,6 +209,122 @@ function spotifySearchTrack(string $query): array {
     return $results;
 }
 
+// Cerca playlist pubbliche per nome. Stessa logica di spotifySearchArtist, ma su type=playlist.
+function spotifySearchPlaylist(string $query): array {
+    $token = getSpotifyAppToken();
+    if (!$token || trim($query) === '') {
+        return [];
+    }
+    $url = 'https://api.spotify.com/v1/search?type=playlist&market=US&limit=10&q=' . urlencode($query);
+    $response = httpRequest('GET', $url, ['Authorization: Bearer ' . $token]);
+    if (!$response) {
+        return [];
+    }
+    $data = json_decode($response, true);
+    $results = [];
+    foreach (($data['playlists']['items'] ?? []) as $p) {
+        // Con l'account Client Credentials può capitare qualche voce nulla nei risultati (playlist
+        // rimosse/private nel frattempo): si scarta invece di far fallire tutto il ciclo.
+        if (!$p || empty($p['id'])) {
+            continue;
+        }
+        $owner = $p['owner']['display_name'] ?? '';
+        $results[] = [
+            'id' => $p['id'],
+            'title' => $p['name'],
+            'name' => $p['name'] . ($owner !== '' ? ' — di ' . $owner : ''),
+            'owner' => $owner,
+            'image' => $p['images'][0]['url'] ?? null,
+            'spotify_url' => $p['external_urls']['spotify'] ?? null,
+            'tracks_total' => $p['tracks']['total'] ?? 0,
+        ];
+    }
+    return $results;
+}
+
+// Dettagli di una singola playlist (usata per la sua copertina reale, la descrizione e il
+// numero di brani — es. per i meta tag og:image e la pagina di dettaglio).
+function spotifyGetPlaylist(string $playlistId): ?array {
+    $token = getSpotifyAppToken();
+    if (!$token || trim($playlistId) === '') {
+        return null;
+    }
+    $url = 'https://api.spotify.com/v1/playlists/' . urlencode($playlistId) . '?market=US&fields=id,name,description,images,owner,tracks.total,external_urls';
+    $response = httpRequest('GET', $url, ['Authorization: Bearer ' . $token]);
+    if (!$response) {
+        return null;
+    }
+    $p = json_decode($response, true);
+    if (!$p || empty($p['id'])) {
+        return null;
+    }
+    return [
+        'id' => $p['id'],
+        'name' => $p['name'] ?? '',
+        'description' => $p['description'] ?? '',
+        'owner' => $p['owner']['display_name'] ?? '',
+        'image' => $p['images'][0]['url'] ?? null,
+        'spotify_url' => $p['external_urls']['spotify'] ?? null,
+        'tracks_total' => $p['tracks']['total'] ?? 0,
+    ];
+}
+
+// Cerca album per nome/artista. Stessa logica di spotifySearchArtist, ma su type=album.
+function spotifySearchAlbum(string $query): array {
+    $token = getSpotifyAppToken();
+    if (!$token || trim($query) === '') {
+        return [];
+    }
+    $url = 'https://api.spotify.com/v1/search?type=album&market=US&limit=10&q=' . urlencode($query);
+    $response = httpRequest('GET', $url, ['Authorization: Bearer ' . $token]);
+    if (!$response) {
+        return [];
+    }
+    $data = json_decode($response, true);
+    $results = [];
+    foreach (($data['albums']['items'] ?? []) as $a) {
+        $artistName = implode(', ', array_map(fn($ar) => $ar['name'], $a['artists'] ?? []));
+        $results[] = [
+            'id' => $a['id'],
+            'title' => $a['name'],
+            'name' => $a['name'] . ($artistName !== '' ? ' — ' . $artistName : ''),
+            'artist_name' => $artistName,
+            'image' => $a['images'][1]['url'] ?? ($a['images'][0]['url'] ?? null),
+            'spotify_url' => $a['external_urls']['spotify'] ?? null,
+            'release_date' => $a['release_date'] ?? null,
+        ];
+    }
+    return $results;
+}
+
+// Dettagli di un singolo album (copertina ad alta risoluzione, generi dell'artista principale,
+// numero di brani — usata per i meta tag og:image e la pagina di dettaglio).
+function spotifyGetAlbum(string $albumId): ?array {
+    $token = getSpotifyAppToken();
+    if (!$token || trim($albumId) === '') {
+        return null;
+    }
+    $url = 'https://api.spotify.com/v1/albums/' . urlencode($albumId) . '?market=US';
+    $response = httpRequest('GET', $url, ['Authorization: Bearer ' . $token]);
+    if (!$response) {
+        return null;
+    }
+    $a = json_decode($response, true);
+    if (!$a || empty($a['id'])) {
+        return null;
+    }
+    return [
+        'id' => $a['id'],
+        'name' => $a['name'] ?? '',
+        'artist_name' => implode(', ', array_map(fn($ar) => $ar['name'], $a['artists'] ?? [])),
+        'image' => $a['images'][0]['url'] ?? ($a['images'][1]['url'] ?? null),
+        'spotify_url' => $a['external_urls']['spotify'] ?? null,
+        'release_date' => $a['release_date'] ?? null,
+        'genres' => $a['genres'] ?? [],
+        'tracks_total' => $a['tracks']['total'] ?? ($a['total_tracks'] ?? 0),
+    ];
+}
+
 // Cerca podcast (show) per nome. Stessa logica di spotifySearchArtist, ma su type=show.
 function spotifySearchShow(string $query): array {
     $token = getSpotifyAppToken();

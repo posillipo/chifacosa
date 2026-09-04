@@ -53,6 +53,14 @@ $pageUrl = siteUrl('/' . $slug . '/spotify');
 <div class="container">
   <?= publicProfileHeader($artist, 'spotify') ?>
 
+  <?php if (!empty($artistDetails['genres'])): ?>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 20px;">
+      <?php foreach ($artistDetails['genres'] as $genre): ?>
+        <span style="background:rgba(var(--text-rgb),0.08);color:rgba(var(--text-rgb),0.85);font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;text-transform:capitalize;"><?= e($genre) ?></span>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
   <?php if ($topTracks): ?>
     <div class="section-title">Brani più ascoltati</div>
     <?php foreach ($topTracks as $t): ?>

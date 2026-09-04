@@ -15,6 +15,8 @@ $moduleTables = [
     'libricheamo' => 'fan_favorite_books',
     'viaggi' => 'fan_favorite_trips',
     'brani' => 'favorite_tracks',
+    'playlistcheamo' => 'fan_favorite_playlists',
+    'albumcheamo' => 'fan_favorite_albums',
 ];
 $moduleUrls = [
     'bandcheamo' => '/dashboard_fan_bands.php',
@@ -23,6 +25,8 @@ $moduleUrls = [
     'libricheamo' => '/dashboard_fan_books.php',
     'viaggi' => '/dashboard_fan_trips.php',
     'brani' => '/dashboard_audio.php',
+    'playlistcheamo' => '/dashboard_fan_playlists.php',
+    'albumcheamo' => '/dashboard_fan_albums.php',
 ];
 
 $counts = [];

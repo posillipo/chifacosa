@@ -58,6 +58,30 @@ const FAN_FAVORITE_KINDS = [
         'external_url' => 'https://books.google.com/books?id=',
         'image_shape' => 'book', // copertina rettangolare invece del cerchio, più adatta a un libro
     ],
+    'playlist' => [
+        'table' => 'fan_favorite_playlists',
+        'external_id_col' => 'spotify_playlist_id',
+        'name_col' => 'playlist_name',
+        'image_col' => 'playlist_image',
+        'label' => 'Playlist che amo',
+        'nav_key' => 'playlistcheamo',
+        'list_url_segment' => 'playlist-che-amo',
+        'external_label' => 'Ascolta su Spotify',
+        'external_url' => 'https://open.spotify.com/playlist/',
+        'image_shape' => 'square', // copertina quadrata, come su Spotify
+    ],
+    'album' => [
+        'table' => 'fan_favorite_albums',
+        'external_id_col' => 'spotify_album_id',
+        'name_col' => 'album_name',
+        'image_col' => 'album_image',
+        'label' => 'Album che amo',
+        'nav_key' => 'albumcheamo',
+        'list_url_segment' => 'album-che-amo',
+        'external_label' => 'Ascolta su Spotify',
+        'external_url' => 'https://open.spotify.com/album/',
+        'image_shape' => 'square', // copertina quadrata, come su Spotify
+    ],
 ];
 
 $slug = $_GET['slug'] ?? '';
@@ -108,6 +132,10 @@ if ($kind === 'band') {
     $apiDetails = tmdbGetMovieDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'book') {
     $apiDetails = googleBooksGetVolumeDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'playlist') {
+    $apiDetails = spotifyGetPlaylist($item[$cfg['external_id_col']]);
+} elseif ($kind === 'album') {
+    $apiDetails = spotifyGetAlbum($item[$cfg['external_id_col']]);
 }
 
 $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $itemId);
@@ -161,6 +189,9 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if (($cfg['image_shape'] ?? 'circle') === 'book'): ?>
         <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
              style="width:140px;height:190px;border-radius:8px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+      <?php elseif (($cfg['image_shape'] ?? 'circle') === 'square'): ?>
+        <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
+             style="width:170px;height:170px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
       <?php else: ?>
         <img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>"
              style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
@@ -170,9 +201,18 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
     <p style="opacity:0.75;margin-top:0;">
       <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
       <?php if (!empty($apiDetails['authors'])): ?> · <?= e($apiDetails['authors']) ?><?php endif; ?>
+      <?php if ($kind === 'album' && !empty($item['album_artist_name'])): ?> · <?= e($item['album_artist_name']) ?><?php endif; ?>
+      <?php if ($kind === 'playlist' && !empty($apiDetails['owner'])): ?> · di <?= e($apiDetails['owner']) ?> su Spotify<?php endif; ?>
+      <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
     </p>
+    <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>
+      <p style="margin-top:2px;opacity:0.85;"><em><?= e(implode(', ', $apiDetails['genres'])) ?></em></p>
+    <?php endif; ?>
+    <?php if ($kind === 'playlist' && !empty($apiDetails['description'])): ?>
+      <p style="text-align:left;margin-top:10px;opacity:0.9;"><?= nl2br(e(strip_tags($apiDetails['description']))) ?></p>
+    <?php endif; ?>
 
     <?php if ($note !== ''): ?>
       <div class="card" style="text-align:left;margin-top:14px;">
