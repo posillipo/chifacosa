@@ -56,29 +56,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $avatarPath = $profile['avatar_path'];
 
         // Stessa logica di ritaglio lato browser di dashboard_profile.php: se arriva già pronta
-        // (cropper.js) la usiamo, altrimenti si ricade sul file grezzo caricato.
+        // (cropper.js) la usiamo, altrimenti si ricade sul file grezzo caricato. In entrambi i
+        // casi passa da compressImageToJpeg(), che garantisce JPEG e non oltre 250KB.
         $croppedData = $_POST['avatar_cropped_data'] ?? '';
         if ($croppedData !== '' && preg_match('#^data:image/(jpeg|png);base64,#', $croppedData, $m)) {
             $raw = base64_decode(substr($croppedData, strpos($croppedData, ',') + 1), true);
-            if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 8 * 1024 * 1024) {
+            $jpeg = ($raw !== false && strlen($raw) > 0 && strlen($raw) < 8 * 1024 * 1024) ? compressImageToJpeg($raw, 250 * 1024, 800) : null;
+            if ($jpeg !== null) {
                 $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
                 $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
                 if (!is_dir($dir)) {
                     mkdir($dir, 0775, true);
                 }
-                if (file_put_contents($dir . '/' . $fname, $raw) !== false) {
+                if (file_put_contents($dir . '/' . $fname, $jpeg) !== false) {
                     $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
                 }
             }
         } elseif (!empty($_FILES['avatar']['name'])) {
-            $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-                $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.' . $ext;
+            $raw = $_FILES['avatar']['error'] === UPLOAD_ERR_OK ? file_get_contents($_FILES['avatar']['tmp_name']) : false;
+            $jpeg = $raw !== false ? compressImageToJpeg($raw, 250 * 1024, 800) : null;
+            if ($jpeg !== null) {
+                $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
                 $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
                 if (!is_dir($dir)) {
                     mkdir($dir, 0775, true);
                 }
-                if (move_uploaded_file($_FILES['avatar']['tmp_name'], $dir . '/' . $fname)) {
+                if (file_put_contents($dir . '/' . $fname, $jpeg) !== false) {
                     $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
                 }
             }

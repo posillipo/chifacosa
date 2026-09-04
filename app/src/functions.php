@@ -1758,24 +1758,93 @@ function embedClientSideConversionEvent(string $eventName, string $eventId, ?arr
     return "<script>if (typeof fbq === 'function') { fbq('track', '" . addslashes($eventName) . "', {}, {eventID: '" . addslashes($eventId) . "'}); }</script>";
 }
 
-// Gestisce l'upload di un'immagine di copertina (link, articoli blog, eventi). Restituisce il
-// percorso relativo salvato, o null se non è stato caricato nessun file valido. Non lancia mai
-// errori: un file mancante o non valido significa semplicemente "nessuna copertina".
+// Ricomprime qualsiasi immagine (jpg/png/webp/gif...) in un JPEG che non superi $maxBytes,
+// restituendo i byte già pronti da salvare (o null se $data non è un'immagine valida). Unico
+// punto del sito che usa GD: prima le foto venivano salvate così come arrivavano (fino a
+// qualche MB a testa); ora ogni copertina/foto caricata — moduli "che amo", blog, eventi, link,
+// timeline, avatar — passa sempre da qui, così il disco non cresce senza controllo e ogni pagina
+// pubblica carica più veloce. La trasparenza (PNG/WebP) viene appiattita su sfondo bianco: il
+// JPEG non la supporta. Se la qualità più bassa non basta a stare sotto il limite, si riduce
+// anche la dimensione e si riprova, fino a un minimo di 80px di lato.
+function compressImageToJpeg(string $data, int $maxBytes = 256000, int $maxDimension = 1600): ?string {
+    $img = @imagecreatefromstring($data);
+    if ($img === false) {
+        return null;
+    }
+
+    $width = imagesx($img);
+    $height = imagesy($img);
+    $flat = imagecreatetruecolor($width, $height);
+    imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
+    imagealphablending($flat, true);
+    imagecopy($flat, $img, 0, 0, 0, 0, $width, $height);
+    imagedestroy($img);
+    $img = $flat;
+
+    $longSide = max($width, $height);
+    if ($longSide > $maxDimension) {
+        $scale = $maxDimension / $longSide;
+        $width = (int) round($width * $scale);
+        $height = (int) round($height * $scale);
+        $resized = imagecreatetruecolor($width, $height);
+        imagecopyresampled($resized, $img, 0, 0, 0, 0, $width, $height, imagesx($img), imagesy($img));
+        imagedestroy($img);
+        $img = $resized;
+    }
+
+    $qualities = [82, 74, 66, 58, 50, 42, 35, 28];
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        foreach ($qualities as $q) {
+            ob_start();
+            imagejpeg($img, null, $q);
+            $bytes = ob_get_clean();
+            if (strlen($bytes) <= $maxBytes) {
+                imagedestroy($img);
+                return $bytes;
+            }
+        }
+        $width = (int) round($width * 0.75);
+        $height = (int) round($height * 0.75);
+        if ($width < 80 || $height < 80) {
+            break;
+        }
+        $resized = imagecreatetruecolor($width, $height);
+        imagecopyresampled($resized, $img, 0, 0, 0, 0, $width, $height, imagesx($img), imagesy($img));
+        imagedestroy($img);
+        $img = $resized;
+    }
+    // Anche al minimo di qualità/dimensione resta sopra il limite (foto estremamente
+    // "rumorosa"): si restituisce comunque il risultato migliore ottenuto, meglio di niente.
+    ob_start();
+    imagejpeg($img, null, 25);
+    $bytes = ob_get_clean();
+    imagedestroy($img);
+    return $bytes;
+}
+
+// Gestisce l'upload di un'immagine di copertina (moduli "che amo", link, articoli blog, eventi,
+// timeline). Restituisce il percorso relativo salvato (sempre .jpg, vedi compressImageToJpeg()),
+// o null se non è stato caricato nessun file valido. Non lancia mai errori: un file mancante o
+// non valido significa semplicemente "nessuna copertina".
 function handleCoverUpload(string $slug, string $fileInputName = 'cover'): ?string {
-    if (empty($_FILES[$fileInputName]['name'])) {
+    if (empty($_FILES[$fileInputName]['name']) || $_FILES[$fileInputName]['error'] !== UPLOAD_ERR_OK) {
         return null;
     }
-    $ext = strtolower(pathinfo($_FILES[$fileInputName]['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true) || $_FILES[$fileInputName]['error'] !== UPLOAD_ERR_OK) {
+    $raw = file_get_contents($_FILES[$fileInputName]['tmp_name']);
+    if ($raw === false) {
         return null;
     }
-    $fname = bin2hex(random_bytes(6)) . '.' . $ext;
+    $jpeg = compressImageToJpeg($raw);
+    if ($jpeg === null) {
+        return null;
+    }
+    $fname = bin2hex(random_bytes(6)) . '.jpg';
     $dir = '/var/www/html/uploads/images/' . $slug;
     if (!is_dir($dir)) {
         mkdir($dir, 0775, true);
     }
     $dest = $dir . '/' . $fname;
-    if (move_uploaded_file($_FILES[$fileInputName]['tmp_name'], $dest)) {
+    if (file_put_contents($dest, $jpeg) !== false) {
         return 'uploads/images/' . $slug . '/' . $fname;
     }
     return null;

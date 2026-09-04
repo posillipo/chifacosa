@@ -21,40 +21,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Il ritaglio avviene nel browser (canvas): arriva già pronto come immagine JPEG in
     // base64 in questo campo nascosto, prodotto da cropper.js quando l'utente conferma il
-    // ritaglio — niente elaborazione immagini lato server, non serve GD/Imagick. Se per
-    // qualunque motivo il JavaScript non parte (script bloccato, browser molto vecchio...),
-    // il campo resta vuoto e si ricade sul caricamento diretto del file come prima, senza
-    // ritaglio ma comunque funzionante.
+    // ritaglio. Se per qualunque motivo il JavaScript non parte (script bloccato, browser molto
+    // vecchio...), il campo resta vuoto e si ricade sul caricamento diretto del file come prima,
+    // senza ritaglio ma comunque funzionante. In entrambi i casi il risultato finale passa
+    // sempre da compressImageToJpeg(), che garantisce JPEG e non oltre 250KB indipendentemente
+    // da cosa arriva dal browser.
     $croppedData = $_POST['avatar_cropped_data'] ?? '';
     if ($croppedData !== '' && preg_match('#^data:image/(jpeg|png);base64,#', $croppedData, $m)) {
         $raw = base64_decode(substr($croppedData, strpos($croppedData, ',') + 1), true);
-        if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 8 * 1024 * 1024) {
+        $jpeg = ($raw !== false && strlen($raw) > 0 && strlen($raw) < 8 * 1024 * 1024) ? compressImageToJpeg($raw, 250 * 1024, 800) : null;
+        if ($jpeg !== null) {
             $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
             $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
             if (!is_dir($dir)) {
                 mkdir($dir, 0775, true);
             }
             $dest = $dir . '/' . $fname;
-            if (file_put_contents($dest, $raw) !== false) {
+            if (file_put_contents($dest, $jpeg) !== false) {
                 $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
             }
         } else {
             $error = 'Il ritaglio non è riuscito, riprova.';
         }
     } elseif (!empty($_FILES['avatar']['name'])) {
-        $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg','jpeg','png','webp'], true) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-            $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.' . $ext;
+        $raw = $_FILES['avatar']['error'] === UPLOAD_ERR_OK ? file_get_contents($_FILES['avatar']['tmp_name']) : false;
+        $jpeg = $raw !== false ? compressImageToJpeg($raw, 250 * 1024, 800) : null;
+        if ($jpeg !== null) {
+            $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
             $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
             if (!is_dir($dir)) {
                 mkdir($dir, 0775, true);
             }
             $dest = $dir . '/' . $fname;
-            if (move_uploaded_file($_FILES['avatar']['tmp_name'], $dest)) {
+            if (file_put_contents($dest, $jpeg) !== false) {
                 $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
             }
         } else {
-            $error = 'Formato immagine non valido (usa jpg, png o webp).';
+            $error = 'Formato immagine non valido.';
         }
     }
 
