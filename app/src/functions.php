@@ -2267,8 +2267,11 @@ const PUBLIC_NAV_ITEM_KEYS = [
  * Crea le voci di menu di default per un profilo, con URL basati sul suo slug reale
  * (idempotente: INSERT IGNORE, non duplica se già esistenti). "Link" resta una sezione dentro
  * Home, senza un tab proprio (l'URL indicato è solo quello della pagina su cui vive, per
- * riferimento nella checklist) — "Band che amo", "Attori che amo" e "Film che amo" invece hanno
- * ciascuno un vero tab nel menu pubblico (mostrato solo se il profilo ha almeno una band/attore/film aggiunto).
+ * riferimento nella checklist) — "Band che amo", "Attori che amo", "Film che amo" e "Libri che
+ * amo" invece non hanno più un tab proprio nel menu pubblico (sono raccolti dentro "Che Amo"),
+ * ma hanno comunque ciascuno una pagina elenco dedicata e raggiungibile direttamente
+ * (/slug/band-che-amo ecc., vedi CHE_AMO_MODULES/.htaccess): l'URL qui sotto punta lì, non alla
+ * home, così la checklist di dashboard_nav_menu.php mostra il link vero della card.
  */
 function createDefaultProfileNavMenu(int $userId, string $slug): bool {
     $defaults = [
@@ -2276,10 +2279,10 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Timeline', 'fas fa-stream', '/' . $slug . '/timeline', 2],
         ['Link', 'fas fa-link', '/' . $slug, 3],
         ['Che Amo', 'fas fa-heart', '/' . $slug . '/che-amo', 4],
-        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug, 5],
-        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug, 6],
-        ['Film che amo', 'fas fa-film', '/' . $slug, 7],
-        ['Libri che amo', 'fas fa-book', '/' . $slug, 8],
+        ['Band che amo', 'fas fa-heart-circle-check', '/' . $slug . '/band-che-amo', 5],
+        ['Attori che amo', 'fas fa-clapperboard', '/' . $slug . '/attori-che-amo', 6],
+        ['Film che amo', 'fas fa-film', '/' . $slug . '/film-che-amo', 7],
+        ['Libri che amo', 'fas fa-book', '/' . $slug . '/libri-che-amo', 8],
         ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 9],
         ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 10],
         ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 11],
