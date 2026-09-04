@@ -98,12 +98,40 @@ $followerCount = getFollowerCount($uid);
 $followMsg = $_GET['follow_msg'] ?? '';
 $followErr = ($_GET['follow_err'] ?? '0') === '1';
 
-$fanFavorites = [];
-$stmt = getDB()->prepare('SELECT * FROM fan_favorite_bands WHERE user_id=? ORDER BY sort_order DESC');
-$stmt->execute([$uid]);
-$fanFavorites = $stmt->fetchAll();
-$fanFavoritesTotal = count($fanFavorites);
-$fanFavoritesPreview = array_slice($fanFavorites, 0, 6);
+// Vetrina "Che Amo" sulla Home: un tassello per categoria (non un elenco dei suoi elementi), con
+// la primissima cosa mai aggiunta come immagine di copertina — il clic porta all'elenco completo
+// di quella categoria, non al singolo elemento. Sostituisce la vecchia sezione "Band che amo" (un
+// solo modulo): ora ne rappresenta uno per ciascuno, in un carosello scorrevole invece di una
+// griglia, dato che possono essere fino a 8.
+$cheAmoTableConfig = [
+    'bandcheamo' => ['table' => 'fan_favorite_bands', 'name' => 'spotify_artist_name', 'image' => 'artist_image'],
+    'attorichamo' => ['table' => 'fan_favorite_actors', 'name' => 'actor_name', 'image' => 'actor_image'],
+    'filmcheamo' => ['table' => 'fan_favorite_movies', 'name' => 'movie_title', 'image' => 'movie_image'],
+    'libricheamo' => ['table' => 'fan_favorite_books', 'name' => 'book_title', 'image' => 'book_image'],
+    'viaggi' => ['table' => 'fan_favorite_trips', 'name' => 'place_name', 'image' => 'map_image_path'],
+    'brani' => ['table' => 'favorite_tracks', 'name' => 'track_name', 'image' => 'track_image'],
+    'playlistcheamo' => ['table' => 'fan_favorite_playlists', 'name' => 'playlist_name', 'image' => 'playlist_image'],
+    'albumcheamo' => ['table' => 'fan_favorite_albums', 'name' => 'album_name', 'image' => 'album_image'],
+];
+$cheAmoCarousel = [];
+foreach (CHE_AMO_MODULES as $key => $m) {
+    if (in_array($key, $hiddenNavKeys, true) || !isset($cheAmoTableConfig[$key])) {
+        continue;
+    }
+    $cfg = $cheAmoTableConfig[$key];
+    $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? ORDER BY sort_order ASC, id ASC LIMIT 1");
+    $stmt->execute([$uid]);
+    $first = $stmt->fetch();
+    if (!$first) {
+        continue;
+    }
+    $cheAmoCarousel[] = [
+        'label' => $m['label'],
+        'icon' => $m['icon'],
+        'segment' => $m['segment'],
+        'image' => $first['image_path'] ?: ($first[$cfg['image']] ?? null),
+    ];
+}
 
 $bandRatingStats = getBandRatingStats((int) $uid);
 $viewerId = $_SESSION['user_id'] ?? null;
@@ -265,24 +293,25 @@ $bandReviewers = $bandReviewers->fetchAll();
         <a href="/<?= e($slug) ?>/spotify">Vedi tutto su Spotify →</a>
       </p>
     <?php endif; ?>
-  <?php elseif ($fanFavorites && !in_array('bandcheamo', $hiddenNavKeys, true)): ?>
-    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Band che amo</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:10px;">
-      <?php foreach ($fanFavoritesPreview as $f): ?>
-        <a href="https://open.spotify.com/artist/<?= e($f['spotify_artist_id']) ?>" target="_blank" rel="noopener"
-           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
-          <?php if ($f['artist_image']): ?>
-            <img src="<?= e($f['artist_image']) ?>" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;">
+  <?php elseif ($cheAmoCarousel): ?>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Che Amo</div>
+    <div class="che-amo-home-carousel" style="display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:18px;">
+      <?php foreach ($cheAmoCarousel as $c): ?>
+        <a href="/<?= e($slug) ?>/<?= e($c['segment']) ?>"
+           class="card" style="flex:0 0 140px;text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
+          <?php if ($c['image']): ?>
+            <img src="<?= e(str_starts_with($c['image'], 'http') ? $c['image'] : '/' . $c['image']) ?>"
+                 style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;margin-bottom:8px;">
+          <?php else: ?>
+            <div style="width:100%;aspect-ratio:1;border-radius:10px;background:rgba(108,92,231,0.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:8px;">
+              <i class="<?= e($c['icon']) ?>"></i>
+            </div>
           <?php endif; ?>
-          <div style="font-weight:700;font-size:13px;"><?= e($f['spotify_artist_name']) ?></div>
+          <div style="font-weight:700;font-size:13px;"><?= e($c['label']) ?></div>
         </a>
       <?php endforeach; ?>
     </div>
-    <?php if ($fanFavoritesTotal > 6): ?>
-      <p style="text-align:center;margin-bottom:18px;">
-        <a href="/<?= e($slug) ?>/band-che-amo">Vedi tutte (<?= $fanFavoritesTotal ?>) →</a>
-      </p>
-    <?php endif; ?>
+    <style>.che-amo-home-carousel::-webkit-scrollbar { display: none; }</style>
   <?php endif; ?>
 
   <div id="recensioni" class="card" style="scroll-margin-top:20px;">
