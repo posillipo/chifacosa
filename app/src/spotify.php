@@ -76,12 +76,17 @@ function getSpotifyAppToken(): ?string {
 }
 
 // Cerca artisti per nome. Restituisce un array di ['id','name','image','spotify_url','followers'].
+// market=US obbligatorio: senza un market esplicito (o senza utente loggato, come qui via Client
+// Credentials) Spotify considera il catalogo "non disponibile" e restituisce una lista vuota —
+// per le app create più di recente questa regola viene applicata in modo rigido, a differenza
+// delle app più vecchie che restano compatibili anche senza (da qui il bug: stesso identico
+// codice, ma funzionava sull'app Spotify di myband — più vecchia — non su quella di chifacosa).
 function spotifySearchArtist(string $query): array {
     $token = getSpotifyAppToken();
     if (!$token || trim($query) === '') {
         return [];
     }
-    $url = 'https://api.spotify.com/v1/search?type=artist&limit=10&q=' . urlencode($query);
+    $url = 'https://api.spotify.com/v1/search?type=artist&market=US&limit=10&q=' . urlencode($query);
     $response = httpRequest('GET', $url, ['Authorization: Bearer ' . $token]);
     if (!$response) {
         return [];
