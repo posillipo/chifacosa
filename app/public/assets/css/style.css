@@ -585,18 +585,23 @@ body.colorful-page {
 }
 
 /* Menu di navigazione della pagina pubblica: ogni voce è una piccola "pillola" arrotondata,
-   va a capo in modo ordinato quando lo spazio non basta (nessuno scorrimento). */
+   sempre tutte sulla stessa riga (mai a capo) — se non entrano tutte, la riga scorre in
+   orizzontale, su qualsiasi dimensione di schermo, desktop incluso. */
 .colorful-nav {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
   gap: 2px 2px;
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
   max-width: 100%;
   border-radius: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
+.colorful-nav::-webkit-scrollbar { display: none; }
 /* Bagliore che si accende una sola volta, appena la pagina viene aperta, nello stesso istante
    in cui nav-scroll-hint.js fa scattare il primo "sussulto" del menu — per farlo notare subito
    a chi arriva, non ad ogni ripetizione successiva (altrimenti diventa fastidioso). Colore legato
@@ -616,6 +621,7 @@ body.colorful-page {
   border-radius: 8px;
   background: rgba(255,255,255,0.45);
   transition: background 0.15s ease;
+  flex-shrink: 0;
 }
 .colorful-nav a:hover { background: rgba(255,255,255,0.65); }
 /* Voce attiva nel menu e tab "Segui" (sempre acceso): sfondo nel colore accento scelto dal
@@ -634,45 +640,16 @@ body.colorful-page {
   .colorful-nav a { font-size: 13.5px; padding: 4px 10px; }
 }
 
-/* Solo desktop: con più righe di pillole, "justify-content:center" centra OGNI riga per conto
-   suo — l'ultima riga (spesso con una sola voce, es. "Contatti") finisce così centrata rispetto
-   a quella sopra invece di restare allineata a sinistra come ci si aspetta leggendo dall'alto in
-   basso. display:inline-flex fa sì che il blocco si restringa al contenuto della riga più larga
-   e venga centrato TUTTO INSIEME (eredita text-align:center da .profile-header), mentre dentro
-   ogni riga riparte da sinistra — le righe corte restano allineate a quelle sopra invece di
-   "galleggiare" in mezzo. Non toccato su mobile, dove il menu scorre in orizzontale (mai a capo). */
-@media (min-width: 761px) {
-  .colorful-nav {
-    display: inline-flex;
-    justify-content: flex-start;
-  }
-}
-
-/* Solo su mobile: il menu scorre orizzontalmente invece di andare a capo (come richiesto),
-   contenuto correttamente dentro il proprio contenitore. Il desktop resta invariato (va a
-   capo in modo ordinato). */
-@media (max-width: 760px) {
-  .colorful-nav {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-  }
-  .colorful-nav::-webkit-scrollbar { display: none; }
-  .colorful-nav a { flex-shrink: 0; }
-}
-
 .colorful-nav-wrap { position: relative; }
 
-/* Indicatore statico "c'è altro da scorrere" sul menu mobile, ispirato al comportamento della
+/* Indicatore statico "c'è altro da scorrere" sul menu, ispirato al comportamento della
    console Hetzner (freccina + leggera ombra sul bordo destro): quasi tutto CSS, quindi visibile
    da subito senza dipendere da un timer — si affianca al richiamo animato di nav-scroll-hint.js
    senza sostituirlo. nav-scroll-hint.js aggiunge/toglie la classe "has-overflow" sul wrap in base
-   a se c'è davvero altro da scorrere e a se si è già arrivati in fondo. */
+   a se c'è davvero altro da scorrere e a se si è già arrivati in fondo. Vale su ogni dimensione
+   di schermo, desktop incluso, dato che ora le pillole non vanno mai a capo. */
 .colorful-nav-arrow {
-  display: none;
+  display: flex;
   position: absolute;
   top: 50%;
   right: -2px;
@@ -692,24 +669,21 @@ body.colorful-page {
   z-index: 2;
 }
 
-@media (max-width: 760px) {
-  .colorful-nav-arrow { display: flex; }
-  .colorful-nav-wrap::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 34px;
-    background: linear-gradient(to right, transparent, rgba(0,0,0,0.12));
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .colorful-nav-wrap.has-overflow::after { opacity: 1; }
-  .colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; }
+.colorful-nav-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 34px;
+  background: linear-gradient(to right, transparent, rgba(0,0,0,0.12));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 1;
 }
+.colorful-nav-wrap.has-overflow::after { opacity: 1; }
+.colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; }
 
 .social-icons-row {
   display: flex;
