@@ -1767,6 +1767,14 @@ function embedClientSideConversionEvent(string $eventName, string $eventId, ?arr
 // JPEG non la supporta. Se la qualità più bassa non basta a stare sotto il limite, si riduce
 // anche la dimensione e si riprova, fino a un minimo di 80px di lato.
 function compressImageToJpeg(string $data, int $maxBytes = 256000, int $maxDimension = 1600): ?string {
+    // Foto ad alta risoluzione (es. scattate con smartphone recenti, anche 20+ megapixel) possono
+    // richiedere più degli attuali 128MB di default di PHP per essere decodificate ed elaborate —
+    // alzato solo per la richiesta in corso, non è una modifica permanente al sito. Riscontrato
+    // in produzione ("Allowed memory size of 134217728 bytes exhausted") sulla pagina che
+    // ricomprime le foto già caricate, alcune delle quali molto pesanti.
+    @ini_set('memory_limit', '512M');
+
+    $info = @getimagesizefromstring($data);
     $img = @imagecreatefromstring($data);
     if ($img === false) {
         return null;
@@ -1774,22 +1782,36 @@ function compressImageToJpeg(string $data, int $maxBytes = 256000, int $maxDimen
 
     $width = imagesx($img);
     $height = imagesy($img);
-    $flat = imagecreatetruecolor($width, $height);
-    imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
-    imagealphablending($flat, true);
-    imagecopy($flat, $img, 0, 0, 0, 0, $width, $height);
-    imagedestroy($img);
-    $img = $flat;
 
+    // Ridimensiona SUBITO se l'originale supera il necessario, prima di qualunque altra copia in
+    // memoria: dimezza il picco di RAM dei passaggi successivi per le foto più pesanti (prima il
+    // ridimensionamento avveniva dopo aver già duplicato l'immagine a piena risoluzione).
     $longSide = max($width, $height);
     if ($longSide > $maxDimension) {
         $scale = $maxDimension / $longSide;
-        $width = (int) round($width * $scale);
-        $height = (int) round($height * $scale);
-        $resized = imagecreatetruecolor($width, $height);
-        imagecopyresampled($resized, $img, 0, 0, 0, 0, $width, $height, imagesx($img), imagesy($img));
+        $newWidth = (int) round($width * $scale);
+        $newHeight = (int) round($height * $scale);
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        imagecopyresampled($resized, $img, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
         imagedestroy($img);
         $img = $resized;
+        $width = $newWidth;
+        $height = $newHeight;
+    }
+
+    // La trasparenza (PNG/WebP) va appiattita su sfondo bianco: il JPEG non la supporta. Un JPEG
+    // in ingresso non può averne, quindi si salta il passaggio — altro risparmio di memoria (e di
+    // tempo) per il caso più comune, una foto già in JPEG.
+    $isJpegSource = $info && $info[2] === IMAGETYPE_JPEG;
+    if (!$isJpegSource) {
+        $flat = imagecreatetruecolor($width, $height);
+        imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
+        imagealphablending($flat, true);
+        imagecopy($flat, $img, 0, 0, 0, 0, $width, $height);
+        imagedestroy($img);
+        $img = $flat;
     }
 
     $qualities = [82, 74, 66, 58, 50, 42, 35, 28];
