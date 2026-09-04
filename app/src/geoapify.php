@@ -24,8 +24,10 @@ function geoapifyGenerateStaticMap(float $lat, float $lng, string $slug): ?strin
     if (!$apiKey) {
         return null;
     }
-    $url = 'https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=640&height=360'
-         . '&center=lonlat:' . $lng . ',' . $lat . '&zoom=15'
+    // 640x800 = proporzione 4:5 (come richiesto per la condivisione social), zoom leggermente più
+    // stretto sul punto d'interesse rispetto a prima (16 invece di 15).
+    $url = 'https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=640&height=800'
+         . '&center=lonlat:' . $lng . ',' . $lat . '&zoom=16'
          . '&marker=lonlat:' . $lng . ',' . $lat . ';color:%23ff3b30;size:large'
          . '&format=jpeg&apiKey=' . urlencode($apiKey);
     $image = httpRequest('GET', $url);
