@@ -36,7 +36,8 @@ RUN mkdir -p /var/www/html/uploads/audio /var/www/html/uploads/images \
 
 RUN { \
       echo 'upload_max_filesize = 20M'; \
-      echo 'post_max_size = 25M'; \
+      echo 'post_max_size = 220M'; \
+      echo 'max_file_uploads = 20'; \
     } > /usr/local/etc/php/conf.d/uploads.ini
 
 RUN { \
