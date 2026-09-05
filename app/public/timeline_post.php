@@ -93,6 +93,7 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
   <div class="card">
     <?php if (count($photos) > 1): ?>
       <div class="ig-carousel">
+        <button type="button" class="ig-expand-btn" id="ig-expand" aria-label="Vedi a tutto schermo"><i class="fa-solid fa-expand"></i></button>
         <div class="ig-carousel-track" id="ig-track">
           <?php foreach ($photos as $ph): ?>
             <img src="/<?= e($ph) ?>" alt="" loading="lazy">
@@ -106,6 +107,25 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
           <?php endforeach; ?>
         </div>
       </div>
+
+      <!-- Vista a tutto schermo (stile OnlyFans): stesse foto, scorrevoli/sfogliabili, ma
+           intere (object-fit:contain, non ritagliate a quadrato come nell'anteprima sopra). -->
+      <div class="ig-lightbox" id="ig-lightbox">
+        <button type="button" class="ig-lightbox-close" id="ig-lightbox-close" aria-label="Chiudi">✕</button>
+        <div class="ig-lightbox-track" id="ig-lightbox-track">
+          <?php foreach ($photos as $ph): ?>
+            <img src="/<?= e($ph) ?>" alt="" loading="lazy">
+          <?php endforeach; ?>
+        </div>
+        <button type="button" class="ig-arrow ig-arrow-prev" id="ig-lightbox-prev" aria-label="Foto precedente">‹</button>
+        <button type="button" class="ig-arrow ig-arrow-next" id="ig-lightbox-next" aria-label="Foto successiva">›</button>
+        <div class="ig-carousel-dots ig-lightbox-dots" id="ig-lightbox-dots">
+          <?php foreach ($photos as $i => $ph): ?>
+            <span class="ig-dot<?= $i === 0 ? ' active' : '' ?>" data-index="<?= $i ?>"></span>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
       <style>
         .ig-carousel { position:relative; max-width:400px; margin:0 auto 16px; }
         .ig-carousel-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
@@ -129,39 +149,96 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
           .ig-arrow-prev { left:8px; }
           .ig-arrow-next { right:8px; }
         }
+        .ig-expand-btn {
+          position:absolute; top:8px; right:8px; z-index:6;
+          width:32px; height:32px; border-radius:50%; border:none;
+          background:rgba(0,0,0,0.45); color:#fff; font-size:13px;
+          display:flex; align-items:center; justify-content:center; cursor:pointer;
+        }
+        .ig-expand-btn:hover { background:rgba(0,0,0,0.65); }
+
+        .ig-lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.96); z-index:1000; }
+        .ig-lightbox.open { display:block; }
+        .ig-lightbox-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; width:100%; height:100%; }
+        .ig-lightbox-track::-webkit-scrollbar { display:none; }
+        .ig-lightbox-track img { scroll-snap-align:center; flex:0 0 100%; width:100%; height:100%; object-fit:contain; }
+        .ig-lightbox-close {
+          position:fixed; top:16px; right:16px; z-index:1010;
+          width:40px; height:40px; border-radius:50%; border:none;
+          background:rgba(255,255,255,0.15); color:#fff; font-size:18px;
+          display:flex; align-items:center; justify-content:center; cursor:pointer;
+        }
+        .ig-lightbox-close:hover { background:rgba(255,255,255,0.28); }
+        .ig-lightbox .ig-arrow { position:fixed; }
+        .ig-lightbox-dots { position:fixed; bottom:20px; left:0; right:0; z-index:1010; }
       </style>
       <script>
       (function () {
-        var track = document.getElementById('ig-track');
-        var dots = document.querySelectorAll('#ig-dots .ig-dot');
-        var prevBtn = document.getElementById('ig-prev');
-        var nextBtn = document.getElementById('ig-next');
-        if (!track || !dots.length) return;
-        var count = dots.length;
-
-        function goTo(idx) {
-          idx = Math.max(0, Math.min(count - 1, idx));
-          track.scrollTo({ left: idx * track.clientWidth, behavior: 'smooth' });
-        }
-        function currentIndex() {
-          return Math.round(track.scrollLeft / track.clientWidth);
-        }
-
-        dots.forEach(function (dot) {
-          dot.addEventListener('click', function () { goTo(parseInt(dot.dataset.index, 10)); });
-        });
-        if (prevBtn) prevBtn.addEventListener('click', function () { goTo(currentIndex() - 1); });
-        if (nextBtn) nextBtn.addEventListener('click', function () { goTo(currentIndex() + 1); });
-
-        var ticking = false;
-        track.addEventListener('scroll', function () {
-          if (ticking) return;
-          ticking = true;
-          requestAnimationFrame(function () {
-            var idx = currentIndex();
-            dots.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
-            ticking = false;
+        // Un solo carosello (nell'anteprima o nella vista a tutto schermo) è sempre lo stesso
+        // meccanismo: scroll-snap orizzontale + frecce/puntini che leggono/impostano la
+        // posizione — condiviso qui per non duplicarlo due volte.
+        function wireCarousel(track, dots, prevBtn, nextBtn) {
+          if (!track || !dots.length) return null;
+          var count = dots.length;
+          function goTo(idx) {
+            idx = Math.max(0, Math.min(count - 1, idx));
+            track.scrollTo({ left: idx * track.clientWidth, behavior: 'smooth' });
+          }
+          function currentIndex() {
+            return Math.round(track.scrollLeft / track.clientWidth);
+          }
+          dots.forEach(function (dot) {
+            dot.addEventListener('click', function () { goTo(parseInt(dot.dataset.index, 10)); });
           });
+          if (prevBtn) prevBtn.addEventListener('click', function () { goTo(currentIndex() - 1); });
+          if (nextBtn) nextBtn.addEventListener('click', function () { goTo(currentIndex() + 1); });
+          var ticking = false;
+          track.addEventListener('scroll', function () {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(function () {
+              var idx = currentIndex();
+              dots.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
+              ticking = false;
+            });
+          });
+          return { goTo: goTo, currentIndex: currentIndex };
+        }
+
+        var main = wireCarousel(
+          document.getElementById('ig-track'),
+          document.querySelectorAll('#ig-dots .ig-dot'),
+          document.getElementById('ig-prev'),
+          document.getElementById('ig-next')
+        );
+        var lightboxTrack = document.getElementById('ig-lightbox-track');
+        var lightbox = wireCarousel(
+          lightboxTrack,
+          document.querySelectorAll('#ig-lightbox-dots .ig-dot'),
+          document.getElementById('ig-lightbox-prev'),
+          document.getElementById('ig-lightbox-next')
+        );
+
+        var lightboxEl = document.getElementById('ig-lightbox');
+        var expandBtn = document.getElementById('ig-expand');
+        var closeBtn = document.getElementById('ig-lightbox-close');
+        if (expandBtn && lightboxEl && lightbox) {
+          expandBtn.addEventListener('click', function () {
+            lightboxEl.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            // Apre sulla stessa foto che si stava già guardando nell'anteprima, senza scatto.
+            var startIdx = main ? main.currentIndex() : 0;
+            lightboxTrack.scrollTo({ left: startIdx * lightboxTrack.clientWidth, behavior: 'auto' });
+          });
+        }
+        function closeLightbox() {
+          if (!lightboxEl) return;
+          lightboxEl.classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') closeLightbox();
         });
       })();
       </script>
