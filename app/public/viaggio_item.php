@@ -37,9 +37,13 @@ if (!$trip) {
 $note = trim($trip['note'] ?? '');
 // La foto caricata dal proprietario ha sempre la precedenza; senza di essa si usa la miniatura
 // mappa generata automaticamente (Geoapify) — così ogni viaggio ha sempre un'immagine da
-// mostrare nell'anteprima social, anche senza una foto propria.
+// mostrare nell'anteprima social, anche senza una foto propria. Il fallback alla mappa vale
+// solo per l'og:image social: qui sotto, sulla pagina, la foto (singola o carosello fino a 10)
+// compare solo se il proprietario ne ha caricata almeno una — la mappa interattiva è già
+// mostrata per intero più sotto, mostrarne anche la miniatura sarebbe ridondante.
 $image = $trip['image_path'] ?: $trip['map_image_path'];
 $imageUrl = $image ? siteUrl($image) : null;
+$photos = $trip['image_path'] ? array_values(array_filter(array_merge([$trip['image_path']], getTripPhotos($tripId)))) : [];
 
 // Altri viaggi pubblicati lo stesso giorno di questo — così chi arriva da un link personale a
 // un solo viaggio (es. una foto condivisa) vede subito anche gli altri della stessa giornata,
@@ -93,10 +97,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
   <?= publicProfileHeader($artist, 'viaggi') ?>
 
   <div class="card" style="text-align:center;">
-    <?php if ($trip['image_path']): ?>
-      <img src="/<?= e($trip['image_path']) ?>" alt="<?= e($trip['place_name']) ?>"
-           style="width:100%;max-width:420px;max-height:280px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
-    <?php endif; ?>
+    <?= renderPhotoCarousel($photos, $tripId) ?>
     <h1 style="font-size:22px;margin:0 0 4px;"><?= e($trip['place_name']) ?></h1>
     <p style="opacity:0.75;margin-top:0;">
       Viaggio di <?= e($artist['display_name']) ?>
@@ -113,21 +114,21 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
     <div style="margin-top:16px;"><?= renderOsmEmbed((float) $trip['lat'], (float) $trip['lng']) ?></div>
   </div>
 
+  <?php $anyMultiPhoto = count($photos) > 1; ?>
   <?php if ($sameDayItems): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
       Altri di questa giornata (<?= count($sameDayItems) ?>)
     </div>
     <?php foreach ($sameDayItems as $s): ?>
       <?php
-        // Stessa grafica del post principale sopra (foto, titolo, racconto, mappa).
+        // Stessa grafica del post principale sopra (foto/carosello, titolo, racconto, mappa).
         $sNote = trim($s['note'] ?? '');
+        $sPhotos = $s['image_path'] ? array_values(array_filter(array_merge([$s['image_path']], getTripPhotos((int) $s['id'])))) : [];
+        if (count($sPhotos) > 1) { $anyMultiPhoto = true; }
       ?>
       <div class="card" style="text-align:center;">
+        <?= renderPhotoCarousel($sPhotos, (int) $s['id']) ?>
         <a href="/<?= e($slug) ?>/viaggi/<?= (int) $s['id'] ?>" style="text-decoration:none;color:inherit;">
-          <?php if ($s['image_path']): ?>
-            <img src="/<?= e($s['image_path']) ?>" alt="<?= e($s['place_name']) ?>"
-                 style="width:100%;max-width:420px;max-height:280px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
-          <?php endif; ?>
           <h2 style="font-size:20px;margin:0 0 4px;"><?= e($s['place_name']) ?></h2>
           <p style="opacity:0.75;margin-top:0;">
             Viaggio di <?= e($artist['display_name']) ?>
@@ -149,5 +150,10 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
 </div>
 <?= renderFloatingButtons() ?>
 <?= renderSiteFooterBar($artist) ?>
+
+<?php if ($anyMultiPhoto): ?>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
+<script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
+<?php endif; ?>
 </body>
 </html>

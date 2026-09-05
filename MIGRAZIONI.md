@@ -816,6 +816,33 @@ CSS, swipe nativo su touch, puntini indicatori cliccabili) — con una sola foto
 prima, nessun cambiamento visivo. Eliminando un post da `dashboard_post.php` vengono ripuliti
 anche i file delle foto extra (le righe DB spariscono da sole grazie a `ON DELETE CASCADE`).
 
+## 44. Fino a 10 foto anche per il modulo "Viaggi che amo"
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_trip_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (trip_id) REFERENCES fan_favorite_trips(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Stessa architettura della voce 43 (post Timeline), applicata al modulo Viaggi:
+`fan_favorite_trips.image_path` resta la prima foto (l'unica nel Feed/nelle liste, come sempre),
+le altre fino a 9 in `fan_favorite_trip_photos`. Caricarne di nuove dal pannello "✏️ Gestisci
+pubblicazione" sostituisce l'intero set precedente (stessa semantica di "sostituzione" già in uso
+per la singola foto). Nuovo `getTripPhotos()` in `functions.php`.
+
+In questo passaggio il markup del carosello/lightbox è stato estratto da `timeline_post.php` in
+due file statici condivisi — `assets/css/ig-carousel.css` e `assets/js/ig-carousel.js` — e la
+funzione che lo genera è stata rinominata da `renderTimelinePostMedia()` a
+`renderPhotoCarousel(array $photos, int $itemId)` (nome generico, non più legato ai soli post
+Timeline): serviva già due volte (post Timeline + viaggi), tenerlo duplicato avrebbe significato
+correggere ogni bug in due posti. `viaggio_item.php` la usa sia per il viaggio principale sia per
+ciascun "altro della stessa giornata" mostrato sotto — stessa esperienza di carosello + zoom a
+tutto schermo già vista nei post Timeline.
+
 ---
 
 ## Come aggiungere una nuova voce

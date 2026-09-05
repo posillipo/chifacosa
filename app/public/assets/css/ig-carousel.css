@@ -1,0 +1,55 @@
+/*!
+ * Carosello foto stile Instagram (anteprima ritagliata a quadrato + pulsante per aprirla a
+ * tutto schermo, foto intere lì) — usato dalle pagine di dettaglio condivisibili che possono
+ * avere più di una foto (post Timeline, viaggi...). Markup generato da renderPhotoCarousel()
+ * in functions.php, pilotato da assets/js/ig-carousel.js.
+ */
+.ig-carousel { position:relative; max-width:400px; margin:0 auto 16px; }
+.ig-carousel-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+.ig-carousel-track::-webkit-scrollbar { display:none; }
+.ig-carousel-track img { scroll-snap-align:center; flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; }
+.ig-carousel-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+.ig-dot { width:6px; height:6px; border-radius:50%; background:rgba(var(--text-rgb),0.25); cursor:pointer; transition:background .15s; }
+.ig-dot.active { background:var(--accent); }
+/* Frecce: servono solo a chi ha un mouse vero (niente swipe col dito) — su touch restano
+   nascoste, lì basta e avanza scorrere con il dito come già accade. */
+.ig-arrow { display:none; }
+@media (hover:hover) and (pointer:fine) {
+  .ig-arrow {
+    display:flex; align-items:center; justify-content:center;
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border-radius:50%; border:none;
+    background:rgba(0,0,0,0.45); color:#fff; font-size:20px; line-height:1;
+    cursor:pointer; z-index:5;
+  }
+  .ig-arrow:hover { background:rgba(0,0,0,0.65); }
+  .ig-arrow-prev { left:8px; }
+  .ig-arrow-next { right:8px; }
+}
+.ig-expand-btn {
+  position:absolute; top:8px; right:8px; z-index:6;
+  width:32px; height:32px; border-radius:50%; border:none;
+  background:rgba(0,0,0,0.45); color:#fff; font-size:13px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.ig-expand-btn:hover { background:rgba(0,0,0,0.65); }
+
+/* position:fixed richiede che NESSUN antenato abbia transform/filter/opacity<1 (altrimenti
+   quell'antenato diventa il "contenitore" invece della finestra, e inset:0 copre solo lui) —
+   per non doverlo garantire su tutta la pagina (temi, sfondi animati, ecc.), ig-carousel.js
+   sposta ogni lightbox come figlio diretto di <body> non appena la pagina è pronta: così il
+   pieno schermo è garantito a prescindere da dove il markup PHP l'ha generato. */
+.ig-lightbox { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; height:100dvh; background:rgba(0,0,0,0.96); z-index:2000; }
+.ig-lightbox.open { display:block; }
+.ig-lightbox-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; width:100%; height:100%; }
+.ig-lightbox-track::-webkit-scrollbar { display:none; }
+.ig-lightbox-track img { scroll-snap-align:center; flex:0 0 100%; width:100%; height:100%; object-fit:contain; }
+.ig-lightbox-close {
+  position:fixed; top:16px; right:16px; z-index:2010;
+  width:40px; height:40px; border-radius:50%; border:none;
+  background:rgba(255,255,255,0.15); color:#fff; font-size:18px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.ig-lightbox-close:hover { background:rgba(255,255,255,0.28); }
+.ig-lightbox .ig-arrow { position:fixed; }
+.ig-lightbox-dots { position:fixed; bottom:20px; left:0; right:0; z-index:2010; }

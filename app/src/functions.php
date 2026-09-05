@@ -1916,6 +1916,15 @@ function getTimelinePostPhotos(int $postId): array {
     return array_column($stmt->fetchAll(), 'image_path');
 }
 
+// Come getTimelinePostPhotos(), ma per il modulo "Viaggi che amo" (fan_favorite_trips): foto
+// aggiuntive (dalla 2 alla 10) di un viaggio, nell'ordine di caricamento. La prima foto non è
+// qui: resta su fan_favorite_trips.image_path, come sempre.
+function getTripPhotos(int $tripId): array {
+    $stmt = getDB()->prepare('SELECT image_path FROM fan_favorite_trip_photos WHERE trip_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$tripId]);
+    return array_column($stmt->fetchAll(), 'image_path');
+}
+
 // Elimina il file di copertina dal disco, se presente (usato quando si elimina un link/post/evento)
 function deleteCoverFile(?string $coverPath): void {
     if ($coverPath) {
@@ -1976,13 +1985,13 @@ function getSameDayTimelinePosts(int $userId, ?string $referencePublishAt, strin
     return $stmt->fetchAll();
 }
 
-// Blocco foto di un post Timeline: una foto singola (come sempre) oppure, se ce n'è più di una,
-// un carosello scorrevole con un pulsante per aprirlo a tutto schermo — usata sia per il post
-// principale sia per ciascun "altro della stessa giornata" mostrato sotto (vedi
-// getSameDayTimelinePosts()), quindi ogni istanza porta il proprio $postId nell'attributo
+// Blocco foto di un elemento condivisibile (post Timeline, viaggio...): una foto singola (come
+// sempre) oppure, se ce n'è più di una, un carosello scorrevole con un pulsante per aprirlo a
+// tutto schermo. Usata sia per l'elemento principale di una pagina sia per ciascun "altro della
+// stessa giornata" mostrato sotto, quindi ogni istanza porta il proprio $itemId nell'attributo
 // data-post: sulla stessa pagina possono comparirne più di una, servono id univoci perché lo
-// script che le pilota (in timeline_post.php) le trovi una per una senza confondersi.
-function renderTimelinePostMedia(array $photos, int $postId): string {
+// script condiviso (assets/js/ig-carousel.js) le trovi una per una senza confondersi.
+function renderPhotoCarousel(array $photos, int $itemId): string {
     if (!$photos) {
         return '';
     }
@@ -2000,7 +2009,7 @@ function renderTimelinePostMedia(array $photos, int $postId): string {
         $dots .= '<span class="ig-dot' . ($i === 0 ? ' active' : '') . '" data-index="' . $i . '"></span>';
     }
 
-    $html = '<div class="ig-carousel" data-post="' . $postId . '">'
+    $html = '<div class="ig-carousel" data-post="' . $itemId . '">'
           . '<button type="button" class="ig-expand-btn" aria-label="Vedi a tutto schermo"><i class="fa-solid fa-expand"></i></button>'
           . '<div class="ig-carousel-track">' . $slides . '</div>'
           . '<button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>'
@@ -2008,7 +2017,7 @@ function renderTimelinePostMedia(array $photos, int $postId): string {
           . '<div class="ig-carousel-dots">' . $dots . '</div>'
           . '</div>';
 
-    $html .= '<div class="ig-lightbox" data-post="' . $postId . '">'
+    $html .= '<div class="ig-lightbox" data-post="' . $itemId . '">'
           . '<button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>'
           . '<div class="ig-lightbox-track">' . $slides . '</div>'
           . '<button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>'

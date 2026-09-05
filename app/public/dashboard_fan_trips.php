@@ -84,7 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             deleteCoverFile($row['image_path']);
             deleteCoverFile($row['image_thumb_path']);
             deleteCoverFile($row['map_image_path']); // generata da noi (Geoapify), non un URL esterno: va ripulita anche lei
+            foreach (getTripPhotos($id) as $extraPath) {
+                deleteCoverFile($extraPath);
+            }
         }
+        // fan_favorite_trip_photos ha ON DELETE CASCADE: le righe spariscono da sole, qui sopra
+        // servivano solo per cancellare i FILE dal disco prima che spariscano i riferimenti.
         $stmt = getDB()->prepare('DELETE FROM fan_favorite_trips WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         if ($isAjax) {
@@ -127,7 +132,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $profile = getActingProfile($user);
         }
 
-        $imagePath = handleCoverUpload($profile['slug'], 'image');
+        // Fino a 10 foto: la prima resta su image_path (quella sola che compare nel Feed/nelle
+        // anteprime, come sempre), le eventuali altre alimentano il carosello nella pagina di
+        // dettaglio pubblica. Caricarne di nuove sostituisce l'intero set precedente (stessa
+        // semantica di "sostituzione" già in uso per la singola foto).
+        $uploadedPhotos = handleMultiCoverUpload($profile['slug'], 'images', 10);
+        $imagePath = $uploadedPhotos[0] ?? null;
+        $extraPhotos = array_slice($uploadedPhotos, 1);
         $imageThumbPath = null;
         if ($imagePath) {
             $thumbData = $_POST['image_thumb_data'] ?? '';
@@ -150,8 +161,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 deleteCoverFile($old['image_path']);
                 deleteCoverFile($old['image_thumb_path']);
             }
+            foreach (getTripPhotos($id) as $oldExtra) {
+                deleteCoverFile($oldExtra);
+            }
+            getDB()->prepare('DELETE FROM fan_favorite_trip_photos WHERE trip_id=?')->execute([$id]);
+
             $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
             $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
+
+            if ($extraPhotos) {
+                $insPhoto = getDB()->prepare('INSERT INTO fan_favorite_trip_photos (trip_id, image_path, sort_order) VALUES (?,?,?)');
+                foreach ($extraPhotos as $photoIndex => $photoPath) {
+                    $insPhoto->execute([$id, $photoPath, $photoIndex]);
+                }
+            }
         } else {
             $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
             $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
@@ -162,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $profile['id']]);
             $row = $stmt->fetch();
             header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error]);
+            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'extra_photo_count' => $row ? count(getTripPhotos($id)) : 0]);
             exit;
         }
     } elseif ($action === 'search') {
@@ -276,6 +299,7 @@ include __DIR__ . '/_dash_header.php';
         $isPrivate = !$f['show_in_feed'];
         $isScheduled = $f['publish_at'] && strtotime($f['publish_at']) > time();
         $thumb = $f['image_path'] ?: $f['map_image_path'];
+        $extraPhotoCount = $f['image_path'] ? count(getTripPhotos((int) $f['id'])) : 0;
       ?>
       <div class="link-item" data-tr-favorite="<?= (int)$f['id'] ?>"
            data-tr-note="<?= e($note) ?>" data-tr-has-image="<?= $f['image_path'] ? '1' : '0' ?>"
@@ -289,9 +313,10 @@ include __DIR__ . '/_dash_header.php';
           </a>
           <button type="button" class="btn small danger tr-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
-        <div class="tr-pub-badges" style="display:flex;gap:6px;flex-wrap:wrap;<?= (!$isScheduled && !$isPrivate) ? 'display:none;' : '' ?>">
+        <div class="tr-pub-badges" style="display:flex;gap:6px;flex-wrap:wrap;<?= (!$isScheduled && !$isPrivate && !$extraPhotoCount) ? 'display:none;' : '' ?>">
           <?php if ($isScheduled): ?><span class="tr-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il <?= e(date('d/m/Y H:i', strtotime($f['publish_at']))) ?></span><?php endif; ?>
           <?php if ($isPrivate): ?><span class="tr-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span><?php endif; ?>
+          <?php if ($extraPhotoCount > 0): ?><span class="tr-badge-photos" style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span><?php endif; ?>
         </div>
         <div class="tr-pub-block">
           <?php if ($note !== ''): ?>
@@ -316,8 +341,8 @@ include __DIR__ . '/_dash_header.php';
               <p class="tr-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
             </div>
 
-            <label>Foto (opzionale)</label>
-            <input type="file" class="tr-pub-image-input" accept="image/*">
+            <label>Foto (fino a 10, opzionale)</label>
+            <input type="file" class="tr-pub-image-input" accept="image/*" multiple>
             <input type="hidden" class="tr-pub-image-thumb-data">
             <?php if ($f['image_path']): ?>
               <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p>
@@ -392,13 +417,15 @@ include __DIR__ . '/_dash_header.php';
       return fetch('/dashboard_fan_trips.php', { method: 'POST', body: formData }).then(r => r.json());
     }
 
-    function renderBadges(item) {
+    function renderBadges(item, extraPhotoCount) {
       const isScheduled = item.publish_at && new Date(item.publish_at.replace(' ', 'T')).getTime() > Date.now();
       const isPrivate = !item.show_in_feed || item.show_in_feed == 0;
+      const hasExtraPhotos = (extraPhotoCount || 0) > 0;
       let html = '';
       if (isScheduled) html += '<span class="tr-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il ' + escapeHtml(item.publish_at) + '</span>';
       if (isPrivate) html += '<span class="tr-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span>';
-      return { html: html, visible: isScheduled || isPrivate };
+      if (hasExtraPhotos) html += '<span class="tr-badge-photos" style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +' + extraPhotoCount + ' foto</span>';
+      return { html: html, visible: isScheduled || isPrivate || hasExtraPhotos };
     }
 
     function favoriteRowHtml(item) {
@@ -430,8 +457,8 @@ include __DIR__ . '/_dash_header.php';
         + '<button type="button" class="btn small tr-ai-generate">Genera testo</button>'
         + '<button type="button" class="btn small secondary tr-ai-cancel">Annulla</button></div>'
         + '<p class="tr-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p></div>'
-        + '<label>Foto (opzionale)</label>'
-        + '<input type="file" class="tr-pub-image-input" accept="image/*">'
+        + '<label>Foto (fino a 10, opzionale)</label>'
+        + '<input type="file" class="tr-pub-image-input" accept="image/*" multiple>'
         + '<input type="hidden" class="tr-pub-image-thumb-data">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Senza foto, l\'anteprima social usa una miniatura della mappa.</p>'
         + '<label>Privacy (comparsa nel Feed)</label>'
@@ -670,7 +697,10 @@ include __DIR__ . '/_dash_header.php';
         const customLink = editor.querySelector('.tr-pub-custom-link').value;
         const imageInput = editor.querySelector('.tr-pub-image-input');
         const statusEl = editor.querySelector('.tr-pub-status');
-        const file = imageInput.files && imageInput.files[0];
+        // Fino a 10 foto: solo la prima genera la miniatura leggera (è l'unica che serve nel
+        // Feed/nelle liste), le altre viaggiano intere così come sono state selezionate.
+        const files = imageInput.files ? Array.from(imageInput.files).slice(0, 10) : [];
+        const file = files[0] || null;
 
         function submit(thumbDataUrl) {
           pubSaveBtn.disabled = true;
@@ -682,8 +712,8 @@ include __DIR__ . '/_dash_header.php';
           formData.set('visibility', visibility);
           formData.set('publish_at', publishAt);
           formData.set('custom_feed_guid', customLink);
-          if (file) {
-            formData.set('image', file);
+          if (files.length) {
+            files.forEach(function (f) { formData.append('images[]', f); });
             formData.set('image_thumb_data', thumbDataUrl || '');
           }
           postForm(formData).then(function (data) {
@@ -704,7 +734,7 @@ include __DIR__ . '/_dash_header.php';
               textEl.style.display = 'none';
             }
             toggleEl.textContent = '✏️ Gestisci pubblicazione';
-            const badges = renderBadges(data.item);
+            const badges = renderBadges(data.item, data.extra_photo_count);
             const badgesBox = row.querySelector('.tr-pub-badges');
             badgesBox.innerHTML = badges.html;
             badgesBox.style.display = badges.visible ? 'flex' : 'none';
