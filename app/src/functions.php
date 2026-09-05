@@ -1961,6 +1961,64 @@ function getSameDayFavorites(string $table, int $userId, ?string $referencePubli
     return $stmt->fetchAll();
 }
 
+// Come getSameDayFavorites(), ma per i post "Timeline"/Aggiornamenti (timeline_posts) — usata in
+// timeline_post.php: chi apre un post specifico vede subito sotto, come una sequenza di post
+// uguali, anche tutti gli altri pubblicati la stessa giornata. Schema diverso da quello dei
+// moduli "che amo" (visibility ENUM invece di show_in_feed), da qui una funzione a parte invece
+// di riusare quella.
+function getSameDayTimelinePosts(int $userId, ?string $referencePublishAt, string $referenceCreatedAt, int $excludeId): array {
+    $refDate = substr($referencePublishAt ?: $referenceCreatedAt, 0, 10);
+    $stmt = getDB()->prepare('SELECT * FROM timeline_posts
+        WHERE user_id = ? AND id != ? AND visibility = "public" AND (publish_at IS NULL OR publish_at <= NOW())
+          AND DATE(COALESCE(publish_at, created_at)) = ?
+        ORDER BY COALESCE(publish_at, created_at) ASC, id ASC');
+    $stmt->execute([$userId, $excludeId, $refDate]);
+    return $stmt->fetchAll();
+}
+
+// Blocco foto di un post Timeline: una foto singola (come sempre) oppure, se ce n'è più di una,
+// un carosello scorrevole con un pulsante per aprirlo a tutto schermo — usata sia per il post
+// principale sia per ciascun "altro della stessa giornata" mostrato sotto (vedi
+// getSameDayTimelinePosts()), quindi ogni istanza porta il proprio $postId nell'attributo
+// data-post: sulla stessa pagina possono comparirne più di una, servono id univoci perché lo
+// script che le pilota (in timeline_post.php) le trovi una per una senza confondersi.
+function renderTimelinePostMedia(array $photos, int $postId): string {
+    if (!$photos) {
+        return '';
+    }
+    if (count($photos) === 1) {
+        return '<img src="/' . e($photos[0]) . '" alt=""'
+             . ' style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">';
+    }
+
+    $slides = '';
+    foreach ($photos as $ph) {
+        $slides .= '<img src="/' . e($ph) . '" alt="" loading="lazy">';
+    }
+    $dots = '';
+    foreach ($photos as $i => $ph) {
+        $dots .= '<span class="ig-dot' . ($i === 0 ? ' active' : '') . '" data-index="' . $i . '"></span>';
+    }
+
+    $html = '<div class="ig-carousel" data-post="' . $postId . '">'
+          . '<button type="button" class="ig-expand-btn" aria-label="Vedi a tutto schermo"><i class="fa-solid fa-expand"></i></button>'
+          . '<div class="ig-carousel-track">' . $slides . '</div>'
+          . '<button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>'
+          . '<button type="button" class="ig-arrow ig-arrow-next" aria-label="Foto successiva">›</button>'
+          . '<div class="ig-carousel-dots">' . $dots . '</div>'
+          . '</div>';
+
+    $html .= '<div class="ig-lightbox" data-post="' . $postId . '">'
+          . '<button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>'
+          . '<div class="ig-lightbox-track">' . $slides . '</div>'
+          . '<button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>'
+          . '<button type="button" class="ig-arrow ig-arrow-next" aria-label="Foto successiva">›</button>'
+          . '<div class="ig-carousel-dots ig-lightbox-dots">' . $dots . '</div>'
+          . '</div>';
+
+    return $html;
+}
+
 // Feed aggregato "Timeline": unisce blog, brani, eventi e aggiornamenti brevi pubblicati dai
 // profili indicati, ordinati dal più recente. Query separate per tipo di contenuto invece di
 // una UNION, più semplice da leggere e mantenere con colonne diverse per ciascuna.
