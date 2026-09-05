@@ -98,6 +98,8 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
             <img src="/<?= e($ph) ?>" alt="" loading="lazy">
           <?php endforeach; ?>
         </div>
+        <button type="button" class="ig-arrow ig-arrow-prev" id="ig-prev" aria-label="Foto precedente">‹</button>
+        <button type="button" class="ig-arrow ig-arrow-next" id="ig-next" aria-label="Foto successiva">›</button>
         <div class="ig-carousel-dots" id="ig-dots">
           <?php foreach ($photos as $i => $ph): ?>
             <span class="ig-dot<?= $i === 0 ? ' active' : '' ?>" data-index="<?= $i ?>"></span>
@@ -105,30 +107,58 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
         </div>
       </div>
       <style>
-        .ig-carousel { max-width:400px; margin:0 auto 16px; }
+        .ig-carousel { position:relative; max-width:400px; margin:0 auto 16px; }
         .ig-carousel-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
         .ig-carousel-track::-webkit-scrollbar { display:none; }
         .ig-carousel-track img { scroll-snap-align:center; flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; }
         .ig-carousel-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
         .ig-dot { width:6px; height:6px; border-radius:50%; background:rgba(var(--text-rgb),0.25); cursor:pointer; transition:background .15s; }
         .ig-dot.active { background:var(--accent); }
+        /* Frecce: servono solo a chi ha un mouse vero (niente swipe col dito) — su touch
+           restano nascoste, lì basta e avanza scorrere con il dito come già accade. */
+        .ig-arrow { display:none; }
+        @media (hover:hover) and (pointer:fine) {
+          .ig-arrow {
+            display:flex; align-items:center; justify-content:center;
+            position:absolute; top:50%; transform:translateY(-50%);
+            width:32px; height:32px; border-radius:50%; border:none;
+            background:rgba(0,0,0,0.45); color:#fff; font-size:20px; line-height:1;
+            cursor:pointer; z-index:5;
+          }
+          .ig-arrow:hover { background:rgba(0,0,0,0.65); }
+          .ig-arrow-prev { left:8px; }
+          .ig-arrow-next { right:8px; }
+        }
       </style>
       <script>
       (function () {
         var track = document.getElementById('ig-track');
         var dots = document.querySelectorAll('#ig-dots .ig-dot');
+        var prevBtn = document.getElementById('ig-prev');
+        var nextBtn = document.getElementById('ig-next');
         if (!track || !dots.length) return;
+        var count = dots.length;
+
+        function goTo(idx) {
+          idx = Math.max(0, Math.min(count - 1, idx));
+          track.scrollTo({ left: idx * track.clientWidth, behavior: 'smooth' });
+        }
+        function currentIndex() {
+          return Math.round(track.scrollLeft / track.clientWidth);
+        }
+
         dots.forEach(function (dot) {
-          dot.addEventListener('click', function () {
-            track.scrollTo({ left: parseInt(dot.dataset.index, 10) * track.clientWidth, behavior: 'smooth' });
-          });
+          dot.addEventListener('click', function () { goTo(parseInt(dot.dataset.index, 10)); });
         });
+        if (prevBtn) prevBtn.addEventListener('click', function () { goTo(currentIndex() - 1); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { goTo(currentIndex() + 1); });
+
         var ticking = false;
         track.addEventListener('scroll', function () {
           if (ticking) return;
           ticking = true;
           requestAnimationFrame(function () {
-            var idx = Math.round(track.scrollLeft / track.clientWidth);
+            var idx = currentIndex();
             dots.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
             ticking = false;
           });
