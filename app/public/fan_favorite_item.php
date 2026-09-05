@@ -244,22 +244,44 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
     </div>
     <?php foreach ($sameDayItems as $s): ?>
       <?php
+        // Stessa grafica del post principale sopra (foto, titolo, nota) — niente però le info
+        // live dall'API esterna (generi, biografia...) per ciascun elemento della giornata: qui
+        // richiederebbe una chiamata API in più per ogni elemento a ogni visita della pagina,
+        // rischioso per i limiti di quota (vedi Spotify) per un dettaglio secondario.
         $sName = $s[$cfg['name_col']];
         $sImage = $s['image_path'] ?: ($s[$cfg['image_col']] ?? null);
         $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
-        $sWhen = $s['publish_at'] ?: $s['created_at'];
+        $sNote = trim($s['note'] ?? '');
+        $sExternalUrl = $cfg['external_url'] . $s[$cfg['external_id_col']];
       ?>
-      <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $s['id'] ?>"
-         class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">
-        <?php if ($sImageUrl): ?>
-          <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>" style="width:64px;height:64px;border-radius:<?= ($cfg['image_shape'] ?? 'circle') === 'circle' ? '50%' : '10px' ?>;object-fit:cover;flex-shrink:0;">
+      <div class="card" style="text-align:center;">
+        <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $s['id'] ?>" style="text-decoration:none;color:inherit;">
+          <?php if ($sImageUrl): ?>
+            <?php if (($cfg['image_shape'] ?? 'circle') === 'book'): ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>"
+                   style="width:140px;height:190px;border-radius:8px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+            <?php elseif (($cfg['image_shape'] ?? 'circle') === 'square'): ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>"
+                   style="width:170px;height:170px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+            <?php else: ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>"
+                   style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+            <?php endif; ?>
+          <?php endif; ?>
+          <h2 style="font-size:20px;margin:0 0 4px;"><?= e($sName) ?></h2>
+          <p style="opacity:0.75;margin-top:0;">
+            <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
+            <?php if ($kind === 'album' && !empty($s['album_artist_name'])): ?> · <?= e($s['album_artist_name']) ?><?php endif; ?>
+          </p>
+        </a>
+        <?php if ($sNote !== ''): ?>
+          <div class="card" style="text-align:left;margin-top:14px;">
+            <strong>Perché <?= e($artist['display_name']) ?> lo ama</strong>
+            <p style="margin:6px 0 0;"><?= nl2br(e($sNote)) ?></p>
+          </div>
         <?php endif; ?>
-        <div style="flex:1;min-width:0;">
-          <small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;"><?= e($cfg['label']) ?></small><br>
-          <strong><?= e($sName) ?></strong><br>
-          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(date('d/m/Y H:i', strtotime($sWhen))) ?></small>
-        </div>
-      </a>
+        <p style="margin-top:16px;"><a href="<?= e($sExternalUrl) ?>" target="_blank" rel="noopener" class="btn small"><?= e($cfg['external_label']) ?></a></p>
+      </div>
     <?php endforeach; ?>
   <?php endif; ?>
 

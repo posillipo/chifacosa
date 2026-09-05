@@ -42,6 +42,11 @@ $artist = [
     'page_theme' => $post['page_theme'] ?? 'colorful',
 ];
 
+// Foto in ordine di caricamento: la prima è sempre quella su image_path (l'unica che compare
+// anche nel Feed/Timeline), le altre — se presenti — arrivano da timeline_post_photos e formano
+// insieme a questa un carosello scorrevole stile Instagram sulla pagina di dettaglio.
+$photos = array_values(array_filter(array_merge([$post['image_path']], getTimelinePostPhotos($postId))));
+
 $pageUrl = siteUrl('/' . $slug . '/timeline/' . $postId);
 $ogImage = $post['image_path'] ? siteUrl($post['image_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
 $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiornamento su ' . siteName());
@@ -86,8 +91,52 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
   <?= publicProfileHeader($artist, 'timeline') ?>
 
   <div class="card">
-    <?php if ($post['image_path']): ?>
-      <img src="/<?= e($post['image_path']) ?>" alt=""
+    <?php if (count($photos) > 1): ?>
+      <div class="ig-carousel">
+        <div class="ig-carousel-track" id="ig-track">
+          <?php foreach ($photos as $ph): ?>
+            <img src="/<?= e($ph) ?>" alt="" loading="lazy">
+          <?php endforeach; ?>
+        </div>
+        <div class="ig-carousel-dots" id="ig-dots">
+          <?php foreach ($photos as $i => $ph): ?>
+            <span class="ig-dot<?= $i === 0 ? ' active' : '' ?>" data-index="<?= $i ?>"></span>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <style>
+        .ig-carousel { max-width:400px; margin:0 auto 16px; }
+        .ig-carousel-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+        .ig-carousel-track::-webkit-scrollbar { display:none; }
+        .ig-carousel-track img { scroll-snap-align:center; flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; }
+        .ig-carousel-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+        .ig-dot { width:6px; height:6px; border-radius:50%; background:rgba(var(--text-rgb),0.25); cursor:pointer; transition:background .15s; }
+        .ig-dot.active { background:var(--accent); }
+      </style>
+      <script>
+      (function () {
+        var track = document.getElementById('ig-track');
+        var dots = document.querySelectorAll('#ig-dots .ig-dot');
+        if (!track || !dots.length) return;
+        dots.forEach(function (dot) {
+          dot.addEventListener('click', function () {
+            track.scrollTo({ left: parseInt(dot.dataset.index, 10) * track.clientWidth, behavior: 'smooth' });
+          });
+        });
+        var ticking = false;
+        track.addEventListener('scroll', function () {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(function () {
+            var idx = Math.round(track.scrollLeft / track.clientWidth);
+            dots.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
+            ticking = false;
+          });
+        });
+      })();
+      </script>
+    <?php elseif ($photos): ?>
+      <img src="/<?= e($photos[0]) ?>" alt=""
            style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
     <?php endif; ?>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= date('d/m/Y H:i', strtotime($post['created_at'])) ?></small>

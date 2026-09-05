@@ -1872,6 +1872,50 @@ function handleCoverUpload(string $slug, string $fileInputName = 'cover'): ?stri
     return null;
 }
 
+// Upload multiplo (fino a $maxFiles foto) — usato SOLO dai post Timeline con più foto (carosello
+// stile Instagram): la prima foto resta salvata come al solito su timeline_posts.image_path
+// (quella che compare nel Feed), le eventuali altre finiscono in timeline_post_photos. Ogni file
+// passa dalla stessa compressione di handleCoverUpload() (sempre .jpg, mai oltre 250KB); un file
+// non valido viene scartato in silenzio senza bloccare gli altri. Restituisce l'elenco dei
+// percorsi relativi salvati, nell'ordine di caricamento (array vuoto se nessun file valido).
+function handleMultiCoverUpload(string $slug, string $fileInputName, int $maxFiles = 10): array {
+    if (empty($_FILES[$fileInputName]['name']) || !is_array($_FILES[$fileInputName]['name'])) {
+        return [];
+    }
+    $files = $_FILES[$fileInputName];
+    $dir = '/var/www/html/uploads/images/' . $slug;
+    $paths = [];
+    for ($i = 0; $i < count($files['name']) && count($paths) < $maxFiles; $i++) {
+        if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+            continue;
+        }
+        $raw = file_get_contents($files['tmp_name'][$i]);
+        if ($raw === false) {
+            continue;
+        }
+        $jpeg = compressImageToJpeg($raw);
+        if ($jpeg === null) {
+            continue;
+        }
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $fname = bin2hex(random_bytes(6)) . '.jpg';
+        if (file_put_contents($dir . '/' . $fname, $jpeg) !== false) {
+            $paths[] = 'uploads/images/' . $slug . '/' . $fname;
+        }
+    }
+    return $paths;
+}
+
+// Foto aggiuntive (dalla 2 alla 10) di un post Timeline, nell'ordine di caricamento — vedi
+// handleMultiCoverUpload(). La prima foto non è qui: resta su timeline_posts.image_path.
+function getTimelinePostPhotos(int $postId): array {
+    $stmt = getDB()->prepare('SELECT image_path FROM timeline_post_photos WHERE post_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$postId]);
+    return array_column($stmt->fetchAll(), 'image_path');
+}
+
 // Elimina il file di copertina dal disco, se presente (usato quando si elimina un link/post/evento)
 function deleteCoverFile(?string $coverPath): void {
     if ($coverPath) {

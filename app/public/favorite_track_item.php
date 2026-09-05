@@ -123,21 +123,32 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
     </div>
     <?php foreach ($sameDayItems as $s): ?>
       <?php
+        // Stessa grafica del post principale sopra (foto, titolo, nota).
         $sImage = $s['image_path'] ?: $s['track_image'];
         $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
-        $sWhen = $s['publish_at'] ?: $s['created_at'];
+        $sNote = trim($s['note'] ?? '');
       ?>
-      <a href="/<?= e($slug) ?>/brani/<?= (int) $s['id'] ?>/scheda"
-         class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">
-        <?php if ($sImageUrl): ?>
-          <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['track_name']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+      <div class="card" style="text-align:center;">
+        <a href="/<?= e($slug) ?>/brani/<?= (int) $s['id'] ?>/scheda" style="text-decoration:none;color:inherit;">
+          <?php if ($sImageUrl): ?>
+            <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['track_name']) ?>"
+                 style="width:220px;height:220px;border-radius:16px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+          <?php endif; ?>
+          <h2 style="font-size:20px;margin:0 0 4px;"><?= e($s['track_name']) ?></h2>
+          <p style="opacity:0.75;margin-top:0;">
+            Brano che amo di <?= e($artist['display_name']) ?><?php if ($s['artist_name']): ?> · <?= e($s['artist_name']) ?><?php endif; ?>
+          </p>
+        </a>
+        <?php if ($sNote !== ''): ?>
+          <div class="card" style="text-align:left;margin-top:14px;">
+            <strong>Perché <?= e($artist['display_name']) ?> lo ama</strong>
+            <p style="margin:6px 0 0;"><?= nl2br(e($sNote)) ?></p>
+          </div>
         <?php endif; ?>
-        <div style="flex:1;min-width:0;">
-          <small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">🎵 Brano che amo</small><br>
-          <strong><?= e($s['track_name']) ?></strong><br>
-          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(date('d/m/Y H:i', strtotime($sWhen))) ?></small>
-        </div>
-      </a>
+        <?php if ($s['spotify_url']): ?>
+          <p style="margin-top:16px;"><a href="<?= e($s['spotify_url']) ?>" target="_blank" rel="noopener" class="btn small">Ascolta su Spotify</a></p>
+        <?php endif; ?>
+      </div>
     <?php endforeach; ?>
   <?php endif; ?>
 

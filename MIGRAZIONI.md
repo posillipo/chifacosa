@@ -792,6 +792,30 @@ l'API a ogni visualizzazione. Pagina di dettaglio mostra anche i generi musicali
 `/slug/album-che-amo/ID`, integrazione nel Feed, card nella vetrina "Che Amo", elenco pubblico a
 mattonelle su `/slug/album-che-amo`.
 
+## 43. Fino a 10 foto per post Timeline (carosello stile Instagram)
+```sql
+CREATE TABLE IF NOT EXISTS timeline_post_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES timeline_posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Riguarda solo i post "Timeline"/Aggiornamenti (`timeline_posts`, l'`action=add` di
+`dashboard_post.php`) — non gli altri moduli "che amo": `timeline_posts.image_path` resta la
+prima foto (l'unica che compare nel Feed/Timeline, come sempre), le altre fino a 9 finiscono qui
+in `timeline_post_photos`, nell'ordine di caricamento (`sort_order`). Nuovo helper
+`handleMultiCoverUpload()` in `functions.php` (upload multiplo `name="images[]"`, stessa
+compressione JPEG ≤250KB di `handleCoverUpload()`, file non validi scartati in silenzio) +
+`getTimelinePostPhotos()` per leggerle in ordine. Pagina di dettaglio `timeline_post.php`: se un
+post ha più di una foto, al posto dell'immagine singola appare un carosello scorrevole (scroll-snap
+CSS, swipe nativo su touch, puntini indicatori cliccabili) — con una sola foto resta identico a
+prima, nessun cambiamento visivo. Eliminando un post da `dashboard_post.php` vengono ripuliti
+anche i file delle foto extra (le righe DB spariscono da sole grazie a `ON DELETE CASCADE`).
+
 ---
 
 ## Come aggiungere una nuova voce

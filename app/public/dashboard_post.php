@@ -33,7 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $testo = trim($_POST['testo'] ?? '');
-        $imagePath = handleCoverUpload($profile['slug'], 'image');
+        // Fino a 10 foto: la prima resta su image_path (quella sola che compare nel Feed, come
+        // sempre), le eventuali altre (fino a 9) alimentano il carosello nella pagina di dettaglio.
+        $uploadedPhotos = handleMultiCoverUpload($profile['slug'], 'images', 10);
+        $imagePath = $uploadedPhotos[0] ?? null;
+        $extraPhotos = array_slice($uploadedPhotos, 1);
 
         // Miniatura leggera per la lista/feed, generata nel browser (canvas) al momento della
         // selezione del file — vedi commento analogo per il ritaglio avatar in
@@ -72,6 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, publish_at) VALUES (?,?,?,?,?,?)');
             $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $publishAt]);
+            $newPostId = (int) getDB()->lastInsertId();
+
+            if ($extraPhotos) {
+                $insPhoto = getDB()->prepare('INSERT INTO timeline_post_photos (post_id, image_path, sort_order) VALUES (?,?,?)');
+                foreach ($extraPhotos as $photoIndex => $photoPath) {
+                    $insPhoto->execute([$newPostId, $photoPath, $photoIndex]);
+                }
+            }
+
             logAdminAction((int) $profile['id'], (int) $user['id'], 'Nuovo aggiornamento in Timeline', $testo !== '' ? textExcerpt($testo, 60) : 'Foto pubblicata');
 
             // Niente notifica ai follower se il post è privato o programmato per il futuro —
@@ -90,7 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['image_path']);
             deleteCoverFile($row['image_thumb_path']);
+            foreach (getTimelinePostPhotos($id) as $extraPath) {
+                deleteCoverFile($extraPath);
+            }
         }
+        // timeline_post_photos ha ON DELETE CASCADE: le righe spariscono da sole, qui sopra
+        // servivano solo per cancellare i FILE dal disco prima che spariscano i riferimenti.
         $stmt = getDB()->prepare('DELETE FROM timeline_posts WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         logAdminAction((int) $profile['id'], (int) $user['id'], 'Aggiornamento eliminato dalla Timeline');
@@ -145,8 +163,12 @@ include __DIR__ . '/_dash_header.php';
       </div>
       <p id="ai-caption-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
     </div>
-    <label>Foto (opzionale)</label>
-    <input type="file" name="image" id="post-image-input" accept="image/*">
+    <label>Foto (fino a 10, opzionale)</label>
+    <input type="file" name="images[]" id="post-image-input" accept="image/*" multiple>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+      Se ne carichi più di una, sulla pagina del post appariranno in un carosello scorrevole
+      (come su Instagram) — nel Feed e in Timeline continua a comparire solo la prima.
+    </p>
     <input type="hidden" name="image_thumb_data" id="post-image-thumb-data">
 
     <label>Privacy</label>
@@ -191,6 +213,9 @@ include __DIR__ . '/_dash_header.php';
     <?php
       $isScheduled = $p['publish_at'] && strtotime($p['publish_at']) > time();
       $isPrivate = $p['visibility'] === 'private';
+      $stmt = getDB()->prepare('SELECT COUNT(*) c FROM timeline_post_photos WHERE post_id=?');
+      $stmt->execute([$p['id']]);
+      $extraPhotoCount = (int) $stmt->fetch()['c'];
     ?>
     <div class="card" style="display:flex;gap:14px;align-items:flex-start;<?= $isScheduled ? 'border:1px solid #f0ad4e;' : '' ?>">
       <?php if ($p['image_path']): ?>
@@ -205,6 +230,9 @@ include __DIR__ . '/_dash_header.php';
           <?php endif; ?>
           <?php if ($isPrivate): ?>
             <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>
+          <?php endif; ?>
+          <?php if ($extraPhotoCount > 0): ?>
+            <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
           <?php endif; ?>
         </div>
         <small style="color:var(--text-muted)"><?= date('d/m/Y H:i', strtotime($p['created_at'])) ?></small>
