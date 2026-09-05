@@ -74,16 +74,6 @@ if (($artist['page_theme'] ?? 'colorful') === 'infinite-parallax') {
     exit;
 }
 
-// Tema "Studio Medico": stesso principio — sostituisce solo la Home con una scena WebGL calma,
-// il resto del profilo resta invariato. Palette blu-verde acqua invece dell'intera ruota
-// cromatica di Giardino Anomalo, per un effetto più clinico/rilassante.
-if (($artist['page_theme'] ?? 'colorful') === 'medical-glass') {
-    $hasMenu = menuHasItems((int) $uid);
-    $navBars = buildGardenAnomalyNavBlobs($artist, $slug, $hiddenNavKeys, $hasMenu, [165, 210]);
-    echo renderMedicalGlassScene($artist, $slug, $navBars);
-    exit;
-}
-
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
 $links->execute([$uid]);
 $links = $links->fetchAll();

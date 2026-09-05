@@ -580,7 +580,6 @@ const PAGE_THEMES = [
     'garden-anomaly' => ['label' => 'Giardino Anomalo', 'description' => 'Una sfera di vetro 3D con gocce fisiche che rimbalzano e tintinnano al tocco — ogni goccia è una voce del tuo menu (Timeline, Blog, Brani...) e ci si clicca sopra per andarci. Richiede un browser con supporto WebGPU (Chrome/Edge aggiornati); su browser non compatibili la pagina mostra un semplice elenco di link', 'body_class' => 'garden-anomaly-page'],
     'infinite-parallax' => ['label' => 'Scorrimento Infinito', 'description' => 'La Home diventa una serie di pannelli a schermo intero — il tuo profilo, poi una voce del menu ciascuno — con scorrimento morbido e continuo e un leggero effetto di profondità sulle immagini mentre scorri, in loop senza fine. Si tocca un pannello per andare alla vera pagina. Nessuna grafica 3D, leggero e affidabile ovunque', 'body_class' => 'infinite-parallax-page'],
     'cinemapop' => ['label' => 'Cinema Pop', 'description' => 'Ispirato a una sala cinematografica: sfondo scuro con un bagliore arancione da faretto dietro l\'avatar, pellicola con fori da film in alto e in basso, popcorn dorati che salgono dal basso in continuo, pulsanti a righe come un secchiello di popcorn con un riflesso lucido che scorre — colori e atmosfera originali, nessun logo di alcun cinema', 'body_class' => 'cinemapop-page'],
-    'medical-glass' => ['label' => 'Studio Medico', 'description' => 'Un ambiente in vetro smerigliato, calmo e pulito: barre di vetro traslucido in tonalità blu-verde acqua — una per ogni voce del tuo menu — che respirano piano e risuonano con un piccolo tocco sonoro quando ci passi sopra. Funziona su qualunque browser con WebGL, senza requisiti particolari; su browser molto datati mostra un semplice elenco di link', 'body_class' => 'medical-glass-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -658,16 +657,13 @@ function renderGalacticBackground(): string {
     <script src="' . assetUrl('/assets/js/galactic-fx.js') . '"></script>';
 }
 
-// Voci di navigazione trasformate in "protuberanze" cliccabili nelle scene 3D dei temi
-// "Giardino Anomalo", "Scorrimento Infinito" e "Studio Medico" — stessa logica/ordine di
-// publicNav() (spotify/podcast/video solo se band/label e collegati, eventi solo se
-// band/label, menu solo se ci sono piatti attivi), ma esclude Home (è la scena stessa) e
-// Segui (resta un pulsante fisso separato in overlay, non una pagina a sé). A ogni voce
-// viene assegnato un colore distinto distribuito su $hueRange (l'intera ruota cromatica di
-// default, per Giardino Anomalo; un arco più stretto blu-verde acqua per Studio Medico, così
-// la palette resta calma/clinica invece che arcobaleno) così gli elementi restano comunque
-// visivamente distinguibili tra loro.
-function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu, array $hueRange = [0, 300]): array {
+// Voci di navigazione trasformate in "protuberanze" cliccabili nella scena 3D del tema
+// "Giardino Anomalo" — stessa logica/ordine di publicNav() (spotify/podcast/video solo se
+// band/label e collegati, eventi solo se band/label, menu solo se ci sono piatti attivi),
+// ma esclude Home (è la scena stessa) e Segui (resta un pulsante fisso separato in overlay,
+// non una pagina a sé). A ogni voce viene assegnato un colore distinto (tonalità distribuite
+// sulla ruota cromatica) così le gocce nella sfera sono visivamente distinguibili.
+function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNavKeys, bool $hasMenu): array {
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
 
     // Stesso ordine di publicNav()/PUBLIC_NAV_ITEM_KEYS, allineato a quello della barra di
@@ -702,7 +698,7 @@ function buildGardenAnomalyNavBlobs(array $artist, string $slug, array $hiddenNa
     $blobs = [];
     $i = 0;
     foreach ($visible as $key => $item) {
-        $hue = (int) round($hueRange[0] + ($i / $n) * ($hueRange[1] - $hueRange[0]));
+        $hue = (int) round(($i / $n) * 300);
         $blobs[] = [
             'key' => $key,
             'label' => $item['label'],
@@ -866,153 +862,6 @@ window.__GA_DATA__ = {
 };
 </script>
 <script type="module" src="<?= assetUrl($base . '/scene.js') ?>"></script>
-</body>
-</html>
-    <?php
-    return ob_get_clean();
-}
-
-// Tema grafico "Studio Medico": sostituisce interamente la Home pubblica con una scena WebGL
-// calma — barre di vetro smerigliato (transmission reale via MeshPhysicalMaterial, che
-// rifrange ciò che sta dietro) allineate come un tracciato di monitor, una per voce del menu
-// di navigazione. Adattamento libero, in chiave "clinica/rilassante", dell'esperimento
-// creativo open-source "Xylophone" (barre di vetro instanziate + hover sonoro): qui niente
-// simulazione fluida né audio campionato, solo un respiro idle e un tocco sonoro sintetizzato,
-// per restare leggero e funzionare con il solo WebGL classico (nessun requisito WebGPU, a
-// differenza di "Giardino Anomalo"). Le barre sono le voci del menu: toccarle porta alla vera
-// pagina, non genera contenuto nella scena — SEO e condivisione social restano intatte.
-function renderMedicalGlassScene(array $artist, string $slug, array $navBars): string {
-    $pageUrl = siteUrl('/' . $slug);
-    $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
-    $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di ' . $artist['display_name'] . ' su ' . siteName());
-    $accent = $artist['theme_color'] ?: '#2f8f9d';
-    $base = '/assets/themes/medical-glass';
-
-    $viewerId = $_SESSION['user_id'] ?? null;
-    $uid = (int) $artist['id'];
-    $isOwnProfile = $viewerId && (int) $viewerId === $uid;
-    $alreadyFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
-
-    $navData = json_encode(array_map(static function (array $b): array {
-        return ['label' => $b['label'], 'url' => $b['url'], 'color' => $b['color']];
-    }, array_values($navBars)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    $fallbackLinks = '';
-    foreach ($navBars as $b) {
-        $fallbackLinks .= '<a href="' . e($b['url']) . '">' . e($b['label']) . '</a>';
-    }
-
-    ob_start();
-    ?>
-<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
-<meta name="description" content="<?= e($ogDescription) ?>">
-<meta property="og:type" content="profile">
-<meta property="og:title" content="<?= e($artist['display_name']) ?>">
-<meta property="og:description" content="<?= e($ogDescription) ?>">
-<meta property="og:url" content="<?= e($pageUrl) ?>">
-<meta property="og:site_name" content="<?= e(siteName()) ?>">
-<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="<?= e($artist['display_name']) ?>">
-<meta name="twitter:description" content="<?= e($ogDescription) ?>">
-<link rel="canonical" href="<?= e($pageUrl) ?>">
-<link rel="alternate" type="application/rss+xml" title="<?= e($artist['display_name']) ?> — <?= e(siteName()) ?>" href="<?= e(siteUrl('/' . $slug . '/feed')) ?>">
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:100%; height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased; background:linear-gradient(160deg,#f4faf9 0%,#e3f0f5 55%,#d8eaf2 100%); color:#16323a; font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-body.medical-glass-page { display:flex; align-items:center; justify-content:center; }
-canvas#mg-canvas { display:block; position:fixed; inset:0; width:100%; height:100%; touch-action:none; cursor:default; }
-#mg-vignette { pointer-events:none; position:fixed; inset:0; box-shadow:inset 0 0 110px rgba(30,60,70,0.10); z-index:98; }
-#mg-loader { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:900; pointer-events:none; transition:opacity .5s ease; background:linear-gradient(160deg,#f4faf9 0%,#e3f0f5 55%,#d8eaf2 100%); }
-#mg-loader.hidden { opacity:0; }
-.mg-spinner { width:36px; height:36px; border:3px solid rgba(30,70,80,0.15); border-top-color:<?= e($accent) ?>; border-radius:50%; animation:mg-spin .8s linear infinite; }
-@keyframes mg-spin { to { transform:rotate(360deg); } }
-.mg-loading-text { font:400 13px system-ui, sans-serif; color:#3a5a62; letter-spacing:.08em; }
-#mg-title-block { position:fixed; top:26px; left:26px; z-index:200; max-width:min(280px, 60vw); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
-#mg-title-block img { width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.9); box-shadow:0 4px 14px rgba(20,60,70,0.18); margin-bottom:6px; }
-#mg-title-eyebrow { font:400 12px/1 system-ui, sans-serif; text-transform:uppercase; letter-spacing:.1em; color:#3a5a62; }
-#mg-title-headline { font:600 24px/1.15 system-ui, sans-serif; color:#14343c; }
-#mg-hint { position:fixed; bottom:70px; left:26px; z-index:200; font:400 12px/1.5 system-ui, sans-serif; color:#3a5a62; max-width:230px; }
-#mg-hover-label { position:fixed; z-index:250; transform:translate(-50%,-100%); background:rgba(20,50,58,0.85); color:#fff; font:600 13px system-ui, sans-serif; padding:5px 12px; border-radius:999px; pointer-events:none; display:none; white-space:nowrap; box-shadow:0 4px 14px rgba(20,50,58,0.25); }
-#mg-follow { position:fixed; top:26px; right:26px; z-index:200; }
-#mg-follow button, #mg-follow .mg-pill { font:600 13px system-ui, sans-serif; border:none; border-radius:999px; padding:9px 18px; cursor:pointer; background:<?= e($accent) ?>; color:#fff; box-shadow:0 4px 14px rgba(20,50,58,0.2); }
-#mg-sound-toggle { position:fixed; bottom:26px; right:26px; z-index:200; width:42px; height:42px; border-radius:50%; border:none; background:rgba(20,50,58,0.55); color:#fff; font-size:16px; cursor:pointer; box-shadow:0 4px 14px rgba(20,50,58,0.25); }
-#mg-sound-toggle[aria-pressed="true"] { background:<?= e($accent) ?>; }
-#mg-footer { position:fixed; bottom:14px; left:0; right:0; z-index:150; display:flex; justify-content:center; gap:14px; font:400 11px system-ui, sans-serif; color:#3a5a62; }
-#mg-footer a { color:inherit; text-decoration:none; opacity:.75; }
-#mg-footer a:hover { opacity:1; }
-#mg-fallback { position:fixed; inset:0; z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:linear-gradient(160deg,#f4faf9 0%,#e3f0f5 55%,#d8eaf2 100%); }
-#mg-fallback.show { display:flex; }
-#mg-fallback h1 { font:600 22px system-ui, sans-serif; color:#14343c; }
-#mg-fallback p { font:400 13px system-ui, sans-serif; color:#3a5a62; max-width:280px; }
-#mg-fallback a { display:block; margin:4px 0; padding:10px 20px; border-radius:999px; background:#fff; color:#14343c; text-decoration:none; font:600 13px system-ui, sans-serif; box-shadow:0 2px 10px rgba(20,50,58,0.12); }
-@media (max-width:640px) {
-  #mg-title-block img { width:44px; height:44px; }
-  #mg-title-headline { font-size:19px; }
-  #mg-hint { display:none; }
-}
-</style>
-</head>
-<body class="medical-glass-page">
-<?= embedTrackingBodyStart() ?>
-<div id="mg-vignette"></div>
-<div id="mg-title-block">
-  <?php if (!empty($artist['avatar_path'])): ?><img src="/<?= e($artist['avatar_path']) ?>" alt="<?= e($artist['display_name']) ?>"><?php endif; ?>
-  <span id="mg-title-eyebrow">@<?= e($slug) ?></span>
-  <span id="mg-title-headline"><?= e($artist['display_name']) ?></span>
-</div>
-<p id="mg-hint">Sfiora le barre di vetro per scoprire le sezioni, toccale per aprirle.</p>
-<div id="mg-hover-label"></div>
-
-<div id="mg-follow">
-<?php if (!$isOwnProfile): ?>
-  <?php if ($viewerId): ?>
-    <form method="post" action="/follow_account.php">
-      <?= csrfField() ?>
-      <input type="hidden" name="user_id" value="<?= $uid ?>">
-      <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
-      <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
-      <button type="submit" class="mg-pill"><?= $alreadyFollowing ? '✓ Segui già' : '✨ Segui' ?></button>
-    </form>
-  <?php else: ?>
-    <details>
-      <summary class="mg-pill" style="display:inline-block;">✨ Segui</summary>
-    </details>
-  <?php endif; ?>
-<?php endif; ?>
-</div>
-
-<button type="button" id="mg-sound-toggle" title="Attiva i suoni" aria-pressed="false">🔈</button>
-
-<div id="mg-footer">
-  <a href="#" class="cky-banner-element">Preferenze Cookie</a>
-  <?php if ($viewerId): ?><a href="/dashboard_profile.php">Dashboard</a><?php else: ?><a href="/"><?= e(siteName()) ?></a><?php endif; ?>
-</div>
-
-<div id="mg-loader"><div class="mg-spinner"></div><div class="mg-loading-text">caricamento…</div></div>
-
-<div id="mg-fallback">
-  <h1><?= e($artist['display_name']) ?></h1>
-  <p>Questo profilo usa un tema 3D che richiede un browser con supporto WebGL. Ecco i link diretti:</p>
-  <?= $fallbackLinks ?>
-</div>
-
-<script>
-window.__MG_DATA__ = {
-  navItems: <?= $navData ?>,
-  accent: <?= json_encode($accent) ?>
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="<?= assetUrl($base . '/scene.js') ?>"></script>
 </body>
 </html>
     <?php

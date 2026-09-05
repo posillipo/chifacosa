@@ -61,7 +61,6 @@ $themePickerBackgrounds = [
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'garden-anomaly' => 'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.55), transparent 60%), linear-gradient(160deg,#eef1f5,#c9d2de)',
     'infinite-parallax' => 'linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.6)), linear-gradient(160deg, #2c2c38, #0a0a0f)',
-    'medical-glass' => 'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.6), transparent 60%), linear-gradient(160deg,#eaf6f5,#cfe8ee)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -283,14 +282,6 @@ include __DIR__ . '/_dash_header.php';
               <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;height:60px;">
                 <div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font:900 20px Arial, sans-serif;color:rgba(255,255,255,0.18);white-space:nowrap;letter-spacing:-1px;">SCROLL • SCROLL • SCROLL</div>
                 <div style="position:relative;width:34px;height:34px;border-radius:50%;margin:0 auto;background:#fff;border:2px solid rgba(255,255,255,0.85);"></div>
-              </div>
-            <?php elseif ($key === 'medical-glass'): ?>
-              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;height:60px;display:flex;align-items:flex-end;justify-content:center;gap:4px;">
-                <div style="width:6px;height:26px;border-radius:3px;background:rgba(120,190,200,0.6);border:1px solid rgba(255,255,255,0.85);"></div>
-                <div style="width:6px;height:40px;border-radius:3px;background:rgba(100,170,220,0.6);border:1px solid rgba(255,255,255,0.85);"></div>
-                <div style="width:6px;height:20px;border-radius:3px;background:rgba(140,205,195,0.6);border:1px solid rgba(255,255,255,0.85);"></div>
-                <div style="width:6px;height:33px;border-radius:3px;background:rgba(110,180,210,0.6);border:1px solid rgba(255,255,255,0.85);"></div>
-                <div style="width:6px;height:24px;border-radius:3px;background:rgba(130,198,195,0.6);border:1px solid rgba(255,255,255,0.85);"></div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>
