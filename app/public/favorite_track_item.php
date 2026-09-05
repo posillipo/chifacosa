@@ -38,6 +38,11 @@ $personalImage = $track['image_path'] ?: null;
 $image = $personalImage ?: $track['track_image'];
 $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
 
+// Altri brani pubblicati lo stesso giorno di questo — così chi arriva da un link personale a
+// un solo brano (es. una copertina condivisa) vede subito anche gli altri della stessa
+// giornata, senza dover andare a sfogliare la Timeline.
+$sameDayItems = getSameDayFavorites('favorite_tracks', $artist['id'], $track['publish_at'], $track['created_at'], $trackId);
+
 $pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/scheda');
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $track['track_name'] . '" — scoprilo su ' . siteName());
 ?>
@@ -111,6 +116,27 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
       <a href="/<?= e($slug) ?>/brani/<?= (int)$track['id'] ?>/votazioni" class="btn small secondary">★ Vota</a>
     </div>
   </div>
+
+  <?php if ($sameDayItems): ?>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
+      Altri di questa giornata (<?= count($sameDayItems) ?>)
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      <?php foreach ($sameDayItems as $s): ?>
+        <?php
+          $sImage = $s['image_path'] ?: $s['track_image'];
+          $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
+        ?>
+        <a href="/<?= e($slug) ?>/brani/<?= (int) $s['id'] ?>/scheda"
+           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:10px 6px;">
+          <?php if ($sImageUrl): ?>
+            <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['track_name']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;margin-bottom:6px;">
+          <?php endif; ?>
+          <div style="font-weight:700;font-size:12px;"><?= e($s['track_name']) ?></div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 
   <p><a href="/<?= e($slug) ?>/brani">← Tutti i brani che ama <?= e($artist['display_name']) ?></a></p>
 </div>

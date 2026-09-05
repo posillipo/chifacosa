@@ -120,6 +120,11 @@ $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)
 $note = trim($item['note'] ?? '');
 $externalUrl = $cfg['external_url'] . $item[$cfg['external_id_col']];
 
+// Altri elementi dello stesso modulo pubblicati lo stesso giorno di questo — così chi arriva
+// da un link personale a un solo elemento (es. una foto condivisa) vede subito anche gli altri
+// della stessa giornata, senza dover andare a sfogliare la Timeline.
+$sameDayItems = getSameDayFavorites($cfg['table'], $artist['id'], $item['publish_at'], $item['created_at'], $itemId);
+
 // Info aggiuntive recuperate in tempo reale dall'API (biografia, generi, ecc.) — non salvate nel
 // nostro database: restano sempre aggiornate, e se l'API non risponde la pagina funziona
 // comunque con solo nome/immagine/nota già salvati.
@@ -232,6 +237,34 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 
     <p style="margin-top:16px;"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn small"><?= e($cfg['external_label']) ?></a></p>
   </div>
+
+  <?php if ($sameDayItems): ?>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
+      Altri di questa giornata (<?= count($sameDayItems) ?>)
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      <?php foreach ($sameDayItems as $s): ?>
+        <?php
+          $sName = $s[$cfg['name_col']];
+          $sImage = $s['image_path'] ?: ($s[$cfg['image_col']] ?? null);
+          $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
+        ?>
+        <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $s['id'] ?>"
+           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:10px 6px;">
+          <?php if ($sImageUrl): ?>
+            <?php if (($cfg['image_shape'] ?? 'circle') === 'book'): ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>" style="width:56px;height:76px;border-radius:6px;object-fit:cover;margin-bottom:6px;">
+            <?php elseif (($cfg['image_shape'] ?? 'circle') === 'square'): ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;margin-bottom:6px;">
+            <?php else: ?>
+              <img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:6px;">
+            <?php endif; ?>
+          <?php endif; ?>
+          <div style="font-weight:700;font-size:12px;"><?= e($sName) ?></div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 
   <p><a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>">← Tutti gli elementi di <?= e(strtolower($cfg['label'])) ?> di <?= e($artist['display_name']) ?></a></p>
 </div>

@@ -1899,6 +1899,24 @@ function getAccountFollowerCount(int $userId): int {
     return (int) $stmt->fetch()['c'];
 }
 
+// Altri elementi dello stesso modulo "che amo" pubblicati/aggiunti nello stesso giorno di un
+// elemento — usata nelle pagine di dettaglio condivisibili (fan_favorite_item.php,
+// favorite_track_item.php, viaggio_item.php): chi arriva da un link personale a UNA foto/
+// elemento specifico vede subito sotto anche tutti gli altri dello stesso giorno, senza dover
+// andare a sfogliare la Timeline. Il "giorno" è quello effettivo di comparsa nel feed
+// (publish_at se impostato, altrimenti created_at) — stesso criterio di visibilità già usato
+// da getTimelineFeedForUsers() (pubblicato E non nascosto), per non far trapelare tramite un
+// link altrui elementi che il proprietario ha scelto di non mostrare nel feed.
+function getSameDayFavorites(string $table, int $userId, ?string $referencePublishAt, string $referenceCreatedAt, int $excludeId): array {
+    $refDate = substr($referencePublishAt ?: $referenceCreatedAt, 0, 10);
+    $stmt = getDB()->prepare("SELECT * FROM {$table}
+        WHERE user_id = ? AND id != ? AND show_in_feed = 1 AND (publish_at IS NULL OR publish_at <= NOW())
+          AND DATE(COALESCE(publish_at, created_at)) = ?
+        ORDER BY COALESCE(publish_at, created_at) ASC, id ASC");
+    $stmt->execute([$userId, $excludeId, $refDate]);
+    return $stmt->fetchAll();
+}
+
 // Feed aggregato "Timeline": unisce blog, brani, eventi e aggiornamenti brevi pubblicati dai
 // profili indicati, ordinati dal più recente. Query separate per tipo di contenuto invece di
 // una UNION, più semplice da leggere e mantenere con colonne diverse per ciascuna.

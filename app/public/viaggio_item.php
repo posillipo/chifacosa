@@ -41,6 +41,11 @@ $note = trim($trip['note'] ?? '');
 $image = $trip['image_path'] ?: $trip['map_image_path'];
 $imageUrl = $image ? siteUrl($image) : null;
 
+// Altri viaggi pubblicati lo stesso giorno di questo — così chi arriva da un link personale a
+// un solo viaggio (es. una foto condivisa) vede subito anche gli altri della stessa giornata,
+// senza dover andare a sfogliare la Timeline.
+$sameDayItems = getSameDayFavorites('fan_favorite_trips', $artist['id'], $trip['publish_at'], $trip['created_at'], $tripId);
+
 $pageUrl = siteUrl('/' . $slug . '/viaggi/' . $tripId);
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
 ?>
@@ -107,6 +112,27 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
 
     <div style="margin-top:16px;"><?= renderOsmEmbed((float) $trip['lat'], (float) $trip['lng']) ?></div>
   </div>
+
+  <?php if ($sameDayItems): ?>
+    <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
+      Altri di questa giornata (<?= count($sameDayItems) ?>)
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      <?php foreach ($sameDayItems as $s): ?>
+        <?php
+          $sImage = $s['image_path'] ?: $s['map_image_path'];
+          $sImageUrl = $sImage ? siteUrl($sImage) : null;
+        ?>
+        <a href="/<?= e($slug) ?>/viaggi/<?= (int) $s['id'] ?>"
+           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:10px 6px;">
+          <?php if ($sImageUrl): ?>
+            <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['place_name']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;margin-bottom:6px;">
+          <?php endif; ?>
+          <div style="font-weight:700;font-size:12px;"><?= e($s['place_name']) ?></div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 
   <p><a href="/<?= e($slug) ?>/viaggi">← Tutti i viaggi di <?= e($artist['display_name']) ?></a></p>
 </div>
