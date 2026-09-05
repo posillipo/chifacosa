@@ -117,21 +117,24 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
       Altri di questa giornata (<?= count($sameDayItems) ?>)
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
-      <?php foreach ($sameDayItems as $s): ?>
-        <?php
-          $sImage = $s['image_path'] ?: $s['map_image_path'];
-          $sImageUrl = $sImage ? siteUrl($sImage) : null;
-        ?>
-        <a href="/<?= e($slug) ?>/viaggi/<?= (int) $s['id'] ?>"
-           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:10px 6px;">
-          <?php if ($sImageUrl): ?>
-            <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['place_name']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;margin-bottom:6px;">
-          <?php endif; ?>
-          <div style="font-weight:700;font-size:12px;"><?= e($s['place_name']) ?></div>
-        </a>
-      <?php endforeach; ?>
-    </div>
+    <?php foreach ($sameDayItems as $s): ?>
+      <?php
+        $sImage = $s['image_path'] ?: $s['map_image_path'];
+        $sImageUrl = $sImage ? siteUrl($sImage) : null;
+        $sWhen = $s['publish_at'] ?: $s['created_at'];
+      ?>
+      <a href="/<?= e($slug) ?>/viaggi/<?= (int) $s['id'] ?>"
+         class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">
+        <?php if ($sImageUrl): ?>
+          <img src="<?= e($sImageUrl) ?>" alt="<?= e($s['place_name']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+        <?php endif; ?>
+        <div style="flex:1;min-width:0;">
+          <small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">✈️ Viaggio</small><br>
+          <strong><?= e($s['place_name']) ?></strong><br>
+          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(date('d/m/Y H:i', strtotime($sWhen))) ?></small>
+        </div>
+      </a>
+    <?php endforeach; ?>
   <?php endif; ?>
 
   <p><a href="/<?= e($slug) ?>/viaggi">← Tutti i viaggi di <?= e($artist['display_name']) ?></a></p>
