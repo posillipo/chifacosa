@@ -843,6 +843,27 @@ correggere ogni bug in due posti. `viaggio_item.php` la usa sia per il viaggio p
 ciascun "altro della stessa giornata" mostrato sotto — stessa esperienza di carosello + zoom a
 tutto schermo già vista nei post Timeline.
 
+## 45. Sezione Eventi: descrizione + modifica + copertina non ritagliata
+```sql
+ALTER TABLE events ADD COLUMN description TEXT DEFAULT NULL AFTER ticket_url;
+```
+
+Tre correzioni alla sezione Eventi (`dashboard_events.php`/`evento.php`):
+- **Descrizione**: nuovo campo testo libero (scaletta, ospiti, info utili...), opzionale,
+  mostrato sulla pagina pubblica dell'evento sotto data/luogo.
+- **Modifica evento**: prima si poteva solo attivare/disattivare le prenotazioni o eliminare
+  l'evento — mai correggere titolo, data, luogo, link biglietti o copertina dopo averlo
+  aggiunto. Nuova azione `edit` in `dashboard_events.php`, un pannello "✏️ Modifica" (un
+  `<details>`, niente JavaScript) per evento con tutti i campi precompilati; la copertina è
+  opzionale in modifica — se non selezioni un nuovo file resta quella già caricata.
+- **Copertina non ritagliata**: `evento.php` non forza più un riquadro quadrato
+  (`width:220px;height:220px;object-fit:cover`, che tagliava qualunque foto non quadrata) — ora
+  `max-width`/`max-height` con le proporzioni naturali dell'immagine, qualunque forma l'abbia
+  caricata chi gestisce l'evento. Rimossi anche i meta `og:image:width`/`height` (erano
+  hardcoded 500×500, non più corretti senza il ritaglio forzato). La miniatura piccola nella
+  lista di gestione e nei pulsanti dell'elenco pubblico (`.btn-cover-icon`) resta invece un'icona
+  quadrata ritagliata come prima — è un'icona di lista, non "la foto" dell'evento.
+
 ---
 
 ## Come aggiungere una nuova voce

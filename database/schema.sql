@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS events (
     city VARCHAR(100),
     event_date DATETIME NOT NULL,
     ticket_url VARCHAR(500),
+    description TEXT DEFAULT NULL,
     cover_path VARCHAR(255) DEFAULT NULL,
     accepts_reservations TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

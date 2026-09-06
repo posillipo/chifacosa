@@ -59,8 +59,6 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
 <meta property="og:site_name" content="<?= e(siteName()) ?>">
 <?php if ($ogImage): ?>
 <meta property="og:image" content="<?= e($ogImage) ?>">
-<meta property="og:image:width" content="500">
-<meta property="og:image:height" content="500">
 <?php endif; ?>
 
 <meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
@@ -90,12 +88,15 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
   <div class="card" style="text-align:center;">
     <?php if ($event['cover_path']): ?>
       <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>"
-           style="width:220px;height:220px;border-radius:16px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);margin-bottom:16px;">
+           style="max-width:100%;max-height:480px;display:block;margin:0 auto 16px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.18);">
     <?php endif; ?>
     <h1 style="font-size:22px;margin:0 0 6px;"><?= e($event['title']) ?></h1>
     <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 4px;"><?= date('d/m/Y H:i', strtotime($event['event_date'])) ?></p>
     <?php if ($locationLine): ?>
       <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 12px;"><?= e($locationLine) ?></p>
+    <?php endif; ?>
+    <?php if (!empty($event['description'])): ?>
+      <p style="text-align:left;color:rgba(var(--text-rgb),0.9);margin:0 0 16px;"><?= nl2br(e($event['description'])) ?></p>
     <?php endif; ?>
     <?php if ($event['ticket_url']): ?>
       <a class="btn" href="<?= e($event['ticket_url']) ?>" target="_blank" rel="noopener">Biglietti →</a>
