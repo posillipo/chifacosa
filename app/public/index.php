@@ -30,6 +30,10 @@ $homeFeatures = [
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($site) ?> — Link in Bio, timeline, blog, Che Amo, eventi e prenotazioni in un'unica pagina</title>
 <meta name="description" content="Crea in pochi minuti la tua pagina pubblica su <?= e($site) ?>: link, Che Amo (band, attori, film, libri, viaggi, brani), eventi, blog, menù e prenotazioni in un unico posto, sempre aggiornato. Accesso rapido con Google.">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#6C5CE7">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <?= embedPrivacyScript() ?>
 <?= embedTrackingHead() ?>
