@@ -19,7 +19,10 @@ if (!$artist) {
 
 // Solo i moduli con contenuto e non nascosti da "Menu di Navigazione" — stessa regola che
 // decideva prima se ciascun modulo avesse un proprio tab, ora decide se ha una card qui.
+// Stesso ordine personalizzabile via trascinamento (dashboard_che_amo.php / Menu di
+// Navigazione — sono la stessa tabella/ordine).
 $hiddenKeys = getHiddenNavKeys((int) $artist['id']);
+$navOrder = getNavItemOrder((int) $artist['id']);
 $visibleModules = [];
 foreach (CHE_AMO_MODULES as $key => $m) {
     if (in_array($key, $hiddenKeys, true)) {
@@ -29,6 +32,7 @@ foreach (CHE_AMO_MODULES as $key => $m) {
         $visibleModules[$key] = $m;
     }
 }
+uksort($visibleModules, fn ($a, $b) => ($navOrder[$a] ?? 999) <=> ($navOrder[$b] ?? 999));
 
 $pageUrl = siteUrl('/' . $slug . '/che-amo');
 ?>
