@@ -19,13 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = $_POST['event_date'] ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
+        $recurrence = in_array($_POST['recurrence'] ?? 'none', ['none', 'weekdays', 'weekend'], true) ? $_POST['recurrence'] : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
             $coverPath = handleCoverUpload($profile['slug']);
-            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, description, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?)');
-            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $coverPath, $acceptsReservations]);
+            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations]);
             $newEventId = (int) getDB()->lastInsertId();
 
             $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
@@ -39,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = $_POST['event_date'] ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
+        $recurrence = in_array($_POST['recurrence'] ?? 'none', ['none', 'weekdays', 'weekend'], true) ? $_POST['recurrence'] : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
@@ -52,11 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($old = $stmt->fetch()) {
                     deleteCoverFile($old['cover_path']);
                 }
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, cover_path=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $newCoverPath, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, cover_path=?, accepts_reservations=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $newCoverPath, $acceptsReservations, $id, $profile['id']]);
             } else {
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $id, $profile['id']]);
             }
         }
     } elseif ($action === 'delete') {
@@ -79,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? ORDER BY event_date ASC');
+$stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? ORDER BY is_perpetual DESC, event_date ASC');
 $stmt->execute([$profile['id']]);
 $events = $stmt->fetchAll();
 
@@ -105,6 +109,22 @@ include __DIR__ . '/_dash_header.php';
     <label>Copertina (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
+    <label>Ricorrenza</label>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="recurrence" value="none" checked style="width:auto;"> Data singola
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="recurrence" value="weekdays" style="width:auto;"> Dal Lunedì al Venerdì
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="recurrence" value="weekend" style="width:auto;"> Solo Weekend
+      </label>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 8px;">
+      <input type="checkbox" name="is_perpetual" value="1" style="width:auto;margin-bottom:0;">
+      Evento perpetuo (nessuna data di fine — resta sempre visibile in "Prossimi eventi")
+    </label>
     <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
       <input type="checkbox" name="accepts_reservations" value="1" style="width:auto;margin-bottom:0;">
       Accetta prenotazioni per questo evento
@@ -126,6 +146,10 @@ include __DIR__ . '/_dash_header.php';
         <?php endif; ?>
         <?php if ((int) $ev['accepts_reservations'] === 1): ?>
           <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni attive</div>
+        <?php endif; ?>
+        <?php $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false)); ?>
+        <?php if ($scheduleLabel): ?>
+          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?></div>
         <?php endif; ?>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
           <form method="post">
@@ -165,6 +189,22 @@ include __DIR__ . '/_dash_header.php';
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
               <?= $ev['cover_path'] ? 'Hai già caricato una copertina — seleziona un nuovo file per sostituirla.' : 'Comparirà così come l\'hai caricata, senza ritagli — qualsiasi proporzione va bene.' ?>
             </p>
+            <label>Ricorrenza</label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" name="recurrence" value="none" <?= ($ev['recurrence'] ?? 'none') === 'none' ? 'checked' : '' ?> style="width:auto;"> Data singola
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" name="recurrence" value="weekdays" <?= ($ev['recurrence'] ?? '') === 'weekdays' ? 'checked' : '' ?> style="width:auto;"> Dal Lunedì al Venerdì
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" name="recurrence" value="weekend" <?= ($ev['recurrence'] ?? '') === 'weekend' ? 'checked' : '' ?> style="width:auto;"> Solo Weekend
+              </label>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 8px;">
+              <input type="checkbox" name="is_perpetual" value="1" <?= (int) ($ev['is_perpetual'] ?? 0) === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
+              Evento perpetuo (nessuna data di fine — resta sempre visibile in "Prossimi eventi")
+            </label>
             <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
               <input type="checkbox" name="accepts_reservations" value="1" <?= (int) $ev['accepts_reservations'] === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
               Accetta prenotazioni per questo evento

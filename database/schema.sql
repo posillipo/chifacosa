@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS events (
     event_date DATETIME NOT NULL,
     ticket_url VARCHAR(500),
     description TEXT DEFAULT NULL,
+    is_perpetual TINYINT(1) NOT NULL DEFAULT 0,
+    recurrence ENUM('none','weekdays','weekend') NOT NULL DEFAULT 'none',
     cover_path VARCHAR(255) DEFAULT NULL,
     accepts_reservations TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -864,6 +864,36 @@ Tre correzioni alla sezione Eventi (`dashboard_events.php`/`evento.php`):
   lista di gestione e nei pulsanti dell'elenco pubblico (`.btn-cover-icon`) resta invece un'icona
   quadrata ritagliata come prima — è un'icona di lista, non "la foto" dell'evento.
 
+## 46. Eventi perpetui e ricorrenti (Lun-Ven / Weekend)
+```sql
+ALTER TABLE events ADD COLUMN is_perpetual TINYINT(1) NOT NULL DEFAULT 0 AFTER event_date;
+ALTER TABLE events ADD COLUMN recurrence ENUM('none','weekdays','weekend') NOT NULL DEFAULT 'none' AFTER is_perpetual;
+```
+
+Un evento può ora essere marcato **perpetuo** (`is_perpetual`, checkbox "Evento perpetuo — nessuna
+data di fine"): resta sempre tra i "Prossimi eventi" (`eventi.php`) indipendentemente da
+`event_date`, invece di sparire quando quella data passa. Indipendentemente, può avere una
+**ricorrenza** (`recurrence`, tre radio: Data singola / Dal Lunedì al Venerdì / Solo Weekend) — le
+due impostazioni sono separate ma tipicamente vanno insieme (un evento "ogni weekend" non ha
+senso con una data di scadenza).
+
+Nuovo `eventScheduleLabel(string $recurrence, bool $isPerpetual): ?string` in `functions.php`
+(null se l'evento ha semplicemente una data singola), usato ovunque un evento compare:
+- **`evento.php`**: se c'è una copertina, l'etichetta appare come una piccola pillola colorata
+  sovrapposta in alto a sinistra sull'immagine caricata dall'utente (qualunque sia, senza
+  ritagliarla — vedi voce 45); senza copertina, la stessa pillola compare come testo sotto
+  data/luogo.
+- **`eventi.php`** (elenco pubblico) e **`dashboard_events.php`** (lista di gestione): riga di
+  testo con l'etichetta, sotto la data.
+- **Timeline** (`getTimelineFeedForUsers()`/`renderTimelineFeedItem()`/
+  `renderDashboardTimelineItem()`): l'etichetta sostituisce "si terrà il GG/MM/AAAA" quando
+  presente, dato che una data singola perde di significato per un evento ricorrente.
+
+`dashboard_events.php`: nuova azione `edit` estesa con gli stessi campi (radio ricorrenza +
+checkbox perpetuo), preselezionati in base al valore salvato. Ordinamento delle liste
+(`dashboard_events.php`/`eventi.php`) aggiornato a `ORDER BY is_perpetual DESC, event_date ASC` —
+gli eventi perpetui restano fissati in cima.
+
 ---
 
 ## Come aggiungere una nuova voce

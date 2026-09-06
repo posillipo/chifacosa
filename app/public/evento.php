@@ -37,6 +37,7 @@ $artist = [
 
 $resMsg = $_GET['res_msg'] ?? '';
 $resErr = ($_GET['res_err'] ?? '0') === '1';
+$scheduleLabel = eventScheduleLabel($event['recurrence'] ?? 'none', (bool) ($event['is_perpetual'] ?? false));
 
 $pageUrl = siteUrl('/' . $slug . '/eventi/' . $eventId);
 $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
@@ -87,13 +88,23 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
 
   <div class="card" style="text-align:center;">
     <?php if ($event['cover_path']): ?>
-      <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>"
-           style="max-width:100%;max-height:480px;display:block;margin:0 auto 16px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.18);">
+      <div style="position:relative;display:inline-block;max-width:100%;margin:0 auto 16px;">
+        <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>"
+             style="max-width:100%;max-height:480px;display:block;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.18);">
+        <?php if ($scheduleLabel): ?>
+          <span style="position:absolute;top:10px;left:10px;background:var(--accent);color:var(--accent-text);font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+            <i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?>
+          </span>
+        <?php endif; ?>
+      </div>
     <?php endif; ?>
     <h1 style="font-size:22px;margin:0 0 6px;"><?= e($event['title']) ?></h1>
     <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 4px;"><?= date('d/m/Y H:i', strtotime($event['event_date'])) ?></p>
     <?php if ($locationLine): ?>
       <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 12px;"><?= e($locationLine) ?></p>
+    <?php endif; ?>
+    <?php if ($scheduleLabel && !$event['cover_path']): ?>
+      <p style="margin:0 0 12px;"><span style="background:var(--accent);color:var(--accent-text);font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;"><i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?></span></p>
     <?php endif; ?>
     <?php if (!empty($event['description'])): ?>
       <p style="text-align:left;color:rgba(var(--text-rgb),0.9);margin:0 0 16px;"><?= nl2br(e($event['description'])) ?></p>

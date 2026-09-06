@@ -17,7 +17,9 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND event_date >= NOW() ORDER BY event_date ASC');
+// Un evento "perpetuo" (nessuna data di fine, es. ricorrente ogni settimana) resta sempre tra i
+// prossimi eventi, indipendentemente da event_date — vedi eventScheduleLabel() in functions.php.
+$events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC');
 $events->execute([$artist['id']]);
 $events = $events->fetchAll();
 
@@ -65,6 +67,10 @@ $pageUrl = siteUrl('/' . $slug . '/eventi');
       <strong style="display:block;"><?= e($ev['title']) ?></strong>
       <?php if ($ev['venue'] || $ev['city']): ?>
         <small style="opacity:.75;"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></small>
+      <?php endif; ?>
+      <?php $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false)); ?>
+      <?php if ($scheduleLabel): ?>
+        <small style="display:block;font-weight:700;"><i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?></small>
       <?php endif; ?>
     </a>
   <?php endforeach; ?>

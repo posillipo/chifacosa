@@ -2068,14 +2068,14 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path
         FROM events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = u.id
         WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
             'tipo' => 'evento', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
-            'evento_quando' => $r['event_date'],
+            'evento_quando' => $r['event_date'], 'evento_is_perpetual' => $r['is_perpetual'], 'evento_recurrence' => $r['recurrence'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
             'url' => '/' . $r['user_slug'] . '/eventi/' . $r['id'],
         ];
@@ -2278,6 +2278,22 @@ function renderRatingForm(string $action, int $targetId, ?int $viewerId, int $ow
     return $html;
 }
 
+// Etichetta breve per un evento perpetuo/ricorrente (nessuna data di fine specifica) — usata
+// ovunque un evento compare: pagina pubblica, elenco pubblico, dashboard, Timeline. Null se
+// l'evento ha semplicemente una data singola (comportamento di sempre, nessuna etichetta).
+function eventScheduleLabel(string $recurrence, bool $isPerpetual): ?string {
+    if ($recurrence === 'weekdays') {
+        return 'Dal Lunedì al Venerdì';
+    }
+    if ($recurrence === 'weekend') {
+        return 'Solo Weekend';
+    }
+    if ($isPerpetual) {
+        return 'Sempre attivo';
+    }
+    return null;
+}
+
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): string {
     // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
@@ -2286,8 +2302,13 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
-    if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
-        $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+    if ($item['tipo'] === 'evento') {
+        $scheduleLabel = eventScheduleLabel($item['evento_recurrence'] ?? 'none', (bool) ($item['evento_is_perpetual'] ?? false));
+        if ($scheduleLabel) {
+            $eventoInfo = ' · ' . e($scheduleLabel);
+        } elseif (!empty($item['evento_quando'])) {
+            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+        }
     }
     // Sfondo grigio tenue per distinguere subito i propri contenuti dal resto del feed
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
@@ -2313,8 +2334,13 @@ function renderTimelineFeedItem(array $item): string {
     $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
-    if ($item['tipo'] === 'evento' && !empty($item['evento_quando'])) {
-        $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+    if ($item['tipo'] === 'evento') {
+        $scheduleLabel = eventScheduleLabel($item['evento_recurrence'] ?? 'none', (bool) ($item['evento_is_perpetual'] ?? false));
+        if ($scheduleLabel) {
+            $eventoInfo = ' · ' . e($scheduleLabel);
+        } elseif (!empty($item['evento_quando'])) {
+            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+        }
     }
     $html = '<a href="' . e($item['url']) . '" class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">';
     if ($coverSrc) {
