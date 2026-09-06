@@ -2505,6 +2505,83 @@ body.galactic-page {
   .galactic-page .color-link-btn:nth-of-type(4n) { animation: none; }
 }
 
+/* ===== Tema "Drop Notturno": vetrina blu notte stile "link in bio" da shop — pulsanti bianchi
+   a pillola con freccina a cerchio sulla destra (l'icona di copertina resta a sinistra, stile
+   già esistente), un pulsante ogni 4 evidenziato in rosso acceso come un pulsante "in evidenza",
+   card scure per le griglie di contenuto (Blog, Eventi, ecc.) ===== */
+body.nightdrop-page {
+  background: linear-gradient(180deg, #0c1526 0%, #131d33 100%);
+  color: #eef2fb;
+  --text-rgb: 238,242,251;
+  min-height: 100vh;
+  margin: 0;
+}
+.nightdrop-page footer.site { color: rgba(238,242,251,0.55); }
+.nightdrop-page .avatar {
+  border: 3px solid #fff;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+.nightdrop-page .profile-header h1 { color: #fff; font-weight: 800; }
+.nightdrop-page .profile-header p { color: rgba(238,242,251,0.7); }
+.nightdrop-page .profile-meta { color: rgba(238,242,251,0.55); }
+.nightdrop-page .colorful-nav a {
+  background: #1b2740; color: #eef2fb; border: 1px solid rgba(255,255,255,0.12); font-weight: 700;
+}
+.nightdrop-page .social-icon-btn {
+  background: #1b2740; color: #eef2fb; border: 1px solid rgba(255,255,255,0.12); box-shadow: none;
+}
+.nightdrop-page .color-link-btn {
+  background: #fff !important;
+  color: #14141a !important;
+  border-radius: 16px;
+  font-weight: 700;
+  padding-right: 46px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.nightdrop-page .color-link-btn::after {
+  content: '\203A';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eef1f7;
+  color: #14141a;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 26px;
+  text-align: center;
+}
+.nightdrop-page .color-link-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+/* Un pulsante ogni 4 evidenziato, come il singolo bottone rosso "in evidenza" nel riferimento —
+   non esiste un modo generico per sapere quale pulsante evidenziare (sono link liberi scelti
+   dal profilo), quindi si alterna invece di legarsi al contenuto, stesso principio già usato
+   dal tema Console Galattica. */
+.nightdrop-page .color-link-btn:nth-of-type(4n+2) {
+  background: #e63946 !important;
+  color: #fff !important;
+}
+.nightdrop-page .color-link-btn:nth-of-type(4n+2)::after { background: #fff; color: #e63946; }
+.nightdrop-page .card {
+  background: #1b2740;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #eef2fb;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.nightdrop-page .section-title { color: rgba(238,242,251,0.55); text-transform: uppercase; letter-spacing: 0.5px; }
+.nightdrop-page .event-item, .nightdrop-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.nightdrop-page a { color: #eef2fb; }
+.nightdrop-page form textarea, .nightdrop-page form input {
+  background: #1b2740; border: 1px solid rgba(255,255,255,0.15); color: #eef2fb; border-radius: 12px;
+}
+.nightdrop-page form label { color: rgba(238,242,251,0.7); font-weight: 700; }
+.nightdrop-page .help-box { background: #1b2740; border: 1px solid rgba(255,255,255,0.1); color: #eef2fb; }
+.nightdrop-page .link-divider { color: rgba(238,242,251,0.6); }
+.nightdrop-page .link-divider::before, .nightdrop-page .link-divider::after { background: rgba(255,255,255,0.18); }
+
 /* ===== Modulo Menù: elenco piatti per categoria, stile menu di ristorante classico ===== */
 .menu-category { margin-bottom: 28px; }
 .menu-category-title {
