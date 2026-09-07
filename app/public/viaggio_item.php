@@ -103,6 +103,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
       Viaggio di <?= e($artist['display_name']) ?>
       <?php if (!empty($trip['address']) && $trip['address'] !== $trip['place_name']): ?> · <?= e($trip['address']) ?><?php endif; ?>
     </p>
+    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($trip['publish_at'], $trip['created_at'])) ?></small>
 
     <?php if ($note !== ''): ?>
       <div class="card" style="text-align:left;margin-top:14px;">
@@ -134,6 +135,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
             Viaggio di <?= e($artist['display_name']) ?>
             <?php if (!empty($s['address']) && $s['address'] !== $s['place_name']): ?> · <?= e($s['address']) ?><?php endif; ?>
           </p>
+          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'])) ?></small>
         </a>
         <?php if ($sNote !== ''): ?>
           <div class="card" style="text-align:left;margin-top:14px;">

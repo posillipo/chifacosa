@@ -65,6 +65,7 @@ $pageUrl = siteUrl('/' . $slug . '/album-che-amo');
           <?php endif; ?>
           <div style="font-weight:700;font-size:13px;"><?= e($f['album_name']) ?></div>
           <?php if ($f['album_artist_name']): ?><div style="font-size:11.5px;color:rgba(var(--text-rgb),0.6);"><?= e($f['album_artist_name']) ?></div><?php endif; ?>
+          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'])) ?></small>
         </a>
       <?php endforeach; ?>
     </div>

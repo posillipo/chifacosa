@@ -1953,6 +1953,14 @@ function getAccountFollowerCount(int $userId): int {
     return (int) $stmt->fetch()['c'];
 }
 
+// Data/ora di pubblicazione mostrata pubblicamente per qualunque tipo di post/elemento
+// (Timeline, Che Amo, Viaggi, Brani...): publish_at se impostato, altrimenti created_at — stesso
+// criterio già usato per raggruppare "la stessa giornata" (getSameDayFavorites/
+// getSameDayTimelinePosts), qui invece per mostrare la data e l'ora per intero.
+function publishedAtLabel(?string $publishAt, string $createdAt): string {
+    return date('d/m/Y H:i', strtotime($publishAt ?: $createdAt));
+}
+
 // Altri elementi dello stesso modulo "che amo" pubblicati/aggiunti nello stesso giorno di un
 // elemento — usata nelle pagine di dettaglio condivisibili (fan_favorite_item.php,
 // favorite_track_item.php, viaggio_item.php): chi arriva da un link personale a UNA foto/
@@ -2308,7 +2316,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
         if ($scheduleLabel) {
             $eventoInfo = ' · ' . e($scheduleLabel);
         } elseif (!empty($item['evento_quando'])) {
-            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y H:i', strtotime($item['evento_quando'])));
         }
     }
     // Sfondo grigio tenue per distinguere subito i propri contenuti dal resto del feed
@@ -2323,7 +2331,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     $html .= '<div style="flex:1;min-width:0;">';
     $html .= '<small style="color:var(--text-muted);text-transform:uppercase;">' . e($label) . ' · ' . e($item['display_name']) . ($isMine ? ' <span style="color:var(--accent);font-weight:700;">(tu)</span>' : '') . '</small><br>';
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
-    $html .= '<small style="color:var(--text-muted)">' . e(date('d/m/Y', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '<small style="color:var(--text-muted)">' . e(date('d/m/Y H:i', strtotime($item['data']))) . $eventoInfo . '</small>';
     $html .= '</div></a>';
     return $html;
 }
@@ -2340,7 +2348,7 @@ function renderTimelineFeedItem(array $item): string {
         if ($scheduleLabel) {
             $eventoInfo = ' · ' . e($scheduleLabel);
         } elseif (!empty($item['evento_quando'])) {
-            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y', strtotime($item['evento_quando'])));
+            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y H:i', strtotime($item['evento_quando'])));
         }
     }
     $html = '<a href="' . e($item['url']) . '" class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">';
@@ -2350,7 +2358,7 @@ function renderTimelineFeedItem(array $item): string {
     $html .= '<div style="flex:1;min-width:0;">';
     $html .= '<small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">' . e($label) . '</small><br>';
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
-    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(date('d/m/Y', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(date('d/m/Y H:i', strtotime($item['data']))) . $eventoInfo . '</small>';
     $html .= '</div></a>';
     return $html;
 }

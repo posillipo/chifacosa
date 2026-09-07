@@ -93,7 +93,7 @@ $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_p
       <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>"
            style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
     <?php endif; ?>
-    <div class="date"><?= date('d/m/Y', strtotime($post['published_at'])) ?></div>
+    <div class="date"><?= date('d/m/Y H:i', strtotime($post['published_at'])) ?></div>
     <h2><?= e($post['title']) ?></h2>
     <div><?= nl2br(e($post['content'])) ?></div>
   </article>

@@ -98,6 +98,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
     <p style="opacity:0.75;margin-top:0;">
       Brano che amo di <?= e($artist['display_name']) ?><?php if ($track['artist_name']): ?> · <?= e($track['artist_name']) ?><?php endif; ?>
     </p>
+    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($track['publish_at'], $track['created_at'])) ?></small>
 
     <?php if ($note !== ''): ?>
       <div class="card" style="text-align:left;margin-top:14px;">
@@ -138,6 +139,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
           <p style="opacity:0.75;margin-top:0;">
             Brano che amo di <?= e($artist['display_name']) ?><?php if ($s['artist_name']): ?> · <?= e($s['artist_name']) ?><?php endif; ?>
           </p>
+          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'])) ?></small>
         </a>
         <?php if ($sNote !== ''): ?>
           <div class="card" style="text-align:left;margin-top:14px;">

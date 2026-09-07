@@ -64,6 +64,7 @@ $pageUrl = siteUrl('/' . $slug . '/band-che-amo');
             <img src="<?= e($f['artist_image']) ?>" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;">
           <?php endif; ?>
           <div style="font-weight:700;font-size:13px;"><?= e($f['spotify_artist_name']) ?></div>
+          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'])) ?></small>
         </a>
       <?php endforeach; ?>
     </div>

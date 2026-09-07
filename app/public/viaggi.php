@@ -65,6 +65,7 @@ $pageUrl = siteUrl('/' . $slug . '/viaggi');
             <img src="/<?= e($thumb) ?>" style="width:100%;height:88px;border-radius:8px;object-fit:cover;margin-bottom:8px;">
           <?php endif; ?>
           <div style="font-weight:700;font-size:13px;"><?= e($f['place_name']) ?></div>
+          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'])) ?></small>
         </a>
       <?php endforeach; ?>
     </div>

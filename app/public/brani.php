@@ -69,7 +69,8 @@ $pageUrl = siteUrl('/' . $slug . '/brani');
           <strong><?= e($t['track_name']) ?></strong><br>
           <small style="opacity:0.7;"><?= e($t['artist_name']) ?></small><br>
           <?php $trackStats = getTrackRatingStats((int) $t['id']); ?>
-          <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span style="opacity:0.55;">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small>
+          <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span style="opacity:0.55;">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small><br>
+          <small style="opacity:0.6;"><?= e(publishedAtLabel($t['publish_at'], $t['created_at'])) ?></small>
         </div>
         <i class="fa-brands fa-spotify" style="color:#1DB954;font-size:22px;flex-shrink:0;"></i>
       </a>

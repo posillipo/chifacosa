@@ -64,6 +64,7 @@ $pageUrl = siteUrl('/' . $slug . '/libri-che-amo');
             <img src="<?= e($f['book_image']) ?>" style="width:64px;height:88px;border-radius:6px;object-fit:cover;margin-bottom:8px;">
           <?php endif; ?>
           <div style="font-weight:700;font-size:13px;"><?= e($f['book_title']) ?></div>
+          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'])) ?></small>
         </a>
       <?php endforeach; ?>
     </div>

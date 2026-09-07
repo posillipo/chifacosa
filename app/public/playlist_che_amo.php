@@ -64,6 +64,7 @@ $pageUrl = siteUrl('/' . $slug . '/playlist-che-amo');
             <img src="<?= e($f['playlist_image']) ?>" style="width:80px;height:80px;border-radius:10px;object-fit:cover;margin-bottom:8px;">
           <?php endif; ?>
           <div style="font-weight:700;font-size:13px;"><?= e($f['playlist_name']) ?></div>
+          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'])) ?></small>
         </a>
       <?php endforeach; ?>
     </div>
