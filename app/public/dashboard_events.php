@@ -139,7 +139,7 @@ include __DIR__ . '/_dash_header.php';
         <img src="/<?= e($ev['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
-        <div class="date"><?= date('d/m/Y H:i', strtotime($ev['event_date'])) ?></div>
+        <div class="date"><?= e(formatLocalDateTime($ev['event_date'], $profile)) ?></div>
         <strong><?= e($ev['title']) ?></strong>
         <?php if ($ev['venue'] || $ev['city']): ?>
           <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>

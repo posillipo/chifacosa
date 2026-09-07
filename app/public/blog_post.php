@@ -14,7 +14,7 @@ if (!preg_match('/^\d{4}\.\d{2}\.\d{2}\.(.+)$/', $postToken, $m)) {
 }
 $postSlug = $m[1];
 
-$stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, b.*
+$stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, b.*
                           FROM blog_posts b
                           JOIN users u ON u.id = b.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -40,6 +40,7 @@ $artist = [
     'genere' => $post['genere'] ?? null,
     'youtube_channel_id' => $post['youtube_channel_id'] ?? null,
     'privacy_tracking_settings' => $post['privacy_tracking_settings'] ?? null,
+    'dashboard_theme' => $post['dashboard_theme'] ?? null,
 ];
 
 $permalink = siteUrl(blogPostUrl($userSlug, $post));
@@ -93,7 +94,7 @@ $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_p
       <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>"
            style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
     <?php endif; ?>
-    <div class="date"><?= date('d/m/Y H:i', strtotime($post['published_at'])) ?></div>
+    <div class="date"><?= e(formatLocalDateTime($post['published_at'], $artist)) ?></div>
     <h2><?= e($post['title']) ?></h2>
     <div><?= nl2br(e($post['content'])) ?></div>
   </article>

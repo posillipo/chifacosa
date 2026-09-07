@@ -232,7 +232,7 @@ include __DIR__ . '/_dash_header.php';
           <button type="button" class="btn small danger pl-remove-btn" style="flex-shrink:0;">Rimuovi</button>
         </div>
         <div class="pl-pub-badges" style="display:flex;gap:6px;flex-wrap:wrap;<?= (!$isScheduled && !$isPrivate) ? 'display:none;' : '' ?>">
-          <?php if ($isScheduled): ?><span class="pl-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il <?= e(date('d/m/Y H:i', strtotime($f['publish_at']))) ?></span><?php endif; ?>
+          <?php if ($isScheduled): ?><span class="pl-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il <?= e(formatLocalDateTime($f['publish_at'], $profile)) ?></span><?php endif; ?>
           <?php if ($isPrivate): ?><span class="pl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span><?php endif; ?>
         </div>
         <div class="pl-pub-block">
@@ -280,7 +280,7 @@ include __DIR__ . '/_dash_header.php';
             <label>Link personalizzato per il feed (opzionale)</label>
             <input type="url" class="pl-pub-custom-link" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
             <?php if (!empty($profile['custom_feed_guid_since'])): ?>
-              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Attivo dal <?= e(date('d/m/Y H:i', strtotime($profile['custom_feed_guid_since']))) ?>. Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
+              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Attivo dal <?= e(formatLocalDateTime($profile['custom_feed_guid_since'], $profile)) ?>. Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
             <?php else: ?>
               <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
             <?php endif; ?>

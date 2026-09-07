@@ -7,7 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
+$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -312,23 +312,54 @@ $bandReviewers = $bandReviewers->fetchAll();
     <?php endif; ?>
   <?php elseif ($cheAmoCarousel): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;"><strong>Cose</strong> che amo</div>
-    <div class="che-amo-home-carousel" style="display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:18px;">
-      <?php foreach ($cheAmoCarousel as $c): ?>
-        <a href="/<?= e($slug) ?>/<?= e($c['segment']) ?>"
-           class="card" style="flex:0 0 140px;text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
-          <?php if ($c['image']): ?>
-            <img src="<?= e(str_starts_with($c['image'], 'http') ? $c['image'] : '/' . $c['image']) ?>"
-                 style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;margin-bottom:8px;">
-          <?php else: ?>
-            <div style="width:100%;aspect-ratio:1;border-radius:10px;background:rgba(108,92,231,0.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:8px;">
-              <i class="<?= e($c['icon']) ?>"></i>
-            </div>
-          <?php endif; ?>
-          <div style="font-weight:700;font-size:13px;"><?= e($c['label']) ?></div>
-        </a>
-      <?php endforeach; ?>
+    <div class="che-amo-home-carousel-wrap" style="position:relative;margin-bottom:18px;">
+      <button type="button" class="che-amo-home-arrow che-amo-home-arrow-prev" aria-label="Indietro"><i class="fa-solid fa-chevron-left"></i></button>
+      <div class="che-amo-home-carousel" style="display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;">
+        <?php foreach ($cheAmoCarousel as $c): ?>
+          <a href="/<?= e($slug) ?>/<?= e($c['segment']) ?>"
+             class="card" style="flex:0 0 140px;text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
+            <?php if ($c['image']): ?>
+              <img src="<?= e(str_starts_with($c['image'], 'http') ? $c['image'] : '/' . $c['image']) ?>"
+                   style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;margin-bottom:8px;">
+            <?php else: ?>
+              <div style="width:100%;aspect-ratio:1;border-radius:10px;background:rgba(108,92,231,0.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:8px;">
+                <i class="<?= e($c['icon']) ?>"></i>
+              </div>
+            <?php endif; ?>
+            <div style="font-weight:700;font-size:13px;"><?= e($c['label']) ?></div>
+          </a>
+        <?php endforeach; ?>
+      </div>
+      <button type="button" class="che-amo-home-arrow che-amo-home-arrow-next" aria-label="Avanti"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
-    <style>.che-amo-home-carousel::-webkit-scrollbar { display: none; }</style>
+    <style>
+      .che-amo-home-carousel::-webkit-scrollbar { display: none; }
+      /* Frecce solo per chi ha un mouse vero (niente swipe col dito) — su touch restano nascoste,
+         lì basta scorrere con il dito come già accade, stesso criterio del carosello foto post. */
+      .che-amo-home-arrow { display: none; }
+      @media (hover: hover) and (pointer: fine) {
+        .che-amo-home-arrow {
+          display: flex; align-items: center; justify-content: center;
+          position: absolute; top: 50%; transform: translateY(-50%);
+          width: 34px; height: 34px; border-radius: 50%; border: none;
+          background: rgba(0,0,0,0.45); color: #fff; font-size: 15px;
+          cursor: pointer; z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .che-amo-home-arrow:hover { background: rgba(0,0,0,0.65); }
+        .che-amo-home-arrow-prev { left: -14px; }
+        .che-amo-home-arrow-next { right: -14px; }
+      }
+    </style>
+    <script>
+    (function () {
+      var track = document.querySelector('.che-amo-home-carousel');
+      var prev = document.querySelector('.che-amo-home-arrow-prev');
+      var next = document.querySelector('.che-amo-home-arrow-next');
+      if (!track || !prev || !next) return;
+      prev.addEventListener('click', function () { track.scrollBy({ left: -300, behavior: 'smooth' }); });
+      next.addEventListener('click', function () { track.scrollBy({ left: 300, behavior: 'smooth' }); });
+    })();
+    </script>
   <?php endif; ?>
 
   <div id="recensioni" class="card" style="scroll-margin-top:20px;">

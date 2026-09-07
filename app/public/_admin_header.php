@@ -2,6 +2,7 @@
 // Incluso da tutte le pagine admin_*. Richiede $admin già caricato e $activeAdminTab impostato.
 $navItems = [
     'dashboard' => ['url' => '/admin_dashboard.php', 'icon' => 'fas fa-gauge-high', 'label' => 'Dashboard'],
+    'general'   => ['url' => '/admin_general.php',   'icon' => 'fas fa-sliders',    'label' => 'Impostazioni generali'],
     'users'     => ['url' => '/admin_users.php',     'icon' => 'fas fa-users',       'label' => 'Utenti iscritti'],
     'contacts'  => ['url' => '/admin_contacts.php',  'icon' => 'fas fa-envelope',    'label' => 'Contatti ricevuti'],
     'privacy'   => ['url' => '/admin_privacy.php',   'icon' => 'fas fa-shield-halved','label' => 'Privacy / Cookie'],

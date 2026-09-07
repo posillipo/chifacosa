@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $citta = trim($_POST['citta'] ?? '');
     $provincia = trim($_POST['provincia'] ?? '');
     $telefono = trim($_POST['telefono'] ?? '');
+    $timezone = trim($_POST['timezone'] ?? '');
+    $timezone = isset(TIMEZONE_OPTIONS[$timezone]) ? $timezone : 'rome';
     $avatarPath = $profile['avatar_path'];
 
     // Il ritaglio avviene nel browser (canvas): arriva già pronto come immagine JPEG in
@@ -62,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$error) {
-        $stmt = getDB()->prepare('UPDATE profiles SET display_name=?, bio=?, avatar_path=?, theme_color=?, genere=?, citta=?, provincia=?, telefono=? WHERE user_id=?');
-        $stmt->execute([$displayName, $bio, $avatarPath, $themeColor, $genere ?: null, $citta ?: null, $provincia ?: null, $telefono ?: null, $profile['id']]);
+        $stmt = getDB()->prepare('UPDATE profiles SET display_name=?, bio=?, avatar_path=?, theme_color=?, genere=?, citta=?, provincia=?, telefono=?, dashboard_theme=? WHERE user_id=?');
+        $stmt->execute([$displayName, $bio, $avatarPath, $themeColor, $genere ?: null, $citta ?: null, $provincia ?: null, $telefono ?: null, $timezone, $profile['id']]);
         $success = 'Profilo aggiornato.';
         $user = currentUser();
         $profile = getActingProfile($user);
@@ -94,6 +96,17 @@ include __DIR__ . '/_dash_header.php';
 
     <label>Telefono</label>
     <input type="text" name="telefono" value="<?= e($profile['telefono'] ?? '') ?>">
+
+    <label>Fuso orario</label>
+    <select name="timezone">
+      <?php foreach (TIMEZONE_OPTIONS as $tzKey => $tz): ?>
+        <option value="<?= e($tzKey) ?>" <?= profileTimezoneKey($profile) === $tzKey ? 'selected' : '' ?>><?= e($tz['label']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
+      Usato per mostrare le date e gli orari dei tuoi contenuti (Timeline, Che Amo, Blog, Eventi...)
+      nel fuso orario giusto, indipendentemente da dove si trova il server.
+    </p>
 
     <label>Colore tema (pagina pubblica)</label>
     <input type="color" name="theme_color" value="<?= e($profile['theme_color'] ?? '#6C5CE7') ?>" style="width:80px;height:44px;padding:4px;">

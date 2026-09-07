@@ -192,7 +192,7 @@ include __DIR__ . '/_dash_header.php';
         <input type="url" name="custom_feed_guid" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
         <?php if (!empty($profile['custom_feed_guid_since'])): ?>
           <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
-            Attivo dal <?= e(date('d/m/Y H:i', strtotime($profile['custom_feed_guid_since']))) ?>.
+            Attivo dal <?= e(formatLocalDateTime($profile['custom_feed_guid_since'], $profile)) ?>.
           </p>
         <?php else: ?>
           <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per usare sempre la pagina normale.</p>
@@ -225,7 +225,7 @@ include __DIR__ . '/_dash_header.php';
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
           <?php if ($isScheduled): ?>
             <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">
-              ⏰ Programmato per il <?= date('d/m/Y H:i', strtotime($p['publish_at'])) ?>
+              ⏰ Programmato per il <?= formatLocalDateTime($p['publish_at'], $profile) ?>
             </span>
           <?php endif; ?>
           <?php if ($isPrivate): ?>
@@ -235,7 +235,7 @@ include __DIR__ . '/_dash_header.php';
             <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
           <?php endif; ?>
         </div>
-        <small style="color:var(--text-muted)"><?= date('d/m/Y H:i', strtotime($p['created_at'])) ?></small>
+        <small style="color:var(--text-muted)"><?= formatLocalDateTime($p['created_at'], $profile) ?></small>
         <?php if ($p['testo']): ?><p style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
         <?php if (!$isPrivate): ?>
           <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>

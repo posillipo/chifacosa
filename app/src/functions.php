@@ -102,7 +102,7 @@ function currentUser(): ?array {
     if (empty($_SESSION['user_id'])) return null;
     static $cache = null;
     if ($cache !== null) return $cache;
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.cinema_films_json_url, p.cinema_films_synced_at
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.cinema_films_json_url, p.cinema_films_synced_at
                               FROM users u LEFT JOIN profiles p ON p.user_id = u.id
                               WHERE u.id = ?');
     $stmt->execute([$_SESSION['user_id']]);
@@ -280,7 +280,7 @@ function getActingProfile(array $loggedInUser): array {
         unset($_SESSION['acting_as_user_id']);
         return $loggedInUser;
     }
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at
                               FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
     $stmt->execute([(int) $actingId]);
     $profile = $stmt->fetch();
@@ -1953,12 +1953,74 @@ function getAccountFollowerCount(int $userId): int {
     return (int) $stmt->fetch()['c'];
 }
 
+// Fusi orari selezionabili dal profilo (Dashboard → Profilo e anagrafica) per correggere la
+// visualizzazione di date/orari quando il server non è nello stesso fuso dei visitatori — elenco
+// curato (non tutti i ~596 nomi IANA) apposta: la chiave va nella colonna profiles.dashboard_theme
+// (VARCHAR(10)), un campo rimasto inutilizzato da quando la scelta del tema dashboard chiaro/scuro
+// è stata abbandonata (vedi nota in _dash_header.php) — riusarlo evita una migrazione del database
+// per una nuova colonna. Il valore è il vero nome IANA, usato con DateTimeZone: gestisce
+// correttamente anche l'ora legale, a differenza di un semplice offset fisso.
+const TIMEZONE_OPTIONS = [
+    'rome' => ['tz' => 'Europe/Rome', 'label' => 'Italia (Roma)'],
+    'london' => ['tz' => 'Europe/London', 'label' => 'Regno Unito (Londra)'],
+    'paris' => ['tz' => 'Europe/Paris', 'label' => 'Francia (Parigi)'],
+    'madrid' => ['tz' => 'Europe/Madrid', 'label' => 'Spagna (Madrid)'],
+    'berlin' => ['tz' => 'Europe/Berlin', 'label' => 'Germania (Berlino)'],
+    'lisbon' => ['tz' => 'Europe/Lisbon', 'label' => 'Portogallo (Lisbona)'],
+    'athens' => ['tz' => 'Europe/Athens', 'label' => 'Grecia (Atene)'],
+    'moscow' => ['tz' => 'Europe/Moscow', 'label' => 'Russia (Mosca)'],
+    'newyork' => ['tz' => 'America/New_York', 'label' => 'USA Est (New York)'],
+    'chicago' => ['tz' => 'America/Chicago', 'label' => 'USA Centrale (Chicago)'],
+    'denver' => ['tz' => 'America/Denver', 'label' => 'USA Montagne (Denver)'],
+    'la' => ['tz' => 'America/Los_Angeles', 'label' => 'USA Pacifico (Los Angeles)'],
+    'saopaulo' => ['tz' => 'America/Sao_Paulo', 'label' => 'Brasile (San Paolo)'],
+    'dubai' => ['tz' => 'Asia/Dubai', 'label' => 'Emirati (Dubai)'],
+    'mumbai' => ['tz' => 'Asia/Kolkata', 'label' => 'India (Mumbai)'],
+    'tokyo' => ['tz' => 'Asia/Tokyo', 'label' => 'Giappone (Tokyo)'],
+    'shanghai' => ['tz' => 'Asia/Shanghai', 'label' => 'Cina (Shanghai)'],
+    'sydney' => ['tz' => 'Australia/Sydney', 'label' => 'Australia (Sydney)'],
+    'utc' => ['tz' => 'UTC', 'label' => 'UTC'],
+];
+
+// Chiave del fuso orario scelto dal profilo, con fallback a "rome": quasi tutti i profili di
+// questa piattaforma sono italiani, ed è il fuso più probabile a "correggere" subito l'orario per
+// chi non ha ancora impostato nulla (valore di default della colonna, prima 'dark', non è una
+// chiave valida di TIMEZONE_OPTIONS e ricade quindi qui).
+function profileTimezoneKey(?array $profile): string {
+    $key = is_array($profile) ? ($profile['dashboard_theme'] ?? '') : '';
+    return isset(TIMEZONE_OPTIONS[$key]) ? $key : 'rome';
+}
+
+function profileTimezoneName(?array $profile): string {
+    return TIMEZONE_OPTIONS[profileTimezoneKey($profile)]['tz'];
+}
+
+// Converte una data/ora salvata nel database (interpretata nel fuso orario con cui il server PHP
+// l'ha scritta — quello restituito da date_default_timezone_get(), lo stesso usato da NOW()/
+// CURRENT_TIMESTAMP/date() ovunque nel codice) nel fuso orario scelto dal profilo, SOLO per la
+// visualizzazione: non tocca mai il valore salvato. Nata da una segnalazione utente ("l'orario è
+// sballato, forse perché il server non è in Italia") — prima ogni pagina ristampava la data così
+// com'è, nel fuso del server, chiunque fosse il proprietario del profilo.
+function formatLocalDateTime(?string $datetime, ?array $profile, string $format = 'd/m/Y H:i'): string {
+    if (!$datetime) {
+        return '';
+    }
+    try {
+        $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+        return $dt->format($format);
+    } catch (Exception $e) {
+        return date($format, strtotime($datetime));
+    }
+}
+
 // Data/ora di pubblicazione mostrata pubblicamente per qualunque tipo di post/elemento
 // (Timeline, Che Amo, Viaggi, Brani...): publish_at se impostato, altrimenti created_at — stesso
 // criterio già usato per raggruppare "la stessa giornata" (getSameDayFavorites/
-// getSameDayTimelinePosts), qui invece per mostrare la data e l'ora per intero.
-function publishedAtLabel(?string $publishAt, string $createdAt): string {
-    return date('d/m/Y H:i', strtotime($publishAt ?: $createdAt));
+// getSameDayTimelinePosts), qui invece per mostrare la data e l'ora per intero, nel fuso orario
+// del profilo (vedi formatLocalDateTime()).
+function publishedAtLabel(?string $publishAt, string $createdAt, ?array $profile = null): string {
+    return formatLocalDateTime($publishAt ?: $createdAt, $profile);
 }
 
 // Altri elementi dello stesso modulo "che amo" pubblicati/aggiunti nello stesso giorno di un
@@ -2049,19 +2111,19 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $db = getDB();
     $items = [];
 
-    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
         WHERE b.user_id IN ($placeholders) ORDER BY b.published_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
             'tipo' => 'blog', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => blogPostUrl($r['user_slug'], $r),
         ];
     }
 
-    $stmt = $db->prepare("SELECT tr.id, tr.track_name, tr.track_image, tr.artist_name, tr.note, tr.image_path, tr.image_thumb_path, tr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT tr.id, tr.track_name, tr.track_image, tr.artist_name, tr.note, tr.image_path, tr.image_thumb_path, tr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM favorite_tracks tr JOIN users u ON u.id = tr.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tr.user_id IN ($placeholders) AND tr.show_in_feed = 1 AND (tr.publish_at IS NULL OR tr.publish_at <= NOW()) ORDER BY tr.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2072,12 +2134,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'brano', 'titolo' => $brTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['track_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/brani/' . $r['id'] . '/scheda',
         ];
     }
 
-    $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = u.id
         WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2085,12 +2147,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         $items[] = [
             'tipo' => 'evento', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'evento_quando' => $r['event_date'], 'evento_is_perpetual' => $r['is_perpetual'], 'evento_recurrence' => $r['recurrence'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/eventi/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.image_thumb_path, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.image_thumb_path, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM timeline_posts tp JOIN users u ON u.id = tp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
         ORDER BY tp.created_at DESC LIMIT 200");
@@ -2099,12 +2161,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         $items[] = [
             'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'],
             'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/timeline/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.note, fb.image_path, fb.image_thumb_path, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.note, fb.image_path, fb.image_thumb_path, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_bands fb JOIN users u ON u.id = fb.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fb.user_id IN ($placeholders) AND fb.show_in_feed = 1 AND (fb.publish_at IS NULL OR fb.publish_at <= NOW()) ORDER BY fb.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2115,12 +2177,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'band_favorita', 'titolo' => $fbTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['artist_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/band-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.note, fa.image_path, fa.image_thumb_path, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.note, fa.image_path, fa.image_thumb_path, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_actors fa JOIN users u ON u.id = fa.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fa.user_id IN ($placeholders) AND fa.show_in_feed = 1 AND (fa.publish_at IS NULL OR fa.publish_at <= NOW()) ORDER BY fa.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2131,12 +2193,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'attore_favorito', 'titolo' => $faTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['actor_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/attori-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.note, fm.image_path, fm.image_thumb_path, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.note, fm.image_path, fm.image_thumb_path, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_movies fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fm.user_id IN ($placeholders) AND fm.show_in_feed = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2147,12 +2209,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'film_favorito', 'titolo' => $fmTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['movie_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/film-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fk.id, fk.book_title, fk.book_image, fk.note, fk.image_path, fk.image_thumb_path, fk.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fk.id, fk.book_title, fk.book_image, fk.note, fk.image_path, fk.image_thumb_path, fk.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_books fk JOIN users u ON u.id = fk.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fk.user_id IN ($placeholders) AND fk.show_in_feed = 1 AND (fk.publish_at IS NULL OR fk.publish_at <= NOW()) ORDER BY fk.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2163,12 +2225,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'libro_favorito', 'titolo' => $fkTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['book_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/libri-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT ft.id, ft.place_name, ft.map_image_path, ft.note, ft.image_path, ft.image_thumb_path, ft.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT ft.id, ft.place_name, ft.map_image_path, ft.note, ft.image_path, ft.image_thumb_path, ft.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_trips ft JOIN users u ON u.id = ft.user_id JOIN profiles p ON p.user_id = u.id
         WHERE ft.user_id IN ($placeholders) AND ft.show_in_feed = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2179,12 +2241,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'viaggio_favorito', 'titolo' => $ftTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['map_image_path']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/viaggi/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fp.id, fp.playlist_name, fp.playlist_image, fp.note, fp.image_path, fp.image_thumb_path, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fp.id, fp.playlist_name, fp.playlist_image, fp.note, fp.image_path, fp.image_thumb_path, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_playlists fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fp.user_id IN ($placeholders) AND fp.show_in_feed = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2195,12 +2257,12 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'playlist_favorita', 'titolo' => $fpTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['playlist_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/playlist-che-amo/' . $r['id'],
         ];
     }
 
-    $stmt = $db->prepare("SELECT fal.id, fal.album_name, fal.album_artist_name, fal.album_image, fal.note, fal.image_path, fal.image_thumb_path, fal.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path
+    $stmt = $db->prepare("SELECT fal.id, fal.album_name, fal.album_artist_name, fal.album_image, fal.note, fal.image_path, fal.image_thumb_path, fal.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_albums fal JOIN users u ON u.id = fal.user_id JOIN profiles p ON p.user_id = u.id
         WHERE fal.user_id IN ($placeholders) AND fal.show_in_feed = 1 AND (fal.publish_at IS NULL OR fal.publish_at <= NOW()) ORDER BY fal.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
@@ -2211,7 +2273,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         }
         $items[] = [
             'tipo' => 'album_favorito', 'titolo' => $falTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['album_image']), 'data' => $r['data'],
-            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/album-che-amo/' . $r['id'],
         ];
     }
@@ -2316,7 +2378,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
         if ($scheduleLabel) {
             $eventoInfo = ' · ' . e($scheduleLabel);
         } elseif (!empty($item['evento_quando'])) {
-            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y H:i', strtotime($item['evento_quando'])));
+            $eventoInfo = ' · si terrà il ' . e(formatLocalDateTime($item['evento_quando'], ['dashboard_theme' => $item['owner_tz'] ?? null]));
         }
     }
     // Sfondo grigio tenue per distinguere subito i propri contenuti dal resto del feed
@@ -2331,7 +2393,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     $html .= '<div style="flex:1;min-width:0;">';
     $html .= '<small style="color:var(--text-muted);text-transform:uppercase;">' . e($label) . ' · ' . e($item['display_name']) . ($isMine ? ' <span style="color:var(--accent);font-weight:700;">(tu)</span>' : '') . '</small><br>';
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
-    $html .= '<small style="color:var(--text-muted)">' . e(date('d/m/Y H:i', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '<small style="color:var(--text-muted)">' . e(formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
     $html .= '</div></a>';
     return $html;
 }
@@ -2348,7 +2410,7 @@ function renderTimelineFeedItem(array $item): string {
         if ($scheduleLabel) {
             $eventoInfo = ' · ' . e($scheduleLabel);
         } elseif (!empty($item['evento_quando'])) {
-            $eventoInfo = ' · si terrà il ' . e(date('d/m/Y H:i', strtotime($item['evento_quando'])));
+            $eventoInfo = ' · si terrà il ' . e(formatLocalDateTime($item['evento_quando'], ['dashboard_theme' => $item['owner_tz'] ?? null]));
         }
     }
     $html = '<a href="' . e($item['url']) . '" class="card" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">';
@@ -2358,7 +2420,7 @@ function renderTimelineFeedItem(array $item): string {
     $html .= '<div style="flex:1;min-width:0;">';
     $html .= '<small style="color:rgba(var(--text-rgb),0.6);text-transform:uppercase;">' . e($label) . '</small><br>';
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
-    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(date('d/m/Y H:i', strtotime($item['data']))) . $eventoInfo . '</small>';
+    $html .= '<small style="color:rgba(var(--text-rgb),0.6);">' . e(formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
     $html .= '</div></a>';
     return $html;
 }

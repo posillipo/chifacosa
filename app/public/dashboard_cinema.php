@@ -85,7 +85,7 @@ include __DIR__ . '/_dash_header.php';
       <p style="color:var(--text-muted);margin:6px 0 14px;">
         <?= $filmCount ?> film attualmente pubblicati.
         <?php if (!empty($profile['cinema_films_synced_at'])): ?>
-          Ultima sincronizzazione: <?= e(date('d/m/Y H:i', strtotime($profile['cinema_films_synced_at']))) ?>.
+          Ultima sincronizzazione: <?= e(formatLocalDateTime($profile['cinema_films_synced_at'], $profile)) ?>.
         <?php else: ?>
           Non ancora sincronizzato.
         <?php endif; ?>

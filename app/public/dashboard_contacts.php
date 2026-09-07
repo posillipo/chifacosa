@@ -34,7 +34,7 @@ include __DIR__ . '/_dash_header.php';
   <?php foreach ($requests as $r): ?>
     <div class="card" style="<?= $r['is_read'] ? 'opacity:0.7' : '' ?>">
       <strong><?= e($r['sender_name']) ?></strong>
-      <small style="color:var(--text-muted)"> &lt;<?= e($r['sender_email']) ?>&gt; · <?= date('d/m/Y H:i', strtotime($r['created_at'])) ?></small>
+      <small style="color:var(--text-muted)"> &lt;<?= e($r['sender_email']) ?>&gt; · <?= formatLocalDateTime($r['created_at'], $profile) ?></small>
       <p><?= nl2br(e($r['message'])) ?></p>
       <div style="display:flex;gap:6px;">
         <?php if (!$r['is_read']): ?>

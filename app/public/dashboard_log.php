@@ -47,7 +47,7 @@ include __DIR__ . '/_dash_header.php';
           <strong>@<?= e($l['actor_slug']) ?></strong> — <?= e($l['action']) ?>
           <?php if ($l['details']): ?><br><small style="color:var(--text-muted)"><?= e($l['details']) ?></small><?php endif; ?>
         </div>
-        <small style="color:var(--text-muted)"><?= date('d/m/Y H:i', strtotime($l['created_at'])) ?></small>
+        <small style="color:var(--text-muted)"><?= formatLocalDateTime($l['created_at'], $profile) ?></small>
       </div>
     <?php endforeach; ?>
   <?php endif; ?>

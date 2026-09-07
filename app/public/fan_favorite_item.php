@@ -94,7 +94,7 @@ if (!isset(FAN_FAVORITE_KINDS[$kind])) {
 }
 $cfg = FAN_FAVORITE_KINDS[$kind];
 
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -212,7 +212,7 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
     </p>
-    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'])) ?></small>
+    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
     <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>
       <p style="margin-top:2px;opacity:0.85;"><em><?= e(implode(', ', $apiDetails['genres'])) ?></em></p>
     <?php endif; ?>
@@ -274,7 +274,7 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
             <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
             <?php if ($kind === 'album' && !empty($s['album_artist_name'])): ?> · <?= e($s['album_artist_name']) ?><?php endif; ?>
           </p>
-          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'])) ?></small>
+          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'], $artist)) ?></small>
         </a>
         <?php if ($sNote !== ''): ?>
           <div class="card" style="text-align:left;margin-top:14px;">

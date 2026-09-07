@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $postId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, tp.*
+$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since, p.dashboard_theme, tp.*
                           FROM timeline_posts tp
                           JOIN users u ON u.id = tp.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -40,6 +40,7 @@ $artist = [
     'genere' => $post['genere'],
     'account_type' => $post['account_type'],
     'page_theme' => $post['page_theme'] ?? 'colorful',
+    'dashboard_theme' => $post['dashboard_theme'] ?? null,
 ];
 
 // Foto in ordine di caricamento: la prima è sempre quella su image_path (l'unica che compare
@@ -97,7 +98,7 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
 
   <div class="card">
     <?= renderPhotoCarousel($photos, $postId) ?>
-    <small style="color:rgba(var(--text-rgb),0.6);"><?= date('d/m/Y H:i', strtotime($post['created_at'])) ?></small>
+    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(formatLocalDateTime($post['created_at'], $artist)) ?></small>
     <?php if ($post['testo']): ?>
       <p style="margin-top:8px;font-size:16px;"><?= nl2br(e($post['testo'])) ?></p>
     <?php endif; ?>
@@ -111,7 +112,7 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
       <?php $spPhotos = array_values(array_filter(array_merge([$sp['image_path']], getTimelinePostPhotos((int) $sp['id'])))); ?>
       <div class="card">
         <?= renderPhotoCarousel($spPhotos, (int) $sp['id']) ?>
-        <small style="color:rgba(var(--text-rgb),0.6);"><?= date('d/m/Y H:i', strtotime($sp['created_at'])) ?></small>
+        <small style="color:rgba(var(--text-rgb),0.6);"><?= e(formatLocalDateTime($sp['created_at'], $artist)) ?></small>
         <?php if ($sp['testo']): ?>
           <p style="margin-top:8px;font-size:16px;"><?= nl2br(e($sp['testo'])) ?></p>
         <?php endif; ?>

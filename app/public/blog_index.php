@@ -6,7 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $userSlug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$userSlug]);
@@ -69,7 +69,7 @@ $pageUrl = siteUrl('/' . $userSlug . '/blog');
       <?php endif; ?>
       <span style="flex:1;min-width:0;">
         <strong style="display:block;"><?= e($p['title']) ?></strong>
-        <small style="opacity:.75;"><?= date('d/m/Y H:i', strtotime($p['published_at'])) ?></small>
+        <small style="opacity:.75;"><?= e(formatLocalDateTime($p['published_at'], $artist)) ?></small>
       </span>
     </a>
   <?php endforeach; ?>

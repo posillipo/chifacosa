@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $eventId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings, p.custom_feed_guid, p.custom_feed_guid_since, ev.*
+$stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings, p.custom_feed_guid, p.custom_feed_guid_since, ev.*
                           FROM events ev
                           JOIN users u ON u.id = ev.user_id
                           JOIN profiles p ON p.user_id = u.id
@@ -33,6 +33,7 @@ $artist = [
     'genere' => $event['genere'],
     'youtube_channel_id' => $event['youtube_channel_id'],
     'privacy_tracking_settings' => $event['privacy_tracking_settings'] ?? null,
+    'dashboard_theme' => $event['dashboard_theme'] ?? null,
 ];
 
 $resMsg = $_GET['res_msg'] ?? '';
@@ -42,7 +43,7 @@ $scheduleLabel = eventScheduleLabel($event['recurrence'] ?? 'none', (bool) ($eve
 $pageUrl = siteUrl('/' . $slug . '/eventi/' . $eventId);
 $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
 $locationLine = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));
-$ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strtotime($event['event_date'])) . ($locationLine ? ' · ' . $locationLine : ''));
+$ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($event['event_date'], $artist) . ($locationLine ? ' · ' . $locationLine : ''));
 ?>
 <!doctype html>
 <html lang="it">
@@ -99,7 +100,7 @@ $ogDescription = trim($event['display_name'] . ' — ' . date('d/m/Y H:i', strto
       </div>
     <?php endif; ?>
     <h1 style="font-size:22px;margin:0 0 6px;"><?= e($event['title']) ?></h1>
-    <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 4px;"><?= date('d/m/Y H:i', strtotime($event['event_date'])) ?></p>
+    <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 4px;"><?= e(formatLocalDateTime($event['event_date'], $artist)) ?></p>
     <?php if ($locationLine): ?>
       <p style="color:rgba(var(--text-rgb),0.7);margin:0 0 12px;"><?= e($locationLine) ?></p>
     <?php endif; ?>

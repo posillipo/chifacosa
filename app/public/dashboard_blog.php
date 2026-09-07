@@ -81,7 +81,7 @@ include __DIR__ . '/_dash_header.php';
         <img src="/<?= e($p['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
-        <div class="date"><?= date('d/m/Y H:i', strtotime($p['published_at'])) ?></div>
+        <div class="date"><?= e(formatLocalDateTime($p['published_at'], $profile)) ?></div>
         <strong><?= e($p['title']) ?></strong>
         <p style="color:var(--text-muted)"><?= nl2br(e($p['content'])) ?></p>
         <p><a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank"><?= e(siteName()) ?><?= e(blogPostUrl($profile['slug'], $p)) ?> ↗</a></p>

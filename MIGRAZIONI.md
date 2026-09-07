@@ -894,6 +894,38 @@ checkbox perpetuo), preselezionati in base al valore salvato. Ordinamento delle 
 (`dashboard_events.php`/`eventi.php`) aggiornato a `ORDER BY is_perpetual DESC, event_date ASC` —
 gli eventi perpetui restano fissati in cima.
 
+## 47. Fuso orario del profilo (nessuna migrazione: riuso di una colonna inutilizzata)
+Nessun comando SQL — questa voce esiste solo per lasciare traccia del riuso, non di un cambio di
+schema.
+
+Segnalazione utente: l'orario mostrato sui contenuti pubblicati (Timeline, Che Amo, Blog, Eventi)
+era "sballato", probabilmente perché il server non è nel fuso orario italiano. Prima ogni pagina
+ristampava le date del database così come venivano lette, nel fuso orario del server PHP
+(`date_default_timezone_get()`), chiunque fosse il proprietario del profilo e chiunque lo stesse
+visitando.
+
+Invece di aggiungere una nuova colonna, `profiles.dashboard_theme` (VARCHAR(10)) — inutilizzata da
+quando la scelta del tema chiaro/scuro della dashboard è stata abbandonata (vedi commento in
+`_dash_header.php`: `$dashTheme = 'light-theme';` fisso, la colonna non veniva più letta) — è
+stata riusata per salvare una chiave breve di fuso orario, scelta da un elenco curato
+(`TIMEZONE_OPTIONS` in `functions.php`, ~19 fusi comuni, ciascuno con una chiave di massimo 10
+caratteri e il vero nome IANA associato, es. `'rome' => 'Europe/Rome'`). Nuovo selettore "Fuso
+orario" in Dashboard → Profilo e anagrafica.
+
+Nuove funzioni in `functions.php`: `profileTimezoneKey()`/`profileTimezoneName()` (lettura con
+fallback a `'rome'`, il default più probabile per questa piattaforma) e
+`formatLocalDateTime(string $datetime, ?array $profile, string $format = 'd/m/Y H:i')` — converte
+con `DateTime`/`DateTimeZone` (gestisce correttamente l'ora legale) dal fuso del server al fuso
+scelto dal profilo, solo in visualizzazione: non tocca mai il valore salvato. Sostituita ogni
+`date('d/m/Y H:i', strtotime($x))` che mostrava date/orari di contenuti a un utente (Timeline,
+Che Amo, Blog, Eventi, e le rispettive pagine di gestione in dashboard) con questa funzione,
+passando il profilo proprietario del contenuto — nel Feed aggregato (`getTimelineFeedForUsers()`),
+dove un elenco può mescolare contenuti di più profili diversi, ciascun elemento porta con sé il
+proprio fuso (`p.dashboard_theme` selezionato insieme al resto, esposto come `owner_tz`).
+
+`currentUser()` e `getActingProfile()` estese per selezionare anche `p.dashboard_theme`, così è
+disponibile ovunque tramite `$user`/`$profile` senza query aggiuntive.
+
 ---
 
 ## Come aggiungere una nuova voce

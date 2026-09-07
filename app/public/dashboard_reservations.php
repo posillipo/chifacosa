@@ -129,7 +129,7 @@ include __DIR__ . '/_dash_header.php';
           <span style="color:var(--text-muted);"> · <?= (int) $r['party_size'] ?> person<?= (int) $r['party_size'] === 1 ? 'a' : 'e' ?></span>
           <span style="color:<?= $statusColors[$r['status']] ?? 'var(--text-muted)' ?>;font-weight:700;font-size:12px;"> · <?= e($statusLabels[$r['status']] ?? $r['status']) ?></span>
           <br><small style="color:var(--text-muted)">
-            <?= e($r['event_title'] ?? 'Evento eliminato') ?><?= $r['event_date'] ? ' · ' . date('d/m/Y H:i', strtotime($r['event_date'])) : '' ?>
+            <?= e($r['event_title'] ?? 'Evento eliminato') ?><?= $r['event_date'] ? ' · ' . formatLocalDateTime($r['event_date'], $profile) : '' ?>
           </small>
           <br><small><a href="mailto:<?= e($r['guest_email']) ?>"><?= e($r['guest_email']) ?></a><?= $r['guest_phone'] ? ' · ' . e($r['guest_phone']) : '' ?></small>
           <?php if ($r['notes']): ?><br><small style="color:var(--text-muted)">Note: <?= e($r['notes']) ?></small><?php endif; ?>

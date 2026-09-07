@@ -24,9 +24,15 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <?php
-// Pagine statiche di primo livello
-sitemapUrl(siteUrl('/'), null, 'daily', '1.0');
-sitemapUrl(siteUrl('/register.php'), null, 'monthly', '0.3');
+// Pagine statiche di primo livello — quando il dominio principale reindirizza a un singolo
+// profilo (Area Admin → Impostazioni generali), "/" non è più una pagina indicizzabile a sé (è un
+// redirect 301) e non va elencata qui: il profilo di destinazione è già incluso, con la sua
+// priorità, nel ciclo sui profili qui sotto.
+$isSingleProfileMode = (getSiteSetting('home_mode') ?: 'landing') === 'single_profile' && trim(getSiteSetting('single_profile_slug') ?: '') !== '';
+if (!$isSingleProfileMode) {
+    sitemapUrl(siteUrl('/'), null, 'daily', '1.0');
+    sitemapUrl(siteUrl('/register.php'), null, 'monthly', '0.3');
+}
 sitemapUrl(siteUrl('/credits.php'), null, 'yearly', '0.1');
 
 // Profili con almeno un piatto attivo nel menù — unico modo per sapere se /slug/menu è

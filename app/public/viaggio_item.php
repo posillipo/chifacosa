@@ -14,7 +14,7 @@ header('Pragma: no-cache');
 $slug = $_GET['slug'] ?? '';
 $tripId = (int) ($_GET['id'] ?? 0);
 
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere, p.custom_feed_guid, p.custom_feed_guid_since
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -103,7 +103,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
       Viaggio di <?= e($artist['display_name']) ?>
       <?php if (!empty($trip['address']) && $trip['address'] !== $trip['place_name']): ?> · <?= e($trip['address']) ?><?php endif; ?>
     </p>
-    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($trip['publish_at'], $trip['created_at'])) ?></small>
+    <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($trip['publish_at'], $trip['created_at'], $artist)) ?></small>
 
     <?php if ($note !== ''): ?>
       <div class="card" style="text-align:left;margin-top:14px;">
@@ -135,7 +135,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
             Viaggio di <?= e($artist['display_name']) ?>
             <?php if (!empty($s['address']) && $s['address'] !== $s['place_name']): ?> · <?= e($s['address']) ?><?php endif; ?>
           </p>
-          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'])) ?></small>
+          <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'], $artist)) ?></small>
         </a>
         <?php if ($sNote !== ''): ?>
           <div class="card" style="text-align:left;margin-top:14px;">

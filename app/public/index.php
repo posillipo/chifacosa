@@ -3,6 +3,26 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 checkInstallation();
 
+// Installazioni "mono-azienda" (Area Admin → Impostazioni generali): chi arriva sul dominio
+// principale viene mandato direttamente sulla pagina pubblica del profilo scelto, invece di
+// vedere la landing page multi-azienda con login/registrazione. Redirect 301 (permanente): i
+// motori di ricerca consolidano l'indicizzazione sul profilo senza penalità, è la stessa tecnica
+// standard di "questo indirizzo porta sempre a quest'altro" — login.php/register.php/admin
+// restano comunque raggiungibili direttamente dal loro indirizzo. Convalidato ad ogni richiesta
+// (non solo al salvataggio) per non reindirizzare mai verso un profilo nel frattempo eliminato o
+// disattivato: in quel caso si ricade in silenzio sulla landing page normale.
+if ((getSiteSetting('home_mode') ?: 'landing') === 'single_profile') {
+    $singleProfileSlug = trim(getSiteSetting('single_profile_slug') ?: '');
+    if ($singleProfileSlug !== '') {
+        $stmt = getDB()->prepare('SELECT id FROM users WHERE slug = ? AND is_active = 1');
+        $stmt->execute([$singleProfileSlug]);
+        if ($stmt->fetch()) {
+            header('Location: /' . $singleProfileSlug, true, 301);
+            exit;
+        }
+    }
+}
+
 $user = currentUser();
 $site = siteName();
 
