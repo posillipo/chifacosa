@@ -54,7 +54,13 @@ $photos = array_values(array_filter(array_merge([$post['image_path']], getTimeli
 $sameDayPosts = getSameDayTimelinePosts((int) $post['user_id'], $post['publish_at'], $post['created_at'], $postId);
 
 $pageUrl = siteUrl('/' . $slug . '/timeline/' . $postId);
-$ogImage = $post['image_path'] ? siteUrl($post['image_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
+// Con più di una foto, l'immagine esposta a og:image/Twitter (quella che finisce sui social
+// tramite Metricool & co. — vedi commento in feed.php) è una copia con "Link Album in Descrizione"
+// scritto in basso, non l'originale: sui social arriva sempre una sola immagine, mai il
+// carosello, quindi la scritta segnala che ce ne sono altre. Il carosello sul sito (sopra)
+// continua a mostrare le foto originali intatte, invariato.
+$ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
+$ogImage = $ogImagePath ? siteUrl($ogImagePath) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
 $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiornamento su ' . siteName());
 ?>
 <!doctype html>

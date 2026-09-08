@@ -102,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['image_path']);
+            deleteFeedShareImage($row['image_path']);
             deleteCoverFile($row['image_thumb_path']);
             foreach (getTimelinePostPhotos($id) as $extraPath) {
                 deleteCoverFile($extraPath);

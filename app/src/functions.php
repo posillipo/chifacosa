@@ -1873,6 +1873,70 @@ function handleCoverUpload(string $slug, string $fileInputName = 'cover'): ?stri
     return null;
 }
 
+// Copia "per la condivisione social" della foto di copertina di un post con più foto — usata SOLO
+// per og:image/Twitter card (Metricool e strumenti simili, per l'immagine del post automatico,
+// leggono l'og:image della pagina permalink e non l'allegato RSS: vedi commento in feed.php), MAI
+// per il carosello mostrato sul sito, che continua a mostrare le foto originali intatte. Ha senso
+// solo quando ci sono più foto: sui social arriva sempre e solo questa singola immagine (mai un
+// carosello), quindi la scritta segnala che ce ne sono altre da vedere nel link in descrizione.
+// Generata una sola volta e tenuta in cache su disco accanto all'originale (rigenerata solo se
+// l'originale cambia) — non un'elaborazione ad ogni visita/condivisione. Ritorna il percorso
+// dell'originale, invariato, se la generazione fallisce per qualunque motivo (GD assente, font non
+// trovato, file non leggibile...): un problema di stile non deve mai rompere la condivisione.
+function getFeedShareImage(string $imagePath): string {
+    $srcFile = '/var/www/html/' . $imagePath;
+    if (!is_file($srcFile)) {
+        return $imagePath;
+    }
+
+    $dir = dirname($imagePath);
+    $base = pathinfo($imagePath, PATHINFO_FILENAME);
+    $shareRelPath = ($dir !== '.' ? $dir . '/' : '') . $base . '__share.jpg';
+    $shareFile = '/var/www/html/' . $shareRelPath;
+
+    if (is_file($shareFile) && filemtime($shareFile) >= filemtime($srcFile)) {
+        return $shareRelPath;
+    }
+
+    $font = __DIR__ . '/../public/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
+    if (!function_exists('imagettftext') || !is_file($font)) {
+        return $imagePath;
+    }
+
+    $img = @imagecreatefromstring((string) file_get_contents($srcFile));
+    if ($img === false) {
+        return $imagePath;
+    }
+    imagealphablending($img, true);
+
+    $width = imagesx($img);
+    $height = imagesy($img);
+    $text = 'Link Album in Descrizione';
+
+    // Dimensione del testo proporzionale alla larghezza della foto (min/max per non diventare
+    // illeggibile o sproporzionata su foto molto piccole o molto grandi), fascia semitrasparente
+    // sotto per restare leggibile su qualunque sfondo.
+    $fontSize = max(14, min(34, (int) round($width / 22)));
+    $barHeight = (int) round($fontSize * 2.8);
+    $overlay = imagecolorallocatealpha($img, 0, 0, 0, 40);
+    imagefilledrectangle($img, 0, $height - $barHeight, $width, $height, $overlay);
+
+    $white = imagecolorallocate($img, 255, 255, 255);
+    $box = imagettfbbox($fontSize, 0, $font, $text);
+    $textWidth = $box[2] - $box[0];
+    $x = (int) round(($width - $textWidth) / 2);
+    $y = $height - (int) round($barHeight / 2) + (int) round($fontSize / 3);
+    imagettftext($img, $fontSize, 0, $x, $y, $white, $font, $text);
+
+    if (!is_dir(dirname($shareFile))) {
+        @mkdir(dirname($shareFile), 0775, true);
+    }
+    $ok = imagejpeg($img, $shareFile, 88);
+    imagedestroy($img);
+
+    return $ok ? $shareRelPath : $imagePath;
+}
+
 // Upload multiplo (fino a $maxFiles foto) — usato SOLO dai post Timeline con più foto (carosello
 // stile Instagram): la prima foto resta salvata come al solito su timeline_posts.image_path
 // (quella che compare nel Feed), le eventuali altre finiscono in timeline_post_photos. Ogni file
@@ -1931,6 +1995,18 @@ function deleteCoverFile(?string $coverPath): void {
     if ($coverPath) {
         @unlink('/var/www/html/' . $coverPath);
     }
+}
+
+// Ripulisce l'eventuale copia "per la condivisione social" (vedi getFeedShareImage()) generata per
+// questa foto, se ne esiste una — va richiamata insieme a deleteCoverFile() ogni volta che
+// l'originale viene eliminato, altrimenti resterebbe un file orfano sul disco.
+function deleteFeedShareImage(?string $coverPath): void {
+    if (!$coverPath) {
+        return;
+    }
+    $dir = dirname($coverPath);
+    $base = pathinfo($coverPath, PATHINFO_FILENAME);
+    @unlink('/var/www/html/' . ($dir !== '.' ? $dir . '/' : '') . $base . '__share.jpg');
 }
 
 // ===== Segui tra account (diverso da "Segui via email") =====
