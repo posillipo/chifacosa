@@ -82,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
             deleteCoverFile($row['image_path']);
+            deleteFeedShareImage($row['image_path']);
             deleteCoverFile($row['image_thumb_path']);
             deleteCoverFile($row['map_image_path']); // generata da noi (Geoapify), non un URL esterno: va ripulita anche lei
             foreach (getTripPhotos($id) as $extraPath) {
@@ -159,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $profile['id']]);
             if ($old = $stmt->fetch()) {
                 deleteCoverFile($old['image_path']);
+                deleteFeedShareImage($old['image_path']);
                 deleteCoverFile($old['image_thumb_path']);
             }
             foreach (getTripPhotos($id) as $oldExtra) {

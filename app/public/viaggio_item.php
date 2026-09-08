@@ -41,9 +41,13 @@ $note = trim($trip['note'] ?? '');
 // solo per l'og:image social: qui sotto, sulla pagina, la foto (singola o carosello fino a 10)
 // compare solo se il proprietario ne ha caricata almeno una — la mappa interattiva è già
 // mostrata per intero più sotto, mostrarne anche la miniatura sarebbe ridondante.
-$image = $trip['image_path'] ?: $trip['map_image_path'];
-$imageUrl = $image ? siteUrl($image) : null;
 $photos = $trip['image_path'] ? array_values(array_filter(array_merge([$trip['image_path']], getTripPhotos($tripId)))) : [];
+// Con più di una foto propria, l'immagine esposta a og:image/Twitter (quella che finisce sui
+// social tramite Metricool & co.) è una copia con "Link Album in Descrizione" scritta in basso —
+// stesso meccanismo dei post Timeline, vedi getFeedShareImage() in functions.php. La mappa
+// (fallback quando non c'è nessuna foto propria) non viene mai marcata: non è "un album".
+$image = (count($photos) > 1) ? getFeedShareImage($trip['image_path']) : ($trip['image_path'] ?: $trip['map_image_path']);
+$imageUrl = $image ? siteUrl($image) : null;
 
 // Altri viaggi pubblicati lo stesso giorno di questo — così chi arriva da un link personale a
 // un solo viaggio (es. una foto condivisa) vede subito anche gli altri della stessa giornata,
