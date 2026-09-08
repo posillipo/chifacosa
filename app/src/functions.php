@@ -1899,12 +1899,25 @@ function getFeedShareImage(string $imagePath): string {
     }
 
     $font = __DIR__ . '/../public/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
-    if (!function_exists('imagettftext') || !is_file($font)) {
+
+    // function_exists('imagettftext') NON basta a garantire che funzioni davvero: la funzione
+    // resta definita anche quando GD è stato compilato senza FreeType, e in quel caso fallisce
+    // silenziosamente (warning + false) invece di generare un errore bloccante — da qui il
+    // controllo esplicito su gd_info(), l'unico modo affidabile per saperlo in anticipo.
+    $gdInfo = function_exists('gd_info') ? gd_info() : [];
+    $hasFreeType = !empty($gdInfo['FreeType Support']);
+    if (!$hasFreeType) {
+        error_log('[getFeedShareImage] GD senza supporto FreeType: impossibile scrivere il testo, uso la foto originale per ' . $imagePath);
+        return $imagePath;
+    }
+    if (!is_file($font)) {
+        error_log('[getFeedShareImage] Font non trovato (' . $font . '), uso la foto originale per ' . $imagePath);
         return $imagePath;
     }
 
     $img = @imagecreatefromstring((string) file_get_contents($srcFile));
     if ($img === false) {
+        error_log('[getFeedShareImage] Impossibile decodificare l\'immagine sorgente ' . $imagePath);
         return $imagePath;
     }
     imagealphablending($img, true);
@@ -1922,17 +1935,31 @@ function getFeedShareImage(string $imagePath): string {
     imagefilledrectangle($img, 0, $height - $barHeight, $width, $height, $overlay);
 
     $white = imagecolorallocate($img, 255, 255, 255);
-    $box = imagettfbbox($fontSize, 0, $font, $text);
+    $box = @imagettfbbox($fontSize, 0, $font, $text);
+    if ($box === false) {
+        error_log('[getFeedShareImage] imagettfbbox() fallita (font/FreeType non utilizzabile), uso la foto originale per ' . $imagePath);
+        imagedestroy($img);
+        return $imagePath;
+    }
     $textWidth = $box[2] - $box[0];
     $x = (int) round(($width - $textWidth) / 2);
     $y = $height - (int) round($barHeight / 2) + (int) round($fontSize / 3);
-    imagettftext($img, $fontSize, 0, $x, $y, $white, $font, $text);
+    $drawn = @imagettftext($img, $fontSize, 0, $x, $y, $white, $font, $text);
+    if ($drawn === false) {
+        error_log('[getFeedShareImage] imagettftext() fallita, uso la foto originale per ' . $imagePath);
+        imagedestroy($img);
+        return $imagePath;
+    }
 
     if (!is_dir(dirname($shareFile))) {
         @mkdir(dirname($shareFile), 0775, true);
     }
     $ok = imagejpeg($img, $shareFile, 88);
     imagedestroy($img);
+
+    if (!$ok) {
+        error_log('[getFeedShareImage] imagejpeg() non è riuscita a scrivere ' . $shareFile . ' (permessi/spazio disco?), uso la foto originale per ' . $imagePath);
+    }
 
     return $ok ? $shareRelPath : $imagePath;
 }
