@@ -2260,10 +2260,29 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
         ORDER BY tp.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
-    foreach ($stmt->fetchAll() as $r) {
+    $pensieroRows = $stmt->fetchAll();
+    // Quanti post hanno più di una foto (carosello) — serve solo a feed.php, per sapere quali
+    // devono esporre nel feed RSS/Metricool la versione con "Link Album in Descrizione" invece
+    // della foto nuda (vedi getFeedShareImage()). Una sola query qui invece che una per post; il
+    // calcolo VERO e proprio della versione con scritta resta rimandato a feed.php, e solo per i
+    // pochi elementi davvero mostrati (raw_image_path/has_multi_photo sono solo dati, non
+    // generano nulla su disco) — non ha senso rigenerarla ad ogni caricamento di Feed/Timeline
+    // per elementi che nessuno vedrà.
+    $pensieroPhotoCounts = [];
+    $pensieroIds = array_column($pensieroRows, 'id');
+    if ($pensieroIds) {
+        $ph = implode(',', array_fill(0, count($pensieroIds), '?'));
+        $cs = $db->prepare("SELECT post_id, COUNT(*) c FROM timeline_post_photos WHERE post_id IN ($ph) GROUP BY post_id");
+        $cs->execute($pensieroIds);
+        foreach ($cs->fetchAll() as $c) {
+            $pensieroPhotoCounts[(int) $c['post_id']] = (int) $c['c'];
+        }
+    }
+    foreach ($pensieroRows as $r) {
         $items[] = [
             'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'],
             'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
+            'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($pensieroPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/timeline/' . $r['id'],
         ];
@@ -2337,13 +2356,26 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         FROM fan_favorite_trips ft JOIN users u ON u.id = ft.user_id JOIN profiles p ON p.user_id = u.id
         WHERE ft.user_id IN ($placeholders) AND ft.show_in_feed = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
-    foreach ($stmt->fetchAll() as $r) {
+    $tripRows = $stmt->fetchAll();
+    // Vedi commento sopra (blocco "pensiero"): stesso calcolo, per i viaggi con più foto.
+    $tripPhotoCounts = [];
+    $tripIds = array_column($tripRows, 'id');
+    if ($tripIds) {
+        $ph = implode(',', array_fill(0, count($tripIds), '?'));
+        $cs = $db->prepare("SELECT trip_id, COUNT(*) c FROM fan_favorite_trip_photos WHERE trip_id IN ($ph) GROUP BY trip_id");
+        $cs->execute($tripIds);
+        foreach ($cs->fetchAll() as $c) {
+            $tripPhotoCounts[(int) $c['trip_id']] = (int) $c['c'];
+        }
+    }
+    foreach ($tripRows as $r) {
         $ftTitolo = $r['place_name'];
         if (trim($r['note'] ?? '') !== '') {
             $ftTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
             'tipo' => 'viaggio_favorito', 'titolo' => $ftTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['map_image_path']), 'data' => $r['data'],
+            'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($tripPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/viaggi/' . $r['id'],
         ];

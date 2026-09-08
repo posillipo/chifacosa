@@ -15,13 +15,16 @@ if (!$artist) {
     exit;
 }
 
-// Il link personalizzato impostato in Dashboard → Timeline NON viene messo qui nel <link> XML:
-// strumenti come Metricool, per l'immagine dei post automatici, ignorano enclosure/media RSS e
-// vanno a leggere l'og:image della pagina puntata da <link> — se puntasse già al sito esterno,
-// prenderebbero l'immagine sbagliata (o nessuna). <link> e <guid> restano quindi sempre il
-// permalink interno chifacosa.it, che ha gli og:image/og:title corretti; è la pagina di
-// destinazione stessa (timeline_post.php, blog_post.php, evento.php) a reindirizzare i
-// visitatori reali all'URL esterno via JS — vedi emitCustomFeedLinkRedirect() in functions.php.
+// Il link personalizzato impostato in Dashboard → Timeline NON viene messo qui nel <link> XML: se
+// puntasse già al sito esterno, uno strumento che legge solo <link>/og:image (invece che
+// l'allegato RSS) prenderebbe l'immagine sbagliata (o nessuna). <link> e <guid> restano quindi
+// sempre il permalink interno chifacosa.it, che ha gli og:image/og:title corretti; è la pagina di
+// destinazione stessa (timeline_post.php, blog_post.php, evento.php) a reindirizzare i visitatori
+// reali all'URL esterno via JS — vedi emitCustomFeedLinkRedirect() in functions.php.
+// Nota sull'immagine usata da automazioni come Metricool: non è garantito se leggano l'allegato
+// RSS (enclosure/media) o l'og:image della pagina di destinazione — per sicurezza sono allineati
+// entrambi (per i post con più foto, entrambi puntano alla versione con la scritta "Link Album in
+// Descrizione": vedi getFeedShareImage() qui sotto e in timeline_post.php/viaggio_item.php).
 
 // I Brani che amo ora hanno una loro pagina di dettaglio con og:image propria (come gli altri
 // tipi "che amo"), quindi da qui in poi restano nel feed invece di essere esclusi.
@@ -50,9 +53,19 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <guid isPermaLink="true"><?= e($itemUrl) ?></guid>
 <pubDate><?= date(DATE_RSS, strtotime($item['data'])) ?></pubDate>
 <description><?= htmlspecialchars($item['titolo'], ENT_XML1, 'UTF-8') ?></description>
-<?php if ($item['cover']): ?>
 <?php
-    $coverUrl = str_starts_with($item['cover'], 'http') ? $item['cover'] : siteUrl($item['cover']);
+    // Con più di una foto (post Timeline/Viaggi con carosello), l'immagine esposta qui è la
+    // versione con "Link Album in Descrizione" scritta in basso — vedi getFeedShareImage() in
+    // functions.php e il commento più sopra sul perché serve anche qui, non solo su og:image:
+    // per come effettivamente si comporta Metricool con questo feed, legge questa immagine (e
+    // non solo l'og:image della pagina di destinazione, come si presumeva in origine).
+    $feedCover = (!empty($item['has_multi_photo']) && !empty($item['raw_image_path']))
+        ? getFeedShareImage($item['raw_image_path'])
+        : $item['cover'];
+?>
+<?php if ($feedCover): ?>
+<?php
+    $coverUrl = str_starts_with($feedCover, 'http') ? $feedCover : siteUrl($feedCover);
     $coverExt = strtolower(pathinfo(parse_url($coverUrl, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
     $coverMime = ['png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'][$coverExt] ?? 'image/jpeg';
 ?>
