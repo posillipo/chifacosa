@@ -1964,6 +1964,68 @@ function getFeedShareImage(string $imagePath): string {
     return $ok ? $shareRelPath : $imagePath;
 }
 
+// Stato di getFeedShareImage(), leggibile dall'Area Admin senza bisogno di accesso alla shell del
+// server (docker exec) — utile per chi aggiorna solo tramite Portainer collegato al repository e
+// non ha un terminale a disposizione. Include un test dal vivo (genera davvero un'immagine di
+// prova con GD, bypassando la cache) invece di limitarsi a controllare che i pezzi siano
+// presenti: è l'unico modo per essere certi che il risultato finale abbia davvero la scritta,
+// dato che GD può "sembrare" funzionante (nessun errore fatale) pur non riuscendo a disegnare
+// testo se manca il supporto FreeType.
+function diagnoseFeedShareImage(): array {
+    $gdInfo = function_exists('gd_info') ? gd_info() : [];
+    $hasFreeType = !empty($gdInfo['FreeType Support']);
+    $font = __DIR__ . '/../public/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
+    $fontExists = is_file($font);
+
+    $testRelPath = 'uploads/images/_diagnostica/test.jpg';
+    $testFile = '/var/www/html/' . $testRelPath;
+    $testDir = dirname($testFile);
+    $previewUrl = null;
+
+    if ($hasFreeType && $fontExists) {
+        if (!is_dir($testDir) && !@mkdir($testDir, 0775, true)) {
+            return [
+                'has_freetype' => $hasFreeType, 'font_exists' => $fontExists,
+                'preview_url' => null, 'error' => 'Impossibile creare la cartella ' . $testDir . ' (permessi di scrittura?).',
+            ];
+        }
+        $img = imagecreatetruecolor(600, 400);
+        imagefill($img, 0, 0, imagecolorallocate($img, 70, 130, 180));
+        imagejpeg($img, $testFile, 90);
+        imagedestroy($img);
+        // Bypassa la cache di getFeedShareImage() apposta: qui serve rigenerare SEMPRE, per
+        // riflettere lo stato reale in questo momento, non un tentativo precedente (magari con
+        // una versione più vecchia del codice, o con GD in uno stato diverso).
+        @unlink(dirname($testFile) . '/test__share.jpg');
+        $resultPath = getFeedShareImage($testRelPath);
+        $previewUrl = assetUrl('/' . $resultPath);
+    }
+
+    return [
+        'has_freetype' => $hasFreeType,
+        'font_exists' => $fontExists,
+        'preview_url' => $previewUrl,
+        'error' => null,
+    ];
+}
+
+// Ripulisce tutte le copie "per la condivisione social" già generate (vedi getFeedShareImage()):
+// serve a forzare la rigenerazione di tutte quelle esistenti dopo una correzione al codice che le
+// genera, dato che la cache su disco altrimenti le considera valide finché la FOTO ORIGINALE non
+// cambia — non capisce da sola che è cambiata la logica di generazione. Raggiungibile dall'Area
+// Admin, così non serve un accesso diretto al server (docker exec) per pulirle. Ritorna quante ne
+// ha cancellate.
+function clearFeedShareImageCache(): int {
+    $count = 0;
+    $files = glob('/var/www/html/uploads/images/*/*__share.jpg') ?: [];
+    foreach ($files as $file) {
+        if (@unlink($file)) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
 // Upload multiplo (fino a $maxFiles foto) — usato SOLO dai post Timeline con più foto (carosello
 // stile Instagram): la prima foto resta salvata come al solito su timeline_posts.image_path
 // (quella che compare nel Feed), le eventuali altre finiscono in timeline_post_photos. Ogni file
