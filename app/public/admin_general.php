@@ -42,6 +42,20 @@ $homeMode = getSiteSetting('home_mode') ?: 'landing';
 $singleProfileSlug = getSiteSetting('single_profile_slug') ?: '';
 $shareImageStatus = diagnoseFeedShareImage();
 
+// Diagnostica fusi orari: l'app (PHP) e il database (MySQL) girano in due container separati, e
+// tutte le conversioni fatte in PHP (formatLocalDateTime()/parseLocalDateTime()) presumono che
+// condividano lo stesso fuso — dato che i confronti con date salvate dall'utente avvengono
+// sempre con NOW()/CURRENT_TIMESTAMP di MySQL. Se sono diversi, ogni conversione parte da un
+// presupposto sbagliato: qui si vede subito se è così, senza bisogno di un accesso alla shell.
+$phpTimezone = date_default_timezone_get();
+$phpNow = date('Y-m-d H:i:s');
+try {
+    $dbTzRow = getDB()->query("SELECT NOW() AS db_now, @@session.time_zone AS session_tz, @@global.time_zone AS global_tz")->fetch();
+} catch (Throwable $e) {
+    $dbTzRow = null;
+}
+$tzMismatchSeconds = $dbTzRow ? abs(strtotime($phpNow) - strtotime($dbTzRow['db_now'])) : null;
+
 include __DIR__ . '/_admin_header.php';
 ?>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
@@ -96,6 +110,38 @@ include __DIR__ . '/_admin_header.php';
   <?php endif; ?>
 
   <hr style="margin:32px 0; border-color:rgba(0,0,0,.1);">
+
+  <div class="card">
+    <strong>Diagnostica fusi orari (app vs database)</strong>
+    <p style="color:var(--text-muted)">
+      Le date che gli utenti digitano (validità offerte, data eventi, programmazione post) vengono
+      convertite dal fuso scelto nel loro profilo al fuso di QUESTO server PHP, perché vengono poi
+      confrontate con <code>NOW()</code> del database — se il container del database ha un fuso
+      diverso da questo, il confronto parte già sbagliato. Qui sotto il confronto diretto, adesso.
+    </p>
+    <table style="width:100%;font-size:13.5px;">
+      <tr><td style="padding:4px 8px;color:var(--text-muted);">Fuso orario PHP (questo server)</td><td style="padding:4px 8px;font-weight:700;"><?= e($phpTimezone) ?></td></tr>
+      <tr><td style="padding:4px 8px;color:var(--text-muted);">Ora attuale secondo PHP</td><td style="padding:4px 8px;font-weight:700;"><?= e($phpNow) ?></td></tr>
+      <?php if ($dbTzRow): ?>
+        <tr><td style="padding:4px 8px;color:var(--text-muted);">Ora attuale secondo il database (NOW())</td><td style="padding:4px 8px;font-weight:700;"><?= e($dbTzRow['db_now']) ?></td></tr>
+        <tr><td style="padding:4px 8px;color:var(--text-muted);">Fuso orario MySQL (session/global)</td><td style="padding:4px 8px;font-weight:700;"><?= e($dbTzRow['session_tz']) ?> / <?= e($dbTzRow['global_tz']) ?></td></tr>
+      <?php else: ?>
+        <tr><td colspan="2" style="padding:4px 8px;color:#c0392b;">Impossibile leggere l'ora dal database.</td></tr>
+      <?php endif; ?>
+    </table>
+    <?php if ($tzMismatchSeconds !== null): ?>
+      <?php if ($tzMismatchSeconds > 120): ?>
+        <div class="alert error" style="margin-top:10px;">
+          Scarto di <?= round($tzMismatchSeconds / 60) ?> minuti tra PHP e MySQL — sono su fusi
+          orari diversi. Le conversioni per la visualizzazione/il salvataggio delle date partono
+          quindi da un presupposto sbagliato: serve allineare i due container, o cambiare l'approccio
+          (dimmelo e sistemo il codice per non dipendere da questo).
+        </div>
+      <?php else: ?>
+        <div class="alert success" style="margin-top:10px;">PHP e MySQL sono allineati (scarto sotto i 2 minuti, normale differenza di rete/elaborazione).</div>
+      <?php endif; ?>
+    <?php endif; ?>
+  </div>
 
   <div class="card">
     <strong>Come funziona — Scritta "Link Album in Descrizione" sui post con più foto</strong>
