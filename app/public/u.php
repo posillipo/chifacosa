@@ -109,7 +109,10 @@ $latestTripCoords = $stmt->fetch();
 // la primissima cosa mai aggiunta come immagine di copertina — il clic porta all'elenco completo
 // di quella categoria, non al singolo elemento. Sostituisce la vecchia sezione "Band che amo" (un
 // solo modulo): ora ne rappresenta uno per ciascuno, in un carosello scorrevole invece di una
-// griglia, dato che possono essere fino a 8.
+// griglia, dato che possono essere fino a 8. I tasselli sono ordinati per attività più recente
+// della categoria (l'ultimo elemento aggiunto/pubblicato, non necessariamente quello mostrato
+// come copertina — per Viaggi coincidono, per le altre categorie no, dato che lì la copertina
+// resta il primo elemento mai aggiunto), non dall'ordine fisso dei moduli.
 $cheAmoTableConfig = [
     'bandcheamo' => ['table' => 'fan_favorite_bands', 'name' => 'spotify_artist_name', 'image' => 'artist_image'],
     'attorichamo' => ['table' => 'fan_favorite_actors', 'name' => 'actor_name', 'image' => 'actor_image'],
@@ -135,13 +138,18 @@ foreach (CHE_AMO_MODULES as $key => $m) {
     if (!$first) {
         continue;
     }
+    $stmt = getDB()->prepare("SELECT MAX(COALESCE(publish_at, created_at)) d FROM {$cfg['table']} WHERE user_id=?");
+    $stmt->execute([$uid]);
+    $latestActivity = $stmt->fetch()['d'];
     $cheAmoCarousel[] = [
         'label' => $m['label'],
         'icon' => $m['icon'],
         'segment' => $m['segment'],
         'image' => $first['image_path'] ?: ($first[$cfg['image']] ?? null),
+        'latest_activity' => $latestActivity,
     ];
 }
+usort($cheAmoCarousel, fn ($a, $b) => strtotime($b['latest_activity']) <=> strtotime($a['latest_activity']));
 
 $bandRatingStats = getBandRatingStats((int) $uid);
 $viewerId = $_SESSION['user_id'] ?? null;
