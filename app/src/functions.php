@@ -1898,7 +1898,13 @@ function getFeedShareImage(string $imagePath): string {
         return $shareRelPath;
     }
 
-    $font = __DIR__ . '/../public/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
+    // Percorso assoluto fisso, NON relativo a __DIR__: in produzione (Dockerfile) src/ e public/
+    // finiscono in due cartelle indipendenti, /var/www/src/ e /var/www/html/ — non sorelle come
+    // nel checkout di sviluppo (entrambe dentro app/), dove "risali di uno da src/ ed entra in
+    // public/" combacia per coincidenza. Bug reale riscontrato in produzione: il font veniva
+    // cercato in /var/www/public/... (inesistente), mai trovato, testo mai disegnato — nessun
+    // errore visibile, la funzione ricadeva in silenzio sulla foto originale.
+    $font = '/var/www/html/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
 
     // function_exists('imagettftext') NON basta a garantire che funzioni davvero: la funzione
     // resta definita anche quando GD è stato compilato senza FreeType, e in quel caso fallisce
@@ -1974,7 +1980,13 @@ function getFeedShareImage(string $imagePath): string {
 function diagnoseFeedShareImage(): array {
     $gdInfo = function_exists('gd_info') ? gd_info() : [];
     $hasFreeType = !empty($gdInfo['FreeType Support']);
-    $font = __DIR__ . '/../public/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
+    // Percorso assoluto fisso, NON relativo a __DIR__: in produzione (Dockerfile) src/ e public/
+    // finiscono in due cartelle indipendenti, /var/www/src/ e /var/www/html/ — non sorelle come
+    // nel checkout di sviluppo (entrambe dentro app/), dove "risali di uno da src/ ed entra in
+    // public/" combacia per coincidenza. Bug reale riscontrato in produzione: il font veniva
+    // cercato in /var/www/public/... (inesistente), mai trovato, testo mai disegnato — nessun
+    // errore visibile, la funzione ricadeva in silenzio sulla foto originale.
+    $font = '/var/www/html/assets/themes/garden-anomaly/fonts/SpaceGrotesk-SemiBold.ttf';
     $fontExists = is_file($font);
 
     $testRelPath = 'uploads/images/_diagnostica/test.jpg';
