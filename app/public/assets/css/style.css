@@ -639,6 +639,11 @@ body.colorful-page {
    "has-overflow" sul wrap in base a se c'è davvero altro da scorrere e a se si è già arrivati in
    fondo. Vale su ogni dimensione di schermo, desktop incluso, dato che ora le pillole non vanno
    mai a capo. */
+/* È un <button> vero (non solo un indicatore visivo): cliccandolo il menu scorre di un passo
+   verso destra, vedi nav-scroll-hint.js. Cliccabile (pointer-events: auto) SOLO quando c'è
+   davvero altro da scorrere (classe "has-overflow", stessa che lo rende visibile) — altrimenti,
+   pur essendo praticamente invisibile, resterebbe comunque sopra all'ultima voce del menu e ne
+   intercetterebbe i click. */
 .colorful-nav-arrow {
   display: flex;
   position: absolute;
@@ -650,12 +655,15 @@ body.colorful-page {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  border: none;
+  padding: 0;
   background: rgba(20, 20, 30, 0.55);
   color: #fff;
   font-size: 11px;
   backdrop-filter: blur(2px);
   opacity: 0;
   transition: opacity 0.25s ease;
+  cursor: pointer;
   pointer-events: none;
   z-index: 2;
 }
@@ -674,7 +682,7 @@ body.colorful-page {
   z-index: 1;
 }
 .colorful-nav-wrap.has-overflow::after { opacity: 1; }
-.colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; }
+.colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; pointer-events: auto; }
 
 /* Trascinamento col mouse per scorrere il menu su desktop (touch/trackpad scorrono già in modo
    nativo grazie a overflow-x: auto — qui serve solo per chi ha un mouse senza gesture

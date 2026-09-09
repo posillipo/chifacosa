@@ -1357,7 +1357,7 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     }
     return '<div class="colorful-nav-wrap">'
         . '<nav class="colorful-nav">' . implode('', $parts) . '</nav>'
-        . '<span class="colorful-nav-arrow" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></span>'
+        . '<button type="button" class="colorful-nav-arrow" aria-label="Scorri il menu">' . '<i class="fa-solid fa-chevron-right"></i></button>'
         . '</div>'
         . '<script src="' . assetUrl('/assets/js/nav-scroll-hint.js') . '" defer></script>';
 }

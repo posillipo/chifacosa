@@ -1,13 +1,14 @@
 /*!
- * Indicatore statico "c'è altro da scorrere" per il menu di navigazione pubblico: quando il menu
- * eccede la larghezza dello schermo (diventa scorrevole via CSS, vedi .colorful-nav in
- * style.css), mostra una freccina + leggera ombra sul bordo destro (stile Hetzner Cloud
- * Console), nascosta quando si arriva in fondo.
+ * Menu di navigazione pubblico scorrevole in orizzontale quando eccede la larghezza dello
+ * schermo (overflow-x via CSS, vedi .colorful-nav in style.css): freccina + leggera ombra sul
+ * bordo destro (stile Hetzner Cloud Console) quando c'è altro da scorrere, nascosta quando si è
+ * già arrivati in fondo.
  *
- * Su touch e trackpad il menu scorre già in modo nativo (overflow-x: auto). Su desktop con un
- * mouse semplice (senza gesture orizzontali) non c'era invece alcun modo di raggiungere le voci
- * che non entrano nello schermo — qui sotto si aggiungono trascinamento col mouse e rotellina
- * verticale tradotta in scorrimento orizzontale, oltre al solo rilevamento/toggle della classe
+ * Su touch e trackpad il menu scorre già in modo nativo. Su desktop con un mouse semplice
+ * (senza gesture orizzontali) non c'era invece alcun modo di raggiungere le voci che non
+ * entrano nello schermo: qui sotto si aggiungono un click sulla freccina (il gesto più intuitivo
+ * — è un <button> vero, vedi publicNav() in functions.php), trascinamento col mouse e rotellina
+ * verticale tradotta in scorrimento orizzontale, oltre al rilevamento/toggle della classe
  * "has-overflow".
  */
 (function () {
@@ -15,6 +16,7 @@
     if (!nav) return;
     var wrap = nav.closest('.colorful-nav-wrap');
     if (!wrap) return;
+    var arrowBtn = wrap.querySelector('.colorful-nav-arrow');
 
     function updateArrow() {
         if (nav.scrollWidth <= nav.clientWidth + 4) {
@@ -28,6 +30,12 @@
     nav.addEventListener('scroll', updateArrow, { passive: true });
     window.addEventListener('resize', updateArrow);
     window.addEventListener('load', updateArrow);
+
+    if (arrowBtn) {
+        arrowBtn.addEventListener('click', function () {
+            nav.scrollBy({ left: Math.round(nav.clientWidth * 0.8), behavior: 'smooth' });
+        });
+    }
 
     // Rotellina del mouse (solo verticale, su desktop) tradotta in scorrimento orizzontale.
     nav.addEventListener('wheel', function (e) {
