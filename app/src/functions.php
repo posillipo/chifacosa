@@ -2208,27 +2208,49 @@ function formatLocalDateTime(?string $datetime, ?array $profile, string $format 
 }
 
 // Inversa di formatLocalDateTime(): un valore digitato in un campo datetime-local del browser
-// (es. "programma la pubblicazione", validità di un'offerta, data di un evento) è l'orario
-// "a muro" nel fuso scelto dal profilo, esattamente come quello che formatLocalDateTime() gli
-// mostra in lettura — MAI il fuso del server. Va quindi convertito nella direzione opposta prima
-// di salvarlo, altrimenti un confronto con NOW() (entrambi scritti dal server nel SUO fuso) è
-// sfalsato dello scarto tra i due fusi: un'offerta "valida fino alle 19:59" digitata pensando
-// all'ora italiana risulterebbe scaduta (o non ancora iniziata) alle 19:59 vere, perché il
-// valore salvato sarebbe stato interpretato com'era già nel fuso del server. Ritorna null se
-// l'input è vuoto o non interpretabile.
-function parseLocalDateTime(?string $input, ?array $profile): ?string {
+// (es. "programma la pubblicazione", validità di un'offerta, data di un evento) è l'orario "a
+// muro" di CHI lo sta scrivendo in quel momento — MAI il fuso del server. Va quindi convertito
+// nella direzione opposta prima di salvarlo, altrimenti un confronto con NOW() (scritto dal
+// server nel SUO fuso) è sfalsato dello scarto tra i due fusi.
+//
+// $browserOffsetMinutes, quando disponibile, ha SEMPRE la precedenza sul fuso del profilo:
+// riflette l'orologio reale del dispositivo di chi sta scrivendo in questo istante (da
+// JavaScript, new Date().getTimezoneOffset()) — il fuso salvato sul profilo descrive invece come
+// va MOSTRATO il contenuto pubblicato, che non è necessariamente dove si trova chi lo gestisce in
+// un momento specifico (es. in viaggio all'estero: il profilo di un'attività italiana resta in
+// orario italiano per il pubblico, ma chi digita una data in quel momento pensa al proprio
+// orologio locale, non a quello del profilo). Il fuso del profilo resta solo come fallback per
+// gli inserimenti senza JavaScript.
+//
+// Ritorna null se l'input è vuoto o non interpretabile.
+function parseLocalDateTime(?string $input, ?array $profile, ?int $browserOffsetMinutes = null): ?string {
     $input = trim((string) $input);
     if ($input === '') {
         return null;
     }
     try {
-        $dt = new DateTime($input, new DateTimeZone(profileTimezoneName($profile)));
+        if ($browserOffsetMinutes !== null) {
+            // Convenzione JavaScript: getTimezoneOffset() = minuti (UTC - locale), positivo per i
+            // fusi indietro rispetto a UTC — quindi UTC = digitato + offset.
+            $dt = new DateTime($input, new DateTimeZone('UTC'));
+            $dt->modify(sprintf('%+d minutes', $browserOffsetMinutes));
+        } else {
+            $dt = new DateTime($input, new DateTimeZone(profileTimezoneName($profile)));
+        }
         $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
         return $dt->format('Y-m-d H:i:s');
     } catch (Exception $e) {
         $ts = strtotime($input);
         return $ts ? date('Y-m-d H:i:s', $ts) : null;
     }
+}
+
+// Legge l'offset di fuso orario inviato da JavaScript (vedi commento sopra) da $_POST, se
+// presente e numerico — helper condiviso per non ripetere il parsing in ogni pagina che gestisce
+// un campo datetime-local.
+function browserTzOffsetFromRequest(): ?int {
+    $raw = $_POST['tz_offset_minutes'] ?? null;
+    return ($raw !== null && $raw !== '' && is_numeric($raw)) ? (int) $raw : null;
 }
 
 // Data/ora di pubblicazione mostrata pubblicamente per qualunque tipo di post/elemento

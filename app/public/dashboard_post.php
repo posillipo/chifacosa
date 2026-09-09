@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
-        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile);
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
         if ($publishAt && strtotime($publishAt) <= time()) {
             $publishAt = null;
         }
@@ -148,6 +148,7 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
     <label>Cosa vuoi condividere?</label>
     <textarea name="testo" id="ai-testo" rows="3" placeholder="Scrivilo qui..."></textarea>
     <div id="ai-caption-box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">

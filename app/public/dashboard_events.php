@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $city = trim($_POST['city'] ?? '');
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
-        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile) ?? '';
+        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile, browserTzOffsetFromRequest()) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $city = trim($_POST['city'] ?? '');
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
-        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile) ?? '';
+        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile, browserTzOffsetFromRequest()) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
@@ -98,6 +98,7 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
     <label>Nome evento</label>
     <input type="text" name="title" required>
     <label>Locale</label>
@@ -176,6 +177,7 @@ include __DIR__ . '/_dash_header.php';
             <?= csrfField() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
+            <input type="hidden" name="tz_offset_minutes" value="">
             <label>Nome evento</label>
             <input type="text" name="title" value="<?= e($ev['title']) ?>" required>
             <label>Locale</label>

@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
-        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile);
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
         if ($publishAt && strtotime($publishAt) <= time()) {
             $publishAt = null;
         }
@@ -660,6 +660,12 @@ include __DIR__ . '/_dash_header.php';
           formData.set('note', note);
           formData.set('visibility', visibility);
           formData.set('publish_at', publishAt);
+          // Il fuso orario del profilo (Dashboard -> Profilo e anagrafica) descrive come va
+          // MOSTRATO il contenuto pubblicato, non necessariamente dove si trova chi lo sta
+          // programmando in questo momento (es. in viaggio) — l'offset del browser riflette
+          // invece l'orologio reale di chi sta digitando, quindi ha sempre la precedenza in
+          // lettura (vedi parseLocalDateTime() in functions.php).
+          formData.set('tz_offset_minutes', new Date().getTimezoneOffset());
           formData.set('custom_feed_guid', customLink);
           if (file) {
             formData.set('image', file);

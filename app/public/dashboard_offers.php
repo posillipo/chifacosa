@@ -18,8 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $priceLabel = trim($_POST['price_label'] ?? '');
         // Interpretati nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
-        $validFrom = parseLocalDateTime($_POST['valid_from'] ?? '', $profile);
-        $validUntil = parseLocalDateTime($_POST['valid_until'] ?? '', $profile);
+        $validFrom = parseLocalDateTime($_POST['valid_from'] ?? '', $profile, browserTzOffsetFromRequest());
+        $validUntil = parseLocalDateTime($_POST['valid_until'] ?? '', $profile, browserTzOffsetFromRequest());
         $isActive = isset($_POST['is_active']) ? 1 : 0;
 
         if ($title === '') {
@@ -98,6 +98,7 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
     <label>Titolo</label>
     <input type="text" name="title" required placeholder="es. Sconto di benvenuto">
     <label>Prezzo/sconto (opzionale)</label>
@@ -174,6 +175,7 @@ include __DIR__ . '/_dash_header.php';
             <?= csrfField() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" value="<?= (int) $of['id'] ?>">
+            <input type="hidden" name="tz_offset_minutes" value="">
             <label>Titolo</label>
             <input type="text" name="title" value="<?= e($of['title']) ?>" required>
             <label>Prezzo/sconto (opzionale)</label>
