@@ -147,6 +147,48 @@ CREATE TABLE IF NOT EXISTS photo_album_photos (
     FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Servizi aziendali: galleria fotografica (service_photos, stesso schema di photo_album_photos),
+-- accepts_inquiries attiva/disattiva il form "richiedi informazioni" lato pubblico per il singolo
+-- servizio (come accepts_reservations per gli eventi).
+CREATE TABLE IF NOT EXISTS services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    accepts_inquiries TINYINT(1) NOT NULL DEFAULT 1,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS service_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Richieste di informazioni su un servizio (stessi campi del form prenotazioni: nome, email,
+-- telefono, messaggio) — is_read per la stessa gestione "letto/da leggere" di contact_requests.
+CREATE TABLE IF NOT EXISTS service_inquiries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    service_id INT NOT NULL,
+    guest_name VARCHAR(120) NOT NULL,
+    guest_email VARCHAR(190) NOT NULL,
+    guest_phone VARCHAR(30) DEFAULT NULL,
+    message TEXT DEFAULT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento — event_id resta
 -- pensato per poter restare NULL in futuro per prenotazioni "libere", senza nuove migrazioni).
 CREATE TABLE IF NOT EXISTS table_reservations (

@@ -115,6 +115,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/album/([0-9]+)/?$ album_item.php?slug=$1&id=$2 [L,
 # /nomeartista/foto -> vetrina foto (post Timeline con foto + album)
 RewriteRule ^([a-zA-Z0-9_-]+)/foto/?$ foto.php?slug=$1 [L,QSA]
 
+# /nomeartista/servizi/ID -> pagina dedicata al singolo servizio (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/servizi/([0-9]+)/?$ servizio_item.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/servizi -> elenco servizi pubblicati
+RewriteRule ^([a-zA-Z0-9_-]+)/servizi/?$ servizi.php?slug=$1 [L,QSA]
+
 # /nomeartista/video -> pagina video YouTube
 RewriteRule ^([a-zA-Z0-9_-]+)/video/?$ video.php?slug=$1 [L,QSA]
 

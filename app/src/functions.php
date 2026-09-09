@@ -1273,7 +1273,7 @@ function hasAnyVisibleCheAmo(int $userId, array $hiddenKeys = []): bool {
 
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasOffers = false, bool $hasPhotos = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasOffers = false, bool $hasPhotos = false, bool $hasServices = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1317,6 +1317,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     }
     if ($hasPhotos) {
         $tabs['foto'] = ['label' => 'Foto', 'url' => '/' . $slug . '/foto', 'icon' => 'fas fa-images'];
+    }
+    if ($hasServices) {
+        $tabs['servizi'] = ['label' => 'Servizi', 'url' => '/' . $slug . '/servizi', 'icon' => 'fas fa-briefcase'];
     }
     if ($isBandOrLabel) {
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
@@ -1389,7 +1392,8 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
     $hasPhotos = $ownerId ? hasPublicPhotoContent($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasOffers, $hasPhotos);
+    $hasServices = $ownerId ? hasVisibleServices($ownerId) : false;
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasOffers, $hasPhotos, $hasServices);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
@@ -2146,6 +2150,45 @@ function getPublicTimelinePhotos(int $userId, int $limit = 200): array {
     return $stmt->fetchAll();
 }
 
+// Come getAlbumPhotos()/getTimelinePostPhotos(), per il modulo "Servizi" (galleria fotografica
+// del singolo servizio). La prima foto resta su services.cover_path, come sempre.
+function getServicePhotos(int $serviceId): array {
+    $stmt = getDB()->prepare('SELECT image_path FROM service_photos WHERE service_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$serviceId]);
+    return array_column($stmt->fetchAll(), 'image_path');
+}
+
+// Vero se il profilo ha almeno un servizio pubblico e valido — usata per decidere se mostrare il
+// tab "Servizi" nel menu pubblico, stesso criterio di menuHasItems()/hasActiveOffers().
+function hasVisibleServices(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM services
+        WHERE user_id = ? AND show_in_feed = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+// Notifica al titolare del profilo quando qualcuno richiede informazioni su un servizio — stessa
+// struttura di notifyNewContact(), con in più quale servizio e il telefono (se lasciato).
+function notifyServiceInquiry(string $toEmail, string $toName, string $serviceTitle, string $guestName, string $guestEmail, ?string $guestPhone, ?string $message, string $publicUrl): void {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+
+    $subject = "Richiesta informazioni su \"{$serviceTitle}\" da {$guestName} su " . siteName();
+    $body = "Hai ricevuto una richiesta di informazioni sul servizio \"{$serviceTitle}\" dalla tua pagina {$publicUrl}:\n\n"
+          . "Nome: {$guestName}\n"
+          . "Email: {$guestEmail}\n"
+          . ($guestPhone ? "Telefono: {$guestPhone}\n" : '')
+          . ($message ? "\nMessaggio:\n{$message}\n" : '')
+          . "\n---\nRispondi direttamente a questa email per contattare {$guestName},\n"
+          . "oppure gestisci tutte le richieste dalla tua dashboard su " . siteName() . ".";
+
+    $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
+}
+
 // Vero se il profilo ha almeno una foto pubblica da mostrare nella sezione "Foto" — un post
 // Timeline pubblico con almeno una foto, o un album pubblico con almeno una foto — usata per
 // decidere se mostrare il tab "Foto" nel menu pubblico, stesso criterio di menuHasItems()/
@@ -2632,6 +2675,18 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT sv.id, sv.title, sv.cover_path, sv.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM services sv JOIN users u ON u.id = sv.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE sv.user_id IN ($placeholders) AND sv.show_in_feed = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $items[] = [
+            'tipo' => 'servizio', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/servizi/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -2724,7 +2779,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2756,7 +2811,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2828,7 +2883,7 @@ function notifyFollowersNewContent(int $artistUserId, string $artistName, string
     require_once __DIR__ . '/mailer.php';
     $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
 
-    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale', 'album_foto' => 'un nuovo album fotografico'];
+    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale', 'album_foto' => 'un nuovo album fotografico', 'servizio' => 'un nuovo servizio'];
     $label = $labels[$type] ?? 'un nuovo articolo';
     $subject = "{$artistName} ha pubblicato {$label} su " . siteName();
 
@@ -2980,6 +3035,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Menù' => 'menu',
     'Offerte' => 'offerte',
     'Foto' => 'foto',
+    'Servizi' => 'servizi',
     'Eventi' => 'eventi',
     'Segui' => 'segui',
     'Contatti' => 'contatti',
@@ -3019,6 +3075,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 20],
         ['Offerte', 'fas fa-tags', '/' . $slug . '/offerte', 21],
         ['Foto', 'fas fa-images', '/' . $slug . '/foto', 22],
+        ['Servizi', 'fas fa-briefcase', '/' . $slug . '/servizi', 23],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

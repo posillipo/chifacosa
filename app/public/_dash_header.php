@@ -62,6 +62,11 @@ $dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active'
 $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];
 $dashTabs['offerte'] = ['label' => 'Offerte', 'url' => '/dashboard_offers.php', 'active' => 'offers', 'visible' => $navVisibility['Offerte'] ?? 1];
 $dashTabs['foto'] = ['label' => 'Album', 'url' => '/dashboard_albums.php', 'active' => 'albums', 'visible' => $navVisibility['Foto'] ?? 1];
+$dashTabs['servizi'] = [
+    'label' => 'Servizi', 'url' => '/dashboard_services.php', 'active' => 'services',
+    'visible' => $navVisibility['Servizi'] ?? 1,
+    'extra' => ['label' => 'Richieste', 'url' => '/dashboard_service_inquiries.php', 'active' => 'service_inquiries'],
+];
 $dashTabs['eventi'] = [
     'label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events',
     'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1),

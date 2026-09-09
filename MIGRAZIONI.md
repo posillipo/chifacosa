@@ -1003,6 +1003,69 @@ quindi nel feed RSS, voce di sitemap (elenco + singoli album). Modifica ed elimi
 altro contenuto del sito — caricare nuove foto in modifica sostituisce l'intero set precedente
 (stessa semantica già in uso per Timeline/Viaggi con più foto).
 
+## 50. Nuovo modulo "Servizi" (3/3 delle nuove funzionalità richieste)
+```sql
+CREATE TABLE IF NOT EXISTS services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    accepts_inquiries TINYINT(1) NOT NULL DEFAULT 1,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS service_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS service_inquiries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    service_id INT NOT NULL,
+    guest_name VARCHAR(120) NOT NULL,
+    guest_email VARCHAR(190) NOT NULL,
+    guest_phone VARCHAR(30) DEFAULT NULL,
+    message TEXT DEFAULT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Sezione pubblica "Servizi" (gestita da `dashboard_services.php`), aperta a qualunque
+`account_type`: titolo, descrizione, galleria fotografica in modalità carosello (copertina +
+fino a 20 foto extra, come Album), stessa semantica di pubblicazione degli altri contenuti
+(Pubblico/Solo io, programmazione). Ogni servizio ha un interruttore "Richiedi informazioni"
+(`accepts_inquiries`) che mostra/nasconde, nella pagina di dettaglio pubblica, un modulo di
+contatto dedicato (nome, email, telefono opzionale, messaggio opzionale) — le richieste finiscono
+in `service_inquiries` e sono gestibili da `dashboard_service_inquiries.php` (segna come letto /
+elimina, stesso schema di `dashboard_contacts.php`), con notifica email al proprietario del
+profilo (stesso meccanismo già usato per il modulo Contatti generico).
+
+Pagina di dettaglio pubblica condivisibile `servizio_item.php` su `/slug/servizi/ID` (og:image/
+title/description corretti), elenco pubblico `servizi.php` su `/slug/servizi`, tab "Servizi" nel
+menu pubblico (solo se `hasVisibleServices()`) e in dashboard (con sotto-voce "Richieste" verso
+`dashboard_service_inquiries.php`, come "Prenotazioni" per gli Eventi), integrazione nel
+Feed/Timeline aggregato (`getTimelineFeedForUsers()`, tipo `servizio`) e quindi nel feed RSS,
+voce di sitemap (elenco + singoli servizi pubblicati). Modifica ed eliminazione come ogni altro
+contenuto del sito.
+
+Integrazione Meta Pixel/Conversions API: l'invio della richiesta di informazioni genera un evento
+`Lead` (server-side via Conversions API + client-side via Pixel, con lo stesso `event_id`
+condiviso per la deduplicazione — stesso meccanismo già in uso per `Contact` nel modulo Contatti
+generico e `Schedule` per le prenotazioni tavolo).
+
 ---
 
 ## Come aggiungere una nuova voce
