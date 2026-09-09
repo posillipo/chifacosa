@@ -1273,7 +1273,7 @@ function hasAnyVisibleCheAmo(int $userId, array $hiddenKeys = []): bool {
 
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasOffers = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasOffers = false, bool $hasPhotos = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1314,6 +1314,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     }
     if ($hasOffers) {
         $tabs['offerte'] = ['label' => 'Offerte', 'url' => '/' . $slug . '/offerte', 'icon' => 'fas fa-tags'];
+    }
+    if ($hasPhotos) {
+        $tabs['foto'] = ['label' => 'Foto', 'url' => '/' . $slug . '/foto', 'icon' => 'fas fa-images'];
     }
     if ($isBandOrLabel) {
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
@@ -1385,7 +1388,8 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasOffers);
+    $hasPhotos = $ownerId ? hasPublicPhotoContent($ownerId) : false;
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasOffers, $hasPhotos);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
@@ -2107,6 +2111,58 @@ function getTripPhotos(int $tripId): array {
     return array_column($stmt->fetchAll(), 'image_path');
 }
 
+// Come getTimelinePostPhotos()/getTripPhotos(), per il modulo "Album" (photo_albums): foto
+// aggiuntive (dalla 2 alla 50) di un album, nell'ordine di caricamento. La prima foto non è qui:
+// resta su photo_albums.cover_path, come sempre.
+function getAlbumPhotos(int $albumId): array {
+    $stmt = getDB()->prepare('SELECT image_path FROM photo_album_photos WHERE album_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$albumId]);
+    return array_column($stmt->fetchAll(), 'image_path');
+}
+
+// Tutte le foto dei post Timeline pubblici e già pubblicati di un profilo (la copertina di
+// ciascun post più le eventuali foto extra del carosello), più recenti prima — usata dalla
+// sezione pubblica "Foto" (foto.php), che è una semplice VETRINA aggregata: nessuna tabella
+// propria, nessun dato nuovo da gestire, solo le foto già presenti nei post Timeline. Ogni foto
+// resta collegata al post di provenienza (post_id), per il link di apertura.
+function getPublicTimelinePhotos(int $userId, int $limit = 200): array {
+    $stmt = getDB()->prepare("
+        (SELECT tp.id AS post_id, tp.image_path AS photo, COALESCE(tp.publish_at, tp.created_at) AS data
+         FROM timeline_posts tp
+         WHERE tp.user_id = ? AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
+           AND tp.image_path IS NOT NULL)
+        UNION ALL
+        (SELECT tpp.post_id, tpp.image_path AS photo, COALESCE(tp.publish_at, tp.created_at) AS data
+         FROM timeline_post_photos tpp
+         JOIN timeline_posts tp ON tp.id = tpp.post_id
+         WHERE tp.user_id = ? AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW()))
+        ORDER BY data DESC
+        LIMIT ?
+    ");
+    $stmt->bindValue(1, $userId, PDO::PARAM_INT);
+    $stmt->bindValue(2, $userId, PDO::PARAM_INT);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+// Vero se il profilo ha almeno una foto pubblica da mostrare nella sezione "Foto" — un post
+// Timeline pubblico con almeno una foto, o un album pubblico con almeno una foto — usata per
+// decidere se mostrare il tab "Foto" nel menu pubblico, stesso criterio di menuHasItems()/
+// hasActiveOffers() per gli altri moduli.
+function hasPublicPhotoContent(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM timeline_posts
+        WHERE user_id = ? AND visibility = 'public' AND (publish_at IS NULL OR publish_at <= NOW()) AND image_path IS NOT NULL");
+    $stmt->execute([$userId]);
+    if ((int) $stmt->fetch()['c'] > 0) {
+        return true;
+    }
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM photo_albums
+        WHERE user_id = ? AND show_in_feed = 1 AND (publish_at IS NULL OR publish_at <= NOW()) AND cover_path IS NOT NULL");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elimina il file di copertina dal disco, se presente (usato quando si elimina un link/post/evento)
 function deleteCoverFile(?string $coverPath): void {
     if ($coverPath) {
@@ -2564,6 +2620,18 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT pa.id, pa.title, pa.cover_path, pa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM photo_albums pa JOIN users u ON u.id = pa.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE pa.user_id IN ($placeholders) AND pa.show_in_feed = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW()) ORDER BY pa.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $items[] = [
+            'tipo' => 'album_foto', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/album/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -2656,7 +2724,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2688,7 +2756,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2760,7 +2828,7 @@ function notifyFollowersNewContent(int $artistUserId, string $artistName, string
     require_once __DIR__ . '/mailer.php';
     $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
 
-    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale'];
+    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale', 'album_foto' => 'un nuovo album fotografico'];
     $label = $labels[$type] ?? 'un nuovo articolo';
     $subject = "{$artistName} ha pubblicato {$label} su " . siteName();
 
@@ -2911,6 +2979,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Album che amo' => 'albumcheamo',
     'Menù' => 'menu',
     'Offerte' => 'offerte',
+    'Foto' => 'foto',
     'Eventi' => 'eventi',
     'Segui' => 'segui',
     'Contatti' => 'contatti',
@@ -2949,6 +3018,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 19],
         ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 20],
         ['Offerte', 'fas fa-tags', '/' . $slug . '/offerte', 21],
+        ['Foto', 'fas fa-images', '/' . $slug . '/foto', 22],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

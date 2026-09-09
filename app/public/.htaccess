@@ -109,6 +109,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/offerte/([0-9]+)/?$ offerta.php?slug=$1&id=$2 [L,Q
 # /nomeartista/offerte -> elenco offerte speciali attive
 RewriteRule ^([a-zA-Z0-9_-]+)/offerte/?$ offerte.php?slug=$1 [L,QSA]
 
+# /nomeartista/album/ID -> pagina dedicata al singolo album fotografico (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/album/([0-9]+)/?$ album_item.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/foto -> vetrina foto (post Timeline con foto + album)
+RewriteRule ^([a-zA-Z0-9_-]+)/foto/?$ foto.php?slug=$1 [L,QSA]
+
 # /nomeartista/video -> pagina video YouTube
 RewriteRule ^([a-zA-Z0-9_-]+)/video/?$ video.php?slug=$1 [L,QSA]
 

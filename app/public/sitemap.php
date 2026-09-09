@@ -65,6 +65,9 @@ foreach ($stmt->fetchAll() as $p) {
     if (hasActiveOffers((int) $p['id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/offerte'), null, 'weekly', '0.6');
     }
+    if (hasPublicPhotoContent((int) $p['id'])) {
+        sitemapUrl(siteUrl('/' . $slug . '/foto'), null, 'weekly', '0.5');
+    }
     if ($isBandOrLabel && !empty($p['spotify_artist_id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/spotify'), null, 'weekly', '0.5');
     }
@@ -103,6 +106,14 @@ $stmt = $db->query("SELECT so.id, so.created_at, u.slug AS user_slug
       AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())");
 foreach ($stmt->fetchAll() as $so) {
     sitemapUrl(siteUrl('/' . $so['user_slug'] . '/offerte/' . $so['id']), $so['created_at'], 'weekly', '0.5');
+}
+
+// Singoli album fotografici — solo quelli davvero pubblici e già pubblicati.
+$stmt = $db->query("SELECT pa.id, pa.created_at, u.slug AS user_slug
+    FROM photo_albums pa JOIN users u ON u.id = pa.user_id
+    WHERE u.is_active = 1 AND pa.show_in_feed = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW())");
+foreach ($stmt->fetchAll() as $al) {
+    sitemapUrl(siteUrl('/' . $al['user_slug'] . '/album/' . $al['id']), $al['created_at'], 'monthly', '0.4');
 }
 
 // Singoli aggiornamenti in timeline — solo quelli davvero pubblici e già pubblicati (stessa

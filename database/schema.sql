@@ -121,6 +121,32 @@ CREATE TABLE IF NOT EXISTS special_offers (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Album fotografici: titolo, descrizione, fino a 50 foto (photo_album_photos). Stessa semantica
+-- pubblicazione degli altri contenuti (show_in_feed/publish_at) per restare coerente col resto
+-- del sito — a differenza della sezione "Foto" (aggregazione automatica delle foto dei post
+-- Timeline, nessuna tabella propria: vedi getPublicTimelinePhotos() in functions.php).
+CREATE TABLE IF NOT EXISTS photo_albums (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS photo_album_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    album_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento — event_id resta
 -- pensato per poter restare NULL in futuro per prenotazioni "libere", senza nuove migrazioni).
 CREATE TABLE IF NOT EXISTS table_reservations (

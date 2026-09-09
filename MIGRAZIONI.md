@@ -957,6 +957,52 @@ pubblico (solo se `hasActiveOffers()`) e in dashboard, integrazione nel Feed/Tim
 Metricool, voce di sitemap (elenco + singole offerte valide), notifica email ai follower alla
 pubblicazione. Modifica ed eliminazione come ogni altro contenuto del sito.
 
+## 49. Nuovo modulo "Foto e Album" (2/3 delle nuove funzionalità richieste)
+```sql
+CREATE TABLE IF NOT EXISTS photo_albums (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS photo_album_photos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    album_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Sezione pubblica "Foto" (`foto.php`, su `/slug/foto`) che aggrega DUE contenuti diversi:
+- **Foto dai post Timeline**: nessuna tabella propria — `getPublicTimelinePhotos()` in
+  `functions.php` prende, con una UNION, sia le copertine sia le foto extra dei post Timeline
+  pubblici e già pubblicati, più recenti prima. Puramente una vetrina: gestire le foto resta da
+  fare in Dashboard → Timeline come sempre, qui compaiono da sole.
+- **Album** (nuovo, gestito da `dashboard_albums.php`): titolo, descrizione, fino a 50 foto,
+  stessa semantica di pubblicazione degli altri contenuti (Pubblico/Solo io, programmazione).
+  Pagina di dettaglio pubblica condivisibile `album_item.php` su `/slug/album/ID` con lo stesso
+  carosello già usato per Timeline/Viaggi con più foto.
+
+**Attenzione — richiede anche una modifica al Dockerfile** (non solo al database): il limite
+`max_file_uploads` era fissato a 20, troppo poco per "fino a 50 foto" in un solo caricamento —
+alzato a 60 (e `post_max_size` da 220M a 500M, per il peso complessivo di 50 foto non ancora
+compresse). Serve una **ricostruzione dell'immagine Docker**, non solo un redeploy del codice.
+
+Tab "Foto" nel menu pubblico (solo se `hasPublicPhotoContent()`, cioè almeno una foto o un album
+pubblico) e "Album" in dashboard, integrazione nel Feed/Timeline aggregato (tipo `album_foto`) e
+quindi nel feed RSS, voce di sitemap (elenco + singoli album). Modifica ed eliminazione come ogni
+altro contenuto del sito — caricare nuove foto in modifica sostituisce l'intero set precedente
+(stessa semantica già in uso per Timeline/Viaggi con più foto).
+
 ---
 
 ## Come aggiungere una nuova voce
