@@ -104,6 +104,23 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Offerte speciali (promozioni/sconti): validità opzionale (entrambe NULL = sempre attiva),
+-- is_active per sospendere manualmente senza eliminare.
+CREATE TABLE IF NOT EXISTS special_offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    price_label VARCHAR(100) DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    valid_from DATETIME DEFAULT NULL,
+    valid_until DATETIME DEFAULT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Prenotazioni tavolo legate a un evento (fase 1: sempre agganciate a un evento — event_id resta
 -- pensato per poter restare NULL in futuro per prenotazioni "libere", senza nuove migrazioni).
 CREATE TABLE IF NOT EXISTS table_reservations (

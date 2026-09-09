@@ -926,6 +926,37 @@ proprio fuso (`p.dashboard_theme` selezionato insieme al resto, esposto come `ow
 `currentUser()` e `getActingProfile()` estese per selezionare anche `p.dashboard_theme`, così è
 disponibile ovunque tramite `$user`/`$profile` senza query aggiuntive.
 
+## 48. Nuovo modulo "Offerte speciali"
+```sql
+CREATE TABLE IF NOT EXISTS special_offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    price_label VARCHAR(100) DEFAULT NULL,
+    cover_path VARCHAR(255) DEFAULT NULL,
+    valid_from DATETIME DEFAULT NULL,
+    valid_until DATETIME DEFAULT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Promozioni/sconti gestiti da Dashboard → Offerte (`dashboard_offers.php`), aperto a qualunque
+`account_type` (come il Menù, non solo Band/Etichetta come gli Eventi). Titolo, descrizione,
+prezzo/sconto in testo libero (`price_label` — "-20%", "2x1", ecc., niente calcoli, solo
+visualizzazione), foto opzionale non ritagliata, validità facoltativa (`valid_from`/`valid_until`,
+entrambe NULL = sempre attiva) più un interruttore manuale `is_active` per sospendere senza
+eliminare. Pagina di dettaglio pubblica condivisibile `offerta.php` (og:image/title/description
+corretti, come ogni altro contenuto del sito) su `/slug/offerte/ID`, elenco pubblico `offerte.php`
+su `/slug/offerte` (mostra solo le offerte attive E dentro la validità), tab "Offerte" nel menu
+pubblico (solo se `hasActiveOffers()`) e in dashboard, integrazione nel Feed/Timeline aggregato
+(`getTimelineFeedForUsers()`, tipo `offerta`) e quindi nel feed RSS per automazioni come
+Metricool, voce di sitemap (elenco + singole offerte valide), notifica email ai follower alla
+pubblicazione. Modifica ed eliminazione come ogni altro contenuto del sito.
+
 ---
 
 ## Come aggiungere una nuova voce

@@ -62,6 +62,9 @@ foreach ($stmt->fetchAll() as $p) {
     if (!empty($menuOwners[(int) $p['id']])) {
         sitemapUrl(siteUrl('/' . $slug . '/menu'), null, 'weekly', '0.6');
     }
+    if (hasActiveOffers((int) $p['id'])) {
+        sitemapUrl(siteUrl('/' . $slug . '/offerte'), null, 'weekly', '0.6');
+    }
     if ($isBandOrLabel && !empty($p['spotify_artist_id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/spotify'), null, 'weekly', '0.5');
     }
@@ -90,6 +93,16 @@ $stmt = $db->query("SELECT e.id, e.created_at, u.slug AS user_slug
     WHERE u.is_active = 1");
 foreach ($stmt->fetchAll() as $ev) {
     sitemapUrl(siteUrl('/' . $ev['user_slug'] . '/eventi/' . $ev['id']), $ev['created_at'], 'monthly', '0.5');
+}
+
+// Singole offerte speciali — solo quelle davvero attive e valide (stessa condizione usata da
+// hasActiveOffers()/offerte.php per decidere la visibilità).
+$stmt = $db->query("SELECT so.id, so.created_at, u.slug AS user_slug
+    FROM special_offers so JOIN users u ON u.id = so.user_id
+    WHERE u.is_active = 1 AND so.is_active = 1
+      AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())");
+foreach ($stmt->fetchAll() as $so) {
+    sitemapUrl(siteUrl('/' . $so['user_slug'] . '/offerte/' . $so['id']), $so['created_at'], 'weekly', '0.5');
 }
 
 // Singoli aggiornamenti in timeline — solo quelli davvero pubblici e già pubblicati (stessa

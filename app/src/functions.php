@@ -1187,6 +1187,18 @@ function menuHasItems(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+// Vero se il profilo ha almeno un'offerta attualmente valida (attiva E, se ha una validità
+// impostata, dentro l'intervallo) — usata per decidere se mostrare il tab "Offerte" nel menu
+// pubblico, stesso criterio di menuHasItems() per il Menù.
+function hasActiveOffers(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM special_offers
+        WHERE user_id = ? AND is_active = 1
+          AND (valid_from IS NULL OR valid_from <= NOW())
+          AND (valid_until IS NULL OR valid_until >= NOW())");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 function hasFanFavoriteBands(int $userId): bool {
     $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_bands WHERE user_id = ?');
     $stmt->execute([$userId]);
@@ -1261,7 +1273,7 @@ function hasAnyVisibleCheAmo(int $userId, array $hiddenKeys = []): bool {
 
 // Menu di navigazione condiviso tra tutte le pagine pubbliche di un artista (Home | Blog | Brani | Eventi | Contatti)
 // Il tab "Spotify" compare solo se l'artista ha collegato un profilo Spotify dalla dashboard.
-function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false): string {
+function publicNav(string $slug, string $active, bool $hasSpotify = false, bool $hasYoutube = false, bool $hasPodcast = false, string $accountType = 'band', ?int $ownerId = null, bool $hasMenu = false, bool $hasOffers = false): string {
     $isBandOrLabel = in_array($accountType, ['band', 'label'], true);
     // Tab che il profilo ha esplicitamente nascosto da "Menu di Navigazione" in dashboard —
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
@@ -1299,6 +1311,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'icon' => 'fas fa-newspaper'];
     if ($hasMenu) {
         $tabs['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu', 'icon' => 'fas fa-utensils'];
+    }
+    if ($hasOffers) {
+        $tabs['offerte'] = ['label' => 'Offerte', 'url' => '/' . $slug . '/offerte', 'icon' => 'fas fa-tags'];
     }
     if ($isBandOrLabel) {
         $tabs['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'icon' => 'fas fa-calendar'];
@@ -1369,7 +1384,8 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $html .= '</p>';
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
-    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu);
+    $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
+    $html .= publicNav($artist['slug'], $active, !empty($artist['spotify_artist_id']), !empty($artist['youtube_channel_id']), !empty($artist['spotify_show_id']), $artist['account_type'] ?? 'band', $ownerId, $hasMenu, $hasOffers);
     $html .= '</div>';
     if ($isElectric) {
         $html .= '<script src="' . assetUrl('/assets/js/electric-border.js') . '" defer></script>';
@@ -2487,6 +2503,21 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE so.user_id IN ($placeholders) AND so.is_active = 1
+          AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())
+        ORDER BY so.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $soTitolo = $r['title'] . ($r['price_label'] ? ' — ' . $r['price_label'] : '');
+        $items[] = [
+            'tipo' => 'offerta', 'titolo' => $soTitolo, 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/offerte/' . $r['id'],
+        ];
+    }
+
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
 }
@@ -2579,7 +2610,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2611,7 +2642,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -2683,7 +2714,7 @@ function notifyFollowersNewContent(int $artistUserId, string $artistName, string
     require_once __DIR__ . '/mailer.php';
     $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
 
-    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento'];
+    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale'];
     $label = $labels[$type] ?? 'un nuovo articolo';
     $subject = "{$artistName} ha pubblicato {$label} su " . siteName();
 
@@ -2833,6 +2864,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Playlist che amo' => 'playlistcheamo',
     'Album che amo' => 'albumcheamo',
     'Menù' => 'menu',
+    'Offerte' => 'offerte',
     'Eventi' => 'eventi',
     'Segui' => 'segui',
     'Contatti' => 'contatti',
@@ -2870,6 +2902,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Eventi', 'fas fa-calendar', '/' . $slug . '/eventi', 18],
         ['Segui', 'fas fa-heart', '/' . $slug . '#segui-widget', 19],
         ['Contatti', 'fas fa-envelope', '/' . $slug . '/contatti', 20],
+        ['Offerte', 'fas fa-tags', '/' . $slug . '/offerte', 21],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

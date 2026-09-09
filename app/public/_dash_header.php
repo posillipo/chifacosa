@@ -60,6 +60,7 @@ $dashTabs['link'] = ['label' => 'Link', 'url' => '/dashboard_links.php', 'active
 $dashTabs['cheamo'] = ['label' => 'Che Amo', 'url' => '/dashboard_che_amo.php', 'active' => 'che_amo', 'visible' => $hasVisibleCheAmoModule];
 $dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active' => 'blog', 'visible' => $navVisibility['Blog'] ?? 1];
 $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];
+$dashTabs['offerte'] = ['label' => 'Offerte', 'url' => '/dashboard_offers.php', 'active' => 'offers', 'visible' => $navVisibility['Offerte'] ?? 1];
 $dashTabs['eventi'] = [
     'label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events',
     'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1),

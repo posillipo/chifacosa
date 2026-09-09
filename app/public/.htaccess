@@ -103,6 +103,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/spotify/?$ artist_spotify.php?slug=$1 [L,QSA]
 # /nomeartista/menu -> pagina menù (ristoranti e simili)
 RewriteRule ^([a-zA-Z0-9_-]+)/menu/?$ menu.php?slug=$1 [L,QSA]
 
+# /nomeartista/offerte/ID -> pagina dedicata alla singola offerta (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/offerte/([0-9]+)/?$ offerta.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/offerte -> elenco offerte speciali attive
+RewriteRule ^([a-zA-Z0-9_-]+)/offerte/?$ offerte.php?slug=$1 [L,QSA]
+
 # /nomeartista/video -> pagina video YouTube
 RewriteRule ^([a-zA-Z0-9_-]+)/video/?$ video.php?slug=$1 [L,QSA]
 
