@@ -676,6 +676,13 @@ body.colorful-page {
 .colorful-nav-wrap.has-overflow::after { opacity: 1; }
 .colorful-nav-wrap.has-overflow .colorful-nav-arrow { opacity: 1; }
 
+/* Trascinamento col mouse per scorrere il menu su desktop (touch/trackpad scorrono già in modo
+   nativo grazie a overflow-x: auto — qui serve solo per chi ha un mouse senza gesture
+   orizzontali). Le classi sono aggiunte/rimosse da nav-scroll-hint.js durante il drag. */
+.colorful-nav { cursor: grab; }
+.colorful-nav.is-dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+.colorful-nav.is-dragging a { pointer-events: none; }
+
 .social-icons-row {
   display: flex;
   justify-content: center;
