@@ -16,7 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $venue = trim($_POST['venue'] ?? '');
         $city = trim($_POST['city'] ?? '');
-        $date = $_POST['event_date'] ?? '';
+        // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
@@ -38,7 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $venue = trim($_POST['venue'] ?? '');
         $city = trim($_POST['city'] ?? '');
-        $date = $_POST['event_date'] ?? '';
+        // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;

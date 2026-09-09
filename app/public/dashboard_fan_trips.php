@@ -107,13 +107,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         $showInFeed = $visibility === 'public' ? 1 : 0;
 
-        $scheduleRaw = trim($_POST['publish_at'] ?? '');
-        $publishAt = null;
-        if ($scheduleRaw !== '') {
-            $ts = strtotime($scheduleRaw);
-            if ($ts && $ts > time()) {
-                $publishAt = date('Y-m-d H:i:s', $ts);
-            }
+        // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile);
+        if ($publishAt && strtotime($publishAt) <= time()) {
+            $publishAt = null;
         }
 
         // Link personalizzato per il feed: impostazione di profilo condivisa con la Timeline

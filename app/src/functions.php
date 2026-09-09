@@ -2207,6 +2207,30 @@ function formatLocalDateTime(?string $datetime, ?array $profile, string $format 
     }
 }
 
+// Inversa di formatLocalDateTime(): un valore digitato in un campo datetime-local del browser
+// (es. "programma la pubblicazione", validità di un'offerta, data di un evento) è l'orario
+// "a muro" nel fuso scelto dal profilo, esattamente come quello che formatLocalDateTime() gli
+// mostra in lettura — MAI il fuso del server. Va quindi convertito nella direzione opposta prima
+// di salvarlo, altrimenti un confronto con NOW() (entrambi scritti dal server nel SUO fuso) è
+// sfalsato dello scarto tra i due fusi: un'offerta "valida fino alle 19:59" digitata pensando
+// all'ora italiana risulterebbe scaduta (o non ancora iniziata) alle 19:59 vere, perché il
+// valore salvato sarebbe stato interpretato com'era già nel fuso del server. Ritorna null se
+// l'input è vuoto o non interpretabile.
+function parseLocalDateTime(?string $input, ?array $profile): ?string {
+    $input = trim((string) $input);
+    if ($input === '') {
+        return null;
+    }
+    try {
+        $dt = new DateTime($input, new DateTimeZone(profileTimezoneName($profile)));
+        $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+        return $dt->format('Y-m-d H:i:s');
+    } catch (Exception $e) {
+        $ts = strtotime($input);
+        return $ts ? date('Y-m-d H:i:s', $ts) : null;
+    }
+}
+
 // Data/ora di pubblicazione mostrata pubblicamente per qualunque tipo di post/elemento
 // (Timeline, Che Amo, Viaggi, Brani...): publish_at se impostato, altrimenti created_at — stesso
 // criterio già usato per raggruppare "la stessa giornata" (getSameDayFavorites/

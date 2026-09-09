@@ -16,10 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $priceLabel = trim($_POST['price_label'] ?? '');
-        $validFromRaw = trim($_POST['valid_from'] ?? '');
-        $validUntilRaw = trim($_POST['valid_until'] ?? '');
-        $validFrom = $validFromRaw !== '' ? date('Y-m-d H:i:s', strtotime($validFromRaw)) : null;
-        $validUntil = $validUntilRaw !== '' ? date('Y-m-d H:i:s', strtotime($validUntilRaw)) : null;
+        // Interpretati nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $validFrom = parseLocalDateTime($_POST['valid_from'] ?? '', $profile);
+        $validUntil = parseLocalDateTime($_POST['valid_until'] ?? '', $profile);
         $isActive = isset($_POST['is_active']) ? 1 : 0;
 
         if ($title === '') {
