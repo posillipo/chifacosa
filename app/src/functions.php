@@ -2667,9 +2667,25 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         FROM photo_albums pa JOIN users u ON u.id = pa.user_id JOIN profiles p ON p.user_id = u.id
         WHERE pa.user_id IN ($placeholders) AND pa.show_in_feed = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW()) ORDER BY pa.created_at DESC LIMIT 200");
     $stmt->execute($userIds);
-    foreach ($stmt->fetchAll() as $r) {
+    $albumRows = $stmt->fetchAll();
+    // Vedi commento sopra (blocco "pensiero"): stesso calcolo, per gli album con più foto oltre
+    // alla copertina — a differenza di Offerte/Servizi, un album è tutto foto: vale la pena
+    // incuriosire chi lo vede sui social con "Link Album in Descrizione", proprio come per
+    // Timeline/Viaggi.
+    $albumPhotoCounts = [];
+    $albumIds = array_column($albumRows, 'id');
+    if ($albumIds) {
+        $ph = implode(',', array_fill(0, count($albumIds), '?'));
+        $cs = $db->prepare("SELECT album_id, COUNT(*) c FROM photo_album_photos WHERE album_id IN ($ph) GROUP BY album_id");
+        $cs->execute($albumIds);
+        foreach ($cs->fetchAll() as $c) {
+            $albumPhotoCounts[(int) $c['album_id']] = (int) $c['c'];
+        }
+    }
+    foreach ($albumRows as $r) {
         $items[] = [
             'tipo' => 'album_foto', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'raw_image_path' => $r['cover_path'], 'has_multi_photo' => !empty($albumPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/album/' . $r['id'],
         ];

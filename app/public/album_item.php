@@ -48,7 +48,13 @@ $artist = [
 $photos = array_values(array_filter(array_merge([$album['cover_path']], getAlbumPhotos($albumId))));
 
 $pageUrl = siteUrl('/' . $slug . '/album/' . $albumId);
-$ogImage = $album['cover_path'] ? siteUrl($album['cover_path']) : ($album['avatar_path'] ? siteUrl($album['avatar_path']) : null);
+// Con più di una foto, l'immagine condivisa sui social (og:image) è la versione con "Link Album
+// in Descrizione" scritta in basso — vedi getFeedShareImage() in functions.php: chi la vede sul
+// proprio feed social (es. Instagram via Metricool) sa che ce ne sono altre da vedere seguendo il
+// link, esattamente come già per i post Timeline/Viaggi con più foto.
+$ogImage = $album['cover_path']
+    ? siteUrl(count($photos) > 1 ? getFeedShareImage($album['cover_path']) : $album['cover_path'])
+    : ($album['avatar_path'] ? siteUrl($album['avatar_path']) : null);
 $ogDescription = $album['description'] ? textExcerpt($album['description'], 160) : ($album['display_name'] . ' — scopri l\'album su ' . siteName());
 ?>
 <!doctype html>
