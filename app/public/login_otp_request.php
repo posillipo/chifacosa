@@ -18,7 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ma il codice viene generato e inviato solo se l'account esiste davvero.
     if ($u) {
         $code = (string) random_int(100000, 999999);
-        $stmt = getDB()->prepare('UPDATE users SET otp_code = ?, otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?');
+        // otp_attempts riparte da zero a ogni nuovo codice: un codice appena richiesto ha sempre
+        // il numero massimo di tentativi a disposizione, vedi login_otp_verify.php.
+        $stmt = getDB()->prepare('UPDATE users SET otp_code = ?, otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE), otp_attempts = 0 WHERE id = ?');
         $stmt->execute([$code, $u['id']]);
 
         $cfg = getSmtpConfig();

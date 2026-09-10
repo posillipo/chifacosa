@@ -23,6 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $stmt = getDB()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
         $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $user['id']]);
+        // Un eventuale cookie "ricordami" rubato prima di questo cambio password non deve
+        // sopravvivergli — vedi revokeAllRememberTokensForUser(). Questa sessione (quella con
+        // cui si sta facendo la modifica) resta comunque attiva: solo i cookie "ricordami"
+        // vengono revocati, non la sessione corrente.
+        revokeAllRememberTokensForUser((int) $user['id']);
         $success = 'Password aggiornata correttamente.';
     }
 }

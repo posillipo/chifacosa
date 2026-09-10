@@ -14,18 +14,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $code = trim($_POST['code'] ?? '');
 
-    $stmt = getDB()->prepare('SELECT * FROM users WHERE email = ? AND otp_code = ? AND otp_expires_at > NOW()');
-    $stmt->execute([$email, $code]);
+    // Il confronto col codice non è più nella query: serve prima sapere se questo account ha
+    // già esaurito i tentativi (vedi sotto), altrimenti un codice a 6 cifre sarebbe attaccabile
+    // a forza bruta provandoli tutti via POST, senza alcun limite.
+    $stmt = getDB()->prepare('SELECT * FROM users WHERE email = ? AND otp_code IS NOT NULL AND otp_expires_at > NOW()');
+    $stmt->execute([$email]);
     $u = $stmt->fetch();
 
     if (!$u) {
         $error = 'Codice non valido o scaduto.';
+    } elseif ((int) $u['otp_attempts'] >= 5) {
+        // Troppi tentativi falliti: il codice va invalidato subito, non basta aspettare che
+        // scada — altrimenti resterebbe comunque attaccabile a forza bruta per tutti i minuti
+        // di validità residua.
+        getDB()->prepare('UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?')->execute([$u['id']]);
+        $error = 'Troppi tentativi con questo codice. Richiedine uno nuovo.';
+    } elseif (!hash_equals((string) $u['otp_code'], $code)) {
+        getDB()->prepare('UPDATE users SET otp_attempts = otp_attempts + 1 WHERE id = ?')->execute([$u['id']]);
+        $error = 'Codice non valido o scaduto.';
     } else {
         // Codice monouso: lo invalidiamo subito dopo l'utilizzo
-        $stmt = getDB()->prepare('UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = ?');
+        $stmt = getDB()->prepare('UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?');
         $stmt->execute([$u['id']]);
         unset($_SESSION['otp_email']);
 
+        // Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session
+        // fixation" (un ID di sessione impostato dall'esterno prima del login, che altrimenti
+        // resterebbe valido anche dopo — qui come su login.php/auth_google_callback.php).
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $u['id'];
         header('Location: ' . ($u['account_type_chosen'] ? '/dashboard.php' : '/onboarding_setup.php'));
         exit;

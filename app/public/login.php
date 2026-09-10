@@ -13,10 +13,10 @@ if (!empty($_GET['google_error'])) {
 }
 
 // Redirect opzionale verso la pagina di partenza (es. "Vota" quando non loggato) — accettiamo
-// solo percorsi interni relativi, mai URL esterni, per evitare un open-redirect.
+// solo percorsi interni relativi, mai URL esterni, per evitare un open-redirect (vedi
+// isSafeInternalRedirect() in functions.php).
 $redirect = $_GET['redirect'] ?? $_POST['redirect'] ?? '';
-$isValidRedirect = $redirect !== '' && str_starts_with($redirect, '/') && !str_starts_with($redirect, '//') && !str_contains($redirect, '://');
-if (!$isValidRedirect) {
+if (!isSafeInternalRedirect($redirect)) {
     $redirect = '';
 }
 
@@ -36,6 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$u['email_verified']) {
         $unverified = true;
     } else {
+        // Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session
+        // fixation" (un ID di sessione impostato dall'esterno prima del login, che altrimenti
+        // resterebbe valido anche dopo).
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $u['id'];
         if (!empty($_POST['remember'])) {
             issueRememberToken((int) $u['id']);

@@ -48,6 +48,18 @@ RUN { \
       echo 'error_reporting = E_ALL'; \
     } > /usr/local/etc/php/conf.d/error-handling.ini
 
+# Cookie di sessione PHP rinforzati: nessuna pagina imposta questi attributi a mano (session_start()
+# è sempre la prima riga di ogni file pubblico, prima ancora di caricare functions.php, quindi non
+# c'è un punto comodo dove farlo in PHP) — vanno impostati qui, una volta per tutto il container.
+# cookie_secure=1 è sicuro anche se qui in container si parla sempre in chiaro col reverse proxy
+# (Nginx Proxy Manager): è il browser dell'utente finale a decidere se mandare il cookie, e lui
+# vede sempre e solo https://www.chifacosa.it — mai un accesso diretto in HTTP.
+RUN { \
+      echo 'session.cookie_httponly = 1'; \
+      echo 'session.cookie_samesite = Lax'; \
+      echo 'session.cookie_secure = 1'; \
+    } > /usr/local/etc/php/conf.d/session-security.ini
+
 RUN { \
       echo '<Directory /var/www/html>'; \
       echo '    AllowOverride All'; \

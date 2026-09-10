@@ -97,6 +97,21 @@ function checkCsrf(): void {
     }
 }
 
+// Valida un percorso di redirect (login.php/auth_google_start.php, "torna dove eri" dopo il
+// login) come interno al sito, per evitare un open-redirect verso un dominio esterno — usato per
+// phishing ("questo link è di chifacosa.it" quando in realtà porta altrove). Deve iniziare con un
+// solo "/", non contenere "://" né alcun backslash: un secondo "/" o un "\" subito dopo il primo
+// "/" sono entrambi modi per ottenere un URL protocol-relative, dato che i browser normalizzano
+// "\" a "/" prima di interpretare l'URL — un percorso interno di questo sito non ha mai bisogno
+// di un backslash, quindi si rifiuta a prescindere da dove compare, non solo all'inizio.
+function isSafeInternalRedirect(?string $path): bool {
+    return $path
+        && str_starts_with($path, '/')
+        && !str_starts_with($path, '//')
+        && !str_contains($path, '\\')
+        && !str_contains($path, '://');
+}
+
 function currentUser(): ?array {
     attemptRememberLogin();
     if (empty($_SESSION['user_id'])) return null;
@@ -127,10 +142,22 @@ function issueRememberToken(int $userId): void {
     setcookie('remember_me', $selector . ':' . $validator, [
         'expires' => strtotime('+30 days'),
         'path' => '/',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        // requestScheme(), non il semplice $_SERVER['HTTPS']: dietro il reverse proxy
+        // (Nginx Proxy Manager) quest'ultimo non risulta mai valorizzato, quindi il flag
+        // Secure non veniva mai impostato in produzione nonostante il sito sia sempre servito
+        // in HTTPS — vedi il commento su requestScheme() più sotto in questo file.
+        'secure' => requestScheme() === 'https',
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
+}
+
+// Revoca TUTTI i cookie "ricordami" di un utente, su qualunque dispositivo/browser — da
+// chiamare quando si cambia la password (reset_password.php): altrimenti un cookie "ricordami"
+// eventualmente già rubato prima del reset continuerebbe a funzionare per i suoi 30 giorni di
+// validità residua, nonostante la password sia stata cambiata proprio per estrometterlo.
+function revokeAllRememberTokensForUser(int $userId): void {
+    getDB()->prepare('DELETE FROM remember_tokens WHERE user_id = ?')->execute([$userId]);
 }
 
 function clearRememberToken(): void {
@@ -3207,13 +3234,49 @@ function getCinemaSyncCronToken(): string {
     return $token;
 }
 
+// Blocca richieste verso indirizzi non pubblici (rete Docker interna, localhost, metadata cloud,
+// ecc.): cinema_films_json_url è un campo che QUALSIASI proprietario di profilo può impostare a
+// piacere, e viene poi scaricato da questo server (sync manuale in dashboard_cinema.php o cron
+// globale) — senza questo controllo sarebbe un SSRF, cioè un modo per far fare al server richieste
+// verso servizi interni non raggiungibili altrimenti da fuori.
+function isSafePublicUrl(string $url): bool {
+    $parts = parse_url($url);
+    if (!$parts || !isset($parts['scheme'], $parts['host']) || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+        return false;
+    }
+    $host = $parts['host'];
+    // Un host letteralmente un indirizzo IP si valida direttamente; un nome a dominio va risolto
+    // prima — un dominio "innocuo" potrebbe comunque puntare a un indirizzo interno (DNS
+    // rebinding), quindi si controllano TUTTI gli indirizzi a cui risolve, non solo il primo.
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        $ips = [$host];
+    } else {
+        $records = dns_get_record($host, DNS_A + DNS_AAAA) ?: [];
+        $ips = array_values(array_filter(array_map(fn ($r) => $r['ip'] ?? $r['ipv6'] ?? null, $records)));
+        if (!$ips) {
+            return false;
+        }
+    }
+    foreach ($ips as $ip) {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Scarica un URL generico con timeout, senza dipendenze esterne (stesso approccio di
 // spotify.php/mailer.php: file_get_contents con stream context). Restituisce null in caso di
-// errore, senza mai lanciare eccezioni.
+// errore (URL non pubblico incluso), senza mai lanciare eccezioni. follow_location disattivato
+// apposta: un redirect verso un indirizzo interno aggirerebbe altrimenti il controllo qui sopra,
+// che vale solo per l'URL di partenza.
 function cinemaHttpGet(string $url, int $timeout = 20): ?string {
+    if (!isSafePublicUrl($url)) {
+        return null;
+    }
     $opts = [
-        'http' => ['method' => 'GET', 'timeout' => $timeout, 'ignore_errors' => true],
-        'https' => ['method' => 'GET', 'timeout' => $timeout, 'ignore_errors' => true],
+        'http' => ['method' => 'GET', 'timeout' => $timeout, 'ignore_errors' => true, 'follow_location' => 0],
+        'https' => ['method' => 'GET', 'timeout' => $timeout, 'ignore_errors' => true, 'follow_location' => 0],
     ];
     $context = stream_context_create($opts);
     $result = @file_get_contents($url, false, $context);

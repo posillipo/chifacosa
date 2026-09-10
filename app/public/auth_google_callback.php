@@ -102,6 +102,10 @@ if ($u) {
     $needsAccountType = true;
 }
 
+// Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session fixation"
+// (un ID di sessione impostato dall'esterno prima del login, che altrimenti resterebbe valido
+// anche dopo — come su login.php/login_otp_verify.php).
+session_regenerate_id(true);
 $_SESSION['user_id'] = $userId;
 
 if ($needsAccountType) {

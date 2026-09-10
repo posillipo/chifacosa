@@ -9,10 +9,9 @@ if (!getGoogleOAuthClientId() || !getGoogleOAuthClientSecret()) {
 }
 
 // Come in login.php: redirect opzionale verso la pagina di partenza, solo percorsi interni
-// relativi per evitare un open-redirect.
+// relativi per evitare un open-redirect (vedi isSafeInternalRedirect() in functions.php).
 $redirect = $_GET['redirect'] ?? '';
-$isValidRedirect = $redirect !== '' && str_starts_with($redirect, '/') && !str_starts_with($redirect, '//') && !str_contains($redirect, '://');
-if ($isValidRedirect) {
+if (isSafeInternalRedirect($redirect)) {
     $_SESSION['google_oauth_redirect'] = $redirect;
 } else {
     unset($_SESSION['google_oauth_redirect']);
