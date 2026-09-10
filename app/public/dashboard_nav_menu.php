@@ -42,7 +42,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $items = getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']);
-$visibleItems = array_values(array_filter($items, fn($it) => (bool) $it['is_visible']));
+
+// Come sul menu pubblico vero (publicNav()): alcune voci compaiono solo se la spunta qui sotto
+// è attiva E c'è anche del contenuto pubblico effettivo da mostrare — altrimenti l'anteprima qui
+// sotto le darebbe per visibili quando invece sulla pagina pubblica non compaiono affatto.
+$contentCheckers = [
+    'Offerte' => 'hasActiveOffers',
+    'Foto' => 'hasPublicPhotoContent',
+    'Servizi' => 'hasVisibleServices',
+];
+$missingContentNames = [];
+foreach ($items as $it) {
+    if ($it['is_visible'] && isset($contentCheckers[$it['name']]) && !$contentCheckers[$it['name']]((int) $profile['id'])) {
+        $missingContentNames[] = $it['name'];
+    }
+}
+$visibleItems = array_values(array_filter($items, function ($it) use ($contentCheckers, $profile) {
+    if (!$it['is_visible']) {
+        return false;
+    }
+    if (isset($contentCheckers[$it['name']])) {
+        return $contentCheckers[$it['name']]((int) $profile['id']);
+    }
+    return true;
+}));
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -55,9 +78,12 @@ include __DIR__ . '/_dash_header.php';
       spunta qui sotto decide se compaiono come card in quella vetrina. Restano comunque
       raggiungibili con un link diretto e condivisibile (es. <code>/tuoslug/film-che-amo</code>),
       come indicato accanto a ciascuna voce.
-      Nota: Spotify/Podcast/Video/Menù/Band/Attori/Film/Libri/Playlist/Album che amo/Viaggi
-      restano comunque visibili solo se hanno anche effettivamente del contenuto (collegamento
-      fatto, piatti attivi, elementi aggiunti) — spuntarli qui non basta da solo a farli comparire.
+      Nota: Spotify/Podcast/Video/Menù/Offerte/Foto/Servizi/Band/Attori/Film/Libri/Playlist/Album
+      che amo/Viaggi restano comunque visibili solo se hanno anche effettivamente del contenuto
+      PUBBLICO (collegamento fatto, piatti attivi, elementi aggiunti, offerta/album/servizio con
+      visibilità "Pubblico" e non programmato nel futuro) — spuntarli qui non basta da solo a
+      farli comparire: qui sotto trovi segnalato quali, fra quelle già spuntate, ne sono ancora
+      prive.
       Trascina una voce dall'icona <i class="fa-solid fa-grip-vertical"></i>
       per cambiarne l'ordine: si salva subito, senza bisogno di premere "Salva".
     </p>
@@ -65,6 +91,15 @@ include __DIR__ . '/_dash_header.php';
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
   <?php if (!empty($_GET['reset'])): ?><div class="alert success">Ordine riportato a quello predefinito (uguale a quello della barra in cima alla dashboard).</div><?php endif; ?>
   <div id="nav-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
+
+  <?php if ($missingContentNames): ?>
+    <div class="alert error">
+      <?= e(implode(', ', $missingContentNames)) ?> <?= count($missingContentNames) === 1 ? 'è spuntata' : 'sono spuntate' ?>
+      qui sotto ma non <?= count($missingContentNames) === 1 ? 'compare' : 'compaiono' ?> ancora sulla pagina pubblica: manca del
+      contenuto pubblicato con visibilità "Pubblico" e non programmato nel futuro nella relativa
+      sezione della dashboard.
+    </div>
+  <?php endif; ?>
 
   <form method="post" style="margin-bottom:16px;" onsubmit="return confirm('Riportare l\'ordine delle voci a quello predefinito? Le scelte di visibilità non cambiano.');">
     <?= csrfField() ?>
@@ -83,6 +118,9 @@ include __DIR__ . '/_dash_header.php';
             <?php if ($it['icon']): ?><i class="<?= e($it['icon']) ?>" style="width:20px;text-align:center;color:var(--text-muted);"></i><?php endif; ?>
             <strong><?= e($it['name']) ?></strong>
             <small style="color:var(--text-muted)"><?= e($it['url']) ?></small>
+            <?php if (in_array($it['name'], $missingContentNames, true)): ?>
+              <small style="color:#c0392b;font-weight:700;">— nessun contenuto pubblico, non compare</small>
+            <?php endif; ?>
           </label>
         </div>
       <?php endforeach; ?>
