@@ -105,23 +105,6 @@ $stmt = getDB()->prepare('SELECT lat, lng FROM fan_favorite_trips WHERE user_id=
 $stmt->execute([$uid]);
 $latestTripCoords = $stmt->fetch();
 
-// Prima mappa fra i link pubblicati (se presente): sul layout desktop a due colonne (vedi
-// .home-hero-grid in style.css) la mostriamo anche una seconda volta, in una card a parte nella
-// colonna laterale — sempre la stessa mappa, mai una in più rispetto a quella già nell'elenco
-// pulsanti. CSS nasconde sempre una delle due copie in base alla larghezza dello schermo, mai
-// entrambe insieme: su mobile resta solo quella in mezzo ai pulsanti, come sempre.
-$firstMapLink = null;
-foreach ($actionLinks as $l) {
-    if (($l['link_type'] ?? 'link') === 'map') {
-        $firstMapLink = $l;
-        break;
-    }
-}
-if ($firstMapLink) {
-    $sideMapLat = $latestTripCoords ? (float) $latestTripCoords['lat'] : (float) $firstMapLink['map_lat'];
-    $sideMapLng = $latestTripCoords ? (float) $latestTripCoords['lng'] : (float) $firstMapLink['map_lng'];
-}
-
 // Vetrina "Che Amo" sulla Home: un tassello per categoria (non un elenco dei suoi elementi), con
 // la primissima cosa mai aggiunta come immagine di copertina — il clic porta all'elenco completo
 // di quella categoria, non al singolo elemento. Sostituisce la vecchia sezione "Band che amo" (un
@@ -223,11 +206,11 @@ $bandReviewers = $bandReviewers->fetchAll();
 <?php if (($artist['page_theme'] ?? 'colorful') === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
 <?php if (($artist['page_theme'] ?? 'colorful') === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
 <?= embedTrackingBodyStart($artist) ?>
-<div class="container home-container home-hero-grid">
+<div class="container">
   <?= publicProfileHeader($artist, 'home', true) ?>
 
   <?php if ($followMsg): ?>
-    <div class="alert home-alert-row <?= $followErr ? 'error' : 'success' ?>"><?= e($followMsg) ?></div>
+    <div class="alert <?= $followErr ? 'error' : 'success' ?>"><?= e($followMsg) ?></div>
   <?php endif; ?>
 
   <?php if (!in_array('segui', $hiddenNavKeys, true)): ?>
@@ -273,13 +256,13 @@ $bandReviewers = $bandReviewers->fetchAll();
     </div>
   <?php endif; ?>
 
-  <div class="home-links-col">
   <?php if ($actionLinks): ?>
     <?php $colorIdx = 0; ?>
     <?php foreach ($actionLinks as $l): ?>
       <?php if (($l['link_type'] ?? 'link') === 'divider'): ?>
         <div class="link-divider"><span><?= e($l['label']) ?></span></div>
       <?php elseif (($l['link_type'] ?? 'link') === 'map'): ?>
+        <?php if ($l['label']): ?><div class="link-map-label"><?= e($l['label']) ?></div><?php endif; ?>
         <?php
           // Se c'è almeno un viaggio, la mappa segue sempre l'ultimo punto aggiunto lì invece
           // del punto fisso impostato a mano su questo link — così "Dove sono" resta aggiornata
@@ -287,13 +270,7 @@ $bandReviewers = $bandReviewers->fetchAll();
           $mapLat = $latestTripCoords ? (float) $latestTripCoords['lat'] : (float) $l['map_lat'];
           $mapLng = $latestTripCoords ? (float) $latestTripCoords['lng'] : (float) $l['map_lng'];
         ?>
-        <!-- Sul layout desktop a due colonne questa copia resta nascosta: la stessa mappa
-             compare invece nella card dedicata nella colonna laterale, vedi home-map-sidecard
-             qui sotto e .home-hero-grid in style.css. -->
-        <div class="home-map-inline">
-          <?php if ($l['label']): ?><div class="link-map-label"><?= e($l['label']) ?></div><?php endif; ?>
-          <?= renderOsmEmbed($mapLat, $mapLng) ?>
-        </div>
+        <?= renderOsmEmbed($mapLat, $mapLng) ?>
       <?php else: ?>
         <a class="color-link-btn" style="background:<?= e(COLORFUL_PALETTE[$colorIdx % count(COLORFUL_PALETTE)]) ?>;"
            target="_blank" rel="noopener"
@@ -322,22 +299,9 @@ $bandReviewers = $bandReviewers->fetchAll();
       <?php endforeach; ?>
     </div>
   <?php endif; ?>
-  </div>
-  <?php endif; ?>
-
-  <div class="home-side-col">
-  <?php if ($firstMapLink): ?>
-    <!-- Copia della mappa "Dove sono", visibile SOLO sul layout desktop a due colonne (vedi
-         .home-hero-grid in style.css) — su mobile resta nascosta, lì si vede solo quella in
-         mezzo ai pulsanti (home-map-inline qui sopra). Mai entrambe insieme. -->
-    <div class="card home-side-card home-map-sidecard">
-      <div class="section-title"><i class="fa-solid fa-location-dot"></i> <?= $firstMapLink['label'] ? e($firstMapLink['label']) : 'Dove sono' ?></div>
-      <?= renderOsmEmbed($sideMapLat, $sideMapLng) ?>
-    </div>
   <?php endif; ?>
 
   <?php if ($spotifyPreview && !in_array('spotify', $hiddenNavKeys, true)): ?>
-    <div class="card home-side-card">
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">Spotify</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;margin-bottom:10px;">
       <?php foreach ($spotifyPreview as $a): ?>
@@ -354,9 +318,7 @@ $bandReviewers = $bandReviewers->fetchAll();
         <a href="/<?= e($slug) ?>/spotify">Vedi tutto su Spotify →</a>
       </p>
     <?php endif; ?>
-    </div>
   <?php elseif ($cheAmoCarousel): ?>
-    <div class="card home-side-card">
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;"><strong>Cose</strong> che amo</div>
     <div class="che-amo-home-carousel-wrap" style="position:relative;margin-bottom:18px;">
       <button type="button" class="che-amo-home-arrow che-amo-home-arrow-prev" aria-label="Indietro"><i class="fa-solid fa-chevron-left"></i></button>
@@ -377,7 +339,6 @@ $bandReviewers = $bandReviewers->fetchAll();
         <?php endforeach; ?>
       </div>
       <button type="button" class="che-amo-home-arrow che-amo-home-arrow-next" aria-label="Avanti"><i class="fa-solid fa-chevron-right"></i></button>
-    </div>
     </div>
     <style>
       .che-amo-home-carousel::-webkit-scrollbar { display: none; }
@@ -408,7 +369,6 @@ $bandReviewers = $bandReviewers->fetchAll();
     })();
     </script>
   <?php endif; ?>
-  </div>
 
   <div id="recensioni" class="card" style="scroll-margin-top:20px;">
     <div class="section-title" style="margin-bottom:8px;">Recensioni</div>

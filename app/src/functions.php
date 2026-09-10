@@ -1371,12 +1371,6 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $electricClass = $isElectric ? ' electric-border' : '';
     $electricStyle = $isElectric ? ' style="--electric-border-color:' . e($artist['theme_color'] ?: '#6C5CE7') . ';"' : '';
     $html = '<div class="profile-header' . $electricClass . '"' . $electricStyle . '>';
-    // "profile-identity" raggruppa avatar+nome+sottotitolo in un unico blocco (invariato su
-    // mobile/nel flusso normale — un semplice div, nessun CSS proprio fuori dal layout desktop a
-    // due colonne della Home, vedi .home-hero-grid in style.css): serve a poterlo posizionare
-    // come un solo elemento indipendente dal menu di navigazione qui sotto, che in quel layout
-    // deve restare a tutta larghezza sulla propria riga invece di seguire avatar+nome.
-    $html .= '<div class="profile-identity">';
     if (!empty($artist['avatar_path'])) {
         $html .= '<div class="avatar-wrap">';
         $html .= '<img class="avatar" src="/' . e($artist['avatar_path']) . '" alt="' . e($artist['display_name']) . '">';
@@ -1388,15 +1382,12 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
         // Senza avatar non c'è nulla su cui fare hover: la bio resta visibile come testo normale
         $html .= '<p>' . nl2br(e($artist['bio'])) . '</p>';
     }
-    $html .= '<div class="profile-identity-text">';
     $html .= '<h1>' . e($artist['display_name']) . '</h1>';
     $html .= '<p class="profile-meta">@' . e($artist['slug']);
     if (!empty($artist['genere'])) {
         $html .= '<span> · </span>' . e($artist['genere']);
     }
     $html .= '</p>';
-    $html .= '</div>'; // .profile-identity-text
-    $html .= '</div>'; // .profile-identity
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
