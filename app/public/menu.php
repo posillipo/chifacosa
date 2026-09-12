@@ -126,6 +126,7 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
   <?= publicProfileHeader($artist, 'menu') ?>
 
   <?php if ($categories): ?>
+    <div class="card">
     <!-- MENU TABS -->
     <div class="menu-tabs-container">
       <?php foreach ($categories as $index => $cat): ?>
@@ -153,6 +154,7 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
         <?php endforeach; ?>
       </div>
     <?php endforeach; ?>
+    </div>
   <?php else: ?>
     <div class="card">Il menù non è ancora disponibile.</div>
   <?php endif; ?>
