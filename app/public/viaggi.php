@@ -17,9 +17,25 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$stmt = getDB()->prepare('SELECT * FROM fan_favorite_trips WHERE user_id=? ORDER BY sort_order DESC');
+// Ordinati per data effettiva (publish_at se impostato, altrimenti created_at — stesso criterio
+// di publishedAtLabel()), non più per sort_order: serve per raggruppare per mese qui sotto, cosa
+// che un ordine di inserimento manuale non garantirebbe.
+$stmt = getDB()->prepare('SELECT * FROM fan_favorite_trips WHERE user_id=? ORDER BY COALESCE(publish_at, created_at) DESC, sort_order DESC');
 $stmt->execute([$artist['id']]);
 $favorites = $stmt->fetchAll();
+
+// Raggruppati per mese (nel fuso orario del profilo, vedi monthYearGroupKey()) — i risultati sono
+// già in ordine dal più recente al più vecchio, quindi anche i gruppi vengono fuori in quest'ordine
+// semplicemente scorrendoli una volta.
+$monthGroups = [];
+foreach ($favorites as $f) {
+    $effectiveDate = $f['publish_at'] ?: $f['created_at'];
+    $key = monthYearGroupKey($effectiveDate, $artist);
+    if (!isset($monthGroups[$key])) {
+        $monthGroups[$key] = ['label' => monthYearLabel($effectiveDate, $artist), 'items' => []];
+    }
+    $monthGroups[$key]['items'][] = $f;
+}
 
 $pageUrl = siteUrl('/' . $slug . '/viaggi');
 ?>
@@ -55,20 +71,23 @@ $pageUrl = siteUrl('/' . $slug . '/viaggi');
     Tutti i viaggi (<?= count($favorites) ?>)
   </div>
 
-  <?php if ($favorites): ?>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
-      <?php foreach ($favorites as $f): ?>
-        <?php $thumb = $f['image_path'] ?: $f['map_image_path']; ?>
-        <a href="/<?= e($slug) ?>/viaggi/<?= (int)$f['id'] ?>"
-           class="card" style="text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
-          <?php if ($thumb): ?>
-            <img src="/<?= e($thumb) ?>" style="width:100%;height:88px;border-radius:8px;object-fit:cover;margin-bottom:8px;">
-          <?php endif; ?>
-          <div style="font-weight:700;font-size:13px;"><?= e($f['place_name']) ?></div>
-          <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
-        </a>
-      <?php endforeach; ?>
-    </div>
+  <?php if ($monthGroups): ?>
+    <?php foreach ($monthGroups as $group): ?>
+      <div class="section-title" style="margin:24px 0 10px;"><?= e($group['label']) ?></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
+        <?php foreach ($group['items'] as $f): ?>
+          <?php $thumb = $f['image_path'] ?: $f['map_image_path']; ?>
+          <a href="/<?= e($slug) ?>/viaggi/<?= (int)$f['id'] ?>"
+             class="card" style="text-align:center;text-decoration:none;color:inherit;padding:14px 8px;">
+            <?php if ($thumb): ?>
+              <img src="/<?= e($thumb) ?>" style="width:100%;height:88px;border-radius:8px;object-fit:cover;margin-bottom:8px;">
+            <?php endif; ?>
+            <div style="font-weight:700;font-size:13px;"><?= e($f['place_name']) ?></div>
+            <small style="opacity:0.6;font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
   <?php else: ?>
     <div class="card">Nessun viaggio aggiunto ancora.</div>
   <?php endif; ?>

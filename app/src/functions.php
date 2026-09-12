@@ -2333,6 +2333,44 @@ function formatLocalDateTime(?string $datetime, ?array $profile, string $format 
     }
 }
 
+// Nomi dei mesi in italiano: il sito non ha mai avuto bisogno finora di stampare un mese per
+// esteso (solo date numeriche, d/m/Y), quindi non c'è un formattatore locale già pronto — niente
+// setlocale()/intl (dipenderebbero da cosa ha installato il container), un semplice array basta.
+const ITALIAN_MONTHS = [1 => 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+// Etichetta "Mese Anno" (es. "Settembre 2026") di un datetime nel fuso del profilo — usata per
+// raggruppare contenuti per mese su una pagina pubblica (es. /slug/viaggi). Va di pari passo con
+// monthYearGroupKey() qui sotto: stessa conversione di fuso orario, la chiave serve a raggruppare
+// senza rifare il calcolo, l'etichetta è solo per la stampa.
+function monthYearLabel(?string $datetime, ?array $profile): string {
+    if (!$datetime) {
+        return '';
+    }
+    try {
+        $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+    } catch (Exception $e) {
+        $dt = new DateTime(date('Y-m-d H:i:s', strtotime($datetime) ?: time()));
+    }
+    return ITALIAN_MONTHS[(int) $dt->format('n')] . ' ' . $dt->format('Y');
+}
+
+// Chiave ordinabile "AAAA-MM" per raggruppare per mese (vedi monthYearLabel()) — stesso fuso
+// orario del profilo, così un contenuto salvato a cavallo di mezzanotte finisce nel mese giusto
+// dal punto di vista di chi lo guarda, non del server.
+function monthYearGroupKey(?string $datetime, ?array $profile): string {
+    if (!$datetime) {
+        return '';
+    }
+    try {
+        $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+    } catch (Exception $e) {
+        $dt = new DateTime(date('Y-m-d H:i:s', strtotime($datetime) ?: time()));
+    }
+    return $dt->format('Y-m');
+}
+
 // Inversa di formatLocalDateTime(): un valore digitato in un campo datetime-local del browser
 // (es. "programma la pubblicazione", validità di un'offerta, data di un evento) è l'orario "a
 // muro" di CHI lo sta scrivendo in quel momento — MAI il fuso del server. Va quindi convertito
