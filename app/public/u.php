@@ -231,7 +231,7 @@ $bandReviewers = $bandReviewers->fetchAll();
       </div>
     <?php else: ?>
       <?php $followTermsContent = trim(getSiteSetting('follow_terms_content') ?: ''); ?>
-      <details class="segui-pill-details">
+      <details class="segui-pill-details" id="segui-follow-details">
         <summary class="segui-pill">✨ Segui</summary>
         <p style="font-size:12.5px;color:rgba(var(--text-rgb),0.7);max-width:280px;margin:8px auto 6px;">
           Ti mandiamo un link di conferma via email: dopo averlo aperto ricevi un avviso ogni volta che <?= e($artist['display_name']) ?> pubblica qualcosa di nuovo.
@@ -254,6 +254,27 @@ $bandReviewers = $bandReviewers->fetchAll();
       </div>
     <?php endif; ?>
   </div>
+  <script>
+  (function () {
+    // Sia il "+" accanto al nome utente sia la voce "Segui" del menu puntano qui
+    // (/slug#segui-widget): prima si limitavano a far scorrere la pagina fino al pulsante,
+    // lasciando comunque un secondo click per aprire il campo email — ora, se il modulo email
+    // esiste (visitatore non loggato), lo apre subito e ci mette anche il focus.
+    function openFollowWidget() {
+      if (window.location.hash !== '#segui-widget') return;
+      var details = document.getElementById('segui-follow-details');
+      if (details && !details.open) {
+        details.open = true;
+        var emailInput = details.querySelector('input[name="email"]');
+        if (emailInput) { setTimeout(function () { emailInput.focus(); }, 50); }
+      }
+      var widget = document.getElementById('segui-widget');
+      if (widget) { widget.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }
+    document.addEventListener('DOMContentLoaded', openFollowWidget);
+    window.addEventListener('hashchange', openFollowWidget);
+  })();
+  </script>
   <?php endif; ?>
 
   <?php if (!in_array('link', $hiddenNavKeys, true)): ?>
