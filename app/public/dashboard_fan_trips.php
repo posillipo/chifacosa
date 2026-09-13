@@ -103,6 +103,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // (testo con AI, foto opzionale, Pubblico/Solo io, programmazione, link personalizzato
         // per il feed) — vedi dashboard_post.php per il modello originale.
         $id = (int) ($_POST['id'] ?? 0);
+        $placeName = trim($_POST['place_name'] ?? '');
+        if ($placeName === '') {
+            // Il nome non può restare vuoto (colonna NOT NULL) — se arriva vuoto (bypassando il
+            // controllo lato JS) si ricade sul nome già salvato, invece di rifiutare il salvataggio.
+            $stmt = getDB()->prepare('SELECT place_name FROM fan_favorite_trips WHERE id=? AND user_id=?');
+            $stmt->execute([$id, $profile['id']]);
+            $placeName = $stmt->fetch()['place_name'] ?? 'Luogo';
+        }
         $note = trim($_POST['note'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         $showInFeed = $visibility === 'public' ? 1 : 0;
@@ -166,8 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             getDB()->prepare('DELETE FROM fan_favorite_trip_photos WHERE trip_id=?')->execute([$id]);
 
-            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
-            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
+            $stmt->execute([$placeName, $note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
 
             if ($extraPhotos) {
                 $insPhoto = getDB()->prepare('INSERT INTO fan_favorite_trip_photos (trip_id, image_path, sort_order) VALUES (?,?,?)');
@@ -176,8 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
-            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$placeName, $note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
         }
 
         if ($isAjax) {
@@ -228,6 +236,12 @@ include __DIR__ . '/_dash_header.php';
       Cerca un luogo (via OpenStreetMap, gratuito) o inserisci le coordinate a mano se non lo
       trovi, e aggiungilo alla tua lista di viaggi. Comparirà sulla tua pagina pubblica come
       diario dei posti che hai visitato.
+    </p>
+    <p style="color:var(--text-muted)">
+      Il nome trovato dalla ricerca è sempre modificabile prima di aggiungere il punto — utile
+      perché la mappa spesso trova l'indirizzo esatto ma non il nome del locale (es. "Via Roma 12"
+      invece di "Trattoria da Mario"). Puoi correggerlo anche in seguito da "✏️ Gestisci
+      pubblicazione".
     </p>
     <p style="color:var(--text-muted)">
       Ogni viaggio aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
@@ -283,10 +297,12 @@ include __DIR__ . '/_dash_header.php';
     <?php if ($searchResults): ?>
       <div class="section-title">Risultati (<?= count($searchResults) ?>)</div>
       <?php foreach ($searchResults as $r): ?>
-        <div class="link-item">
-          <strong><?= e($r['display_name']) ?></strong>
+        <div class="link-item" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <small style="color:var(--text-muted);"><?= e($r['display_name']) ?></small>
+          <label style="margin-bottom:0;">Nome del luogo (modificabile — la mappa spesso trova l'indirizzo, non il nome del locale)</label>
+          <input type="text" class="tr-result-name" value="<?= e(tripsShortPlaceName($r['display_name'])) ?>" style="margin-bottom:0;">
           <button type="button" class="btn small tr-add-btn"
-            data-place-name="<?= e(tripsShortPlaceName($r['display_name'])) ?>" data-address="<?= e($r['display_name']) ?>"
+            data-address="<?= e($r['display_name']) ?>"
             data-lat="<?= e((string)$r['lat']) ?>" data-lng="<?= e((string)$r['lng']) ?>">
             Aggiungi alla lista
           </button>
@@ -365,6 +381,10 @@ include __DIR__ . '/_dash_header.php';
           <p style="color:var(--text-muted);font-size:12px;margin:6px 0 0;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
           <?php endif; ?>
           <form class="tr-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">
+            <label>Nome del luogo</label>
+            <input type="text" class="tr-pub-place-name" value="<?= e($f['place_name']) ?>">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Correggilo se la mappa ha trovato l'indirizzo invece del nome del posto.</p>
+
             <label>Racconta questo viaggio</label>
             <textarea class="tr-pub-textarea" rows="3" placeholder="Racconta questo viaggio"><?= e($note) ?></textarea>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 12px;">
@@ -485,6 +505,9 @@ include __DIR__ . '/_dash_header.php';
         + '<p class="tr-pub-text" style="margin:0;font-size:14px;display:none;"></p>'
         + '<button type="button" class="btn small secondary tr-pub-toggle">✏️ Gestisci pubblicazione</button>'
         + '<form class="tr-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">'
+        + '<label>Nome del luogo</label>'
+        + '<input type="text" class="tr-pub-place-name" value="' + escapeHtml(item.place_name) + '">'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Correggilo se la mappa ha trovato l\'indirizzo invece del nome del posto.</p>'
         + '<label>Racconta questo viaggio</label>'
         + '<textarea class="tr-pub-textarea" rows="3" placeholder="Racconta questo viaggio"></textarea>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 12px;">'
@@ -558,7 +581,9 @@ include __DIR__ . '/_dash_header.php';
     resultsBox.addEventListener('click', function (e) {
       const btn = e.target.closest('.tr-add-btn');
       if (!btn) return;
-      addFromFields(btn.dataset.placeName, btn.dataset.address, btn.dataset.lat, btn.dataset.lng, btn, null).then(function (data) {
+      const nameInput = btn.closest('.link-item').querySelector('.tr-result-name');
+      const placeName = (nameInput ? nameInput.value.trim() : '') || btn.dataset.address;
+      addFromFields(placeName, btn.dataset.address, btn.dataset.lat, btn.dataset.lng, btn, null).then(function (data) {
         if (data && data.ok) {
           btn.closest('.link-item').remove();
         }
@@ -730,6 +755,7 @@ include __DIR__ . '/_dash_header.php';
         const block = pubSaveBtn.closest('.tr-pub-block');
         const row = pubSaveBtn.closest('[data-tr-favorite]');
         const id = row.getAttribute('data-tr-favorite');
+        const placeName = editor.querySelector('.tr-pub-place-name').value.trim();
         const note = editor.querySelector('.tr-pub-textarea').value;
         const visibility = editor.querySelector('.tr-pub-visibility:checked').value;
         const publishAt = editor.querySelector('.tr-pub-publish-at').value;
@@ -741,12 +767,18 @@ include __DIR__ . '/_dash_header.php';
         const files = imageInput.files ? Array.from(imageInput.files).slice(0, 10) : [];
         const file = files[0] || null;
 
+        if (!placeName) {
+          statusEl.textContent = 'Il nome del luogo non può essere vuoto.';
+          return;
+        }
+
         function submit(thumbDataUrl) {
           pubSaveBtn.disabled = true;
           statusEl.textContent = 'Salvataggio...';
           const formData = new FormData();
           formData.set('action', 'save_details');
           formData.set('id', id);
+          formData.set('place_name', placeName);
           formData.set('note', note);
           formData.set('visibility', visibility);
           formData.set('publish_at', publishAt);
@@ -770,6 +802,8 @@ include __DIR__ . '/_dash_header.php';
             statusEl.textContent = data.error ? data.error : '';
             row.setAttribute('data-tr-note', note);
             row.setAttribute('data-tr-has-image', data.item.image_path ? '1' : '0');
+            const nameEl = row.querySelector('a strong');
+            if (nameEl) nameEl.textContent = data.item.place_name;
             const textEl = block.querySelector('.tr-pub-text');
             const toggleEl = block.querySelector('.tr-pub-toggle');
             if (note.trim() !== '') {
@@ -809,9 +843,12 @@ include __DIR__ . '/_dash_header.php';
       let html = '<div class="section-title">Risultati (' + results.length + ')</div>';
       results.forEach(function (r) {
         const shortName = r.display_name.split(',')[0].trim() || r.display_name;
-        html += '<div class="link-item"><strong>' + escapeHtml(r.display_name) + '</strong>'
-          + '<button type="button" class="btn small tr-add-btn" data-place-name="' + escapeHtml(shortName)
-          + '" data-address="' + escapeHtml(r.display_name) + '" data-lat="' + escapeHtml(r.lat) + '" data-lng="' + escapeHtml(r.lng) + '">Aggiungi alla lista</button></div>';
+        html += '<div class="link-item" style="flex-direction:column;align-items:stretch;gap:8px;">'
+          + '<small style="color:var(--text-muted);">' + escapeHtml(r.display_name) + '</small>'
+          + '<label style="margin-bottom:0;">Nome del luogo (modificabile — la mappa spesso trova l\'indirizzo, non il nome del locale)</label>'
+          + '<input type="text" class="tr-result-name" value="' + escapeHtml(shortName) + '" style="margin-bottom:0;">'
+          + '<button type="button" class="btn small tr-add-btn" data-address="' + escapeHtml(r.display_name)
+          + '" data-lat="' + escapeHtml(r.lat) + '" data-lng="' + escapeHtml(r.lng) + '">Aggiungi alla lista</button></div>';
       });
       resultsBox.innerHTML = html;
     }
