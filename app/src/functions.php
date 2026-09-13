@@ -1375,6 +1375,16 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         });
     }
 
+    // La voce attiva passa al secondo posto (subito dopo la prima) SOLO nella resa di questa
+    // pagina — l'ordine salvato in Menu di Navigazione (sopra) resta quello scelto dal
+    // proprietario, invariato. Aiuta chi naviga fra tante voci a ritrovare sempre subito in vista
+    // la sezione in cui si trova, senza dover scorrere il menu ogni volta.
+    if (isset($tabs[$active])) {
+        $activeEntry = [$active => $tabs[$active]];
+        unset($tabs[$active]);
+        $tabs = array_slice($tabs, 0, 1, true) + $activeEntry + array_slice($tabs, 1, null, true);
+    }
+
     $parts = [];
     foreach ($tabs as $key => $t) {
         $classes = trim(($t['class'] ?? '') . ($key === $active ? ' nav-active-tab' : ''));
