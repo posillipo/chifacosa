@@ -430,6 +430,26 @@ body.colorful-page {
 .colorful-page .profile-header p { color: rgba(34,34,59,0.75); }
 .profile-meta { font-size: 13.5px; color: rgba(34,34,59,0.55); margin: -6px 0 4px; }
 
+/* "+" accanto al nome utente, scorciatoia al pulsante Segui (stessa ancora #segui-widget della
+   voce "Segui" nel menu) — colore accento del profilo, riconoscibile su ogni tema grafico senza
+   bisogno di una regola per tema, come .nav-active-tab/.nav-segui-tab qui sopra. */
+.profile-follow-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent, #6C5CE7);
+  color: var(--accent-text, #fff);
+  font-size: 10px;
+  vertical-align: middle;
+  margin-left: 4px;
+  text-decoration: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.profile-follow-plus:hover { transform: scale(1.15); opacity: 0.85; }
+
 /* Vignetta con la bio, visibile passando il mouse sull'avatar */
 .avatar-wrap { position: relative; display: inline-block; }
 .avatar-bio-tooltip {

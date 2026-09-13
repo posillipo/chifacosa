@@ -1385,6 +1385,22 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs = array_slice($tabs, 0, 1, true) + $activeEntry + array_slice($tabs, 1, null, true);
     }
 
+    // "Home" resta sempre per prima e "Segui" sempre per ultima, qualunque sia l'ordine
+    // personalizzato scelto dal profilo o lo spostamento della voce attiva qui sopra — le uniche
+    // due il cui posto non deve mai cambiare (Home è il punto fisso da cui ripartire, Segui il
+    // pulsante di richiamo che deve restare sempre raggiungibile in fondo a destra).
+    $pinnedFirst = [];
+    $pinnedLast = [];
+    if (isset($tabs['home'])) {
+        $pinnedFirst['home'] = $tabs['home'];
+        unset($tabs['home']);
+    }
+    if (isset($tabs['segui'])) {
+        $pinnedLast['segui'] = $tabs['segui'];
+        unset($tabs['segui']);
+    }
+    $tabs = $pinnedFirst + $tabs + $pinnedLast;
+
     $parts = [];
     foreach ($tabs as $key => $t) {
         $classes = trim(($t['class'] ?? '') . ($key === $active ? ' nav-active-tab' : ''));
@@ -1407,6 +1423,12 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $isElectric = ($artist['page_theme'] ?? 'colorful') === 'electric';
     $electricClass = $isElectric ? ' electric-border' : '';
     $electricStyle = $isElectric ? ' style="--electric-border-color:' . e($artist['theme_color'] ?: '#6C5CE7') . ';"' : '';
+    $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
+    // Il "+" accanto al nome utente è una scorciatoia al pulsante "Segui" del menu — stesso link
+    // (l'ancora #segui-widget della Home, come già fa la voce "Segui" del menu pubblico), nessuna
+    // logica nuova da mantenere. Non ha senso mostrarlo sul proprio stesso profilo.
+    $viewerIdForFollow = $_SESSION['user_id'] ?? null;
+    $canShowFollowPlus = $ownerId && (!$viewerIdForFollow || (int) $viewerIdForFollow !== $ownerId);
     $html = '<div class="profile-header' . $electricClass . '"' . $electricStyle . '>';
     if (!empty($artist['avatar_path'])) {
         $html .= '<div class="avatar-wrap">';
@@ -1421,11 +1443,13 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     }
     $html .= '<h1>' . e($artist['display_name']) . '</h1>';
     $html .= '<p class="profile-meta">@' . e($artist['slug']);
+    if ($canShowFollowPlus) {
+        $html .= ' <a href="/' . e($artist['slug']) . '#segui-widget" class="profile-follow-plus" aria-label="Segui ' . e($artist['display_name']) . '"><i class="fa-solid fa-plus"></i></a>';
+    }
     if (!empty($artist['genere'])) {
         $html .= '<span> · </span>' . e($artist['genere']);
     }
     $html .= '</p>';
-    $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
     $hasPhotos = $ownerId ? hasPublicPhotoContent($ownerId) : false;
