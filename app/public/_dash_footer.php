@@ -8,6 +8,22 @@
 document.querySelectorAll('input[name="tz_offset_minutes"]').forEach(function (el) {
   el.value = new Date().getTimezoneOffset();
 });
+
+// Mantiene la posizione di scorrimento tra un ricaricamento e l'altro di questa pagina (es. dopo
+// aver eliminato una singola foto da una galleria, o un normale F5) — senza questo, ogni submit
+// di un form che ricarica la pagina riporterebbe la vista in cima, perdendo il punto in cui si
+// stava lavorando più in basso nella lista.
+(function () {
+  var scrollKey = 'cfc_scroll_' + location.pathname;
+  var savedY = null;
+  try { savedY = sessionStorage.getItem(scrollKey); } catch (e) {}
+  if (savedY !== null) {
+    window.scrollTo(0, parseInt(savedY, 10) || 0);
+  }
+  window.addEventListener('beforeunload', function () {
+    try { sessionStorage.setItem(scrollKey, String(window.scrollY)); } catch (e) {}
+  });
+})();
 </script>
 </body>
 </html>
