@@ -111,6 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = getDB()->prepare('DELETE FROM timeline_posts WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         logAdminAction((int) $profile['id'], (int) $user['id'], 'Aggiornamento eliminato dalla Timeline');
+    } elseif ($action === 'delete_photo') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $photoId = (int) ($_POST['photo_id'] ?? -1);
+        $result = deleteSingleGalleryPhoto('timeline_posts', 'image_path', 'timeline_post_photos', 'post_id', $id, (int) $profile['id'], $photoId, 'image_thumb_path');
+        if (!$result['ok']) {
+            $error = $result['error'];
+        }
     }
 }
 
@@ -239,6 +246,41 @@ include __DIR__ . '/_dash_header.php';
         <?php if ($p['testo']): ?><p style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
         <?php if (!$isPrivate): ?>
           <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>
+        <?php endif; ?>
+        <?php if ($p['image_path']):
+          $tlExtraPhotos = getDB()->prepare('SELECT id, image_path FROM timeline_post_photos WHERE post_id=? ORDER BY sort_order ASC, id ASC');
+          $tlExtraPhotos->execute([(int) $p['id']]);
+          $tlExtraPhotos = $tlExtraPhotos->fetchAll();
+        ?>
+        <details class="help-box" style="margin:8px 0;">
+          <summary>🖼️ Gestisci foto</summary>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <div style="position:relative;width:72px;">
+              <img src="/<?= e($p['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+              <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
+              <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');">
+                <?= csrfField() ?>
+                <input type="hidden" name="action" value="delete_photo">
+                <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
+                <input type="hidden" name="photo_id" value="0">
+                <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+              </form>
+            </div>
+            <?php foreach ($tlExtraPhotos as $ph): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($ph['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <form method="post" onsubmit="return confirm('Eliminare questa foto?');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
+                  <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <p style="color:var(--text-muted);font-size:12px;margin:6px 0 0;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
+        </details>
         <?php endif; ?>
         <form method="post" onsubmit="return confirm('Eliminare questo aggiornamento?');">
           <?= csrfField() ?>

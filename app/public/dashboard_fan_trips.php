@@ -188,6 +188,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'extra_photo_count' => $row ? count(getTripPhotos($id)) : 0]);
             exit;
         }
+    } elseif ($action === 'delete_photo') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $photoId = (int) ($_POST['photo_id'] ?? -1);
+        $result = deleteSingleGalleryPhoto('fan_favorite_trips', 'image_path', 'fan_favorite_trip_photos', 'trip_id', $id, (int) $profile['id'], $photoId, 'image_thumb_path');
+        if (!$result['ok']) {
+            $error = $result['error'];
+        }
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
@@ -325,6 +332,38 @@ include __DIR__ . '/_dash_header.php';
             <p class="tr-pub-text" style="margin:0;font-size:14px;display:none;"></p>
           <?php endif; ?>
           <button type="button" class="btn small secondary tr-pub-toggle">✏️ Gestisci pubblicazione</button>
+          <?php if ($f['image_path']):
+            $trExtraPhotos = getDB()->prepare('SELECT id, image_path FROM fan_favorite_trip_photos WHERE trip_id=? ORDER BY sort_order ASC, id ASC');
+            $trExtraPhotos->execute([(int) $f['id']]);
+            $trExtraPhotos = $trExtraPhotos->fetchAll();
+          ?>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <div style="position:relative;width:72px;">
+              <img src="/<?= e($f['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+              <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
+              <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');">
+                <?= csrfField() ?>
+                <input type="hidden" name="action" value="delete_photo">
+                <input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
+                <input type="hidden" name="photo_id" value="0">
+                <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+              </form>
+            </div>
+            <?php foreach ($trExtraPhotos as $ph): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($ph['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <form method="post" onsubmit="return confirm('Eliminare questa foto?');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
+                  <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <p style="color:var(--text-muted);font-size:12px;margin:6px 0 0;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
+          <?php endif; ?>
           <form class="tr-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">
             <label>Racconta questo viaggio</label>
             <textarea class="tr-pub-textarea" rows="3" placeholder="Racconta questo viaggio"><?= e($note) ?></textarea>
@@ -345,7 +384,7 @@ include __DIR__ . '/_dash_header.php';
             <input type="file" class="tr-pub-image-input" accept="image/*" multiple>
             <input type="hidden" class="tr-pub-image-thumb-data">
             <?php if ($f['image_path']): ?>
-              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p>
+              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato delle foto — seleziona nuovi file per sostituire l'intero set (per eliminare una singola foto usa la × qui sopra).</p>
             <?php else: ?>
               <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Senza foto, l'anteprima social usa una miniatura della mappa.</p>
             <?php endif; ?>

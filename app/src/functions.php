@@ -2286,6 +2286,52 @@ function deleteFeedShareImage(?string $coverPath): void {
     @unlink('/var/www/html/' . ($dir !== '.' ? $dir . '/' : '') . $base . '__share.jpg');
 }
 
+// Elimina UNA foto sola di un contenuto con più foto (post Timeline, Viaggio, Album, Servizio),
+// senza toccare le altre né dover ricaricare l'intero set come nell'unica modalità finora
+// disponibile in modifica. $photoId vale 0 per la copertina, altrimenti l'id della riga nella
+// tabella delle foto extra ($childTable). Eliminare proprio la copertina promuove la prima foto
+// extra rimasta al suo posto (un contenuto ha sempre bisogno di almeno una foto per essere
+// mostrato in Home/Feed/RSS) — se non ce n'è nessuna, l'eliminazione viene rifiutata.
+function deleteSingleGalleryPhoto(string $parentTable, string $coverColumn, string $childTable, string $parentIdColumn, int $parentId, int $userId, int $photoId, ?string $coverThumbColumn = null): array {
+    $db = getDB();
+    $selectCols = $coverThumbColumn ? "{$coverColumn} AS cover, {$coverThumbColumn} AS cover_thumb" : "{$coverColumn} AS cover";
+    $stmt = $db->prepare("SELECT {$selectCols} FROM {$parentTable} WHERE id=? AND user_id=?");
+    $stmt->execute([$parentId, $userId]);
+    $parent = $stmt->fetch();
+    if (!$parent) {
+        return ['ok' => false, 'error' => 'Non trovato.'];
+    }
+
+    if ($photoId === 0) {
+        $stmt = $db->prepare("SELECT id, image_path FROM {$childTable} WHERE {$parentIdColumn}=? ORDER BY sort_order ASC, id ASC LIMIT 1");
+        $stmt->execute([$parentId]);
+        $nextPhoto = $stmt->fetch();
+        if (!$nextPhoto) {
+            return ['ok' => false, 'error' => 'Non puoi eliminare l\'unica foto rimasta — carica una nuova foto per sostituirla.'];
+        }
+        deleteCoverFile($parent['cover']);
+        deleteFeedShareImage($parent['cover']);
+        if ($coverThumbColumn) {
+            deleteCoverFile($parent['cover_thumb'] ?? null);
+            $db->prepare("UPDATE {$parentTable} SET {$coverColumn}=?, {$coverThumbColumn}=NULL WHERE id=?")->execute([$nextPhoto['image_path'], $parentId]);
+        } else {
+            $db->prepare("UPDATE {$parentTable} SET {$coverColumn}=? WHERE id=?")->execute([$nextPhoto['image_path'], $parentId]);
+        }
+        $db->prepare("DELETE FROM {$childTable} WHERE id=?")->execute([$nextPhoto['id']]);
+        return ['ok' => true];
+    }
+
+    $stmt = $db->prepare("SELECT image_path FROM {$childTable} WHERE id=? AND {$parentIdColumn}=?");
+    $stmt->execute([$photoId, $parentId]);
+    $photo = $stmt->fetch();
+    if (!$photo) {
+        return ['ok' => false, 'error' => 'Foto non trovata.'];
+    }
+    deleteCoverFile($photo['image_path']);
+    $db->prepare("DELETE FROM {$childTable} WHERE id=?")->execute([$photoId]);
+    return ['ok' => true];
+}
+
 // ===== Segui tra account (diverso da "Segui via email") =====
 
 function isFollowingAccount(int $followerId, int $followedId): bool {

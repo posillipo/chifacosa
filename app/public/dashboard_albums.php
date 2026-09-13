@@ -85,6 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+    } elseif ($action === 'delete_photo') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $photoId = (int) ($_POST['photo_id'] ?? -1);
+        $result = deleteSingleGalleryPhoto('photo_albums', 'cover_path', 'photo_album_photos', 'album_id', $id, (int) $profile['id'], $photoId);
+        if (!$result['ok']) {
+            $error = $result['error'];
+        }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT cover_path FROM photo_albums WHERE id=? AND user_id=?');
@@ -188,7 +195,42 @@ include __DIR__ . '/_dash_header.php';
 
         <details style="margin-top:8px;">
           <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-          <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
+
+          <?php
+            $alExtraPhotos = getDB()->prepare('SELECT id, image_path FROM photo_album_photos WHERE album_id=? ORDER BY sort_order ASC, id ASC');
+            $alExtraPhotos->execute([(int) $al['id']]);
+            $alExtraPhotos = $alExtraPhotos->fetchAll();
+          ?>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <?php if ($al['cover_path']): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($al['cover_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
+                <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+                  <input type="hidden" name="photo_id" value="0">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endif; ?>
+            <?php foreach ($alExtraPhotos as $ph): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($ph['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <form method="post" onsubmit="return confirm('Eliminare questa foto?');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+                  <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <p style="color:var(--text-muted);font-size:12px;margin:6px 0 12px;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
+
+          <form method="post" enctype="multipart/form-data">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
@@ -197,7 +239,7 @@ include __DIR__ . '/_dash_header.php';
             <input type="text" name="title" value="<?= e($al['title']) ?>" required>
             <label>Descrizione (opzionale)</label>
             <textarea name="description" rows="4"><?= e($al['description'] ?? '') ?></textarea>
-            <label>Foto (opzionale — lascia vuoto per non cambiarle, altrimenti sostituisci l'intero set)</label>
+            <label>Aggiungi altre foto (opzionale — lascia vuoto per non cambiarle, altrimenti sostituisce l'intero set)</label>
             <input type="file" name="images[]" accept="image/*" multiple>
             <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
