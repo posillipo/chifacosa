@@ -53,3 +53,14 @@
 .ig-lightbox-close:hover { background:rgba(255,255,255,0.28); }
 .ig-lightbox .ig-arrow { position:fixed; }
 .ig-lightbox-dots { position:fixed; bottom:20px; left:0; right:0; z-index:2010; }
+/* Al posto dei puntini quando le foto sono troppe per mostrarne uno a testa (es. la griglia
+   Foto, che può avere centinaia di scatti da post diversi). */
+.ig-lightbox-counter {
+  position:fixed; bottom:20px; left:0; right:0; z-index:2010;
+  text-align:center; color:#fff; font-size:13px; font-weight:700;
+  text-shadow:0 1px 3px rgba(0,0,0,0.6);
+}
+
+/* Miniature di una griglia (es. sezione Foto) che aprono la lightbox invece di navigare via —
+   il link <a href> resta vero per chi non ha JS, ma non deve sembrare un link di testo. */
+.ig-grid-item { display:block; text-decoration:none; cursor:pointer; }

@@ -78,11 +78,25 @@ $pageUrl = siteUrl('/' . $slug . '/foto');
       Foto (<?= count($timelinePhotos) ?>)
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">
-      <?php foreach ($timelinePhotos as $ph): ?>
-        <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>">
+      <?php foreach ($timelinePhotos as $i => $ph): ?>
+        <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>" class="ig-grid-item" data-lightbox="foto-grid" data-index="<?= $i ?>">
           <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;">
         </a>
       <?php endforeach; ?>
+    </div>
+
+    <!-- Vista a tutto schermo delle foto qui sopra, navigabile con le frecce (mouse o tastiera) —
+         una sola lightbox condivisa da tutta la griglia, aperta dal JS sulla foto cliccata. -->
+    <div class="ig-lightbox" data-post="foto-grid">
+      <button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>
+      <div class="ig-lightbox-track">
+        <?php foreach ($timelinePhotos as $ph): ?>
+          <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy">
+        <?php endforeach; ?>
+      </div>
+      <button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>
+      <button type="button" class="ig-arrow ig-arrow-next" aria-label="Foto successiva">›</button>
+      <div class="ig-lightbox-counter"></div>
     </div>
   <?php endif; ?>
 
@@ -94,5 +108,10 @@ $pageUrl = siteUrl('/' . $slug . '/foto');
 </div>
 <?= renderFloatingButtons() ?>
 <?= renderSiteFooterBar($artist) ?>
+
+<?php if ($timelinePhotos): ?>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
+<script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
+<?php endif; ?>
 </body>
 </html>
