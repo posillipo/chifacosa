@@ -230,12 +230,22 @@ $bandReviewers = $bandReviewers->fetchAll();
         <?= getAccountFollowerCount((int)$uid) ?> ti seguono su <?= e(siteName()) ?>
       </div>
     <?php else: ?>
+      <?php $followTermsContent = trim(getSiteSetting('follow_terms_content') ?: ''); ?>
       <details class="segui-pill-details">
         <summary class="segui-pill">✨ Segui</summary>
-        <form method="post" action="/follow.php" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px;">
+        <p style="font-size:12.5px;color:rgba(var(--text-rgb),0.7);max-width:280px;margin:8px auto 6px;">
+          Ti mandiamo un link di conferma via email: dopo averlo aperto ricevi un avviso ogni volta che <?= e($artist['display_name']) ?> pubblica qualcosa di nuovo.
+        </p>
+        <form method="post" action="/follow.php" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:4px;max-width:280px;margin-left:auto;margin-right:auto;">
           <?= csrfField() ?>
           <input type="hidden" name="slug" value="<?= e($slug) ?>">
           <input type="email" name="email" placeholder="La tua email" required style="flex:1;min-width:160px;max-width:240px;margin-bottom:0;font-size:13px;padding:8px 12px;">
+          <?php if ($followTermsContent !== ''): ?>
+            <label style="display:flex;align-items:flex-start;gap:6px;font-weight:normal;font-size:12px;text-align:left;width:100%;margin:2px 0 0;">
+              <input type="checkbox" name="accept_terms" value="1" required style="width:auto;margin-top:2px;">
+              <span>Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></span>
+            </label>
+          <?php endif; ?>
           <button type="submit" class="btn small" style="background:rgb(108,92,231);">Conferma</button>
         </form>
       </details>

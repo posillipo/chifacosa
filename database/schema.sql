@@ -263,6 +263,7 @@ CREATE TABLE IF NOT EXISTS followers (
     email VARCHAR(190) NOT NULL,
     verified TINYINT(1) NOT NULL DEFAULT 0,
     token VARCHAR(64) NOT NULL,
+    accepted_terms_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_user_email (user_id, email),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

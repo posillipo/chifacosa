@@ -18,9 +18,14 @@ $isError = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $email = trim($_POST['email'] ?? '');
+    $followTermsContent = trim(getSiteSetting('follow_terms_content') ?: '');
+    $acceptedTerms = !empty($_POST['accept_terms']);
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = 'Inserisci un indirizzo email valido.';
+        $isError = true;
+    } elseif ($followTermsContent !== '' && !$acceptedTerms) {
+        $message = 'Devi accettare i Termini di Utilizzo per procedere.';
         $isError = true;
     } else {
         $stmt = getDB()->prepare('SELECT id, verified, token FROM followers WHERE user_id = ? AND email = ?');
@@ -32,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $token = $existing['token'] ?? bin2hex(random_bytes(32));
             if (!$existing) {
-                $stmt = getDB()->prepare('INSERT INTO followers (user_id, email, token) VALUES (?,?,?)');
-                $stmt->execute([$artist['id'], $email, $token]);
+                $stmt = getDB()->prepare('INSERT INTO followers (user_id, email, token, accepted_terms_at) VALUES (?,?,?,?)');
+                $stmt->execute([$artist['id'], $email, $token, $acceptedTerms ? date('Y-m-d H:i:s') : null]);
             }
             $confirmUrl = siteUrl('/follow_confirm.php?token=' . $token);
             notifyFollowConfirmation($email, $artist['display_name'], $token, $confirmUrl);
