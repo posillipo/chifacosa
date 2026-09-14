@@ -916,15 +916,51 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
     $stmt->execute([$uid]);
     $links = $stmt->fetchAll();
 
-    if (!$links && empty($artist['bio']) && !$citta && empty($artist['genere']) && !$hasSpotify && !$hasYoutube && !$hasPodcast) {
+    // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
+    // e con contenuto effettivo): il widget qui sotto elenca esattamente le stesse voci che
+    // compaiono sulla vetrina "Che Amo" dietro al tab omonimo, mai svuotato dalla barra
+    // orizzontale (resta lì, questo è solo un accesso rapido in più dalla colonna laterale).
+    $hiddenKeys = getHiddenNavKeys($uid);
+    $cheAmoItems = [];
+    if (!in_array('cheamo', $hiddenKeys, true)) {
+        foreach (CHE_AMO_MODULES as $key => $m) {
+            if (in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+            if ($m['check'] === null || $m['check']($uid)) {
+                $cheAmoItems[$key] = $m;
+            }
+        }
+    }
+
+    if (!$cheAmoItems && !$links && empty($artist['bio']) && !$citta && empty($artist['genere']) && !$hasSpotify && !$hasYoutube && !$hasPodcast) {
         return '';
     }
 
     ob_start();
     ?>
           <div class="col-md-3 order-3">
-            <?php if ($links): ?>
+            <?php if ($cheAmoItems): ?>
             <div class="card">
+              <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
+              <div class="card-body">
+                <?php $cheAmoColors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary']; $i = 0; ?>
+                <?php foreach ($cheAmoItems as $key => $m): ?>
+                <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="info-box text-decoration-none text-body<?= $i > 0 ? ' mt-2' : '' ?>">
+                  <span class="info-box-icon text-bg-<?= $cheAmoColors[$i % count($cheAmoColors)] ?> shadow-sm">
+                    <i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$key] ?? 'bi-heart') ?>" aria-hidden="true"></i>
+                  </span>
+                  <div class="info-box-content">
+                    <span class="info-box-text"><?= e($m['label']) ?></span>
+                  </div>
+                </a>
+                <?php $i++; endforeach; ?>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($links): ?>
+            <div class="card<?= $cheAmoItems ? ' mt-3' : '' ?>">
               <div class="card-header"><h3 class="card-title">I miei link</h3></div>
               <div class="list-group list-group-flush">
                 <?php foreach ($links as $lk): ?>
@@ -954,7 +990,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
             <?php endif; ?>
 
             <?php if (!empty($artist['bio']) || $citta || !empty($artist['genere']) || $hasSpotify || $hasYoutube || $hasPodcast): ?>
-            <div class="card<?= $links ? ' mt-3' : '' ?>">
+            <div class="card<?= ($cheAmoItems || $links) ? ' mt-3' : '' ?>">
               <div class="card-header"><h3 class="card-title">Chi sono</h3></div>
               <div class="card-body small">
                 <?php if (!empty($artist['bio'])): ?>
