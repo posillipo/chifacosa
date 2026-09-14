@@ -844,24 +844,41 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
     ob_start();
     ?>
           <div class="col-md-3 order-1">
-            <div class="card">
-              <div class="card-body text-center">
-                <img src="<?= e($avatarUrl) ?>" class="rounded-circle mb-3" style="width:96px;height:96px;object-fit:cover;" alt="<?= e($artist['display_name']) ?>">
-                <h2 class="h5 mb-0"><?= e($artist['display_name']) ?></h2>
-                <p class="text-secondary mb-3">@<?= e($slug) ?></p>
-                <ul class="list-group list-group-flush text-start small">
-                  <li class="list-group-item d-flex justify-content-between px-0"><span class="text-secondary">Follower</span><span class="fw-semibold"><?= (int) $followerCount ?></span></li>
-                  <li class="list-group-item d-flex justify-content-between px-0"><span class="text-secondary">Contenuti pubblicati</span><span class="fw-semibold"><?= (int) $contentCount ?></span></li>
-                  <li class="list-group-item d-flex justify-content-between px-0">
-                    <span class="text-secondary">Recensioni</span>
-                    <span class="fw-semibold"><?= $reviewStats['count'] ? e((string) $reviewStats['avg']) . ' ★ (' . (int) $reviewStats['count'] . ')' : 'Nessuna' ?></span>
-                  </li>
-                </ul>
-                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary w-100 mt-3">
-                  <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
-                </a>
+            <div class="card widget-user mb-0">
+              <div class="widget-user-header text-bg-primary">
+                <h3 class="widget-user-username"><?= e($artist['display_name']) ?></h3>
+                <h5 class="widget-user-desc">@<?= e($slug) ?></h5>
+              </div>
+              <div class="widget-user-image">
+                <img class="rounded-circle shadow" src="<?= e($avatarUrl) ?>" alt="<?= e($artist['display_name']) ?>">
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-sm-4 border-end">
+                    <div class="description-block">
+                      <p class="description-header"><?= (int) $followerCount ?></p>
+                      <span class="description-text">Follower</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-4 border-end">
+                    <div class="description-block">
+                      <p class="description-header"><?= (int) $contentCount ?></p>
+                      <span class="description-text">Contenuti</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-4">
+                    <div class="description-block">
+                      <p class="description-header"><?= $reviewStats['count'] ? e((string) $reviewStats['avg']) . ' ★' : '–' ?></p>
+                      <span class="description-text">Recensioni</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary w-100 mt-3">
+              <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
+            </a>
 
             <?php if (empty($_SESSION['user_id'])): ?>
             <div class="text-center small mt-3">
