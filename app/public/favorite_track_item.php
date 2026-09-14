@@ -43,6 +43,11 @@ $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)
 // giornata, senza dover andare a sfogliare la Timeline.
 $sameDayItems = getSameDayFavorites('favorite_tracks', $artist['id'], $track['publish_at'], $track['created_at'], $trackId);
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteFavoriteTrackDetailPage($artist, $slug, $track, $sameDayItems);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/scheda');
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $track['track_name'] . '" — scoprilo su ' . siteName());
 ?>

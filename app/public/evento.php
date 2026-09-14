@@ -40,6 +40,11 @@ $resMsg = $_GET['res_msg'] ?? '';
 $resErr = ($_GET['res_err'] ?? '0') === '1';
 $scheduleLabel = eventScheduleLabel($event['recurrence'] ?? 'none', (bool) ($event['is_perpetual'] ?? false));
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteEventoDetailPage($artist, $slug, $event, $scheduleLabel, $resMsg, $resErr);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/eventi/' . $eventId);
 $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
 $locationLine = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));

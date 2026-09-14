@@ -65,6 +65,11 @@ $reviewers = getDB()->prepare('SELECT tr.rating, u2.slug FROM track_reviews tr J
 $reviewers->execute([$trackId]);
 $reviewers = $reviewers->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteTrackReviewPage($artist, $slug, $track, $stats, $viewerId, $myRating, $reviewers);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/votazioni');
 ?>
 <!doctype html>

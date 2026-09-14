@@ -32,6 +32,11 @@ foreach ($allItems as $it) {
 // Le categorie senza piatti attivi non hanno senso da mostrare pubblicamente
 $categories = array_values(array_filter($categories, fn($c) => !empty($itemsByCategory[(int) $c['id']])));
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteMenuPage($artist, $slug, $categories, $itemsByCategory);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/menu');
 $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
 ?><!doctype html>

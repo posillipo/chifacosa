@@ -21,6 +21,11 @@ $stmt = getDB()->prepare('SELECT * FROM fan_favorite_playlists WHERE user_id=? O
 $stmt->execute([$artist['id']]);
 $favorites = $stmt->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteFanFavoriteListPage($artist, $slug, $favorites, 'playlist');
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/playlist-che-amo');
 ?>
 <!doctype html>

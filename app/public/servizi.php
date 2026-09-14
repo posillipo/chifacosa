@@ -23,6 +23,11 @@ $services = getDB()->prepare("SELECT sv.*, (SELECT COUNT(*) FROM service_photos 
 $services->execute([$artist['id']]);
 $services = $services->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteServiziListPage($artist, $slug, $services);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/servizi');
 ?>
 <!doctype html>

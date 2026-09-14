@@ -56,6 +56,11 @@ $ogImage = $album['cover_path']
     ? siteUrl(count($photos) > 1 ? getFeedShareImage($album['cover_path']) : $album['cover_path'])
     : ($album['avatar_path'] ? siteUrl($album['avatar_path']) : null);
 $ogDescription = $album['description'] ? textExcerpt($album['description'], 160) : ($album['display_name'] . ' — scopri l\'album su ' . siteName());
+
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteAlbumDetailPage($artist, $slug, $album, $photos, $isOwner, $isScheduledFuture);
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="it">

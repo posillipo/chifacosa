@@ -731,6 +731,82 @@ function getContrastTextColor(?string $hexColor): string {
     return $luminance > 0.6 ? '#22223b' : '#fff';
 }
 
+// Icona Bootstrap Icons per ciascun modulo "che amo" (CHE_AMO_MODULES usa icone FontAwesome, non
+// caricate in questo tema) — condivisa fra il tab Che Amo della Home e la vetrina standalone
+// (che_amo.php).
+const ADMINLTE_CHE_AMO_ICONS = [
+    'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
+    'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
+    'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
+];
+
+// Configurazione condivisa dei 6 moduli "che amo" con contenuto arricchito da un'API esterna
+// (Spotify/TMDb/Google Books) — stessa forma di FAN_FAVORITE_KINDS in fan_favorite_item.php (tema
+// Colorful), duplicata qui volutamente: due temi che vivono in file diversi, senza <head>/<body>
+// condivisi — tenerle vicine al proprio tema evita un accoppiamento sottile tra i due.
+const ADMINLTE_FAN_FAVORITE_KINDS = [
+    'band' => ['table' => 'fan_favorite_bands', 'external_id_col' => 'spotify_artist_id', 'name_col' => 'spotify_artist_name', 'image_col' => 'artist_image', 'label' => 'Band che amo', 'nav_key' => 'bandcheamo', 'list_url_segment' => 'band-che-amo', 'external_label' => 'Vedi su Spotify', 'external_url' => 'https://open.spotify.com/artist/', 'image_shape' => 'circle'],
+    'actor' => ['table' => 'fan_favorite_actors', 'external_id_col' => 'tmdb_person_id', 'name_col' => 'actor_name', 'image_col' => 'actor_image', 'label' => 'Attori che amo', 'nav_key' => 'attorichamo', 'list_url_segment' => 'attori-che-amo', 'external_label' => 'Vedi su TMDb', 'external_url' => 'https://www.themoviedb.org/person/', 'image_shape' => 'circle'],
+    'movie' => ['table' => 'fan_favorite_movies', 'external_id_col' => 'tmdb_movie_id', 'name_col' => 'movie_title', 'image_col' => 'movie_image', 'label' => 'Film che amo', 'nav_key' => 'filmcheamo', 'list_url_segment' => 'film-che-amo', 'external_label' => 'Vedi su TMDb', 'external_url' => 'https://www.themoviedb.org/movie/', 'image_shape' => 'circle'],
+    'book' => ['table' => 'fan_favorite_books', 'external_id_col' => 'google_books_id', 'name_col' => 'book_title', 'image_col' => 'book_image', 'label' => 'Libri che amo', 'nav_key' => 'libricheamo', 'list_url_segment' => 'libri-che-amo', 'external_label' => 'Vedi su Google Books', 'external_url' => 'https://books.google.com/books?id=', 'image_shape' => 'book'],
+    'playlist' => ['table' => 'fan_favorite_playlists', 'external_id_col' => 'spotify_playlist_id', 'name_col' => 'playlist_name', 'image_col' => 'playlist_image', 'label' => 'Playlist che amo', 'nav_key' => 'playlistcheamo', 'list_url_segment' => 'playlist-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/playlist/', 'image_shape' => 'square'],
+    'album' => ['table' => 'fan_favorite_albums', 'external_id_col' => 'spotify_album_id', 'name_col' => 'album_name', 'image_col' => 'album_image', 'label' => 'Album che amo', 'nav_key' => 'albumcheamo', 'list_url_segment' => 'album-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/album/', 'image_shape' => 'square'],
+];
+
+// Helper condivisi per TUTTE le pagine pubbliche a tema AdminLTE oltre alla Home (Timeline, Blog,
+// Che Amo, Spotify, Podcast, Video, Menù, Offerte, Foto, Servizi, Eventi, Contatti...) — evitano di
+// ripetere lo stesso ~30 righe di link CSS/breadcrumb/footer in ognuna.
+function adminLteAssetLinks(): string {
+    return '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media=\'all\'">' . "\n"
+         . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">' . "\n"
+         . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') . '">';
+}
+
+// Blocco breadcrumb + titolo H1 dell'app-content-header. $trail sono le tappe intermedie tra
+// l'artista e la pagina corrente, come coppie [etichetta => url] (es. ['Che Amo' => '/slug/che-amo']
+// per la pagina di un singolo elemento) — vuoto per le pagine di primo livello.
+function adminLteBreadcrumbHeader(string $slug, string $displayName, string $current, array $trail = []): string {
+    ob_start();
+    ?>
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3"><?= e($current) ?></h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($displayName) ?></a></li>
+                <?php foreach ($trail as $label => $url): ?>
+                  <li class="breadcrumb-item"><a href="<?= e($url) ?>"><?= e($label) ?></a></li>
+                <?php endforeach; ?>
+                <li class="breadcrumb-item active" aria-current="page"><?= e($current) ?></li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+function adminLteFooterBlock(array $artist): string {
+    $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: '');
+    ob_start();
+    ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+    <?php
+    return ob_get_clean();
+}
+
 // Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget .timeline
 // reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
 // la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
@@ -959,11 +1035,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
     $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
 
     $cheAmoColors = ['success', 'danger', 'primary', 'warning', 'info', 'secondary', 'success', 'danger'];
-    $cheAmoIcons = [
-        'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
-        'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
-        'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
-    ];
+    $cheAmoIcons = ADMINLTE_CHE_AMO_ICONS;
 
     ob_start();
     ?>
@@ -1845,6 +1917,1701 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
     </div>
     <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
   </footer>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Vetrina "Che Amo" a tema AdminLTE — griglia di card verso i moduli attivi (uguale a che_amo.php
+// del tema Colorful, con le icone Bootstrap già usate nel tab Che Amo della Home).
+function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visibleModules): string {
+    $pageUrl = siteUrl('/' . $slug . '/che-amo');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Che Amo — <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Che Amo — <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Che Amo') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($visibleModules): ?>
+            <div class="row g-3 text-center">
+              <?php foreach ($visibleModules as $mKey => $m): ?>
+                <div class="col-6 col-sm-4 col-lg-3">
+                  <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="card text-decoration-none text-body p-3 h-100">
+                    <div class="fs-2 text-primary mb-2"><i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$mKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
+                    <div class="fw-semibold small"><?= e($m['label']) ?></div>
+                  </a>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun contenuto ancora.</div></div>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico di un modulo "che amo" (Band/Attori/Film/Libri/Playlist/Album) a tema AdminLTE —
+// una sola funzione generica al posto di 6 file quasi identici, guidata da ADMINLTE_FAN_FAVORITE_KINDS
+// (stesso principio di configurazione già usato dal tema Colorful in fan_favorite_item.php).
+function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $favorites, string $kind): string {
+    $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$kind];
+    $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment']);
+    $shapeStyle = ['circle' => 'width:64px;height:64px;border-radius:50%;', 'book' => 'width:64px;height:88px;border-radius:6px;', 'square' => 'width:80px;height:80px;border-radius:10px;'][$cfg['image_shape']];
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $cfg['label'], ['Che Amo' => '/' . $slug . '/che-amo']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($favorites): ?>
+            <div class="row g-3 text-center">
+              <?php foreach ($favorites as $f): $img = $f[$cfg['image_col']] ?? null; ?>
+                <div class="col-6 col-sm-4 col-lg-3">
+                  <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $f['id'] ?>" class="card text-decoration-none text-body p-3 h-100">
+                    <?php if ($img): ?>
+                      <img src="<?= e($img) ?>" alt="" loading="lazy" class="mx-auto mb-2 d-block" style="<?= $shapeStyle ?>object-fit:cover;">
+                    <?php endif; ?>
+                    <div class="fw-semibold small"><?= e($f[$cfg['name_col']]) ?></div>
+                    <?php if ($kind === 'album' && !empty($f['album_artist_name'])): ?><div class="text-secondary" style="font-size:11.5px;"><?= e($f['album_artist_name']) ?></div><?php endif; ?>
+                    <small class="text-secondary" style="font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
+                  </a>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun elemento aggiunto ancora.</div></div>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>/che-amo" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna a Che Amo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un singolo elemento "che amo" a tema AdminLTE — stessa funzione generica
+// riusata dai 6 moduli con API esterna, guidata da ADMINLTE_FAN_FAVORITE_KINDS. $apiDetails arriva
+// già pronto dal chiamante (fan_favorite_item.php), che sa quale funzione dell'API chiamare per
+// ciascun $kind.
+function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string $kind, array $item, array $sameDayItems, ?array $apiDetails): string {
+    $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$kind];
+    $name = $item[$cfg['name_col']];
+    $image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
+    $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
+    $note = trim($item['note'] ?? '');
+    $externalUrl = $cfg['external_url'] . $item[$cfg['external_id_col']];
+    $shapeStyle = ['circle' => 'width:160px;height:160px;border-radius:50%;', 'book' => 'width:140px;height:190px;border-radius:8px;', 'square' => 'width:170px;height:170px;border-radius:14px;'][$cfg['image_shape']];
+    $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . (int) $item['id']);
+    $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'] ?? null, $artist['custom_feed_guid_since'] ?? null, $item['created_at']); ?>
+<title><?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($imageUrl): ?><meta property="og:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $imageUrl ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<?php if ($imageUrl): ?><meta name="twitter:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $name, ['Che Amo' => '/' . $slug . '/che-amo', $cfg['label'] => '/' . $slug . '/' . $cfg['list_url_segment']]) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
+                <h1 class="h4 mb-1"><?= e($name) ?></h1>
+                <p class="text-secondary">
+                  <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
+                  <?php if (!empty($apiDetails['authors'])): ?> · <?= e($apiDetails['authors']) ?><?php endif; ?>
+                  <?php if ($kind === 'album' && !empty($item['album_artist_name'])): ?> · <?= e($item['album_artist_name']) ?><?php endif; ?>
+                  <?php if ($kind === 'playlist' && !empty($apiDetails['owner'])): ?> · di <?= e($apiDetails['owner']) ?> su Spotify<?php endif; ?>
+                  <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
+                  <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
+                  <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
+                </p>
+                <small class="text-secondary"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
+                <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?><p class="mt-1 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
+                <?php if ($kind === 'playlist' && !empty($apiDetails['description'])): ?><p class="text-start mt-2"><?= nl2br(e(strip_tags($apiDetails['description']))) ?></p><?php endif; ?>
+                <?php if ($note !== ''): ?>
+                  <div class="card text-start mt-3"><div class="card-body"><strong>Perché <?= e($artist['display_name']) ?> lo ama</strong><p class="mb-0 mt-1"><?= nl2br(e($note)) ?></p></div></div>
+                <?php endif; ?>
+                <?php if ($kind !== 'album' && !empty($apiDetails['genres'])): ?><p class="mt-3 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
+                <?php if (!empty($apiDetails['overview'])): ?>
+                  <p class="text-start mt-2"><?= nl2br(e($apiDetails['overview'])) ?></p>
+                <?php elseif (!empty($apiDetails['biography'])): ?>
+                  <p class="text-start mt-2"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
+                <?php endif; ?>
+                <p class="mt-3"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary"><?= e($cfg['external_label']) ?></a></p>
+              </div>
+            </div>
+
+            <?php if ($sameDayItems): ?>
+              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <?php foreach ($sameDayItems as $s):
+                $sName = $s[$cfg['name_col']];
+                $sImage = $s['image_path'] ?: ($s[$cfg['image_col']] ?? null);
+                $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
+                $sNote = trim($s['note'] ?? '');
+                $sExternalUrl = $cfg['external_url'] . $s[$cfg['external_id_col']];
+              ?>
+              <div class="card mb-3">
+                <div class="card-body text-center">
+                  <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $s['id'] ?>" class="text-decoration-none text-body">
+                    <?php if ($sImageUrl): ?><img src="<?= e($sImageUrl) ?>" alt="<?= e($sName) ?>" class="mb-2" style="<?= $shapeStyle ?>object-fit:cover;"><?php endif; ?>
+                    <h4 class="h6 mb-1"><?= e($sName) ?></h4>
+                    <small class="text-secondary"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'], $artist)) ?></small>
+                  </a>
+                  <?php if ($sNote !== ''): ?><p class="text-start mt-2 mb-0 text-secondary"><?= nl2br(e($sNote)) ?></p><?php endif; ?>
+                  <p class="mt-2 mb-0"><a href="<?= e($sExternalUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><?= e($cfg['external_label']) ?></a></p>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli elementi di <?= e(strtolower($cfg['label'])) ?></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico "Viaggi" a tema AdminLTE, raggruppato per mese come viaggi.php del tema Colorful.
+function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthGroups, int $totalCount): string {
+    $pageUrl = siteUrl('/' . $slug . '/viaggi');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viaggi di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Viaggi di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggi (' . $totalCount . ')') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($monthGroups): ?>
+              <?php foreach ($monthGroups as $group): ?>
+                <h3 class="h6 text-secondary mt-3 mb-2"><?= e($group['label']) ?></h3>
+                <div class="row g-3 text-center mb-2">
+                  <?php foreach ($group['items'] as $f): $thumb = $f['image_path'] ?: $f['map_image_path']; ?>
+                    <div class="col-6 col-sm-4 col-lg-3">
+                      <a href="/<?= e($slug) ?>/viaggi/<?= (int) $f['id'] ?>" class="card text-decoration-none text-body p-2 h-100">
+                        <?php if ($thumb): ?><img src="/<?= e($thumb) ?>" alt="" loading="lazy" class="mb-2 rounded" style="width:100%;height:88px;object-fit:cover;"><?php endif; ?>
+                        <div class="fw-semibold small"><?= e($f['place_name']) ?></div>
+                        <small class="text-secondary" style="font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
+                      </a>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun viaggio aggiunto ancora.</div></div>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un singolo viaggio a tema AdminLTE — carosello foto + mappa OpenStreetMap
+// (renderPhotoCarousel()/renderOsmEmbed() sono componenti a sé, invariati rispetto al Colorful).
+function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $trip, array $photos, array $sameDayItems): string {
+    $note = trim($trip['note'] ?? '');
+    $image = (count($photos) > 1) ? getFeedShareImage($trip['image_path']) : ($trip['image_path'] ?: $trip['map_image_path']);
+    $imageUrl = $image ? siteUrl($image) : null;
+    $pageUrl = siteUrl('/' . $slug . '/viaggi/' . (int) $trip['id']);
+    $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
+    $anyMultiPhoto = count($photos) > 1;
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'] ?? null, $artist['custom_feed_guid_since'] ?? null, $trip['created_at']); ?>
+<title><?= e($trip['place_name']) ?> — Viaggi di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($trip['place_name']) ?> — Viaggi di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($imageUrl): ?><meta property="og:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $imageUrl ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($trip['place_name']) ?> — Viaggi di <?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<?php if ($imageUrl): ?><meta name="twitter:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?php if ($anyMultiPhoto): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $trip['place_name'], ['Viaggi' => '/' . $slug . '/viaggi']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
+                <h1 class="h4 mb-1"><?= e($trip['place_name']) ?></h1>
+                <p class="text-secondary">
+                  Viaggio di <?= e($artist['display_name']) ?>
+                  <?php if (!empty($trip['address']) && $trip['address'] !== $trip['place_name']): ?> · <?= e($trip['address']) ?><?php endif; ?>
+                </p>
+                <small class="text-secondary"><?= e(publishedAtLabel($trip['publish_at'], $trip['created_at'], $artist)) ?></small>
+                <?php if ($note !== ''): ?>
+                  <div class="card text-start mt-3"><div class="card-body"><strong>Il racconto di <?= e($artist['display_name']) ?></strong><p class="mb-0 mt-1"><?= nl2br(e($note)) ?></p></div></div>
+                <?php endif; ?>
+                <div class="mt-3"><?= renderOsmEmbed((float) $trip['lat'], (float) $trip['lng']) ?></div>
+              </div>
+            </div>
+
+            <?php if ($sameDayItems): ?>
+              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <?php foreach ($sameDayItems as $s):
+                $sNote = trim($s['note'] ?? '');
+                $sPhotos = $s['image_path'] ? array_values(array_filter(array_merge([$s['image_path']], getTripPhotos((int) $s['id'])))) : [];
+                if (count($sPhotos) > 1) { $anyMultiPhoto = true; }
+              ?>
+              <div class="card mb-3">
+                <div class="card-body text-center">
+                  <?= renderPhotoCarousel($sPhotos, (int) $s['id']) ?>
+                  <a href="/<?= e($slug) ?>/viaggi/<?= (int) $s['id'] ?>" class="text-decoration-none text-body">
+                    <h4 class="h6 mb-1"><?= e($s['place_name']) ?></h4>
+                    <p class="text-secondary mb-1">
+                      Viaggio di <?= e($artist['display_name']) ?>
+                      <?php if (!empty($s['address']) && $s['address'] !== $s['place_name']): ?> · <?= e($s['address']) ?><?php endif; ?>
+                    </p>
+                    <small class="text-secondary"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'], $artist)) ?></small>
+                  </a>
+                  <?php if ($sNote !== ''): ?><p class="text-start mt-2 mb-0 text-secondary"><?= nl2br(e($sNote)) ?></p><?php endif; ?>
+                  <div class="mt-2"><?= renderOsmEmbed((float) $s['lat'], (float) $s['lng']) ?></div>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/viaggi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i viaggi</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<?php if ($anyMultiPhoto): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico "Brani che amo" a tema AdminLTE — lista, non griglia, come brani.php del tema
+// Colorful (ogni riga ha anche i link a testo/voto).
+function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks): string {
+    $pageUrl = siteUrl('/' . $slug . '/brani');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brani che amo di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Brani che amo di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Brani che amo', ['Che Amo' => '/' . $slug . '/che-amo']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if (!$tracks): ?>
+              <div class="card"><div class="card-body text-secondary">Nessun brano aggiunto ancora.</div></div>
+            <?php endif; ?>
+            <?php foreach ($tracks as $t): $trackStats = getTrackRatingStats((int) $t['id']); ?>
+              <div class="card mb-3">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/scheda" class="d-flex align-items-center gap-3 text-decoration-none text-body flex-grow-1" style="min-width:0;">
+                    <?php if ($t['track_image']): ?>
+                      <img src="<?= e($t['track_image']) ?>" alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                    <?php else: ?>
+                      <div class="bg-body-tertiary rounded" style="width:64px;height:64px;flex-shrink:0;"></div>
+                    <?php endif; ?>
+                    <div style="min-width:0;">
+                      <strong class="d-block text-truncate"><?= e($t['track_name']) ?></strong>
+                      <small class="text-secondary"><?= e($t['artist_name']) ?></small><br>
+                      <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span class="text-secondary">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small><br>
+                      <small class="text-secondary"><?= e(publishedAtLabel($t['publish_at'], $t['created_at'], $artist)) ?></small>
+                    </div>
+                  </a>
+                  <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <?php if (!empty($t['lyrics'])): ?><a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/testo" title="Testo e ascolto" class="text-decoration-none"><i class="bi bi-file-text fs-5"></i></a><?php endif; ?>
+                    <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/votazioni" title="Vota questo brano" class="text-decoration-none text-warning"><i class="bi bi-star-fill fs-5"></i></a>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico ("scheda") di un singolo brano che amo a tema AdminLTE — favorite_track_item.php.
+function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, array $track, array $sameDayItems): string {
+    $note = trim($track['note'] ?? '');
+    $image = $track['image_path'] ?: $track['track_image'];
+    $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
+    $pageUrl = siteUrl('/' . $slug . '/brani/' . (int) $track['id'] . '/scheda');
+    $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $track['track_name'] . '" — scoprilo su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'] ?? null, $artist['custom_feed_guid_since'] ?? null, $track['created_at']); ?>
+<title><?= e($track['track_name']) ?> — Brani che amo di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:type" content="music.song">
+<meta property="og:title" content="<?= e($track['track_name']) ?> — Brani che amo di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($imageUrl): ?><meta property="og:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $imageUrl ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($track['track_name']) ?> — Brani che amo di <?= e($artist['display_name']) ?>">
+<meta name="twitter:description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
+<?php if ($imageUrl): ?><meta name="twitter:image" content="<?= e($imageUrl) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $track['track_name'], ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
+                <h1 class="h4 mb-1"><?= e($track['track_name']) ?></h1>
+                <p class="text-secondary">Brano che amo di <?= e($artist['display_name']) ?><?php if ($track['artist_name']): ?> · <?= e($track['artist_name']) ?><?php endif; ?></p>
+                <small class="text-secondary"><?= e(publishedAtLabel($track['publish_at'], $track['created_at'], $artist)) ?></small>
+                <?php if ($note !== ''): ?>
+                  <div class="card text-start mt-3"><div class="card-body"><strong>Perché <?= e($artist['display_name']) ?> lo ama</strong><p class="mb-0 mt-1"><?= nl2br(e($note)) ?></p></div></div>
+                <?php endif; ?>
+                <div class="d-flex gap-2 justify-content-center flex-wrap mt-3">
+                  <?php if ($track['spotify_url']): ?><a href="<?= e($track['spotify_url']) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary">Ascolta su Spotify</a><?php endif; ?>
+                  <?php if (!empty($track['lyrics'])): ?><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/testo" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-text me-1"></i>Testo</a><?php endif; ?>
+                  <a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/votazioni" class="btn btn-sm btn-outline-primary"><i class="bi bi-star-fill me-1"></i>Vota</a>
+                </div>
+              </div>
+            </div>
+
+            <?php if ($sameDayItems): ?>
+              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <?php foreach ($sameDayItems as $s):
+                $sImage = $s['image_path'] ?: $s['track_image'];
+                $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
+                $sNote = trim($s['note'] ?? '');
+              ?>
+              <div class="card mb-3">
+                <div class="card-body text-center">
+                  <a href="/<?= e($slug) ?>/brani/<?= (int) $s['id'] ?>/scheda" class="text-decoration-none text-body">
+                    <?php if ($sImageUrl): ?><img src="<?= e($sImageUrl) ?>" alt="" class="mb-2 rounded-4" style="width:220px;height:220px;object-fit:cover;"><?php endif; ?>
+                    <h4 class="h6 mb-1"><?= e($s['track_name']) ?></h4>
+                    <p class="text-secondary mb-1">Brano che amo di <?= e($artist['display_name']) ?><?php if ($s['artist_name']): ?> · <?= e($s['artist_name']) ?><?php endif; ?></p>
+                    <small class="text-secondary"><?= e(publishedAtLabel($s['publish_at'], $s['created_at'], $artist)) ?></small>
+                  </a>
+                  <?php if ($sNote !== ''): ?><p class="text-start mt-2 mb-0 text-secondary"><?= nl2br(e($sNote)) ?></p><?php endif; ?>
+                  <?php if ($s['spotify_url']): ?><p class="mt-2 mb-0"><a href="<?= e($s['spotify_url']) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Ascolta su Spotify</a></p><?php endif; ?>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Testo e ascolto" di un brano che amo a tema AdminLTE — track_lyrics.php.
+function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track, array $stats): string {
+    $pageUrl = siteUrl('/' . $slug . '/brani/' . (int) $track['id'] . '/testo');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($track['track_name']) ?> — Testo e ascolto — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($track['track_name']) ?> — Testo e ascolto">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<?php if ($track['track_image']): ?><meta property="og:image" content="<?= e($track['track_image']) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Testo e ascolto', ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
+                <h1 class="h5 mb-0"><?= e($track['track_name']) ?></h1>
+                <p class="text-secondary mb-1"><?= e($track['artist_name']) ?></p>
+                <?php if ($stats['count'] > 0): ?><p class="mb-0"><?= renderCromeRating($stats['avg']) ?> <span class="text-secondary small">(<?= $stats['count'] ?>)</span></p><?php endif; ?>
+              </div>
+            </div>
+
+            <?php if ($track['spotify_track_id']): ?>
+            <div class="card mb-3 p-0" style="overflow:hidden;">
+              <iframe style="border-radius:12px;" src="https://open.spotify.com/embed/track/<?= e($track['spotify_track_id']) ?>?utm_source=generator"
+                width="100%" height="152" frameborder="0" allowfullscreen loading="lazy"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+            <?php endif; ?>
+
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title"><i class="bi bi-file-text me-1"></i>Testo</h3></div>
+              <div class="card-body" style="white-space:pre-line;line-height:1.7;"><?= e($track['lyrics']) ?></div>
+            </div>
+
+            <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/votazioni"><i class="bi bi-star-fill me-1"></i>Vota questo brano →</a></p>
+            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Vota questo brano" a tema AdminLTE — track_review.php. Riusa renderRatingForm()
+// (form di voto reale, invariato rispetto al Colorful) dentro la card.
+function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track, array $stats, ?int $viewerId, ?int $myRating, array $reviewers): string {
+    $pageUrl = siteUrl('/' . $slug . '/brani/' . (int) $track['id'] . '/votazioni');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vota: <?= e($track['track_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Vota: <?= e($track['track_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Vota il brano', ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
+                <h1 class="h5 mb-0"><?= e($track['track_name']) ?></h1>
+                <p class="text-secondary mb-2"><?= e($track['artist_name']) ?></p>
+                <?php if ($track['spotify_url']): ?><a href="<?= e($track['spotify_url']) ?>" target="_blank" rel="noopener" class="small"><i class="bi bi-spotify me-1"></i>Ascolta su Spotify</a><?php endif; ?>
+              </div>
+            </div>
+
+            <div class="card mb-3 border-primary">
+              <div class="card-header"><h3 class="card-title"><i class="bi bi-star-fill me-1"></i>Vota questo brano</h3></div>
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <?= renderCromeRating($stats['avg']) ?>
+                  <?php if ($stats['count'] > 0): ?><span class="text-secondary small"><?= $stats['avg'] ?> · <?= $stats['count'] ?> <?= $stats['count'] === 1 ? 'voto' : 'voti' ?></span><?php endif; ?>
+                </div>
+                <?= renderRatingForm('rate_track', (int) $track['id'], $viewerId, (int) $track['user_id'], $myRating) ?>
+                <?php if ($reviewers): ?>
+                <div class="mt-3 d-flex flex-wrap gap-2">
+                  <?php foreach ($reviewers as $r): ?>
+                    <span class="badge text-bg-light">@<?= e($r['slug']) ?> <?= renderCromeRating((float) $r['rating']) ?></span>
+                  <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+              </div>
+            </div>
+
+            <?php if (!empty($track['lyrics'])): ?>
+              <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/testo"><i class="bi bi-file-text me-1"></i>Testo e ascolto →</a></p>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Spotify" (artista) a tema AdminLTE — artist_spotify.php.
+function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, array $topTracks, ?array $artistDetails): string {
+    $pageUrl = siteUrl('/' . $slug . '/spotify');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['display_name']) ?> su Spotify — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($artist['display_name']) ?> su Spotify">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<?php if (!empty($artistDetails['image'])): ?><meta property="og:image" content="<?= e($artistDetails['image']) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Spotify') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+
+            <?php if (!empty($artistDetails['genres'])): ?>
+            <div class="mb-3">
+              <?php foreach ($artistDetails['genres'] as $genre): ?>
+                <span class="badge text-bg-light text-capitalize me-1"><?= e($genre) ?></span>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($topTracks): ?>
+              <h3 class="h6 text-secondary mb-2">Brani più ascoltati</h3>
+              <?php foreach ($topTracks as $t): ?>
+                <a class="card mb-2 text-decoration-none text-body" href="<?= e($t['spotify_url']) ?>" target="_blank" rel="noopener">
+                  <div class="card-body d-flex align-items-center gap-3">
+                    <?php if ($t['image']): ?><img src="<?= e($t['image']) ?>" alt="" style="width:56px;height:56px;border-radius:8px;flex-shrink:0;"><?php endif; ?>
+                    <div class="flex-grow-1" style="min-width:0;">
+                      <strong class="d-block text-truncate"><?= e($t['name']) ?></strong>
+                      <small class="text-secondary"><?= e($t['album_name']) ?></small>
+                    </div>
+                    <i class="bi bi-spotify text-success fs-4 flex-shrink-0"></i>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <?php if ($albums): ?>
+              <h3 class="h6 text-secondary mt-4 mb-2">Album e singoli</h3>
+              <div class="row g-3 text-center">
+                <?php foreach ($albums as $a): ?>
+                  <div class="col-6 col-sm-4 col-lg-3">
+                    <a href="<?= e($a['spotify_url']) ?>" target="_blank" rel="noopener" class="text-decoration-none text-body">
+                      <?php if ($a['image']): ?><img src="<?= e($a['image']) ?>" alt="" class="rounded-3 mb-1" style="width:100%;box-shadow:0 4px 14px rgba(0,0,0,0.12);"><?php endif; ?>
+                      <div class="small fw-semibold"><?= e($a['name']) ?></div>
+                      <div class="text-secondary" style="font-size:11.5px;">
+                        <?= e($a['release_date'] ? substr($a['release_date'], 0, 4) : '') ?> · <?= $a['type'] === 'single' ? 'Singolo' : 'Album' ?>
+                      </div>
+                    </a>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+
+            <?php if (!$topTracks && !$albums): ?>
+              <div class="card"><div class="card-body text-secondary">Nessun contenuto trovato su Spotify per questo artista al momento.</div></div>
+            <?php endif; ?>
+
+            <div class="card mt-4">
+              <div class="card-body text-center">
+                <a class="btn btn-success" href="https://open.spotify.com/artist/<?= e($artist['spotify_artist_id']) ?>" target="_blank" rel="noopener">
+                  <i class="bi bi-spotify me-1"></i>Apri il profilo completo su Spotify
+                </a>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Podcast" a tema AdminLTE — podcast.php.
+function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes, ?array $showDetails): string {
+    $pageUrl = siteUrl('/' . $slug . '/podcast');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['spotify_show_name'] ?: 'Podcast') ?> — <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($artist['spotify_show_name'] ?: 'Podcast') ?> — <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<?php if (!empty($showDetails['image'])): ?><meta property="og:image" content="<?= e($showDetails['image']) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['spotify_show_name'] ?: 'Podcast') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($episodes): ?>
+              <?php foreach ($episodes as $ep): ?>
+                <a class="card mb-2 text-decoration-none text-body" href="<?= e($ep['spotify_url']) ?>" target="_blank" rel="noopener">
+                  <div class="card-body d-flex align-items-center gap-3">
+                    <?php if ($ep['image']): ?><img src="<?= e($ep['image']) ?>" alt="" style="width:64px;height:64px;border-radius:8px;flex-shrink:0;"><?php endif; ?>
+                    <div class="flex-grow-1" style="min-width:0;">
+                      <strong class="d-block"><?= e($ep['name']) ?></strong>
+                      <small class="text-secondary">
+                        <?= $ep['release_date'] ? date('d/m/Y', strtotime($ep['release_date'])) : '' ?>
+                        <?= $ep['duration_ms'] ? ' · ' . gmdate('i:s', (int) ($ep['duration_ms'] / 1000)) . ' min' : '' ?>
+                      </small>
+                      <?php if ($ep['description']): ?><p class="text-secondary small mb-0 mt-1"><?= e($ep['description']) ?></p><?php endif; ?>
+                    </div>
+                    <i class="bi bi-spotify text-success fs-4 flex-shrink-0"></i>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun episodio trovato al momento.</div></div>
+            <?php endif; ?>
+
+            <div class="card mt-4">
+              <div class="card-body text-center">
+                <a class="btn btn-success" href="https://open.spotify.com/show/<?= e($artist['spotify_show_id']) ?>" target="_blank" rel="noopener">
+                  <i class="bi bi-spotify me-1"></i>Ascolta tutti gli episodi su Spotify
+                </a>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Video" (YouTube) a tema AdminLTE — video.php.
+function renderAdminLteVideoPage(array $artist, string $slug, array $videos): string {
+    $pageUrl = siteUrl('/' . $slug . '/video');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['display_name']) ?> su YouTube — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($artist['display_name']) ?> su YouTube">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Video') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($videos): ?>
+              <?php foreach ($videos as $v): ?>
+                <div class="card mb-3 p-0" style="overflow:hidden;">
+                  <div class="ratio ratio-16x9">
+                    <iframe src="https://www.youtube.com/embed/<?= e($v['video_id']) ?>" title="<?= e($v['title']) ?>"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                  </div>
+                  <div class="p-3"><strong><?= e($v['title']) ?></strong></div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun video trovato su YouTube per questo canale al momento.</div></div>
+            <?php endif; ?>
+
+            <div class="card mt-3">
+              <div class="card-body text-center">
+                <a class="btn btn-danger" href="https://www.youtube.com/channel/<?= e($artist['youtube_channel_id']) ?>" target="_blank" rel="noopener">
+                  <i class="bi bi-youtube me-1"></i>Vai al canale completo su YouTube
+                </a>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Menù" a tema AdminLTE — menu.php. Tab delle categorie con piccolo JS vanilla
+// (stesso principio del filtro Album/Timeline già usato nel tab Foto della Home): niente Bootstrap
+// JS da caricare in più solo per questa pagina.
+function renderAdminLteMenuPage(array $artist, string $slug, array $categories, array $itemsByCategory): string {
+    $pageUrl = siteUrl('/' . $slug . '/menu');
+    $hasAllergens = false;
+    foreach ($itemsByCategory as $items) {
+        foreach ($items as $it) {
+            if (parseMenuAllergens($it['allergens'] ?? null)) { $hasAllergens = true; break 2; }
+        }
+    }
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menù di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Menù di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Menù') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($categories): ?>
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0">
+                <ul class="nav nav-pills p-2 gap-1" id="menu-tabs">
+                  <?php foreach ($categories as $index => $cat): ?>
+                    <li class="nav-item"><button type="button" class="nav-link<?= $index === 0 ? ' active' : '' ?>" data-menu-cat="<?= (int) $cat['id'] ?>"><?= e($cat['name']) ?></button></li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+              <div class="card-body">
+                <?php foreach ($categories as $index => $cat): ?>
+                <div class="menu-cat-panel<?= $index === 0 ? '' : ' d-none' ?>" data-menu-panel="<?= (int) $cat['id'] ?>">
+                  <h3 class="h6 mb-3"><?= e($cat['name']) ?></h3>
+                  <?php foreach ($itemsByCategory[(int) $cat['id']] as $it): $allergens = parseMenuAllergens($it['allergens'] ?? null); ?>
+                    <div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                      <div>
+                        <?= e($it['name']) ?><?php foreach ($allergens as $aId): ?><sup title="<?= e(MENU_ALLERGENS[$aId]) ?>">&nbsp;<?= $aId ?></sup><?php endforeach; ?>
+                        <?php if ($it['description']): ?><div class="text-secondary small"><?= e($it['description']) ?></div><?php endif; ?>
+                      </div>
+                      <?php if ($it['price'] !== null): ?><div class="fw-semibold text-nowrap ms-3">€ <?= e(number_format((float) $it['price'], 2, ',', '.')) ?></div><?php endif; ?>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Il menù non è ancora disponibile.</div></div>
+            <?php endif; ?>
+
+            <?php if ($hasAllergens): ?>
+              <p class="text-secondary small mt-3">
+                Allergeni:
+                <?php foreach (MENU_ALLERGENS as $aId => $aLabel): ?><?= $aId ?>. <?= e($aLabel) ?><?= $aId < count(MENU_ALLERGENS) ? ' · ' : '' ?><?php endforeach; ?>
+              </p>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-2"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<script>
+(function () {
+  var tabs = document.getElementById('menu-tabs');
+  if (!tabs) return;
+  tabs.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-menu-cat]');
+    if (!btn) return;
+    var catId = btn.getAttribute('data-menu-cat');
+    tabs.querySelectorAll('.nav-link').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('[data-menu-panel]').forEach(function (p) {
+      p.classList.toggle('d-none', p.getAttribute('data-menu-panel') !== catId);
+    });
+  });
+})();
+</script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico "Offerte speciali" a tema AdminLTE — offerte.php.
+function renderAdminLteOfferteListPage(array $artist, string $slug, array $offers): string {
+    $pageUrl = siteUrl('/' . $slug . '/offerte');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offerte speciali di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Offerte speciali di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Offerte') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if (!$offers): ?>
+              <div class="card"><div class="card-body text-secondary">Nessuna offerta attiva al momento.</div></div>
+            <?php endif; ?>
+            <?php foreach ($offers as $of): ?>
+              <a href="/<?= e($slug) ?>/offerte/<?= (int) $of['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($of['cover_path']): ?><img src="/<?= e($of['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <strong><?= e($of['title']) ?></strong>
+                    <?php if ($of['price_label']): ?><div class="text-primary fw-bold"><?= e($of['price_label']) ?></div><?php endif; ?>
+                    <?php if ($of['valid_until']): ?><small class="text-secondary d-block mt-1">Valida fino al <?= e(formatLocalDateTime($of['valid_until'], $artist, 'd/m/Y')) ?></small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+            <?php endforeach; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di una singola offerta speciale a tema AdminLTE — offerta.php.
+function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $offer, bool $isOwner, bool $isCurrentlyValid): string {
+    $pageUrl = siteUrl('/' . $slug . '/offerte/' . (int) $offer['id']);
+    $ogImage = $offer['cover_path'] ? siteUrl($offer['cover_path']) : ($offer['avatar_path'] ? siteUrl($offer['avatar_path']) : null);
+    $ogDescriptionParts = array_filter([$offer['price_label'], $offer['description'] ? textExcerpt($offer['description'], 160) : null]);
+    $ogDescription = $ogDescriptionParts ? implode(' — ', $ogDescriptionParts) : ($offer['display_name'] . ' — scopri l\'offerta su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($offer['custom_feed_guid'] ?? null, $offer['custom_feed_guid_since'] ?? null, $offer['created_at']); ?>
+<title><?= e($offer['title']) ?> — <?= e($offer['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($offer['title']) ?> — <?= e($offer['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($offer['title']) ?> — <?= e($offer['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $offer['title'], ['Offerte' => '/' . $slug . '/offerte']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
+              <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
+            <?php endif; ?>
+            <div class="card mb-3">
+              <?php if ($offer['cover_path']): ?><img src="/<?= e($offer['cover_path']) ?>" alt="<?= e($offer['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;"><?php endif; ?>
+              <div class="card-body text-center">
+                <h1 class="h4 mb-1"><?= e($offer['title']) ?></h1>
+                <?php if ($offer['price_label']): ?><p class="text-primary fw-bold fs-5"><?= e($offer['price_label']) ?></p><?php endif; ?>
+                <?php if ($offer['valid_from'] || $offer['valid_until']): ?>
+                  <p class="text-secondary">
+                    <?= $offer['valid_from'] ? 'Dal ' . e(formatLocalDateTime($offer['valid_from'], $artist)) : '' ?>
+                    <?= $offer['valid_from'] && $offer['valid_until'] ? ' — ' : '' ?>
+                    <?= $offer['valid_until'] ? 'Fino al ' . e(formatLocalDateTime($offer['valid_until'], $artist)) : '' ?>
+                  </p>
+                <?php endif; ?>
+                <?php if (!empty($offer['description'])): ?><p class="text-start mt-3"><?= nl2br(e($offer['description'])) ?></p><?php endif; ?>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>/offerte" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutte le offerte</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Foto" (album + galleria Timeline) a tema AdminLTE — foto.php. Riusa la stessa
+// griglia .ig-grid-item/.ig-lightbox già presente nel tab Foto della Home.
+function renderAdminLteFotoPage(array $artist, string $slug, array $albums, array $timelinePhotos): string {
+    $pageUrl = siteUrl('/' . $slug . '/foto');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foto di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Foto di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?php if ($timelinePhotos): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Foto') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+
+            <?php if ($albums): ?>
+              <h3 class="h6 text-secondary mb-2">Album (<?= count($albums) ?>)</h3>
+              <div class="row g-3 text-center mb-3">
+                <?php foreach ($albums as $al): ?>
+                  <div class="col-6 col-sm-4 col-lg-3">
+                    <a href="/<?= e($slug) ?>/album/<?= (int) $al['id'] ?>" class="card text-decoration-none text-body p-2 h-100">
+                      <?php if ($al['cover_path']): ?><img src="/<?= e($al['cover_path']) ?>" alt="" loading="lazy" class="rounded mb-2" style="width:100%;aspect-ratio:1;object-fit:cover;"><?php endif; ?>
+                      <div class="small fw-semibold"><i class="bi bi-images me-1"></i><?= e($al['title']) ?></div>
+                    </a>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($timelinePhotos): ?>
+              <h3 class="h6 text-secondary mb-2">Foto (<?= count($timelinePhotos) ?>)</h3>
+              <div class="row g-2">
+                <?php foreach ($timelinePhotos as $i => $ph): ?>
+                  <div class="col-4 col-sm-3 col-lg-2">
+                    <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>" class="ig-grid-item d-block" data-lightbox="foto-grid" data-index="<?= $i ?>">
+                      <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" class="rounded" style="width:100%;aspect-ratio:1;object-fit:cover;">
+                    </a>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+              <div class="ig-lightbox" data-post="foto-grid">
+                <button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>
+                <div class="ig-lightbox-track">
+                  <?php foreach ($timelinePhotos as $ph): ?><img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy"><?php endforeach; ?>
+                </div>
+                <button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>
+                <button type="button" class="ig-arrow ig-arrow-next" aria-label="Foto successiva">›</button>
+                <div class="ig-lightbox-counter"></div>
+              </div>
+            <?php endif; ?>
+
+            <?php if (!$albums && !$timelinePhotos): ?>
+              <div class="card"><div class="card-body text-secondary">Nessuna foto ancora.</div></div>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<?php if ($timelinePhotos): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un album fotografico a tema AdminLTE — album_item.php.
+function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album, array $photos, bool $isOwner, bool $isScheduledFuture): string {
+    $pageUrl = siteUrl('/' . $slug . '/album/' . (int) $album['id']);
+    $ogImage = $album['cover_path']
+        ? siteUrl(count($photos) > 1 ? getFeedShareImage($album['cover_path']) : $album['cover_path'])
+        : ($album['avatar_path'] ? siteUrl($album['avatar_path']) : null);
+    $ogDescription = $album['description'] ? textExcerpt($album['description'], 160) : ($album['display_name'] . ' — scopri l\'album su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($album['custom_feed_guid'] ?? null, $album['custom_feed_guid_since'] ?? null, $album['created_at']); ?>
+<title><?= e($album['title']) ?> — <?= e($album['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($album['title']) ?> — <?= e($album['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($album['title']) ?> — <?= e($album['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?php if (count($photos) > 1): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $album['title'], ['Foto' => '/' . $slug . '/foto']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php endif; ?>
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?= renderPhotoCarousel($photos, (int) $album['id']) ?>
+                <h1 class="h4 mb-1"><?= e($album['title']) ?></h1>
+                <p class="text-secondary">Album di <?= e($album['display_name']) ?> · <?= count($photos) ?> foto</p>
+                <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>/foto" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutte le foto</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico "Servizi" a tema AdminLTE — servizi.php.
+function renderAdminLteServiziListPage(array $artist, string $slug, array $services): string {
+    $pageUrl = siteUrl('/' . $slug . '/servizi');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Servizi di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Servizi di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Servizi') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if (!$services): ?>
+              <div class="card"><div class="card-body text-secondary">Nessun servizio pubblicato al momento.</div></div>
+            <?php endif; ?>
+            <?php foreach ($services as $sv): ?>
+              <a href="/<?= e($slug) ?>/servizi/<?= (int) $sv['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($sv['cover_path']): ?><img src="/<?= e($sv['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <strong><?= e($sv['title']) ?></strong>
+                    <?php if ($sv['description']): ?><div class="text-secondary small mt-1"><?= e(textExcerpt($sv['description'], 90)) ?></div><?php endif; ?>
+                    <?php if ((int) $sv['accepts_inquiries'] === 1): ?><small class="text-primary fw-semibold d-block mt-1"><i class="bi bi-envelope me-1"></i>Richiedi informazioni</small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+            <?php endforeach; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un singolo servizio a tema AdminLTE — servizio_item.php (con eventuale
+// modulo "Richiedi informazioni", stessa logica di invio/notifica del Colorful, solo grafica diversa).
+function renderAdminLteServizioDetailPage(array $artist, string $slug, array $service, array $photos, bool $isOwner, bool $isScheduledFuture, bool $formSent, ?string $formError, ?string $conversionEventId): string {
+    $pageUrl = siteUrl('/' . $slug . '/servizi/' . (int) $service['id']);
+    $ogImage = $service['cover_path'] ? siteUrl($service['cover_path']) : ($service['avatar_path'] ? siteUrl($service['avatar_path']) : null);
+    $ogDescription = $service['description'] ? textExcerpt($service['description'], 160) : ($service['display_name'] . ' — scopri il servizio su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($service['custom_feed_guid'] ?? null, $service['custom_feed_guid_since'] ?? null, $service['created_at']); ?>
+<title><?= e($service['title']) ?> — <?= e($service['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($service['title']) ?> — <?= e($service['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($service['title']) ?> — <?= e($service['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?php if (count($photos) > 1): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $service['title'], ['Servizi' => '/' . $slug . '/servizi']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php endif; ?>
+            <div class="card mb-3">
+              <div class="card-body text-center">
+                <?= renderPhotoCarousel($photos, (int) $service['id']) ?>
+                <h1 class="h4 mb-1"><?= e($service['title']) ?></h1>
+                <?php if (!empty($service['description'])): ?><p class="text-start mt-2"><?= nl2br(e($service['description'])) ?></p><?php endif; ?>
+              </div>
+            </div>
+
+            <?php if ((int) $service['accepts_inquiries'] === 1): ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title">Richiedi informazioni</h3></div>
+              <div class="card-body">
+                <?php if ($formSent): ?>
+                  <div class="alert alert-success mb-0">Richiesta inviata! Verrai ricontattato al più presto.</div>
+                  <?= embedClientSideConversionEvent('Lead', $conversionEventId, $artist) ?>
+                <?php else: ?>
+                  <?php if ($formError): ?><div class="alert alert-danger"><?= e($formError) ?></div><?php endif; ?>
+                  <form method="post">
+                    <?= csrfField() ?>
+                    <div class="mb-2"><label class="form-label">Nome</label><input type="text" name="guest_name" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Email</label><input type="email" name="guest_email" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Telefono (opzionale)</label><input type="tel" name="guest_phone" class="form-control"></div>
+                    <div class="mb-3"><label class="form-label">Messaggio (opzionale)</label><textarea name="message" rows="4" class="form-control"></textarea></div>
+                    <button type="submit" class="btn btn-primary">Invia richiesta</button>
+                  </form>
+                <?php endif; ?>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/servizi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i servizi</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico "Eventi" a tema AdminLTE — eventi.php.
+function renderAdminLteEventiListPage(array $artist, string $slug, array $events): string {
+    $pageUrl = siteUrl('/' . $slug . '/eventi');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eventi di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Eventi di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Eventi') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if (!$events): ?>
+              <div class="card"><div class="card-body text-secondary">Nessun evento in programma al momento.</div></div>
+            <?php endif; ?>
+            <?php foreach ($events as $ev): $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false)); ?>
+              <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <small class="text-secondary d-block"><?= e(formatLocalDateTime($ev['event_date'], $artist)) ?></small>
+                    <strong><?= e($ev['title']) ?></strong>
+                    <?php if ($ev['venue'] || $ev['city']): ?><small class="text-secondary d-block"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></small><?php endif; ?>
+                    <?php if ($scheduleLabel): ?><small class="fw-semibold d-block"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+            <?php endforeach; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un singolo evento a tema AdminLTE — evento.php (con eventuale modulo
+// "Prenota", stesso form/azione del Colorful — invariato, solo grafica diversa).
+function renderAdminLteEventoDetailPage(array $artist, string $slug, array $event, ?string $scheduleLabel, string $resMsg, bool $resErr): string {
+    $pageUrl = siteUrl('/' . $slug . '/eventi/' . (int) $event['id']);
+    $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
+    $locationLine = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));
+    $ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($event['event_date'], $artist) . ($locationLine ? ' · ' . $locationLine : ''));
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($event['custom_feed_guid'] ?? null, $event['custom_feed_guid_since'] ?? null, $event['created_at']); ?>
+<title><?= e($event['title']) ?> — <?= e($event['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($event['title']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($event['title']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $event['title'], ['Eventi' => '/' . $slug . '/eventi']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <?php if ($event['cover_path']): ?>
+                <div class="position-relative">
+                  <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;">
+                  <?php if ($scheduleLabel): ?><span class="badge text-bg-primary position-absolute top-0 start-0 m-2"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span><?php endif; ?>
+                </div>
+              <?php endif; ?>
+              <div class="card-body text-center">
+                <h1 class="h4 mb-1"><?= e($event['title']) ?></h1>
+                <p class="text-secondary mb-1"><?= e(formatLocalDateTime($event['event_date'], $artist)) ?></p>
+                <?php if ($locationLine): ?><p class="text-secondary"><?= e($locationLine) ?></p><?php endif; ?>
+                <?php if ($scheduleLabel && !$event['cover_path']): ?><p><span class="badge text-bg-primary"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span></p><?php endif; ?>
+                <?php if (!empty($event['description'])): ?><p class="text-start mt-2"><?= nl2br(e($event['description'])) ?></p><?php endif; ?>
+                <?php if ($event['ticket_url']): ?><a class="btn btn-primary mt-2" href="<?= e($event['ticket_url']) ?>" target="_blank" rel="noopener">Biglietti →</a><?php endif; ?>
+              </div>
+            </div>
+
+            <?php if ($resMsg): ?><div class="alert <?= $resErr ? 'alert-danger' : 'alert-success' ?>"><?= e($resMsg) ?></div><?php endif; ?>
+
+            <?php if ((int) $event['accepts_reservations'] === 1): ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title">Prenota</h3></div>
+              <div class="card-body">
+                <form method="post" action="/reserve_table.php">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="slug" value="<?= e($slug) ?>">
+                  <input type="hidden" name="event_id" value="<?= (int) $event['id'] ?>">
+                  <div class="mb-2"><label class="form-label">Nome e cognome</label><input type="text" name="guest_name" class="form-control" required></div>
+                  <div class="mb-2"><label class="form-label">Email</label><input type="email" name="guest_email" class="form-control" required></div>
+                  <div class="mb-2"><label class="form-label">Telefono (facoltativo)</label><input type="tel" name="guest_phone" class="form-control"></div>
+                  <div class="mb-2"><label class="form-label">Numero di persone</label><input type="number" name="party_size" min="1" max="50" value="2" class="form-control" required></div>
+                  <div class="mb-2"><label class="form-label">Note (facoltative)</label><input type="text" name="notes" class="form-control" placeholder="es. seggiolone, allergie, ..."></div>
+                  <div class="form-check mb-3">
+                    <input type="checkbox" name="marketing_opt_in" value="1" class="form-check-input" id="mktOptIn">
+                    <label class="form-check-label" for="mktOptIn">Voglio ricevere aggiornamenti su nuovi eventi e offerte da <?= e($event['display_name']) ?></label>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Prenota</button>
+                </form>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/eventi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli eventi</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Contatti" a tema AdminLTE — contatti.php (stesso form/azione del Colorful,
+// invariato, solo grafica diversa).
+function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent, ?string $formError, ?string $conversionEventId): string {
+    $pageUrl = siteUrl('/' . $slug . '/contatti');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contatti — <?= e($artist['display_name']) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contatta <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Contatti') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <?php if ($formSent): ?>
+              <div class="alert alert-success">Messaggio inviato! Grazie, verrai ricontattato al più presto.</div>
+              <?= embedClientSideConversionEvent('Contact', $conversionEventId, $artist) ?>
+            <?php else: ?>
+              <?php if ($formError): ?><div class="alert alert-danger"><?= e($formError) ?></div><?php endif; ?>
+              <div class="card">
+                <div class="card-body">
+                  <form method="post">
+                    <?= csrfField() ?>
+                    <div class="mb-2"><label class="form-label">Nome</label><input type="text" name="sender_name" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Email</label><input type="email" name="sender_email" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Messaggio</label><textarea name="message" rows="4" class="form-control" required></textarea></div>
+                    <button type="submit" class="btn btn-primary">Invia messaggio</button>
+                  </form>
+                </div>
+              </div>
+            <?php endif; ?>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
 </body>
 </html>

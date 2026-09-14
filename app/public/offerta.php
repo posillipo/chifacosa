@@ -44,6 +44,11 @@ $artist = [
     'dashboard_theme' => $offer['dashboard_theme'] ?? null,
 ];
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteOffertaDetailPage($artist, $slug, $offer, $isOwner, $isCurrentlyValid);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/offerte/' . $offerId);
 $ogImage = $offer['cover_path'] ? siteUrl($offer['cover_path']) : ($offer['avatar_path'] ? siteUrl($offer['avatar_path']) : null);
 $ogDescriptionParts = array_filter([$offer['price_label'], $offer['description'] ? textExcerpt($offer['description'], 160) : null]);

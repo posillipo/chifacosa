@@ -47,6 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteContattiPage($artist, $userSlug, $formSent, $formError, $conversionEventId ?? null);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $userSlug . '/contatti');
 ?>
 <!doctype html>

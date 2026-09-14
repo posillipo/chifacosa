@@ -54,6 +54,11 @@ $imageUrl = $image ? siteUrl($image) : null;
 // senza dover andare a sfogliare la Timeline.
 $sameDayItems = getSameDayFavorites('fan_favorite_trips', $artist['id'], $trip['publish_at'], $trip['created_at'], $tripId);
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteViaggioDetailPage($artist, $slug, $trip, $photos, $sameDayItems);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/viaggi/' . $tripId);
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
 ?>

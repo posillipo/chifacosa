@@ -27,6 +27,11 @@ $albums = getDB()->prepare("SELECT * FROM photo_albums WHERE user_id=? AND show_
 $albums->execute([$artist['id']]);
 $albums = $albums->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteFotoPage($artist, $slug, $albums, $timelinePhotos);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/foto');
 ?>
 <!doctype html>

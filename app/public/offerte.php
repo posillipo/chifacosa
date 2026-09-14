@@ -23,6 +23,11 @@ $offers = getDB()->prepare("SELECT * FROM special_offers WHERE user_id=? AND is_
 $offers->execute([$artist['id']]);
 $offers = $offers->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteOfferteListPage($artist, $slug, $offers);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/offerte');
 ?>
 <!doctype html>

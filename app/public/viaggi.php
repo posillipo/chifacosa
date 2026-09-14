@@ -37,6 +37,11 @@ foreach ($favorites as $f) {
     $monthGroups[$key]['items'][] = $f;
 }
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteViaggiListPage($artist, $slug, $monthGroups, count($favorites));
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/viaggi');
 ?>
 <!doctype html>

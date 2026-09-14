@@ -21,6 +21,11 @@ $tracks = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER 
 $tracks->execute([$artist['id']]);
 $tracks = $tracks->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteBraniListPage($artist, $slug, $tracks);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/brani');
 ?>
 <!doctype html>

@@ -143,6 +143,11 @@ if ($kind === 'band') {
     $apiDetails = spotifyGetAlbum($item[$cfg['external_id_col']]);
 }
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteFanFavoriteDetailPage($artist, $slug, $kind, $item, $sameDayItems, $apiDetails);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $itemId);
 $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
 ?>

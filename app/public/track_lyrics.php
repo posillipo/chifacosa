@@ -35,8 +35,14 @@ $artist = [
     'privacy_tracking_settings' => $track['privacy_tracking_settings'] ?? null,
 ];
 
-$pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/testo');
 $stats = getTrackRatingStats($trackId);
+
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteTrackLyricsPage($artist, $slug, $track, $stats);
+    exit;
+}
+
+$pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/testo');
 ?>
 <!doctype html>
 <html lang="it">

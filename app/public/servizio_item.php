@@ -79,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (int) $service['accepts_inquiries']
     }
 }
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteServizioDetailPage($artist, $slug, $service, $photos, $isOwner, $isScheduledFuture, $formSent, $formError, $conversionEventId);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/servizi/' . $serviceId);
 $ogImage = $service['cover_path'] ? siteUrl($service['cover_path']) : ($service['avatar_path'] ? siteUrl($service['avatar_path']) : null);
 $ogDescription = $service['description'] ? textExcerpt($service['description'], 160) : ($service['display_name'] . ' — scopri il servizio su ' . siteName());

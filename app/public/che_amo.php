@@ -34,6 +34,11 @@ foreach (CHE_AMO_MODULES as $key => $m) {
 }
 uksort($visibleModules, fn ($a, $b) => ($navOrder[$a] ?? 999) <=> ($navOrder[$b] ?? 999));
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteCheAmoIndexPage($artist, $slug, $visibleModules);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/che-amo');
 ?>
 <!doctype html>

@@ -21,6 +21,11 @@ $stmt = getDB()->prepare('SELECT * FROM fan_favorite_movies WHERE user_id=? ORDE
 $stmt->execute([$artist['id']]);
 $favorites = $stmt->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteFanFavoriteListPage($artist, $slug, $favorites, 'movie');
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/film-che-amo');
 ?>
 <!doctype html>

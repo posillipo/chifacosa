@@ -21,6 +21,11 @@ if (!$artist || empty($artist['spotify_show_id'])) {
 $episodes = spotifyGetShowEpisodes($artist['spotify_show_id'], 10);
 $showDetails = spotifyGetShow($artist['spotify_show_id']);
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLtePodcastPage($artist, $slug, $episodes, $showDetails);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/podcast');
 ?>
 <!doctype html>

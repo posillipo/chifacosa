@@ -23,6 +23,11 @@ $events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND (event_date
 $events->execute([$artist['id']]);
 $events = $events->fetchAll();
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteEventiListPage($artist, $slug, $events);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/eventi');
 ?>
 <!doctype html>

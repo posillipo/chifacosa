@@ -21,6 +21,11 @@ if (!$artist || empty($artist['youtube_channel_id'])) {
 $uploadsPlaylistId = 'UU' . substr($artist['youtube_channel_id'], 2);
 $videos = youtubeGetChannelVideos($uploadsPlaylistId, 12);
 
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteVideoPage($artist, $slug, $videos);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/video');
 ?>
 <!doctype html>
