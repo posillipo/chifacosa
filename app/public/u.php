@@ -54,6 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rate_
 }
 
 $uid = $artist['id'];
+
+// Tema "AdminLTE": sostituisce l'intera Home pubblica con una propria pagina completa — stesso
+// principio isolato dei precedenti temi "a scena" (Giardino Anomalo, Scorrimento Infinito).
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteProfileTheme($artist, $slug);
+    exit;
+}
+
 $hiddenNavKeys = getHiddenNavKeys((int) $uid);
 
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');

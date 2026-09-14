@@ -60,6 +60,7 @@ $themePickerBackgrounds = [
     'nightdrop' => 'linear-gradient(180deg, #0c1526 0%, #131d33 100%)',
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
+    'adminlte-profile' => 'linear-gradient(160deg, #f4f6f9 0%, #e9ecef 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -276,6 +277,19 @@ include __DIR__ . '/_dash_header.php';
                 <div style="width:40px;height:40px;border-radius:50%;background:#fff;margin:0 auto 8px;border:2px solid #fff;"></div>
                 <div style="position:relative;background:#fff;border-radius:8px;height:10px;margin-bottom:5px;"></div>
                 <div style="position:relative;background:#e63946;border-radius:8px;height:10px;"></div>
+              </div>
+            <?php elseif ($key === 'adminlte-profile'): ?>
+              <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:10px;margin-bottom:10px;">
+                <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:10px 8px;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:#6C5CE7;margin:0 auto 6px;"></div>
+                  <div style="background:#e9ecef;border-radius:4px;height:6px;width:60%;margin:0 auto 4px;"></div>
+                  <div style="background:#e9ecef;border-radius:4px;height:6px;width:40%;margin:0 auto 8px;"></div>
+                  <div style="display:flex;gap:3px;border-top:1px solid #eee;padding-top:6px;">
+                    <div style="background:#6C5CE7;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
+                    <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
+                    <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
+                  </div>
+                </div>
               </div>
             <?php endif; ?>
             <strong><?= e($theme['label']) ?></strong>

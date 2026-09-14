@@ -606,6 +606,7 @@ const PAGE_THEMES = [
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
     'cinemapop' =>['label' => 'Cinema Pop', 'description' => 'Ispirato a una sala cinematografica: sfondo scuro con un bagliore arancione da faretto dietro l\'avatar, pellicola con fori da film in alto e in basso, popcorn dorati che salgono dal basso in continuo, pulsanti a righe come un secchiello di popcorn con un riflesso lucido che scorre — colori e atmosfera originali, nessun logo di alcun cinema', 'body_class' => 'cinemapop-page'],
     'nightdrop' => ['label' => 'Drop Notturno', 'description' => 'Sfondo blu notte da vetrina "shop", pulsanti bianchi a pillola con freccina a cerchio sulla destra, un pulsante ogni tanto in rosso acceso come evidenziato, card scure per le griglie di contenuto', 'body_class' => 'nightdrop-page'],
+    'adminlte-profile' => ['label' => 'AdminLTE', 'description' => 'Layout a card in stile pannello gestionale (basato su AdminLTE 4): card "About" con follower e recensioni, i tuoi link, e le sezioni del sito raccolte in tab — Timeline, Che Amo, Podcast, Blog e le altre che hai attive', 'body_class' => 'adminlte-profile-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -723,6 +724,488 @@ function getContrastTextColor(?string $hexColor): string {
     // Luminosità percepita (formula standard W3C, approssimata)
     $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
     return $luminance > 0.6 ? '#22223b' : '#fff';
+}
+
+// Tema grafico pubblico basato su AdminLTE 4 (CSS/JS reali forniti dall'utente) — sostituisce
+// l'intera Home pubblica con una propria pagina completa, stesso principio isolato dei
+// precedenti temi "a scena" (Giardino Anomalo, Scorrimento Infinito, ora rimossi): non tocca in
+// alcun modo lo scheletro HTML condiviso dagli altri ~30 temi. Ogni sezione mostra
+// un'ANTEPRIMA di dati reali con un link alla pagina vera (Timeline, Blog, Podcast...) invece di
+// riscrivere lì dentro la logica di quelle pagine — un solo posto dove ciascuna funzione vive
+// davvero. Pagina pubblica pura: niente qui che assomigli alla Dashboard privata (vedi la
+// richiesta esplicita che ha portato a togliere ricerca/tema/Impostazioni dal prototipo).
+function renderAdminLteProfileTheme(array $artist, string $slug): string {
+    // u.php non li richiede sempre (solo se serve la preview Spotify in Home) — qui invece
+    // possono servire entrambi, come su podcast.php/video.php.
+    require_once __DIR__ . '/spotify.php';
+    require_once __DIR__ . '/youtube.php';
+
+    $db = getDB();
+    $uid = (int) $artist['id'];
+
+    // account_type arriva già in $artist (colonna di users, presa con u.* dalla query di u.php);
+    // citta/provincia invece sono di profiles e lì non sono incluse — completate qui con una
+    // query leggera dedicata, invece di allargare quella condivisa usata anche dal rendering
+    // normale.
+    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+    $stmt = $db->prepare('SELECT citta, provincia FROM profiles WHERE user_id=?');
+    $stmt->execute([$uid]);
+    $extra = $stmt->fetch() ?: [];
+    $citta = trim($extra['citta'] ?? '');
+    $provincia = trim($extra['provincia'] ?? '');
+
+    $hiddenKeys = getHiddenNavKeys($uid);
+    $hasSpotify = !empty($artist['spotify_artist_id']);
+    $hasPodcast = !empty($artist['spotify_show_id']);
+    $hasYoutube = !empty($artist['youtube_channel_id']);
+    $hasMenu = menuHasItems($uid);
+    $hasOffers = hasActiveOffers($uid);
+    $hasServices = hasVisibleServices($uid);
+
+    // ----- Anteprime di dati reali, in piccola quantità: ogni tab rimanda alla pagina vera per
+    // il contenuto completo. -----
+    $timelineItems = getTimelineFeedForUsers([$uid], 5, 0);
+
+    $visibleCheAmo = [];
+    foreach (CHE_AMO_MODULES as $cheAmoKey => $cheAmoModule) {
+        if (in_array($cheAmoKey, $hiddenKeys, true)) {
+            continue;
+        }
+        if ($cheAmoModule['check'] === null || $cheAmoModule['check']($uid)) {
+            $visibleCheAmo[$cheAmoKey] = $cheAmoModule;
+        }
+    }
+
+    $podcastEpisodes = ($isBandOrLabel && $hasPodcast) ? spotifyGetShowEpisodes($artist['spotify_show_id'], 3) : [];
+
+    $videos = [];
+    if ($isBandOrLabel && $hasYoutube) {
+        $uploadsPlaylistId = 'UU' . substr($artist['youtube_channel_id'], 2);
+        $videos = youtubeGetChannelVideos($uploadsPlaylistId, 3);
+    }
+
+    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC LIMIT 3');
+    $stmt->execute([$uid]);
+    $blogPosts = $stmt->fetchAll();
+
+    $menuPreview = [];
+    if ($hasMenu) {
+        $stmt = $db->prepare('SELECT name, price FROM menu_items WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC LIMIT 4');
+        $stmt->execute([$uid]);
+        $menuPreview = $stmt->fetchAll();
+    }
+
+    $offersPreview = [];
+    if ($hasOffers) {
+        $stmt = $db->prepare("SELECT title, price_label FROM special_offers WHERE user_id=? AND is_active=1 AND (valid_from IS NULL OR valid_from <= NOW()) AND (valid_until IS NULL OR valid_until >= NOW()) ORDER BY sort_order ASC LIMIT 3");
+        $stmt->execute([$uid]);
+        $offersPreview = $stmt->fetchAll();
+    }
+
+    $photosPreview = !in_array('foto', $hiddenKeys, true) ? getPublicTimelinePhotos($uid, 6) : [];
+
+    $servicesPreview = [];
+    if ($hasServices) {
+        $stmt = $db->prepare("SELECT title, cover_path FROM services WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC LIMIT 3");
+        $stmt->execute([$uid]);
+        $servicesPreview = $stmt->fetchAll();
+    }
+
+    $stmt = $db->prepare('SELECT title, venue, city, event_date, is_perpetual FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC LIMIT 4');
+    $stmt->execute([$uid]);
+    $eventsPreview = $stmt->fetchAll();
+
+    $stmt = $db->prepare("SELECT label, url FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
+    $stmt->execute([$uid]);
+    $links = $stmt->fetchAll();
+
+    $followerCount = getAccountFollowerCount($uid);
+    $reviewStats = getBandRatingStats($uid);
+    $contentCount = 0;
+    $stmt = $db->prepare("SELECT COUNT(*) c FROM timeline_posts WHERE user_id=? AND visibility='public'");
+    $stmt->execute([$uid]);
+    $contentCount += (int) $stmt->fetch()['c'];
+    $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=?');
+    $stmt->execute([$uid]);
+    $contentCount += (int) $stmt->fetch()['c'];
+
+    // Avatar: foto reale se presente, altrimenti iniziali su cerchio colorato (data URI, nessun
+    // file richiesto).
+    $words = preg_split('/\s+/', trim($artist['display_name'] ?? ''));
+    $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
+    $avatarSvg = 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="48" fill="#6c5ce7"/><text x="48" y="61" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">' . $initials . '</text></svg>');
+    $avatarUrl = !empty($artist['avatar_path']) ? '/' . e($artist['avatar_path']) : $avatarSvg;
+
+    $pageUrl = siteUrl('/' . $slug);
+    $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
+
+    $cheAmoColors = ['success', 'danger', 'primary', 'warning', 'info', 'secondary', 'success', 'danger'];
+    $cheAmoIcons = [
+        'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
+        'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
+        'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
+    ];
+
+    ob_start();
+    ?>
+<!doctype html>
+<!-- Tema pubblico: palette fissa scelta dall'artista, non deve seguire il dark mode del
+     visitatore (vedi stesso ragionamento fatto per il prototipo). -->
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if (!empty($artist['avatar_path'])): ?><meta property="og:image" content="<?= e(siteUrl('/' . $artist['avatar_path'])) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+
+  <!-- Barra pubblica minima: solo il nome del sito. Niente ricerca/tema/menu utente/Dashboard —
+       quella è interfaccia da pannello privato, qui non deve comparire mai. -->
+  <nav class="app-header navbar navbar-expand bg-body">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand fw-semibold"><?= e(siteName()) ?></a>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3"><?= e(siteName()) ?></h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item active" aria-current="page"><?= e($artist['display_name']) ?></li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3">
+
+          <div class="col-md-3">
+            <div class="card">
+              <div class="card-body text-center">
+                <img src="<?= e($avatarUrl) ?>" class="rounded-circle mb-3" style="width:96px;height:96px;object-fit:cover;" alt="<?= e($artist['display_name']) ?>">
+                <h2 class="h5 mb-0"><?= e($artist['display_name']) ?></h2>
+                <p class="text-secondary mb-3">@<?= e($slug) ?></p>
+                <ul class="list-group list-group-flush text-start small">
+                  <li class="list-group-item d-flex justify-content-between px-0"><span class="text-secondary">Follower</span><span class="fw-semibold"><?= (int) $followerCount ?></span></li>
+                  <li class="list-group-item d-flex justify-content-between px-0"><span class="text-secondary">Contenuti pubblicati</span><span class="fw-semibold"><?= (int) $contentCount ?></span></li>
+                  <li class="list-group-item d-flex justify-content-between px-0">
+                    <span class="text-secondary">Recensioni</span>
+                    <span class="fw-semibold"><?= $reviewStats['count'] ? e((string) $reviewStats['avg']) . ' ★ (' . (int) $reviewStats['count'] . ')' : 'Nessuna' ?></span>
+                  </li>
+                </ul>
+                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary w-100 mt-3">
+                  <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
+                </a>
+              </div>
+            </div>
+
+            <?php if ($links): ?>
+            <div class="card mt-3">
+              <div class="card-header"><h3 class="card-title">I miei link</h3></div>
+              <div class="list-group list-group-flush">
+                <?php foreach ($links as $lk): ?>
+                <a href="<?= e($lk['url']) ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                  <i class="bi bi-link-45deg text-primary" aria-hidden="true"></i>
+                  <span class="flex-grow-1"><?= e($lk['label']) ?></span>
+                  <i class="bi bi-chevron-right text-secondary small" aria-hidden="true"></i>
+                </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($artist['bio']) || $citta || !empty($artist['genere']) || $hasSpotify || $hasYoutube || $hasPodcast): ?>
+            <div class="card mt-3">
+              <div class="card-header"><h3 class="card-title">Chi sono</h3></div>
+              <div class="card-body small">
+                <?php if (!empty($artist['bio'])): ?>
+                  <p class="fw-semibold mb-1"><i class="bi bi-person-lines-fill me-1 text-secondary" aria-hidden="true"></i>Bio</p>
+                  <p class="text-secondary mb-3"><?= nl2br(e($artist['bio'])) ?></p>
+                <?php endif; ?>
+                <?php if ($citta): ?>
+                  <p class="fw-semibold mb-1"><i class="bi bi-geo-alt me-1 text-secondary" aria-hidden="true"></i>Località</p>
+                  <p class="text-secondary mb-3"><?= e($citta) ?><?= $provincia ? ', ' . e($provincia) : '' ?></p>
+                <?php endif; ?>
+                <?php if (!empty($artist['genere'])): ?>
+                  <p class="fw-semibold mb-1"><i class="bi bi-tags me-1 text-secondary" aria-hidden="true"></i>Genere</p>
+                  <p class="mb-3"><span class="badge text-bg-secondary"><?= e($artist['genere']) ?></span></p>
+                <?php endif; ?>
+                <?php if ($hasSpotify || $hasYoutube || $hasPodcast): ?>
+                  <p class="fw-semibold mb-1"><i class="bi bi-link-45deg me-1 text-secondary" aria-hidden="true"></i>Presente su</p>
+                  <p class="mb-0">
+                    <?php if ($hasSpotify): ?><span class="badge text-bg-success me-1"><i class="bi bi-spotify me-1"></i>Spotify</span><?php endif; ?>
+                    <?php if ($hasYoutube): ?><span class="badge text-bg-danger me-1"><i class="bi bi-youtube me-1"></i>YouTube</span><?php endif; ?>
+                    <?php if ($hasPodcast): ?><span class="badge text-bg-warning"><i class="bi bi-mic-fill me-1"></i>Podcast</span><?php endif; ?>
+                  </p>
+                <?php endif; ?>
+              </div>
+            </div>
+            <?php endif; ?>
+          </div>
+
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0">
+                <ul class="nav nav-tabs" id="profile-tabs" role="tablist">
+                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tl" type="button" role="tab">Timeline</button></li>
+                  <?php if ($visibleCheAmo): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cheamo" type="button" role="tab">Che Amo</button></li><?php endif; ?>
+                  <?php if ($isBandOrLabel && $hasSpotify): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#spotify" type="button" role="tab">Spotify</button></li><?php endif; ?>
+                  <?php if ($isBandOrLabel && $hasPodcast): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#podcast" type="button" role="tab">Podcast</button></li><?php endif; ?>
+                  <?php if ($isBandOrLabel && $hasYoutube): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#video" type="button" role="tab">Video</button></li><?php endif; ?>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#blog" type="button" role="tab">Blog</button></li>
+                  <?php if ($hasMenu): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#menu" type="button" role="tab">Menù</button></li><?php endif; ?>
+                  <?php if ($hasOffers): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#offerte" type="button" role="tab">Offerte</button></li><?php endif; ?>
+                  <?php if ($photosPreview): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#foto" type="button" role="tab">Foto</button></li><?php endif; ?>
+                  <?php if ($hasServices): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#servizi" type="button" role="tab">Servizi</button></li><?php endif; ?>
+                  <?php if ($isBandOrLabel): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#eventi" type="button" role="tab">Eventi</button></li><?php endif; ?>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#contatti" type="button" role="tab">Contatti</button></li>
+                </ul>
+              </div>
+              <div class="card-body">
+                <div class="tab-content">
+
+                  <div class="tab-pane fade show active" id="tl" role="tabpanel">
+                    <?php if ($timelineItems): ?>
+                      <?php foreach ($timelineItems as $it): ?>
+                        <article class="mb-3 pb-3 border-bottom">
+                          <div class="d-flex justify-content-between">
+                            <strong><?= e($it['titolo']) ?></strong>
+                            <small class="text-secondary"><?= e(formatLocalDateTime($it['data'], $artist)) ?></small>
+                          </div>
+                          <a href="<?= e($it['url']) ?>" class="small">Apri →</a>
+                        </article>
+                      <?php endforeach; ?>
+                    <?php else: ?>
+                      <p class="text-secondary">Nessun aggiornamento ancora.</p>
+                    <?php endif; ?>
+                    <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary">Vedi tutta la Timeline →</a>
+                  </div>
+
+                  <?php if ($visibleCheAmo): ?>
+                  <div class="tab-pane fade" id="cheamo" role="tabpanel">
+                    <div class="row g-3 text-center">
+                      <?php $ci = 0; ?>
+                      <?php foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule): $color = $cheAmoColors[$ci++ % count($cheAmoColors)]; ?>
+                        <div class="col-6 col-sm-4 col-lg-3">
+                          <a href="/<?= e($slug) ?>/<?= e($cheAmoModule['segment']) ?>" class="text-decoration-none">
+                            <div class="rounded-3 bg-<?= $color ?>-subtle text-<?= $color ?> d-flex align-items-center justify-content-center mx-auto mb-2" style="width:64px;height:64px;font-size:1.4rem;"><i class="bi <?= e($cheAmoIcons[$cheAmoKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
+                            <div class="small fw-semibold text-body"><?= e($cheAmoModule['label']) ?></div>
+                          </a>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($isBandOrLabel && $hasSpotify): ?>
+                  <div class="tab-pane fade" id="spotify" role="tabpanel">
+                    <p class="text-secondary">Ascolta la musica di <?= e($artist['display_name']) ?> direttamente su Spotify.</p>
+                    <a href="/<?= e($slug) ?>/spotify" class="btn btn-sm btn-outline-primary"><i class="bi bi-spotify me-1"></i>Apri il profilo Spotify →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($isBandOrLabel && $hasPodcast): ?>
+                  <div class="tab-pane fade" id="podcast" role="tabpanel">
+                    <?php if ($podcastEpisodes): ?>
+                      <div class="list-group list-group-flush mb-3">
+                        <?php foreach ($podcastEpisodes as $ep): ?>
+                          <a href="<?= e($ep['spotify_url'] ?? '#') ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex gap-3">
+                            <div class="flex-shrink-0 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width:44px;height:44px;"><i class="bi bi-mic-fill" aria-hidden="true"></i></div>
+                            <div class="flex-grow-1">
+                              <strong><?= e($ep['name']) ?></strong>
+                              <p class="mb-0 text-secondary small"><?= e($ep['description']) ?></p>
+                            </div>
+                          </a>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php else: ?>
+                      <p class="text-secondary">Episodi non disponibili al momento.</p>
+                    <?php endif; ?>
+                    <a href="/<?= e($slug) ?>/podcast" class="btn btn-sm btn-outline-primary">Vedi tutti gli episodi →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($isBandOrLabel && $hasYoutube): ?>
+                  <div class="tab-pane fade" id="video" role="tabpanel">
+                    <?php if ($videos): ?>
+                      <div class="row g-3 mb-3">
+                        <?php foreach ($videos as $v): ?>
+                          <div class="col-sm-4">
+                            <a href="https://www.youtube.com/watch?v=<?= e($v['video_id']) ?>" target="_blank" rel="noopener" class="text-decoration-none">
+                              <div class="ratio ratio-16x9 rounded bg-body-secondary d-flex align-items-center justify-content-center text-secondary mb-2"><i class="bi bi-play-circle fs-1" aria-hidden="true"></i></div>
+                              <div class="fw-semibold small text-body"><?= e($v['title']) ?></div>
+                            </a>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php else: ?>
+                      <p class="text-secondary">Video non disponibili al momento.</p>
+                    <?php endif; ?>
+                    <a href="/<?= e($slug) ?>/video" class="btn btn-sm btn-outline-primary">Vedi tutti i video →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <div class="tab-pane fade" id="blog" role="tabpanel">
+                    <?php if ($blogPosts): ?>
+                      <?php foreach ($blogPosts as $bp): ?>
+                        <article class="mb-3 pb-3 border-bottom">
+                          <a href="<?= e(blogPostUrl($slug, $bp)) ?>" class="text-decoration-none text-body">
+                            <h4 class="h6 mb-1"><?= e($bp['title']) ?></h4>
+                          </a>
+                          <small class="text-secondary"><?= e(formatLocalDateTime($bp['published_at'], $artist)) ?></small>
+                          <?php if ($bp['excerpt']): ?><p class="mb-0 mt-1 text-secondary small"><?= e($bp['excerpt']) ?></p><?php endif; ?>
+                        </article>
+                      <?php endforeach; ?>
+                    <?php else: ?>
+                      <p class="text-secondary">Nessun articolo ancora.</p>
+                    <?php endif; ?>
+                    <a href="/<?= e($slug) ?>/blog" class="btn btn-sm btn-outline-primary">Vedi tutto il Blog →</a>
+                  </div>
+
+                  <?php if ($hasMenu): ?>
+                  <div class="tab-pane fade" id="menu" role="tabpanel">
+                    <ul class="list-group list-group-flush mb-3">
+                      <?php foreach ($menuPreview as $mi): ?>
+                        <li class="list-group-item d-flex justify-content-between">
+                          <span><?= e($mi['name']) ?></span>
+                          <?php if ($mi['price'] !== null): ?><span class="fw-semibold">€ <?= e(number_format((float) $mi['price'], 2, ',', '.')) ?></span><?php endif; ?>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                    <a href="/<?= e($slug) ?>/menu" class="btn btn-sm btn-outline-primary">Vedi il menù completo →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($hasOffers): ?>
+                  <div class="tab-pane fade" id="offerte" role="tabpanel">
+                    <ul class="list-group list-group-flush mb-3">
+                      <?php foreach ($offersPreview as $of): ?>
+                        <li class="list-group-item d-flex justify-content-between">
+                          <span><?= e($of['title']) ?></span>
+                          <?php if ($of['price_label']): ?><span class="fw-semibold"><?= e($of['price_label']) ?></span><?php endif; ?>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                    <a href="/<?= e($slug) ?>/offerte" class="btn btn-sm btn-outline-primary">Vedi tutte le offerte →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($photosPreview): ?>
+                  <div class="tab-pane fade" id="foto" role="tabpanel">
+                    <div class="row g-2 mb-3">
+                      <?php foreach ($photosPreview as $ph): ?>
+                        <div class="col-4 col-sm-3 col-lg-2">
+                          <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>">
+                            <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" class="rounded-3 w-100" style="aspect-ratio:1;object-fit:cover;">
+                          </a>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                    <a href="/<?= e($slug) ?>/foto" class="btn btn-sm btn-outline-primary">Vedi tutte le foto →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($hasServices): ?>
+                  <div class="tab-pane fade" id="servizi" role="tabpanel">
+                    <div class="row g-3 mb-3">
+                      <?php foreach ($servicesPreview as $sv): ?>
+                        <div class="col-sm-4">
+                          <div class="card h-100"><div class="card-body">
+                            <h4 class="h6 mb-0"><?= e($sv['title']) ?></h4>
+                          </div></div>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                    <a href="/<?= e($slug) ?>/servizi" class="btn btn-sm btn-outline-primary">Vedi tutti i servizi →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <?php if ($isBandOrLabel): ?>
+                  <div class="tab-pane fade" id="eventi" role="tabpanel">
+                    <?php if ($eventsPreview): ?>
+                      <ul class="list-unstyled mb-3">
+                        <?php foreach ($eventsPreview as $ev): ?>
+                          <li class="d-flex gap-3 mb-3">
+                            <span class="badge text-bg-success rounded-pill flex-shrink-0 align-self-start mt-1"><i class="bi bi-calendar-event" aria-hidden="true"></i></span>
+                            <div>
+                              <p class="mb-0 fw-semibold"><?= e($ev['title']) ?><?= $ev['venue'] ? ' — ' . e($ev['venue']) : '' ?></p>
+                              <small class="text-secondary"><?= $ev['is_perpetual'] ? 'Ricorrente' : e(formatLocalDateTime($ev['event_date'], $artist)) ?><?= $ev['city'] ? ' · ' . e($ev['city']) : '' ?></small>
+                            </div>
+                          </li>
+                        <?php endforeach; ?>
+                      </ul>
+                    <?php else: ?>
+                      <p class="text-secondary">Nessun evento in programma.</p>
+                    <?php endif; ?>
+                    <a href="/<?= e($slug) ?>/eventi" class="btn btn-sm btn-outline-primary">Vedi tutti gli eventi →</a>
+                  </div>
+                  <?php endif; ?>
+
+                  <div class="tab-pane fade" id="contatti" role="tabpanel">
+                    <p class="text-secondary">Scrivi direttamente a <?= e($artist['display_name']) ?> tramite il modulo di contatto.</p>
+                    <a href="/<?= e($slug) ?>/contatti" class="btn btn-sm btn-outline-primary"><i class="bi bi-envelope me-1"></i>Vai al modulo di contatto →</a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Stessi link di renderSiteFooterBar() (Preferenze Cookie/Privacy/Dashboard o nome sito/
+       Crediti), ma con markup nativo AdminLTE invece della classe .site-footer-fixed — quella
+       vive nel CSS condiviso (style.css) che qui non è caricato di proposito, per non mischiare
+       due sistemi di stile nella stessa pagina. -->
+  <?php
+    $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: '');
+  ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
 }
 
 function getPageThemeClass(?string $theme): string {
@@ -2151,7 +2634,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $db = getDB();
     $items = [];
 
-    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
         WHERE b.user_id IN ($placeholders) ORDER BY b.published_at DESC LIMIT 200");
     $stmt->execute($userIds);
