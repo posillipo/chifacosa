@@ -776,6 +776,37 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
         }
     }
 
+    // Copertina automatica per ogni riquadro "Che Amo": invece di un'icona sempre uguale, si
+    // pesca la foto dell'elemento più recente di quella categoria (stesso ordine di priorità
+    // image_thumb_path -> image_path -> immagine originale già usato da getTimelineFeedForUsers()
+    // per lo stesso tipo di contenuto). Ricade sull'icona colorata solo se la categoria non ha
+    // ancora nessuna immagine disponibile.
+    $cheAmoCoverSources = [
+        'bandcheamo' => ['table' => 'fan_favorite_bands', 'img' => 'COALESCE(image_thumb_path, image_path, artist_image)'],
+        'attorichamo' => ['table' => 'fan_favorite_actors', 'img' => 'COALESCE(image_thumb_path, image_path, actor_image)'],
+        'filmcheamo' => ['table' => 'fan_favorite_movies', 'img' => 'COALESCE(image_thumb_path, image_path, movie_image)'],
+        'libricheamo' => ['table' => 'fan_favorite_books', 'img' => 'COALESCE(image_thumb_path, image_path, book_image)'],
+        'viaggi' => ['table' => 'fan_favorite_trips', 'img' => 'COALESCE(image_thumb_path, image_path, map_image_path)'],
+        'brani' => ['table' => 'favorite_tracks', 'img' => 'COALESCE(image_thumb_path, image_path, track_image)'],
+        'playlistcheamo' => ['table' => 'fan_favorite_playlists', 'img' => 'COALESCE(image_thumb_path, image_path, playlist_image)'],
+        'albumcheamo' => ['table' => 'fan_favorite_albums', 'img' => 'COALESCE(image_thumb_path, image_path, album_image)'],
+    ];
+    $cheAmoCovers = [];
+    foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule) {
+        $src = $cheAmoCoverSources[$cheAmoKey] ?? null;
+        if (!$src) {
+            continue;
+        }
+        $stmt = $db->prepare("SELECT {$src['img']} AS cover FROM {$src['table']}
+            WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) AND {$src['img']} IS NOT NULL
+            ORDER BY created_at DESC LIMIT 1");
+        $stmt->execute([$uid]);
+        $row = $stmt->fetch();
+        if ($row && $row['cover']) {
+            $cheAmoCovers[$cheAmoKey] = $row['cover'];
+        }
+    }
+
     $podcastEpisodes = ($isBandOrLabel && $hasPodcast) ? spotifyGetShowEpisodes($artist['spotify_show_id'], 3) : [];
 
     $videos = [];
@@ -1016,10 +1047,16 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                   <div class="tab-pane fade" id="cheamo" role="tabpanel">
                     <div class="row g-3 text-center">
                       <?php $ci = 0; ?>
-                      <?php foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule): $color = $cheAmoColors[$ci++ % count($cheAmoColors)]; ?>
+                      <?php foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule): $color = $cheAmoColors[$ci++ % count($cheAmoColors)]; $cover = $cheAmoCovers[$cheAmoKey] ?? null; ?>
                         <div class="col-6 col-sm-4 col-lg-3">
                           <a href="/<?= e($slug) ?>/<?= e($cheAmoModule['segment']) ?>" class="text-decoration-none">
-                            <div class="rounded-3 bg-<?= $color ?>-subtle text-<?= $color ?> d-flex align-items-center justify-content-center mx-auto mb-2" style="width:64px;height:64px;font-size:1.4rem;"><i class="bi <?= e($cheAmoIcons[$cheAmoKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
+                            <?php if ($cover):
+                              $coverUrl = str_starts_with($cover, 'http') ? $cover : '/' . $cover;
+                            ?>
+                              <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="rounded-3 mx-auto mb-2 d-block" style="width:64px;height:64px;object-fit:cover;">
+                            <?php else: ?>
+                              <div class="rounded-3 bg-<?= $color ?>-subtle text-<?= $color ?> d-flex align-items-center justify-content-center mx-auto mb-2" style="width:64px;height:64px;font-size:1.4rem;"><i class="bi <?= e($cheAmoIcons[$cheAmoKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
+                            <?php endif; ?>
                             <div class="small fw-semibold text-body"><?= e($cheAmoModule['label']) ?></div>
                           </a>
                         </div>
