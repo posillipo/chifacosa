@@ -1748,7 +1748,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $post['title'], ['Blog' => '/' . $slug . '/blog']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Articolo', ['Blog' => '/' . $slug . '/blog']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -1957,7 +1957,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $name, ['Che Amo' => '/' . $slug . '/che-amo', $cfg['label'] => '/' . $slug . '/' . $cfg['list_url_segment']]) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Scheda', ['Che Amo' => '/' . $slug . '/che-amo', $cfg['label'] => '/' . $slug . '/' . $cfg['list_url_segment']]) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -2139,7 +2139,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $trip['place_name'], ['Che Amo' => '/' . $slug . '/che-amo', 'Viaggi' => '/' . $slug . '/viaggi']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggio', ['Che Amo' => '/' . $slug . '/che-amo', 'Viaggi' => '/' . $slug . '/viaggi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -2300,7 +2300,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $track['track_name'], ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Scheda', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -2959,7 +2959,7 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $offer['title'], ['Offerte' => '/' . $slug . '/offerte']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Offerta', ['Offerte' => '/' . $slug . '/offerte']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -3131,7 +3131,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $album['title'], ['Foto' => '/' . $slug . '/foto']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Album', ['Foto' => '/' . $slug . '/foto']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -3259,7 +3259,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $service['title'], ['Servizi' => '/' . $slug . '/servizi']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Servizio', ['Servizi' => '/' . $slug . '/servizi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -3409,7 +3409,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $event['title'], ['Eventi' => '/' . $slug . '/eventi']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Evento', ['Eventi' => '/' . $slug . '/eventi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
