@@ -1764,7 +1764,6 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
                       <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
                       <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
                     </div>
-                    <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
                     <div><?= nl2br(e($post['content'])) ?></div>
                   </div>
                 </article>
@@ -1966,7 +1965,6 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
-                <h1 class="h4 mb-1"><?= e($name) ?></h1>
                 <p class="text-secondary">
                   <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
                   <?php if (!empty($apiDetails['authors'])): ?> · <?= e($apiDetails['authors']) ?><?php endif; ?>
@@ -2144,7 +2142,6 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
-                <h1 class="h4 mb-1"><?= e($trip['place_name']) ?></h1>
                 <p class="text-secondary">
                   Viaggio di <?= e($artist['display_name']) ?>
                   <?php if (!empty($trip['address']) && $trip['address'] !== $trip['place_name']): ?> · <?= e($trip['address']) ?><?php endif; ?>
@@ -2303,7 +2300,6 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
-                <h1 class="h4 mb-1"><?= e($track['track_name']) ?></h1>
                 <p class="text-secondary">Brano che amo di <?= e($artist['display_name']) ?><?php if ($track['artist_name']): ?> · <?= e($track['artist_name']) ?><?php endif; ?></p>
                 <small class="text-secondary"><?= e(publishedAtLabel($track['publish_at'], $track['created_at'], $artist)) ?></small>
                 <?php if ($note !== ''): ?>
@@ -2955,7 +2951,6 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
             <div class="card mb-3">
               <?php if ($offer['cover_path']): ?><img src="/<?= e($offer['cover_path']) ?>" alt="<?= e($offer['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;"><?php endif; ?>
               <div class="card-body text-center">
-                <h1 class="h4 mb-1"><?= e($offer['title']) ?></h1>
                 <?php if ($offer['price_label']): ?><p class="text-primary fw-bold fs-5"><?= e($offer['price_label']) ?></p><?php endif; ?>
                 <?php if ($offer['valid_from'] || $offer['valid_until']): ?>
                   <p class="text-secondary">
@@ -3123,7 +3118,6 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $album['id']) ?>
-                <h1 class="h4 mb-1"><?= e($album['title']) ?></h1>
                 <p class="text-secondary">Album di <?= e($album['display_name']) ?> · <?= count($photos) ?> foto</p>
                 <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
               </div>
@@ -3251,7 +3245,6 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $service['id']) ?>
-                <h1 class="h4 mb-1"><?= e($service['title']) ?></h1>
                 <?php if (!empty($service['description'])): ?><p class="text-start mt-2"><?= nl2br(e($service['description'])) ?></p><?php endif; ?>
               </div>
             </div>
@@ -3403,7 +3396,6 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
                 </div>
               <?php endif; ?>
               <div class="card-body text-center">
-                <h1 class="h4 mb-1"><?= e($event['title']) ?></h1>
                 <p class="text-secondary mb-1"><?= e(formatLocalDateTime($event['event_date'], $artist)) ?></p>
                 <?php if ($locationLine): ?><p class="text-secondary"><?= e($locationLine) ?></p><?php endif; ?>
                 <?php if ($scheduleLabel && !$event['cover_path']): ?><p><span class="badge text-bg-primary"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span></p><?php endif; ?>
