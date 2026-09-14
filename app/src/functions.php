@@ -790,7 +790,7 @@ function adminLteBreadcrumbHeader(string $slug, string $displayName, string $cur
       <div class="container-fluid">
         <div class="row">
           <div class="col-sm-6"><h1 class="mb-0 fs-3"><?= e($current) ?></h1></div>
-          <div class="col-sm-6">
+          <div class="col-sm-6 d-none d-sm-block">
             <nav aria-label="breadcrumb">
               <ol class="breadcrumb float-sm-end">
                 <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
