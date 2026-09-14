@@ -53,6 +53,12 @@ $photos = array_values(array_filter(array_merge([$post['image_path']], getTimeli
 // sfogliarla per conto proprio.
 $sameDayPosts = getSameDayTimelinePosts((int) $post['user_id'], $post['publish_at'], $post['created_at'], $postId);
 
+// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $slug . '/timeline/' . $postId);
 // Con più di una foto, l'immagine esposta a og:image/Twitter (quella che finisce sui social
 // tramite Metricool & co. — vedi commento in feed.php) è una copia con "Link Album in Descrizione"

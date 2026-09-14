@@ -1516,6 +1516,130 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
     return ob_get_clean();
 }
 
+// Pagina pubblica "Singolo aggiornamento della Timeline" a tema AdminLTE — stesso principio "a
+// scena" della Home. $post/$photos/$sameDayPosts arrivano già pronti da timeline_post.php (stessa
+// forma usata dal tema Colorful): qui cambia solo il vestito, non le query. Il carosello foto
+// (renderPhotoCarousel(), classi .ig-carousel/.ig-lightbox) è un componente a sé, con il proprio
+// CSS/JS dedicato — funziona identico dentro la card AdminLTE.
+function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts): string {
+    $pageUrl = siteUrl('/' . $slug . '/timeline/' . (int) $post['id']);
+    $avatarUrl = adminLteAvatarUrl($artist);
+    $ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
+    $ogImage = $ogImagePath ? siteUrl($ogImagePath) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
+    $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiornamento su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']); ?>
+<title><?= e($post['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($anteprima) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($post['display_name']) ?> su <?= e(siteName()) ?>">
+<meta property="og:description" content="<?= e($anteprima) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($post['display_name']) ?> su <?= e(siteName()) ?>">
+<meta name="twitter:description" content="<?= e($anteprima) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
+<?php endif; ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3">Timeline</h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($post['display_name']) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>/timeline">Timeline</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Aggiornamento</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
+                  <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['created_at'], $artist)) ?></span>
+                </div>
+                <?= renderPhotoCarousel($photos, (int) $post['id']) ?>
+                <?php if ($post['testo']): ?><p class="mb-0"><?= nl2br(e($post['testo'])) ?></p><?php endif; ?>
+              </div>
+            </div>
+
+            <?php if ($sameDayPosts): ?>
+              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayPosts) ?>)</h3>
+              <?php foreach ($sameDayPosts as $sp):
+                $spPhotos = array_values(array_filter(array_merge([$sp['image_path']], getTimelinePostPhotos((int) $sp['id']))));
+              ?>
+              <div class="card mb-3">
+                <div class="card-body">
+                  <?= renderPhotoCarousel($spPhotos, (int) $sp['id']) ?>
+                  <small class="text-secondary"><?= e(formatLocalDateTime($sp['created_at'], $artist)) ?></small>
+                  <?php if ($sp['testo']): ?><p class="mb-0 mt-1"><?= nl2br(e($sp['testo'])) ?></p><?php endif; ?>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna alla Timeline</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($post['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+</div>
+
+<?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
+<script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
+<?php endif; ?>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
 // Pagina pubblica "Blog" (elenco) a tema AdminLTE — stesso principio "a scena" della Home, elenco
 // completo (non un'anteprima) come la pagina Blog del tema Colorful (blog_index.php).
 function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts): string {
