@@ -1611,7 +1611,9 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
                 </div>
 
                 <?php if ($sameDayPosts): ?>
-                  <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayPosts) ?>)</h3>
+                  <div class="card mb-3">
+                    <div class="card-header"><h3 class="card-title h6 mb-0">Altri di questa giornata (<?= count($sameDayPosts) ?>)</h3></div>
+                  </div>
                   <?php foreach ($sameDayPosts as $sp):
                     $spPhotos = array_values(array_filter(array_merge([$sp['image_path']], getTimelinePostPhotos((int) $sp['id']))));
                   ?>
@@ -1764,6 +1766,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
                       <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
                       <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
                     </div>
+                    <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
                     <div><?= nl2br(e($post['content'])) ?></div>
                   </div>
                 </article>
@@ -1965,6 +1968,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
+                <h1 class="h4 mb-1"><?= e($name) ?></h1>
                 <p class="text-secondary">
                   <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?>
                   <?php if (!empty($apiDetails['authors'])): ?> · <?= e($apiDetails['authors']) ?><?php endif; ?>
@@ -1991,7 +1995,9 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
             </div>
 
             <?php if ($sameDayItems): ?>
-              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3></div>
+              </div>
               <?php foreach ($sameDayItems as $s):
                 $sName = $s[$cfg['name_col']];
                 $sImage = $s['image_path'] ?: ($s[$cfg['image_col']] ?? null);
@@ -2061,7 +2067,9 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
             <div class="p-3">
             <?php if ($monthGroups): ?>
               <?php foreach ($monthGroups as $group): ?>
-                <h3 class="h6 text-secondary mt-3 mb-2"><?= e($group['label']) ?></h3>
+                <div class="card mt-3 mb-2">
+                  <div class="card-header"><h3 class="card-title h6 mb-0"><?= e($group['label']) ?></h3></div>
+                </div>
                 <div class="row g-3 text-center mb-2">
                   <?php foreach ($group['items'] as $f): $thumb = $f['image_path'] ?: $f['map_image_path']; ?>
                     <div class="col-6 col-sm-4 col-lg-3">
@@ -2142,6 +2150,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
+                <h1 class="h4 mb-1"><?= e($trip['place_name']) ?></h1>
                 <p class="text-secondary">
                   Viaggio di <?= e($artist['display_name']) ?>
                   <?php if (!empty($trip['address']) && $trip['address'] !== $trip['place_name']): ?> · <?= e($trip['address']) ?><?php endif; ?>
@@ -2155,7 +2164,9 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
             </div>
 
             <?php if ($sameDayItems): ?>
-              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3></div>
+              </div>
               <?php foreach ($sameDayItems as $s):
                 $sNote = trim($s['note'] ?? '');
                 $sPhotos = $s['image_path'] ? array_values(array_filter(array_merge([$s['image_path']], getTripPhotos((int) $s['id'])))) : [];
@@ -2300,6 +2311,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
+                <h1 class="h4 mb-1"><?= e($track['track_name']) ?></h1>
                 <p class="text-secondary">Brano che amo di <?= e($artist['display_name']) ?><?php if ($track['artist_name']): ?> · <?= e($track['artist_name']) ?><?php endif; ?></p>
                 <small class="text-secondary"><?= e(publishedAtLabel($track['publish_at'], $track['created_at'], $artist)) ?></small>
                 <?php if ($note !== ''): ?>
@@ -2314,7 +2326,9 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
             </div>
 
             <?php if ($sameDayItems): ?>
-              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Altri di questa giornata (<?= count($sameDayItems) ?>)</h3></div>
+              </div>
               <?php foreach ($sameDayItems as $s):
                 $sImage = $s['image_path'] ?: $s['track_image'];
                 $sImageUrl = $sImage ? (str_starts_with($sImage, 'http') ? $sImage : siteUrl($sImage)) : null;
@@ -2531,15 +2545,19 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
             <div class="p-3">
 
             <?php if (!empty($artistDetails['genres'])): ?>
-            <div class="mb-3">
-              <?php foreach ($artistDetails['genres'] as $genre): ?>
-                <span class="badge text-bg-light text-capitalize me-1"><?= e($genre) ?></span>
-              <?php endforeach; ?>
+            <div class="card mb-3">
+              <div class="card-body">
+                <?php foreach ($artistDetails['genres'] as $genre): ?>
+                  <span class="badge text-bg-light text-capitalize me-1"><?= e($genre) ?></span>
+                <?php endforeach; ?>
+              </div>
             </div>
             <?php endif; ?>
 
             <?php if ($topTracks): ?>
-              <h3 class="h6 text-secondary mb-2">Brani più ascoltati</h3>
+              <div class="card mb-2">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Brani più ascoltati</h3></div>
+              </div>
               <?php foreach ($topTracks as $t): ?>
                 <a class="card mb-2 text-decoration-none text-body" href="<?= e($t['spotify_url']) ?>" target="_blank" rel="noopener">
                   <div class="card-body d-flex align-items-center gap-3">
@@ -2555,12 +2573,14 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
             <?php endif; ?>
 
             <?php if ($albums): ?>
-              <h3 class="h6 text-secondary mt-4 mb-2">Album e singoli</h3>
+              <div class="card mt-4 mb-2">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Album e singoli</h3></div>
+              </div>
               <div class="row g-3 text-center">
                 <?php foreach ($albums as $a): ?>
                   <div class="col-6 col-sm-4 col-lg-3">
-                    <a href="<?= e($a['spotify_url']) ?>" target="_blank" rel="noopener" class="text-decoration-none text-body">
-                      <?php if ($a['image']): ?><img src="<?= e($a['image']) ?>" alt="" class="rounded-3 mb-1" style="width:100%;box-shadow:0 4px 14px rgba(0,0,0,0.12);"><?php endif; ?>
+                    <a href="<?= e($a['spotify_url']) ?>" target="_blank" rel="noopener" class="card text-decoration-none text-body p-2 h-100">
+                      <?php if ($a['image']): ?><img src="<?= e($a['image']) ?>" alt="" class="rounded-3 mb-1" style="width:100%;"><?php endif; ?>
                       <div class="small fw-semibold"><?= e($a['name']) ?></div>
                       <div class="text-secondary" style="font-size:11.5px;">
                         <?= e($a['release_date'] ? substr($a['release_date'], 0, 4) : '') ?> · <?= $a['type'] === 'single' ? 'Singolo' : 'Album' ?>
@@ -2809,10 +2829,12 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
             <?php endif; ?>
 
             <?php if ($hasAllergens): ?>
-              <p class="text-secondary small mt-3">
-                Allergeni:
-                <?php foreach (MENU_ALLERGENS as $aId => $aLabel): ?><?= $aId ?>. <?= e($aLabel) ?><?= $aId < count(MENU_ALLERGENS) ? ' · ' : '' ?><?php endforeach; ?>
-              </p>
+              <div class="card mt-3">
+                <div class="card-body text-secondary small">
+                  Allergeni:
+                  <?php foreach (MENU_ALLERGENS as $aId => $aLabel): ?><?= $aId ?>. <?= e($aLabel) ?><?= $aId < count(MENU_ALLERGENS) ? ' · ' : '' ?><?php endforeach; ?>
+                </div>
+              </div>
             <?php endif; ?>
             </div>
           </div>
@@ -2951,6 +2973,7 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
             <div class="card mb-3">
               <?php if ($offer['cover_path']): ?><img src="/<?= e($offer['cover_path']) ?>" alt="<?= e($offer['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;"><?php endif; ?>
               <div class="card-body text-center">
+                <h1 class="h4 mb-1"><?= e($offer['title']) ?></h1>
                 <?php if ($offer['price_label']): ?><p class="text-primary fw-bold fs-5"><?= e($offer['price_label']) ?></p><?php endif; ?>
                 <?php if ($offer['valid_from'] || $offer['valid_until']): ?>
                   <p class="text-secondary">
@@ -3012,7 +3035,9 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
             <div class="p-3">
 
             <?php if ($albums): ?>
-              <h3 class="h6 text-secondary mb-2">Album (<?= count($albums) ?>)</h3>
+              <div class="card mb-2">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Album (<?= count($albums) ?>)</h3></div>
+              </div>
               <div class="row g-3 text-center mb-3">
                 <?php foreach ($albums as $al): ?>
                   <div class="col-6 col-sm-4 col-lg-3">
@@ -3026,7 +3051,9 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
             <?php endif; ?>
 
             <?php if ($timelinePhotos): ?>
-              <h3 class="h6 text-secondary mb-2">Foto (<?= count($timelinePhotos) ?>)</h3>
+              <div class="card mb-2">
+                <div class="card-header"><h3 class="card-title h6 mb-0">Foto (<?= count($timelinePhotos) ?>)</h3></div>
+              </div>
               <div class="row g-2">
                 <?php foreach ($timelinePhotos as $i => $ph): ?>
                   <div class="col-4 col-sm-3 col-lg-2">
@@ -3118,6 +3145,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $album['id']) ?>
+                <h1 class="h4 mb-1"><?= e($album['title']) ?></h1>
                 <p class="text-secondary">Album di <?= e($album['display_name']) ?> · <?= count($photos) ?> foto</p>
                 <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
               </div>
@@ -3245,6 +3273,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $service['id']) ?>
+                <h1 class="h4 mb-1"><?= e($service['title']) ?></h1>
                 <?php if (!empty($service['description'])): ?><p class="text-start mt-2"><?= nl2br(e($service['description'])) ?></p><?php endif; ?>
               </div>
             </div>
@@ -3396,6 +3425,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
                 </div>
               <?php endif; ?>
               <div class="card-body text-center">
+                <h1 class="h4 mb-1"><?= e($event['title']) ?></h1>
                 <p class="text-secondary mb-1"><?= e(formatLocalDateTime($event['event_date'], $artist)) ?></p>
                 <?php if ($locationLine): ?><p class="text-secondary"><?= e($locationLine) ?></p><?php endif; ?>
                 <?php if ($scheduleLabel && !$event['cover_path']): ?><p><span class="badge text-bg-primary"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span></p><?php endif; ?>
