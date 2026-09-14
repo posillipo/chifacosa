@@ -844,35 +844,37 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
     ob_start();
     ?>
           <div class="col-md-3 order-1">
-            <div class="card widget-user mb-0">
-              <div class="widget-user-header text-bg-primary">
-                <h3 class="widget-user-username"><?= e($artist['display_name']) ?></h3>
-                <h5 class="widget-user-desc">@<?= e($slug) ?></h5>
-              </div>
-              <div class="widget-user-image">
-                <img class="rounded-circle shadow" src="<?= e($avatarUrl) ?>" alt="<?= e($artist['display_name']) ?>">
-              </div>
-              <div class="card-footer">
-                <div class="row">
-                  <div class="col-sm-4 border-end">
-                    <div class="description-block">
-                      <p class="description-header"><?= (int) $followerCount ?></p>
-                      <span class="description-text">Follower</span>
-                    </div>
-                  </div>
-                  <div class="col-sm-4 border-end">
-                    <div class="description-block">
-                      <p class="description-header"><?= (int) $contentCount ?></p>
-                      <span class="description-text">Contenuti</span>
-                    </div>
-                  </div>
-                  <div class="col-sm-4">
-                    <div class="description-block">
-                      <p class="description-header"><?= $reviewStats['count'] ? e((string) $reviewStats['avg']) . ' ★' : '–' ?></p>
-                      <span class="description-text">Recensioni</span>
-                    </div>
-                  </div>
+            <div class="card widget-user-2 mb-0">
+              <div class="widget-user-header text-bg-warning">
+                <div class="widget-user-image">
+                  <img class="rounded-circle shadow" src="<?= e($avatarUrl) ?>" alt="<?= e($artist['display_name']) ?>">
                 </div>
+                <div>
+                  <h3 class="widget-user-username"><?= e($artist['display_name']) ?></h3>
+                  <h5 class="widget-user-desc">@<?= e($slug) ?></h5>
+                </div>
+              </div>
+              <div class="card-footer p-0">
+                <ul class="nav flex-column">
+                  <li class="nav-item">
+                    <span class="nav-link link-body-emphasis">
+                      Follower
+                      <span class="float-end badge text-bg-primary"><?= (int) $followerCount ?></span>
+                    </span>
+                  </li>
+                  <li class="nav-item">
+                    <span class="nav-link link-body-emphasis">
+                      Contenuti pubblicati
+                      <span class="float-end badge text-bg-info"><?= (int) $contentCount ?></span>
+                    </span>
+                  </li>
+                  <li class="nav-item">
+                    <span class="nav-link link-body-emphasis">
+                      Recensioni
+                      <span class="float-end badge text-bg-success"><?= $reviewStats['count'] ? e((string) $reviewStats['avg']) . ' ★' : '–' ?></span>
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
 
