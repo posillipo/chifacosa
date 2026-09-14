@@ -802,7 +802,20 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
         $offersPreview = $stmt->fetchAll();
     }
 
-    $photosPreview = !in_array('foto', $hiddenKeys, true) ? getPublicTimelinePhotos($uid, 6) : [];
+    // Stessa condizione reale usata da publicNav() per decidere se mostrare il tab Foto (non
+    // solo "non nascosto": serve che ci sia davvero un'immagine da qualche parte).
+    $hasPhotos = !in_array('foto', $hiddenKeys, true) && hasPublicPhotoContent($uid);
+    $galleryItems = [];
+    if ($hasPhotos) {
+        $stmt = $db->prepare("SELECT id, title, cover_path FROM photo_albums WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) AND cover_path IS NOT NULL ORDER BY sort_order DESC LIMIT 8");
+        $stmt->execute([$uid]);
+        foreach ($stmt->fetchAll() as $al) {
+            $galleryItems[] = ['type' => 'album', 'src' => $al['cover_path'], 'caption' => $al['title'], 'url' => '/' . $slug . '/album/' . $al['id']];
+        }
+        foreach (getPublicTimelinePhotos($uid, 12) as $ph) {
+            $galleryItems[] = ['type' => 'timeline', 'src' => $ph['photo'], 'caption' => null, 'url' => '/' . $slug . '/timeline/' . (int) $ph['post_id']];
+        }
+    }
 
     $servicesPreview = [];
     if ($hasServices) {
@@ -875,14 +888,6 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
 <body class="bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-
-  <!-- Barra pubblica minima: solo il nome del sito. Niente ricerca/tema/menu utente/Dashboard —
-       quella è interfaccia da pannello privato, qui non deve comparire mai. -->
-  <nav class="app-header navbar navbar-expand bg-body">
-    <div class="container-fluid">
-      <a href="/" class="navbar-brand fw-semibold"><?= e(siteName()) ?></a>
-    </div>
-  </nav>
 
   <main class="app-main">
     <div class="app-content-header">
@@ -981,7 +986,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                   <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#blog" type="button" role="tab">Blog</button></li>
                   <?php if ($hasMenu): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#menu" type="button" role="tab">Menù</button></li><?php endif; ?>
                   <?php if ($hasOffers): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#offerte" type="button" role="tab">Offerte</button></li><?php endif; ?>
-                  <?php if ($photosPreview): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#foto" type="button" role="tab">Foto</button></li><?php endif; ?>
+                  <?php if ($hasPhotos): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#foto" type="button" role="tab">Foto</button></li><?php endif; ?>
                   <?php if ($hasServices): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#servizi" type="button" role="tab">Servizi</button></li><?php endif; ?>
                   <?php if ($isBandOrLabel): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#eventi" type="button" role="tab">Eventi</button></li><?php endif; ?>
                   <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#contatti" type="button" role="tab">Contatti</button></li>
@@ -1116,17 +1121,32 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                   </div>
                   <?php endif; ?>
 
-                  <?php if ($photosPreview): ?>
+                  <?php if ($hasPhotos):
+                    $galleryHasAlbums = (bool) array_filter($galleryItems, fn ($g) => $g['type'] === 'album');
+                    $galleryHasTimeline = (bool) array_filter($galleryItems, fn ($g) => $g['type'] === 'timeline');
+                  ?>
                   <div class="tab-pane fade" id="foto" role="tabpanel">
-                    <div class="row g-2 mb-3">
-                      <?php foreach ($photosPreview as $ph): ?>
-                        <div class="col-4 col-sm-3 col-lg-2">
-                          <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>">
-                            <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" class="rounded-3 w-100" style="aspect-ratio:1;object-fit:cover;">
+                    <?php if ($galleryHasAlbums && $galleryHasTimeline): ?>
+                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Filtra per tipo" id="gallery-filters">
+                      <button type="button" class="btn btn-primary" data-gallery-filter="all" aria-pressed="true">Tutte</button>
+                      <button type="button" class="btn btn-outline-primary" data-gallery-filter="album" aria-pressed="false">Album</button>
+                      <button type="button" class="btn btn-outline-primary" data-gallery-filter="timeline" aria-pressed="false">Timeline</button>
+                    </div>
+                    <?php endif; ?>
+                    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3 mb-2" id="gallery-grid">
+                      <?php foreach ($galleryItems as $g): ?>
+                        <div class="col" data-gallery-item="<?= e($g['type']) ?>">
+                          <a href="<?= e($g['url']) ?>" class="card h-100 mb-0 text-decoration-none">
+                            <div class="ratio ratio-4x3">
+                              <img src="/<?= e($g['src']) ?>" alt="" loading="lazy" class="card-img-top object-fit-cover">
+                            </div>
+                            <?php if ($g['caption']): ?><figcaption class="card-body py-2"><p class="fw-semibold mb-0 text-truncate small text-body"><?= e($g['caption']) ?></p></figcaption><?php endif; ?>
                           </a>
                         </div>
                       <?php endforeach; ?>
                     </div>
+                    <p class="text-secondary text-center my-4" id="gallery-empty" role="status" hidden>Nessuna foto in questa categoria.</p>
+                    <span class="fs-7 text-body-secondary d-block mb-3" id="gallery-count"><?= count($galleryItems) ?> foto</span>
                     <a href="/<?= e($slug) ?>/foto" class="btn btn-sm btn-outline-primary">Vedi tutte le foto →</a>
                   </div>
                   <?php endif; ?>
@@ -1202,6 +1222,37 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+
+<!-- Filtro della galleria Foto (Album/Timeline) — stessa logica della pagina gallery.html vera
+     del pacchetto AdminLTE, qui in italiano. Non fa nulla se il tab Foto non c'è. -->
+<script>
+  const galleryFilters = document.getElementById('gallery-filters');
+  const galleryGrid = document.getElementById('gallery-grid');
+  const galleryEmpty = document.getElementById('gallery-empty');
+  const galleryCount = document.getElementById('gallery-count');
+  if (galleryFilters && galleryGrid) {
+    const tiles = galleryGrid.querySelectorAll('[data-gallery-item]');
+    galleryFilters.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-gallery-filter]');
+      if (!button) return;
+      const category = button.dataset.galleryFilter;
+      let shown = 0;
+      tiles.forEach((tile) => {
+        const match = category === 'all' || tile.dataset.galleryItem === category;
+        tile.hidden = !match;
+        if (match) shown++;
+      });
+      galleryFilters.querySelectorAll('[data-gallery-filter]').forEach((other) => {
+        const active = other === button;
+        other.classList.toggle('btn-primary', active);
+        other.classList.toggle('btn-outline-primary', !active);
+        other.setAttribute('aria-pressed', String(active));
+      });
+      galleryEmpty.hidden = shown > 0;
+      galleryCount.textContent = shown + ' foto';
+    });
+  }
+</script>
 </body>
 </html>
     <?php
