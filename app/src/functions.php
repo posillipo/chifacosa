@@ -731,6 +731,81 @@ function getContrastTextColor(?string $hexColor): string {
     return $luminance > 0.6 ? '#22223b' : '#fff';
 }
 
+// Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget .timeline
+// reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
+// la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
+const ADMINLTE_TIMELINE_TYPE_META = [
+    'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
+    'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
+    'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
+    'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
+    'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
+    'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
+    'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
+    'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
+    'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
+    'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
+    'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
+    'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
+    'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
+    'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
+];
+
+// Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
+// <div class="timeline"> né il tappo finale: usata sia per il primo carico che, tramite
+// timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
+// standalone. $afterDay è l'ultima etichetta di data già mostrata in pagina, per non ripeterla se
+// il primo elemento di questa chiamata cade nello stesso giorno; il valore restituito serve a far
+// proseguire correttamente la chiamata successiva.
+function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): array {
+    $lastDay = $afterDay;
+    ob_start();
+    foreach ($items as $it):
+        $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
+        if ($day !== $lastDay): $lastDay = $day; ?>
+        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
+        <?php endif; ?>
+        <div>
+          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
+          <div class="timeline-item">
+            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?></span>
+            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
+            <?php if (!empty($it['cover'])):
+              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
+            ?>
+            <div class="timeline-body">
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+    <?php endforeach;
+    return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
+}
+
+// Widget .timeline completo (contenitore + tappo finale), per un elenco fisso non paginato — il
+// tab Timeline della Home a tema AdminLTE mostra solo gli ultimi elementi, senza scroll infinito.
+function renderAdminLteTimelineWidget(array $items): string {
+    if (!$items) {
+        return '<p class="text-secondary">Nessun aggiornamento ancora.</p>';
+    }
+    $rows = renderAdminLteTimelineRows($items);
+    return '<div class="timeline">' . $rows['html'] . '<div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div></div>';
+}
+
+// Avatar per le pagine pubbliche a tema AdminLTE: foto reale se presente, altrimenti iniziali su
+// cerchio colorato (data URI, nessun file richiesto) — condiviso fra la Home e la pagina Timeline
+// dello stesso tema.
+function adminLteAvatarUrl(array $artist): string {
+    if (!empty($artist['avatar_path'])) {
+        return '/' . e($artist['avatar_path']);
+    }
+    $words = preg_split('/\s+/', trim($artist['display_name'] ?? ''));
+    $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
+    return 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="48" fill="#6c5ce7"/><text x="48" y="61" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">' . $initials . '</text></svg>');
+}
+
 // Tema grafico pubblico basato su AdminLTE 4 (CSS/JS reali forniti dall'utente) — sostituisce
 // l'intera Home pubblica con una propria pagina completa, stesso principio isolato dei
 // precedenti temi "a scena" (Giardino Anomalo, Scorrimento Infinito, ora rimossi): non tocca in
@@ -878,12 +953,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
     $stmt->execute([$uid]);
     $contentCount += (int) $stmt->fetch()['c'];
 
-    // Avatar: foto reale se presente, altrimenti iniziali su cerchio colorato (data URI, nessun
-    // file richiesto).
-    $words = preg_split('/\s+/', trim($artist['display_name'] ?? ''));
-    $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
-    $avatarSvg = 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="48" fill="#6c5ce7"/><text x="48" y="61" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">' . $initials . '</text></svg>');
-    $avatarUrl = !empty($artist['avatar_path']) ? '/' . e($artist['avatar_path']) : $avatarSvg;
+    $avatarUrl = adminLteAvatarUrl($artist);
 
     $pageUrl = siteUrl('/' . $slug);
     $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
@@ -893,25 +963,6 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
         'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
         'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
         'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
-    ];
-
-    // Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget
-    // .timeline reale di AdminLTE (UI/timeline.html) nel tab Timeline qui sotto.
-    $timelineTypeMeta = [
-        'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
-        'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
-        'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
-        'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
-        'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
-        'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
-        'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
-        'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
-        'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
-        'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
-        'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
-        'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
-        'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
-        'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
     ];
 
     ob_start();
@@ -1051,42 +1102,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                 <div class="tab-content">
 
                   <div class="tab-pane fade show active" id="tl" role="tabpanel">
-                    <?php if ($timelineItems):
-                      // Widget .timeline reale di AdminLTE (UI/timeline.html): icona+colore per
-                      // tipo, etichetta di data quando cambia giorno rispetto all'elemento prima
-                      // (gli item arrivano già ordinati dal più recente), copertina nel corpo
-                      // quando c'è una foto — stessa struttura della pagina di esempio, con dati
-                      // veri al posto del testo segnaposto.
-                      $lastDay = null;
-                    ?>
-                    <div class="timeline">
-                      <?php foreach ($timelineItems as $it):
-                        $day = formatLocalDateTime($it['data'], $artist, 'd/m/Y');
-                        $meta = $timelineTypeMeta[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
-                      ?>
-                        <?php if ($day !== $lastDay): $lastDay = $day; ?>
-                        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
-                        <?php endif; ?>
-                        <div>
-                          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
-                          <div class="timeline-item">
-                            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], $artist, 'H:i')) ?></span>
-                            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
-                            <?php if (!empty($it['cover'])):
-                              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
-                            ?>
-                            <div class="timeline-body">
-                              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
-                            </div>
-                            <?php endif; ?>
-                          </div>
-                        </div>
-                      <?php endforeach; ?>
-                      <div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div>
-                    </div>
-                    <?php else: ?>
-                      <p class="text-secondary">Nessun aggiornamento ancora.</p>
-                    <?php endif; ?>
+                    <?= renderAdminLteTimelineWidget($timelineItems) ?>
                     <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary">Vedi tutta la Timeline →</a>
                   </div>
 
@@ -1348,6 +1364,364 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
     });
   }
 </script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Timeline" a tema AdminLTE — stesso principio "a scena" della Home (vedi
+// renderAdminLteProfileTheme()), ma qui con lo scroll infinito reale della pagina Timeline del
+// tema Colorful (timeline.php/timeline_more.php) invece della sola anteprima di 5 elementi
+// mostrata nel tab Timeline della Home.
+function renderAdminLteTimelinePage(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+    $pageUrl = siteUrl('/' . $slug . '/timeline');
+    $pageSize = 20;
+    $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
+    $rows = renderAdminLteTimelineRows($feed);
+    $avatarUrl = adminLteAvatarUrl($artist);
+    $finished = count($feed) < $pageSize;
+
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timeline di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Timeline di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3">Timeline</h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
+                <li class="breadcrumb-item active" aria-current="page">Timeline</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header d-flex align-items-center gap-2">
+                <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="">
+                <h3 class="card-title mb-0">Timeline di <?= e($artist['display_name']) ?></h3>
+              </div>
+              <div class="card-body">
+                <?php if (!$feed): ?>
+                  <p class="text-secondary">Nessun aggiornamento ancora.</p>
+                <?php else: ?>
+                  <div class="timeline" id="timeline-feed"><?= $rows['html'] ?></div>
+                <?php endif; ?>
+                <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+                <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+                <div id="timeline-sentinel" style="height:1px;"></div>
+              </div>
+            </div>
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+</div>
+
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+<script>
+(function () {
+  var slug = <?= json_encode($slug) ?>;
+  var offset = <?= (int) count($feed) ?>;
+  var pageSize = <?= (int) $pageSize ?>;
+  var loading = false;
+  var finished = <?= $finished ? 'true' : 'false' ?>;
+  var lastDay = <?= json_encode($rows['lastDay']) ?>;
+  var feedEl = document.getElementById('timeline-feed');
+  var loadingEl = document.getElementById('timeline-loading');
+  var endEl = document.getElementById('timeline-end');
+  var sentinel = document.getElementById('timeline-sentinel');
+
+  function loadMore() {
+    if (loading || finished || !feedEl) return;
+    loading = true;
+    loadingEl.style.display = 'block';
+    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset + '&after_day=' + encodeURIComponent(lastDay || ''))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        loadingEl.style.display = 'none';
+        if (data.html) {
+          feedEl.insertAdjacentHTML('beforeend', data.html);
+        }
+        if (data.lastDay) { lastDay = data.lastDay; }
+        offset += data.count;
+        if (data.count < pageSize) {
+          finished = true;
+          endEl.style.display = 'block';
+        }
+        loading = false;
+      })
+      .catch(function () {
+        loading = false;
+        loadingEl.style.display = 'none';
+      });
+  }
+
+  if (!finished && sentinel && 'IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) loadMore();
+    });
+    observer.observe(sentinel);
+  }
+})();
+</script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Blog" (elenco) a tema AdminLTE — stesso principio "a scena" della Home, elenco
+// completo (non un'anteprima) come la pagina Blog del tema Colorful (blog_index.php).
+function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts): string {
+    $pageUrl = siteUrl('/' . $slug . '/blog');
+    $avatarUrl = adminLteAvatarUrl($artist);
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3">Blog</h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
+                <li class="breadcrumb-item active" aria-current="page">Blog</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="">
+              <h3 class="mb-0">Blog di <?= e($artist['display_name']) ?></h3>
+            </div>
+
+            <?php if (!$posts): ?>
+              <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
+            <?php endif; ?>
+
+            <?php foreach ($posts as $p): ?>
+              <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="d-flex">
+                  <?php if ($p['cover_path']): ?>
+                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start" style="width:140px;height:140px;object-fit:cover;flex-shrink:0;">
+                  <?php else: ?>
+                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center" style="width:140px;height:140px;flex-shrink:0;">
+                      <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
+                    </div>
+                  <?php endif; ?>
+                  <div class="card-body">
+                    <h3 class="h5 mb-1"><?= e($p['title']) ?></h3>
+                    <p class="text-secondary small mb-2"><?= e(formatLocalDateTime($p['published_at'], $artist)) ?></p>
+                    <?php if ($p['excerpt']): ?><p class="mb-0 text-secondary"><?= e(textExcerpt($p['excerpt'], 160)) ?></p><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+            <?php endforeach; ?>
+
+            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+</div>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Pagina pubblica "Articolo del blog" a tema AdminLTE — stesso principio "a scena" della Home.
+// $post contiene sia le colonne di blog_posts sia quelle di profiles/users già unite dalla query
+// di blog_post.php (stessa forma usata dal tema Colorful); $artist è l'array "adattatore" già
+// costruito lì per riusare le funzioni condivise (embedTrackingHead ecc.).
+function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): string {
+    $permalink = siteUrl(blogPostUrl($slug, $post));
+    $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
+    $avatarUrl = adminLteAvatarUrl($artist);
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['published_at']); ?>
+<title><?= e($post['title']) ?> — <?= e($post['display_name']) ?></title>
+<meta name="description" content="<?= e($post['excerpt'] ?: textExcerpt($post['content'])) ?>">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="<?= e($post['title']) ?>">
+<meta property="og:description" content="<?= e($post['excerpt'] ?: textExcerpt($post['content'])) ?>">
+<meta property="og:url" content="<?= e($permalink) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($post['title']) ?>">
+<meta name="twitter:description" content="<?= e($post['excerpt'] ?: textExcerpt($post['content'])) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+
+<link rel="canonical" href="<?= e($permalink) ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+
+  <main class="app-main">
+    <div class="app-content-header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6"><h1 class="mb-0 fs-3">Blog</h1></div>
+          <div class="col-sm-6">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb float-sm-end">
+                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
+                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>/blog">Blog</a></li>
+                <li class="breadcrumb-item active" aria-current="page"><?= e($post['title']) ?></li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3 justify-content-center">
+          <div class="col-lg-8">
+            <article class="card mb-3">
+              <?php if ($post['cover_path']): ?>
+                <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
+              <?php endif; ?>
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
+                  <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
+                </div>
+                <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
+                <div><?= nl2br(e($post['content'])) ?></div>
+              </div>
+            </article>
+
+            <div class="card mb-3">
+              <div class="card-body">
+                <strong>Condividi questo articolo</strong><br>
+                <small class="text-secondary"><?= e($permalink) ?></small>
+              </div>
+            </div>
+
+            <a href="/<?= e($slug) ?>/blog" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al Blog</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
+  <footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">
+      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
+      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
+      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
+    </div>
+    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
+  </footer>
+</div>
 </body>
 </html>
     <?php

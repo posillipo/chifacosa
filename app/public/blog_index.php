@@ -21,6 +21,13 @@ $stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY publ
 $stmt->execute([$artist['id']]);
 $posts = $stmt->fetchAll();
 
+// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — elenco completo, non
+// un'anteprima, in stile AdminLTE.
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteBlogIndexPage($artist, $userSlug, $posts);
+    exit;
+}
+
 $pageUrl = siteUrl('/' . $userSlug . '/blog');
 ?>
 <!doctype html>

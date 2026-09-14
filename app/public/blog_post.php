@@ -43,6 +43,12 @@ $artist = [
     'dashboard_theme' => $post['dashboard_theme'] ?? null,
 ];
 
+// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteBlogPostPage($post, $artist, $userSlug);
+    exit;
+}
+
 $permalink = siteUrl(blogPostUrl($userSlug, $post));
 $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
 ?>

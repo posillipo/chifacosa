@@ -17,6 +17,13 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
+// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — sostituisce l'intera
+// pagina con lo scroll infinito reale in stile AdminLTE.
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteTimelinePage($artist, $slug);
+    exit;
+}
+
 const TIMELINE_PAGE_SIZE = 20;
 $feed = getTimelineFeedForUsers([$artist['id']], TIMELINE_PAGE_SIZE, 0);
 $pageUrl = siteUrl('/' . $slug . '/timeline');
