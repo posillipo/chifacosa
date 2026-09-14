@@ -17,11 +17,13 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$tracks = getDB()->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC, id DESC');
+$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$sql = 'SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC, id DESC' . ($isAdminLte ? ' LIMIT 20' : '');
+$tracks = getDB()->prepare($sql);
 $tracks->execute([$artist['id']]);
 $tracks = $tracks->fetchAll();
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if ($isAdminLte) {
     echo renderAdminLteBraniListPage($artist, $slug, $tracks);
     exit;
 }

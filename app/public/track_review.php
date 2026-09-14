@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rate_
 }
 
 $artist = [
-    'slug' => $track['slug'], 'display_name' => $track['display_name'], 'avatar_path' => $track['avatar_path'],
+    'id' => $track['user_id'], 'slug' => $track['slug'], 'display_name' => $track['display_name'], 'avatar_path' => $track['avatar_path'],
     'spotify_artist_id' => $track['spotify_artist_id'], 'spotify_show_id' => $track['spotify_show_id'],
     'youtube_channel_id' => $track['youtube_channel_id'], 'genere' => $track['genere'], 'account_type' => $track['account_type'], 'page_theme' => $track['page_theme'] ?? 'colorful',
     'privacy_tracking_settings' => $track['privacy_tracking_settings'] ?? null,

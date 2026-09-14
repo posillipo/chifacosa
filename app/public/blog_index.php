@@ -17,13 +17,14 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC');
+$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC' . ($isAdminLte ? ' LIMIT 20' : ''));
 $stmt->execute([$artist['id']]);
 $posts = $stmt->fetchAll();
 
-// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — elenco completo, non
-// un'anteprima, in stile AdminLTE.
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — con scroll infinito
+// (vedi adminlte_list_more.php), non solo la prima pagina.
+if ($isAdminLte) {
     echo renderAdminLteBlogIndexPage($artist, $userSlug, $posts);
     exit;
 }

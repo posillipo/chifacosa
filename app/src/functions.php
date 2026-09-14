@@ -807,213 +807,22 @@ function adminLteFooterBlock(array $artist): string {
     return ob_get_clean();
 }
 
-// Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget .timeline
-// reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
-// la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
-const ADMINLTE_TIMELINE_TYPE_META = [
-    'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
-    'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
-    'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
-    'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
-    'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
-    'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
-    'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
-    'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
-    'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
-    'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
-    'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
-    'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
-    'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
-    'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
-];
-
-// Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
-// <div class="timeline"> né il tappo finale: usata sia per il primo carico che, tramite
-// timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
-// standalone. $afterDay è l'ultima etichetta di data già mostrata in pagina, per non ripeterla se
-// il primo elemento di questa chiamata cade nello stesso giorno; il valore restituito serve a far
-// proseguire correttamente la chiamata successiva.
-function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): array {
-    $lastDay = $afterDay;
-    ob_start();
-    foreach ($items as $it):
-        $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
-        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
-        if ($day !== $lastDay): $lastDay = $day; ?>
-        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
-        <?php endif; ?>
-        <div>
-          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
-          <div class="timeline-item">
-            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?></span>
-            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
-            <?php if (!empty($it['cover'])):
-              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
-            ?>
-            <div class="timeline-body">
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-    <?php endforeach;
-    return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
-}
-
-// Widget .timeline completo (contenitore + tappo finale), per un elenco fisso non paginato — il
-// tab Timeline della Home a tema AdminLTE mostra solo gli ultimi elementi, senza scroll infinito.
-function renderAdminLteTimelineWidget(array $items): string {
-    if (!$items) {
-        return '<p class="text-secondary">Nessun aggiornamento ancora.</p>';
-    }
-    $rows = renderAdminLteTimelineRows($items);
-    return '<div class="timeline">' . $rows['html'] . '<div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div></div>';
-}
-
-// Avatar per le pagine pubbliche a tema AdminLTE: foto reale se presente, altrimenti iniziali su
-// cerchio colorato (data URI, nessun file richiesto) — condiviso fra la Home e la pagina Timeline
-// dello stesso tema.
-function adminLteAvatarUrl(array $artist): string {
-    if (!empty($artist['avatar_path'])) {
-        return '/' . e($artist['avatar_path']);
-    }
-    $words = preg_split('/\s+/', trim($artist['display_name'] ?? ''));
-    $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
-    return 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="48" fill="#6c5ce7"/><text x="48" y="61" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">' . $initials . '</text></svg>');
-}
-
-// Tema grafico pubblico basato su AdminLTE 4 (CSS/JS reali forniti dall'utente) — sostituisce
-// l'intera Home pubblica con una propria pagina completa, stesso principio isolato dei
-// precedenti temi "a scena" (Giardino Anomalo, Scorrimento Infinito, ora rimossi): non tocca in
-// alcun modo lo scheletro HTML condiviso dagli altri ~30 temi. Ogni sezione mostra
-// un'ANTEPRIMA di dati reali con un link alla pagina vera (Timeline, Blog, Podcast...) invece di
-// riscrivere lì dentro la logica di quelle pagine — un solo posto dove ciascuna funzione vive
-// davvero. Pagina pubblica pura: niente qui che assomigli alla Dashboard privata (vedi la
-// richiesta esplicita che ha portato a togliere ricerca/tema/Impostazioni dal prototipo).
-function renderAdminLteProfileTheme(array $artist, string $slug): string {
-    // u.php non li richiede sempre (solo se serve la preview Spotify in Home) — qui invece
-    // possono servire entrambi, come su podcast.php/video.php.
-    require_once __DIR__ . '/spotify.php';
-    require_once __DIR__ . '/youtube.php';
-
-    $db = getDB();
+// Colonna sinistra del profilo (avatar/follower/recensioni/Segui, "I miei link", "Chi sono") —
+// era solo nella Home, ora condivisa da OGNI pagina pubblica a tema AdminLTE (Timeline, Che Amo,
+// Spotify...), così chi naviga dentro il profilo la vede sempre, non solo in Home. Self-contained:
+// calcola da sola i dati che le servono a partire da $artist/$slug, così ogni pagina chiamante non
+// deve ripetere le stesse query.
+function renderAdminLteProfileSidebar(array $artist, string $slug): string {
     $uid = (int) $artist['id'];
-
-    // account_type arriva già in $artist (colonna di users, presa con u.* dalla query di u.php);
-    // citta/provincia invece sono di profiles e lì non sono incluse — completate qui con una
-    // query leggera dedicata, invece di allargare quella condivisa usata anche dal rendering
-    // normale.
-    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+    $db = getDB();
     $stmt = $db->prepare('SELECT citta, provincia FROM profiles WHERE user_id=?');
     $stmt->execute([$uid]);
     $extra = $stmt->fetch() ?: [];
     $citta = trim($extra['citta'] ?? '');
     $provincia = trim($extra['provincia'] ?? '');
-
-    $hiddenKeys = getHiddenNavKeys($uid);
     $hasSpotify = !empty($artist['spotify_artist_id']);
-    $hasPodcast = !empty($artist['spotify_show_id']);
     $hasYoutube = !empty($artist['youtube_channel_id']);
-    $hasMenu = menuHasItems($uid);
-    $hasOffers = hasActiveOffers($uid);
-    $hasServices = hasVisibleServices($uid);
-
-    // ----- Anteprime di dati reali, in piccola quantità: ogni tab rimanda alla pagina vera per
-    // il contenuto completo. -----
-    $timelineItems = getTimelineFeedForUsers([$uid], 5, 0);
-
-    $visibleCheAmo = [];
-    foreach (CHE_AMO_MODULES as $cheAmoKey => $cheAmoModule) {
-        if (in_array($cheAmoKey, $hiddenKeys, true)) {
-            continue;
-        }
-        if ($cheAmoModule['check'] === null || $cheAmoModule['check']($uid)) {
-            $visibleCheAmo[$cheAmoKey] = $cheAmoModule;
-        }
-    }
-
-    // Copertina automatica per ogni riquadro "Che Amo": invece di un'icona sempre uguale, si
-    // pesca la foto dell'elemento più recente di quella categoria (stesso ordine di priorità
-    // image_thumb_path -> image_path -> immagine originale già usato da getTimelineFeedForUsers()
-    // per lo stesso tipo di contenuto). Ricade sull'icona colorata solo se la categoria non ha
-    // ancora nessuna immagine disponibile.
-    $cheAmoCoverSources = [
-        'bandcheamo' => ['table' => 'fan_favorite_bands', 'img' => 'COALESCE(image_thumb_path, image_path, artist_image)'],
-        'attorichamo' => ['table' => 'fan_favorite_actors', 'img' => 'COALESCE(image_thumb_path, image_path, actor_image)'],
-        'filmcheamo' => ['table' => 'fan_favorite_movies', 'img' => 'COALESCE(image_thumb_path, image_path, movie_image)'],
-        'libricheamo' => ['table' => 'fan_favorite_books', 'img' => 'COALESCE(image_thumb_path, image_path, book_image)'],
-        'viaggi' => ['table' => 'fan_favorite_trips', 'img' => 'COALESCE(image_thumb_path, image_path, map_image_path)'],
-        'brani' => ['table' => 'favorite_tracks', 'img' => 'COALESCE(image_thumb_path, image_path, track_image)'],
-        'playlistcheamo' => ['table' => 'fan_favorite_playlists', 'img' => 'COALESCE(image_thumb_path, image_path, playlist_image)'],
-        'albumcheamo' => ['table' => 'fan_favorite_albums', 'img' => 'COALESCE(image_thumb_path, image_path, album_image)'],
-    ];
-    $cheAmoCovers = [];
-    foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule) {
-        $src = $cheAmoCoverSources[$cheAmoKey] ?? null;
-        if (!$src) {
-            continue;
-        }
-        $stmt = $db->prepare("SELECT {$src['img']} AS cover FROM {$src['table']}
-            WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) AND {$src['img']} IS NOT NULL
-            ORDER BY created_at DESC LIMIT 1");
-        $stmt->execute([$uid]);
-        $row = $stmt->fetch();
-        if ($row && $row['cover']) {
-            $cheAmoCovers[$cheAmoKey] = $row['cover'];
-        }
-    }
-
-    $podcastEpisodes = ($isBandOrLabel && $hasPodcast) ? spotifyGetShowEpisodes($artist['spotify_show_id'], 3) : [];
-
-    $videos = [];
-    if ($isBandOrLabel && $hasYoutube) {
-        $uploadsPlaylistId = 'UU' . substr($artist['youtube_channel_id'], 2);
-        $videos = youtubeGetChannelVideos($uploadsPlaylistId, 3);
-    }
-
-    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC LIMIT 3');
-    $stmt->execute([$uid]);
-    $blogPosts = $stmt->fetchAll();
-
-    $menuPreview = [];
-    if ($hasMenu) {
-        $stmt = $db->prepare('SELECT name, price FROM menu_items WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC LIMIT 4');
-        $stmt->execute([$uid]);
-        $menuPreview = $stmt->fetchAll();
-    }
-
-    $offersPreview = [];
-    if ($hasOffers) {
-        $stmt = $db->prepare("SELECT title, price_label FROM special_offers WHERE user_id=? AND is_active=1 AND (valid_from IS NULL OR valid_from <= NOW()) AND (valid_until IS NULL OR valid_until >= NOW()) ORDER BY sort_order ASC LIMIT 3");
-        $stmt->execute([$uid]);
-        $offersPreview = $stmt->fetchAll();
-    }
-
-    // Stessa condizione reale usata da publicNav() per decidere se mostrare il tab Foto (non
-    // solo "non nascosto": serve che ci sia davvero un'immagine da qualche parte).
-    $hasPhotos = !in_array('foto', $hiddenKeys, true) && hasPublicPhotoContent($uid);
-    $galleryItems = [];
-    if ($hasPhotos) {
-        $stmt = $db->prepare("SELECT id, title, cover_path FROM photo_albums WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) AND cover_path IS NOT NULL ORDER BY sort_order DESC LIMIT 8");
-        $stmt->execute([$uid]);
-        foreach ($stmt->fetchAll() as $al) {
-            $galleryItems[] = ['type' => 'album', 'src' => $al['cover_path'], 'caption' => $al['title'], 'url' => '/' . $slug . '/album/' . $al['id']];
-        }
-        foreach (getPublicTimelinePhotos($uid, 12) as $ph) {
-            $galleryItems[] = ['type' => 'timeline', 'src' => $ph['photo'], 'caption' => null, 'url' => '/' . $slug . '/timeline/' . (int) $ph['post_id']];
-        }
-    }
-
-    $servicesPreview = [];
-    if ($hasServices) {
-        $stmt = $db->prepare("SELECT title, cover_path FROM services WHERE user_id=? AND show_in_feed=1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC LIMIT 3");
-        $stmt->execute([$uid]);
-        $servicesPreview = $stmt->fetchAll();
-    }
-
-    $stmt = $db->prepare('SELECT title, venue, city, event_date, is_perpetual FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC LIMIT 4');
-    $stmt->execute([$uid]);
-    $eventsPreview = $stmt->fetchAll();
+    $hasPodcast = !empty($artist['spotify_show_id']);
 
     $stmt = $db->prepare("SELECT label, url FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
     $stmt->execute([$uid]);
@@ -1031,63 +840,8 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
 
     $avatarUrl = adminLteAvatarUrl($artist);
 
-    $pageUrl = siteUrl('/' . $slug);
-    $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
-
-    $cheAmoColors = ['success', 'danger', 'primary', 'warning', 'info', 'secondary', 'success', 'danger'];
-    $cheAmoIcons = ADMINLTE_CHE_AMO_ICONS;
-
     ob_start();
     ?>
-<!doctype html>
-<!-- Tema pubblico: palette fissa scelta dall'artista, non deve seguire il dark mode del
-     visitatore (vedi stesso ragionamento fatto per il prototipo). -->
-<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
-<meta name="description" content="<?= e($ogDescription) ?>">
-<meta property="og:type" content="profile">
-<meta property="og:title" content="<?= e($artist['display_name']) ?>">
-<meta property="og:description" content="<?= e($ogDescription) ?>">
-<meta property="og:url" content="<?= e($pageUrl) ?>">
-<meta property="og:site_name" content="<?= e(siteName()) ?>">
-<?php if (!empty($artist['avatar_path'])): ?><meta property="og:image" content="<?= e(siteUrl('/' . $artist['avatar_path'])) ?>"><?php endif; ?>
-<link rel="canonical" href="<?= e($pageUrl) ?>">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
-<?= embedPrivacyScript($artist) ?>
-<?= embedTrackingHead($artist) ?>
-<?= embedGoogleAnalytics($artist) ?>
-</head>
-<body class="bg-body-tertiary">
-<?= embedTrackingBodyStart($artist) ?>
-<div class="app-wrapper">
-
-  <main class="app-main">
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6"><h1 class="mb-0 fs-3"><?= e(siteName()) ?></h1></div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item active" aria-current="page"><?= e($artist['display_name']) ?></li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="app-content">
-      <div class="container-fluid">
-        <div class="row g-3">
-
           <div class="col-md-3">
             <div class="card">
               <div class="card-body text-center">
@@ -1151,291 +905,479 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
             </div>
             <?php endif; ?>
           </div>
+    <?php
+    return ob_get_clean();
+}
 
+// Barra di navigazione condivisa da TUTTE le pagine pubbliche a tema AdminLTE — non più tab
+// Bootstrap in-pagina (erano solo nella Home): ogni voce è un link reale alla sua pagina dedicata,
+// con la voce della pagina corrente marcata "active" (l'"effetto focus" richiesto). Stessa logica
+// di visibilità di publicNav() (riusa hasAnyVisibleCheAmo() ecc.), ma senza il suo riordino
+// personalizzato via trascinamento — stessa semplificazione già scelta per questo tema fin
+// dall'inizio (vedi Home): un ordine fisso, uguale per tutti i profili.
+function renderAdminLteNavTabs(array $artist, string $slug, string $activeKey): string {
+    $uid = (int) $artist['id'];
+    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+    $hiddenKeys = getHiddenNavKeys($uid);
+
+    $items = [];
+    $items['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
+    if (hasAnyVisibleCheAmo($uid, $hiddenKeys)) {
+        $items['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo'];
+    }
+    if ($isBandOrLabel && !empty($artist['spotify_artist_id'])) {
+        $items['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
+    }
+    if ($isBandOrLabel && !empty($artist['spotify_show_id'])) {
+        $items['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
+    }
+    if ($isBandOrLabel && !empty($artist['youtube_channel_id'])) {
+        $items['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
+    }
+    $items['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
+    if (!in_array('menu', $hiddenKeys, true) && menuHasItems($uid)) {
+        $items['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu'];
+    }
+    if (!in_array('offerte', $hiddenKeys, true) && hasActiveOffers($uid)) {
+        $items['offerte'] = ['label' => 'Offerte', 'url' => '/' . $slug . '/offerte'];
+    }
+    if (!in_array('foto', $hiddenKeys, true) && hasPublicPhotoContent($uid)) {
+        $items['foto'] = ['label' => 'Foto', 'url' => '/' . $slug . '/foto'];
+    }
+    if (!in_array('servizi', $hiddenKeys, true) && hasVisibleServices($uid)) {
+        $items['servizi'] = ['label' => 'Servizi', 'url' => '/' . $slug . '/servizi'];
+    }
+    if ($isBandOrLabel && !in_array('eventi', $hiddenKeys, true)) {
+        $items['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
+    }
+    $items['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+
+    ob_start();
+    ?>
+                <ul class="nav nav-tabs" role="tablist">
+                  <?php foreach ($items as $key => $item): ?>
+                  <li class="nav-item" role="presentation">
+                    <a href="<?= e($item['url']) ?>" class="nav-link<?= $key === $activeKey ? ' active' : '' ?>"><?= e($item['label']) ?></a>
+                  </li>
+                  <?php endforeach; ?>
+                </ul>
+    <?php
+    return ob_get_clean();
+}
+
+// Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget .timeline
+// reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
+// la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
+const ADMINLTE_TIMELINE_TYPE_META = [
+    'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
+    'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
+    'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
+    'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
+    'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
+    'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
+    'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
+    'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
+    'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
+    'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
+    'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
+    'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
+    'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
+    'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
+];
+
+// Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
+// <div class="timeline"> né il tappo finale: usata sia per il primo carico che, tramite
+// timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
+// standalone. $afterDay è l'ultima etichetta di data già mostrata in pagina, per non ripeterla se
+// il primo elemento di questa chiamata cade nello stesso giorno; il valore restituito serve a far
+// proseguire correttamente la chiamata successiva.
+function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): array {
+    $lastDay = $afterDay;
+    ob_start();
+    foreach ($items as $it):
+        $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
+        if ($day !== $lastDay): $lastDay = $day; ?>
+        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
+        <?php endif; ?>
+        <div>
+          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
+          <div class="timeline-item">
+            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?></span>
+            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
+            <?php if (!empty($it['cover'])):
+              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
+            ?>
+            <div class="timeline-body">
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+    <?php endforeach;
+    return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
+}
+
+// Widget .timeline completo (contenitore + tappo finale), per un elenco fisso non paginato — il
+// tab Timeline della Home a tema AdminLTE mostra solo gli ultimi elementi, senza scroll infinito.
+function renderAdminLteTimelineWidget(array $items): string {
+    if (!$items) {
+        return '<p class="text-secondary">Nessun aggiornamento ancora.</p>';
+    }
+    $rows = renderAdminLteTimelineRows($items);
+    return '<div class="timeline">' . $rows['html'] . '<div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div></div>';
+}
+
+// Contenuto della card Timeline con scroll infinito reale — condiviso fra la Home (che ora mostra
+// la Timeline per intero, non più un'anteprima di 5 elementi in un tab) e la pagina Timeline
+// standalone: stesso identico blocco, cambia solo il resto della pagina attorno (head/breadcrumb).
+// Self-contained: fa da sola la prima query, come sidebar/nav.
+function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+    $pageSize = 20;
+    $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
+    $rows = renderAdminLteTimelineRows($feed);
+    $finished = count($feed) < $pageSize;
+    ob_start();
+    ?>
+                <?php if (!$feed): ?>
+                  <p class="text-secondary">Nessun aggiornamento ancora.</p>
+                <?php else: ?>
+                  <div class="timeline" id="timeline-feed"><?= $rows['html'] ?></div>
+                <?php endif; ?>
+                <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+                <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+                <div id="timeline-sentinel" style="height:1px;"></div>
+                <script>
+                (function () {
+                  var slug = <?= json_encode($slug) ?>;
+                  var offset = <?= (int) count($feed) ?>;
+                  var pageSize = <?= (int) $pageSize ?>;
+                  var loading = false;
+                  var finished = <?= $finished ? 'true' : 'false' ?>;
+                  var lastDay = <?= json_encode($rows['lastDay']) ?>;
+                  var feedEl = document.getElementById('timeline-feed');
+                  var loadingEl = document.getElementById('timeline-loading');
+                  var endEl = document.getElementById('timeline-end');
+                  var sentinel = document.getElementById('timeline-sentinel');
+
+                  function loadMore() {
+                    if (loading || finished || !feedEl) return;
+                    loading = true;
+                    loadingEl.style.display = 'block';
+                    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset + '&after_day=' + encodeURIComponent(lastDay || ''))
+                      .then(function (r) { return r.json(); })
+                      .then(function (data) {
+                        loadingEl.style.display = 'none';
+                        if (data.html) { feedEl.insertAdjacentHTML('beforeend', data.html); }
+                        if (data.lastDay) { lastDay = data.lastDay; }
+                        offset += data.count;
+                        if (data.count < pageSize) {
+                          finished = true;
+                          endEl.style.display = 'block';
+                        }
+                        loading = false;
+                      })
+                      .catch(function () {
+                        loading = false;
+                        loadingEl.style.display = 'none';
+                      });
+                  }
+
+                  if (!finished && sentinel && 'IntersectionObserver' in window) {
+                    var observer = new IntersectionObserver(function (entries) {
+                      if (entries[0].isIntersecting) loadMore();
+                    });
+                    observer.observe(sentinel);
+                  }
+                })();
+                </script>
+    <?php
+    return ob_get_clean();
+}
+
+// Script di scroll infinito generico, condiviso da tutte le pagine a elenco a tema AdminLTE
+// (Blog, i 6 moduli Che Amo, Brani, Offerte, Servizi, Eventi) — si appoggia
+// all'endpoint unico adminlte_list_more.php?type=$type, che sa come interrogare e disegnare
+// ciascun tipo di elenco. Gli elementi con questi ID devono già esistere nella pagina chiamante:
+// #adminlte-list-feed (contenitore in cui appendere), #adminlte-list-sentinel,
+// #adminlte-list-loading, #adminlte-list-end. Viaggi (raggruppato per mese) e Foto (griglia con
+// lightbox che indicizza tutte le immagini insieme) restano elenchi completi, non paginati: la
+// paginazione ne romperebbe rispettivamente il raggruppamento e l'indice della lightbox.
+function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCount, int $pageSize, bool $finished): string {
+    ob_start();
+    ?>
+                <script>
+                (function () {
+                  var type = <?= json_encode($type) ?>;
+                  var slug = <?= json_encode($slug) ?>;
+                  var offset = <?= (int) $initialCount ?>;
+                  var pageSize = <?= (int) $pageSize ?>;
+                  var loading = false;
+                  var finished = <?= $finished ? 'true' : 'false' ?>;
+                  var feedEl = document.getElementById('adminlte-list-feed');
+                  var loadingEl = document.getElementById('adminlte-list-loading');
+                  var endEl = document.getElementById('adminlte-list-end');
+                  var sentinel = document.getElementById('adminlte-list-sentinel');
+
+                  function loadMore() {
+                    if (loading || finished || !feedEl) return;
+                    loading = true;
+                    if (loadingEl) loadingEl.style.display = 'block';
+                    fetch('/adminlte_list_more.php?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(slug) + '&offset=' + offset)
+                      .then(function (r) { return r.json(); })
+                      .then(function (data) {
+                        if (loadingEl) loadingEl.style.display = 'none';
+                        if (data.html) { feedEl.insertAdjacentHTML('beforeend', data.html); }
+                        offset += data.count;
+                        if (data.count < pageSize) {
+                          finished = true;
+                          if (endEl) endEl.style.display = 'block';
+                        }
+                        loading = false;
+                      })
+                      .catch(function () {
+                        loading = false;
+                        if (loadingEl) loadingEl.style.display = 'none';
+                      });
+                  }
+
+                  if (!finished && sentinel && 'IntersectionObserver' in window) {
+                    var observer = new IntersectionObserver(function (entries) {
+                      if (entries[0].isIntersecting) loadMore();
+                    });
+                    observer.observe(sentinel);
+                  }
+                })();
+                </script>
+    <?php
+    return ob_get_clean();
+}
+
+// Righe/card di un elenco paginato a tema AdminLTE — funzioni "pure" (solo item -> HTML, senza
+// contenitore) riusate sia dal primo caricamento di ciascuna pagina sia da
+// adminlte_list_more.php per le pagine successive dello scroll infinito.
+
+function renderAdminLteBlogRows(array $posts, string $slug, array $artist): string {
+    $html = '';
+    foreach ($posts as $p) {
+        ob_start();
+        ?>
+              <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="d-flex">
+                  <?php if ($p['cover_path']): ?>
+                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start" style="width:140px;height:140px;object-fit:cover;flex-shrink:0;">
+                  <?php else: ?>
+                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center" style="width:140px;height:140px;flex-shrink:0;">
+                      <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
+                    </div>
+                  <?php endif; ?>
+                  <div class="card-body">
+                    <h3 class="h5 mb-1"><?= e($p['title']) ?></h3>
+                    <p class="text-secondary small mb-2"><?= e(formatLocalDateTime($p['published_at'], $artist)) ?></p>
+                    <?php if ($p['excerpt']): ?><p class="mb-0 text-secondary"><?= e(textExcerpt($p['excerpt'], 160)) ?></p><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+function renderAdminLteFanFavoriteRows(array $favorites, string $slug, string $kind, array $artist): string {
+    $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$kind];
+    $shapeStyle = ['circle' => 'width:64px;height:64px;border-radius:50%;', 'book' => 'width:64px;height:88px;border-radius:6px;', 'square' => 'width:80px;height:80px;border-radius:10px;'][$cfg['image_shape']];
+    $html = '';
+    foreach ($favorites as $f) {
+        $img = $f[$cfg['image_col']] ?? null;
+        ob_start();
+        ?>
+                    <div class="col-6 col-sm-4 col-lg-3">
+                      <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $f['id'] ?>" class="card text-decoration-none text-body p-3 h-100">
+                        <?php if ($img): ?>
+                          <img src="<?= e($img) ?>" alt="" loading="lazy" class="mx-auto mb-2 d-block" style="<?= $shapeStyle ?>object-fit:cover;">
+                        <?php endif; ?>
+                        <div class="fw-semibold small"><?= e($f[$cfg['name_col']]) ?></div>
+                        <?php if ($kind === 'album' && !empty($f['album_artist_name'])): ?><div class="text-secondary" style="font-size:11.5px;"><?= e($f['album_artist_name']) ?></div><?php endif; ?>
+                        <small class="text-secondary" style="font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
+                      </a>
+                    </div>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+function renderAdminLteBraniRows(array $tracks, string $slug, array $artist): string {
+    $html = '';
+    foreach ($tracks as $t) {
+        $trackStats = getTrackRatingStats((int) $t['id']);
+        ob_start();
+        ?>
+              <div class="card mb-3">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/scheda" class="d-flex align-items-center gap-3 text-decoration-none text-body flex-grow-1" style="min-width:0;">
+                    <?php if ($t['track_image']): ?>
+                      <img src="<?= e($t['track_image']) ?>" alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                    <?php else: ?>
+                      <div class="bg-body-tertiary rounded" style="width:64px;height:64px;flex-shrink:0;"></div>
+                    <?php endif; ?>
+                    <div style="min-width:0;">
+                      <strong class="d-block text-truncate"><?= e($t['track_name']) ?></strong>
+                      <small class="text-secondary"><?= e($t['artist_name']) ?></small><br>
+                      <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span class="text-secondary">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small><br>
+                      <small class="text-secondary"><?= e(publishedAtLabel($t['publish_at'], $t['created_at'], $artist)) ?></small>
+                    </div>
+                  </a>
+                  <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <?php if (!empty($t['lyrics'])): ?><a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/testo" title="Testo e ascolto" class="text-decoration-none"><i class="bi bi-file-text fs-5"></i></a><?php endif; ?>
+                    <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/votazioni" title="Vota questo brano" class="text-decoration-none text-warning"><i class="bi bi-star-fill fs-5"></i></a>
+                  </div>
+                </div>
+              </div>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+function renderAdminLteOfferteRows(array $offers, string $slug, array $artist): string {
+    $html = '';
+    foreach ($offers as $of) {
+        ob_start();
+        ?>
+              <a href="/<?= e($slug) ?>/offerte/<?= (int) $of['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($of['cover_path']): ?><img src="/<?= e($of['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <strong><?= e($of['title']) ?></strong>
+                    <?php if ($of['price_label']): ?><div class="text-primary fw-bold"><?= e($of['price_label']) ?></div><?php endif; ?>
+                    <?php if ($of['valid_until']): ?><small class="text-secondary d-block mt-1">Valida fino al <?= e(formatLocalDateTime($of['valid_until'], $artist, 'd/m/Y')) ?></small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+function renderAdminLteServiziRows(array $services, string $slug): string {
+    $html = '';
+    foreach ($services as $sv) {
+        ob_start();
+        ?>
+              <a href="/<?= e($slug) ?>/servizi/<?= (int) $sv['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($sv['cover_path']): ?><img src="/<?= e($sv['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <strong><?= e($sv['title']) ?></strong>
+                    <?php if ($sv['description']): ?><div class="text-secondary small mt-1"><?= e(textExcerpt($sv['description'], 90)) ?></div><?php endif; ?>
+                    <?php if ((int) $sv['accepts_inquiries'] === 1): ?><small class="text-primary fw-semibold d-block mt-1"><i class="bi bi-envelope me-1"></i>Richiedi informazioni</small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+function renderAdminLteEventiRows(array $events, string $slug, array $artist): string {
+    $html = '';
+    foreach ($events as $ev) {
+        $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false));
+        ob_start();
+        ?>
+              <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                  <div class="flex-grow-1" style="min-width:0;">
+                    <small class="text-secondary d-block"><?= e(formatLocalDateTime($ev['event_date'], $artist)) ?></small>
+                    <strong><?= e($ev['title']) ?></strong>
+                    <?php if ($ev['venue'] || $ev['city']): ?><small class="text-secondary d-block"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></small><?php endif; ?>
+                    <?php if ($scheduleLabel): ?><small class="fw-semibold d-block"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></small><?php endif; ?>
+                  </div>
+                </div>
+              </a>
+        <?php
+        $html .= ob_get_clean();
+    }
+    return $html;
+}
+
+// Avatar per le pagine pubbliche a tema AdminLTE: foto reale se presente, altrimenti iniziali su
+// cerchio colorato (data URI, nessun file richiesto) — condiviso fra la Home e la pagina Timeline
+// dello stesso tema.
+function adminLteAvatarUrl(array $artist): string {
+    if (!empty($artist['avatar_path'])) {
+        return '/' . e($artist['avatar_path']);
+    }
+    $words = preg_split('/\s+/', trim($artist['display_name'] ?? ''));
+    $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
+    return 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="48" fill="#6c5ce7"/><text x="48" y="61" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">' . $initials . '</text></svg>');
+}
+
+// Tema grafico pubblico basato su AdminLTE 4 (CSS/JS reali forniti dall'utente) — sostituisce
+// l'intera Home pubblica con una propria pagina completa, stesso principio isolato dei
+// precedenti temi "a scena" (Giardino Anomalo, Scorrimento Infinito, ora rimossi): non tocca in
+// alcun modo lo scheletro HTML condiviso dagli altri ~30 temi. Mostra la Timeline per intero (con
+// scroll infinito, come la pagina standalone — vedi renderAdminLteTimelineFeedBlock()): le altre
+// sezioni (Che Amo, Spotify, Blog...) non sono più anteprime qui dentro, sono voci della nav
+// condivisa (renderAdminLteNavTabs()) che portano alla pagina vera di ciascuna — click reale,
+// niente più tab Bootstrap in-pagina (vedi cronologia di questa funzione per la versione
+// precedente, con le anteprime).
+function renderAdminLteProfileTheme(array $artist, string $slug): string {
+    $pageUrl = siteUrl('/' . $slug);
+    $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<!-- Tema pubblico: palette fissa scelta dall'artista, non deve seguire il dark mode del
+     visitatore (vedi stesso ragionamento fatto per il prototipo). -->
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if (!empty($artist['avatar_path'])): ?><meta property="og:image" content="<?= e(siteUrl('/' . $artist['avatar_path'])) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['display_name']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <div class="col-md-9">
             <div class="card">
-              <div class="card-header p-0 border-bottom-0">
-                <ul class="nav nav-tabs" id="profile-tabs" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tl" type="button" role="tab">Timeline</button></li>
-                  <?php if ($visibleCheAmo): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cheamo" type="button" role="tab">Che Amo</button></li><?php endif; ?>
-                  <?php if ($isBandOrLabel && $hasSpotify): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#spotify" type="button" role="tab">Spotify</button></li><?php endif; ?>
-                  <?php if ($isBandOrLabel && $hasPodcast): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#podcast" type="button" role="tab">Podcast</button></li><?php endif; ?>
-                  <?php if ($isBandOrLabel && $hasYoutube): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#video" type="button" role="tab">Video</button></li><?php endif; ?>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#blog" type="button" role="tab">Blog</button></li>
-                  <?php if ($hasMenu): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#menu" type="button" role="tab">Menù</button></li><?php endif; ?>
-                  <?php if ($hasOffers): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#offerte" type="button" role="tab">Offerte</button></li><?php endif; ?>
-                  <?php if ($hasPhotos): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#foto" type="button" role="tab">Foto</button></li><?php endif; ?>
-                  <?php if ($hasServices): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#servizi" type="button" role="tab">Servizi</button></li><?php endif; ?>
-                  <?php if ($isBandOrLabel): ?><li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#eventi" type="button" role="tab">Eventi</button></li><?php endif; ?>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#contatti" type="button" role="tab">Contatti</button></li>
-                </ul>
-              </div>
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
-                <div class="tab-content">
-
-                  <div class="tab-pane fade show active" id="tl" role="tabpanel">
-                    <?= renderAdminLteTimelineWidget($timelineItems) ?>
-                    <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary">Vedi tutta la Timeline →</a>
-                  </div>
-
-                  <?php if ($visibleCheAmo): ?>
-                  <div class="tab-pane fade" id="cheamo" role="tabpanel">
-                    <div class="row g-3 text-center">
-                      <?php $ci = 0; ?>
-                      <?php foreach ($visibleCheAmo as $cheAmoKey => $cheAmoModule): $color = $cheAmoColors[$ci++ % count($cheAmoColors)]; $cover = $cheAmoCovers[$cheAmoKey] ?? null; ?>
-                        <div class="col-6 col-sm-4 col-lg-3">
-                          <a href="/<?= e($slug) ?>/<?= e($cheAmoModule['segment']) ?>" class="text-decoration-none">
-                            <?php if ($cover):
-                              $coverUrl = str_starts_with($cover, 'http') ? $cover : '/' . $cover;
-                            ?>
-                              <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="rounded-3 mx-auto mb-2 d-block" style="width:64px;height:64px;object-fit:cover;">
-                            <?php else: ?>
-                              <div class="rounded-3 bg-<?= $color ?>-subtle text-<?= $color ?> d-flex align-items-center justify-content-center mx-auto mb-2" style="width:64px;height:64px;font-size:1.4rem;"><i class="bi <?= e($cheAmoIcons[$cheAmoKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
-                            <?php endif; ?>
-                            <div class="small fw-semibold text-body"><?= e($cheAmoModule['label']) ?></div>
-                          </a>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($isBandOrLabel && $hasSpotify): ?>
-                  <div class="tab-pane fade" id="spotify" role="tabpanel">
-                    <p class="text-secondary">Ascolta la musica di <?= e($artist['display_name']) ?> direttamente su Spotify.</p>
-                    <a href="/<?= e($slug) ?>/spotify" class="btn btn-sm btn-outline-primary"><i class="bi bi-spotify me-1"></i>Apri il profilo Spotify →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($isBandOrLabel && $hasPodcast): ?>
-                  <div class="tab-pane fade" id="podcast" role="tabpanel">
-                    <?php if ($podcastEpisodes): ?>
-                      <div class="list-group list-group-flush mb-3">
-                        <?php foreach ($podcastEpisodes as $ep): ?>
-                          <a href="<?= e($ep['spotify_url'] ?? '#') ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex gap-3">
-                            <?php if (!empty($ep['image'])): ?>
-                              <img src="<?= e($ep['image']) ?>" alt="" loading="lazy" class="flex-shrink-0 rounded-circle" style="width:44px;height:44px;object-fit:cover;">
-                            <?php else: ?>
-                              <div class="flex-shrink-0 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width:44px;height:44px;"><i class="bi bi-mic-fill" aria-hidden="true"></i></div>
-                            <?php endif; ?>
-                            <div class="flex-grow-1">
-                              <strong><?= e($ep['name']) ?></strong>
-                              <p class="mb-0 text-secondary small"><?= e($ep['description']) ?></p>
-                            </div>
-                          </a>
-                        <?php endforeach; ?>
-                      </div>
-                    <?php else: ?>
-                      <p class="text-secondary">Episodi non disponibili al momento.</p>
-                    <?php endif; ?>
-                    <a href="/<?= e($slug) ?>/podcast" class="btn btn-sm btn-outline-primary">Vedi tutti gli episodi →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($isBandOrLabel && $hasYoutube): ?>
-                  <div class="tab-pane fade" id="video" role="tabpanel">
-                    <?php if ($videos): ?>
-                      <div class="row g-3 mb-3">
-                        <?php foreach ($videos as $v): ?>
-                          <div class="col-sm-4">
-                            <a href="https://www.youtube.com/watch?v=<?= e($v['video_id']) ?>" target="_blank" rel="noopener" class="text-decoration-none">
-                              <?php if (!empty($v['thumbnail'])): ?>
-                                <div class="ratio ratio-16x9 rounded mb-2 position-relative overflow-hidden">
-                                  <img src="<?= e($v['thumbnail']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
-                                  <i class="bi bi-play-circle-fill position-absolute top-50 start-50 translate-middle text-white fs-1" style="text-shadow:0 1px 6px rgba(0,0,0,0.5);" aria-hidden="true"></i>
-                                </div>
-                              <?php else: ?>
-                                <div class="ratio ratio-16x9 rounded bg-body-secondary d-flex align-items-center justify-content-center text-secondary mb-2"><i class="bi bi-play-circle fs-1" aria-hidden="true"></i></div>
-                              <?php endif; ?>
-                              <div class="fw-semibold small text-body"><?= e($v['title']) ?></div>
-                            </a>
-                          </div>
-                        <?php endforeach; ?>
-                      </div>
-                    <?php else: ?>
-                      <p class="text-secondary">Video non disponibili al momento.</p>
-                    <?php endif; ?>
-                    <a href="/<?= e($slug) ?>/video" class="btn btn-sm btn-outline-primary">Vedi tutti i video →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <div class="tab-pane fade" id="blog" role="tabpanel">
-                    <?php if ($blogPosts): ?>
-                      <?php foreach ($blogPosts as $bp): ?>
-                        <article class="mb-3 pb-3 border-bottom">
-                          <a href="<?= e(blogPostUrl($slug, $bp)) ?>" class="text-decoration-none text-body">
-                            <h4 class="h6 mb-1"><?= e($bp['title']) ?></h4>
-                          </a>
-                          <small class="text-secondary"><?= e(formatLocalDateTime($bp['published_at'], $artist)) ?></small>
-                          <?php if ($bp['excerpt']): ?><p class="mb-0 mt-1 text-secondary small"><?= e($bp['excerpt']) ?></p><?php endif; ?>
-                        </article>
-                      <?php endforeach; ?>
-                    <?php else: ?>
-                      <p class="text-secondary">Nessun articolo ancora.</p>
-                    <?php endif; ?>
-                    <a href="/<?= e($slug) ?>/blog" class="btn btn-sm btn-outline-primary">Vedi tutto il Blog →</a>
-                  </div>
-
-                  <?php if ($hasMenu): ?>
-                  <div class="tab-pane fade" id="menu" role="tabpanel">
-                    <ul class="list-group list-group-flush mb-3">
-                      <?php foreach ($menuPreview as $mi): ?>
-                        <li class="list-group-item d-flex justify-content-between">
-                          <span><?= e($mi['name']) ?></span>
-                          <?php if ($mi['price'] !== null): ?><span class="fw-semibold">€ <?= e(number_format((float) $mi['price'], 2, ',', '.')) ?></span><?php endif; ?>
-                        </li>
-                      <?php endforeach; ?>
-                    </ul>
-                    <a href="/<?= e($slug) ?>/menu" class="btn btn-sm btn-outline-primary">Vedi il menù completo →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($hasOffers): ?>
-                  <div class="tab-pane fade" id="offerte" role="tabpanel">
-                    <ul class="list-group list-group-flush mb-3">
-                      <?php foreach ($offersPreview as $of): ?>
-                        <li class="list-group-item d-flex justify-content-between">
-                          <span><?= e($of['title']) ?></span>
-                          <?php if ($of['price_label']): ?><span class="fw-semibold"><?= e($of['price_label']) ?></span><?php endif; ?>
-                        </li>
-                      <?php endforeach; ?>
-                    </ul>
-                    <a href="/<?= e($slug) ?>/offerte" class="btn btn-sm btn-outline-primary">Vedi tutte le offerte →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($hasPhotos):
-                    $galleryHasAlbums = (bool) array_filter($galleryItems, fn ($g) => $g['type'] === 'album');
-                    $galleryHasTimeline = (bool) array_filter($galleryItems, fn ($g) => $g['type'] === 'timeline');
-                  ?>
-                  <div class="tab-pane fade" id="foto" role="tabpanel">
-                    <?php if ($galleryHasAlbums && $galleryHasTimeline): ?>
-                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Filtra per tipo" id="gallery-filters">
-                      <button type="button" class="btn btn-primary" data-gallery-filter="all" aria-pressed="true">Tutte</button>
-                      <button type="button" class="btn btn-outline-primary" data-gallery-filter="album" aria-pressed="false">Album</button>
-                      <button type="button" class="btn btn-outline-primary" data-gallery-filter="timeline" aria-pressed="false">Timeline</button>
-                    </div>
-                    <?php endif; ?>
-                    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3 mb-2" id="gallery-grid">
-                      <?php foreach ($galleryItems as $g): ?>
-                        <div class="col" data-gallery-item="<?= e($g['type']) ?>">
-                          <a href="<?= e($g['url']) ?>" class="card h-100 mb-0 text-decoration-none">
-                            <div class="ratio ratio-4x3">
-                              <img src="/<?= e($g['src']) ?>" alt="" loading="lazy" class="card-img-top object-fit-cover">
-                            </div>
-                            <?php if ($g['caption']): ?><figcaption class="card-body py-2"><p class="fw-semibold mb-0 text-truncate small text-body"><?= e($g['caption']) ?></p></figcaption><?php endif; ?>
-                          </a>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
-                    <p class="text-secondary text-center my-4" id="gallery-empty" role="status" hidden>Nessuna foto in questa categoria.</p>
-                    <span class="fs-7 text-body-secondary d-block mb-3" id="gallery-count"><?= count($galleryItems) ?> foto</span>
-                    <a href="/<?= e($slug) ?>/foto" class="btn btn-sm btn-outline-primary">Vedi tutte le foto →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($hasServices): ?>
-                  <div class="tab-pane fade" id="servizi" role="tabpanel">
-                    <div class="row g-3 mb-3">
-                      <?php foreach ($servicesPreview as $sv): ?>
-                        <div class="col-sm-4">
-                          <div class="card h-100"><div class="card-body">
-                            <h4 class="h6 mb-0"><?= e($sv['title']) ?></h4>
-                          </div></div>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
-                    <a href="/<?= e($slug) ?>/servizi" class="btn btn-sm btn-outline-primary">Vedi tutti i servizi →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <?php if ($isBandOrLabel): ?>
-                  <div class="tab-pane fade" id="eventi" role="tabpanel">
-                    <?php if ($eventsPreview): ?>
-                      <ul class="list-unstyled mb-3">
-                        <?php foreach ($eventsPreview as $ev): ?>
-                          <li class="d-flex gap-3 mb-3">
-                            <span class="badge text-bg-success rounded-pill flex-shrink-0 align-self-start mt-1"><i class="bi bi-calendar-event" aria-hidden="true"></i></span>
-                            <div>
-                              <p class="mb-0 fw-semibold"><?= e($ev['title']) ?><?= $ev['venue'] ? ' — ' . e($ev['venue']) : '' ?></p>
-                              <small class="text-secondary"><?= $ev['is_perpetual'] ? 'Ricorrente' : e(formatLocalDateTime($ev['event_date'], $artist)) ?><?= $ev['city'] ? ' · ' . e($ev['city']) : '' ?></small>
-                            </div>
-                          </li>
-                        <?php endforeach; ?>
-                      </ul>
-                    <?php else: ?>
-                      <p class="text-secondary">Nessun evento in programma.</p>
-                    <?php endif; ?>
-                    <a href="/<?= e($slug) ?>/eventi" class="btn btn-sm btn-outline-primary">Vedi tutti gli eventi →</a>
-                  </div>
-                  <?php endif; ?>
-
-                  <div class="tab-pane fade" id="contatti" role="tabpanel">
-                    <p class="text-secondary">Scrivi direttamente a <?= e($artist['display_name']) ?> tramite il modulo di contatto.</p>
-                    <a href="/<?= e($slug) ?>/contatti" class="btn btn-sm btn-outline-primary"><i class="bi bi-envelope me-1"></i>Vai al modulo di contatto →</a>
-                  </div>
-
-                </div>
+                <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </main>
-
-  <!-- Stessi link di renderSiteFooterBar() (Preferenze Cookie/Privacy/Dashboard o nome sito/
-       Crediti), ma con markup nativo AdminLTE invece della classe .site-footer-fixed — quella
-       vive nel CSS condiviso (style.css) che qui non è caricato di proposito, per non mischiare
-       due sistemi di stile nella stessa pagina. -->
-  <?php
-    $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: '');
-  ?>
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
-      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
-      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
-    </div>
-    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
-  </footer>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
-
-<!-- Filtro della galleria Foto (Album/Timeline) — stessa logica della pagina gallery.html vera
-     del pacchetto AdminLTE, qui in italiano. Non fa nulla se il tab Foto non c'è. -->
-<script>
-  const galleryFilters = document.getElementById('gallery-filters');
-  const galleryGrid = document.getElementById('gallery-grid');
-  const galleryEmpty = document.getElementById('gallery-empty');
-  const galleryCount = document.getElementById('gallery-count');
-  if (galleryFilters && galleryGrid) {
-    const tiles = galleryGrid.querySelectorAll('[data-gallery-item]');
-    galleryFilters.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-gallery-filter]');
-      if (!button) return;
-      const category = button.dataset.galleryFilter;
-      let shown = 0;
-      tiles.forEach((tile) => {
-        const match = category === 'all' || tile.dataset.galleryItem === category;
-        tile.hidden = !match;
-        if (match) shown++;
-      });
-      galleryFilters.querySelectorAll('[data-gallery-filter]').forEach((other) => {
-        const active = other === button;
-        other.classList.toggle('btn-primary', active);
-        other.classList.toggle('btn-outline-primary', !active);
-        other.setAttribute('aria-pressed', String(active));
-      });
-      galleryEmpty.hidden = shown > 0;
-      galleryCount.textContent = shown + ' foto';
-    });
-  }
-</script>
 </body>
 </html>
     <?php
@@ -1447,14 +1389,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
 // tema Colorful (timeline.php/timeline_more.php) invece della sola anteprima di 5 elementi
 // mostrata nel tab Timeline della Home.
 function renderAdminLteTimelinePage(array $artist, string $slug): string {
-    $uid = (int) $artist['id'];
     $pageUrl = siteUrl('/' . $slug . '/timeline');
-    $pageSize = 20;
-    $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
-    $rows = renderAdminLteTimelineRows($feed);
-    $avatarUrl = adminLteAvatarUrl($artist);
-    $finished = count($feed) < $pageSize;
-
     ob_start();
     ?>
 <!doctype html>
@@ -1467,10 +1402,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 <meta property="og:title" content="Timeline di <?= e($artist['display_name']) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
@@ -1478,110 +1410,27 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 <body class="bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-
   <main class="app-main">
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6"><h1 class="mb-0 fs-3">Timeline</h1></div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
-                <li class="breadcrumb-item active" aria-current="page">Timeline</li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Timeline') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
             <div class="card">
-              <div class="card-header d-flex align-items-center gap-2">
-                <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="">
-                <h3 class="card-title mb-0">Timeline di <?= e($artist['display_name']) ?></h3>
-              </div>
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
-                <?php if (!$feed): ?>
-                  <p class="text-secondary">Nessun aggiornamento ancora.</p>
-                <?php else: ?>
-                  <div class="timeline" id="timeline-feed"><?= $rows['html'] ?></div>
-                <?php endif; ?>
-                <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
-                <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
-                <div id="timeline-sentinel" style="height:1px;"></div>
+                <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
           </div>
         </div>
       </div>
     </div>
   </main>
-
-  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
-      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
-      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
-    </div>
-    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
-  </footer>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
-
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
-<script>
-(function () {
-  var slug = <?= json_encode($slug) ?>;
-  var offset = <?= (int) count($feed) ?>;
-  var pageSize = <?= (int) $pageSize ?>;
-  var loading = false;
-  var finished = <?= $finished ? 'true' : 'false' ?>;
-  var lastDay = <?= json_encode($rows['lastDay']) ?>;
-  var feedEl = document.getElementById('timeline-feed');
-  var loadingEl = document.getElementById('timeline-loading');
-  var endEl = document.getElementById('timeline-end');
-  var sentinel = document.getElementById('timeline-sentinel');
-
-  function loadMore() {
-    if (loading || finished || !feedEl) return;
-    loading = true;
-    loadingEl.style.display = 'block';
-    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset + '&after_day=' + encodeURIComponent(lastDay || ''))
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        loadingEl.style.display = 'none';
-        if (data.html) {
-          feedEl.insertAdjacentHTML('beforeend', data.html);
-        }
-        if (data.lastDay) { lastDay = data.lastDay; }
-        offset += data.count;
-        if (data.count < pageSize) {
-          finished = true;
-          endEl.style.display = 'block';
-        }
-        loading = false;
-      })
-      .catch(function () {
-        loading = false;
-        loadingEl.style.display = 'none';
-      });
-  }
-
-  if (!finished && sentinel && 'IntersectionObserver' in window) {
-    var observer = new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) loadMore();
-    });
-    observer.observe(sentinel);
-  }
-})();
-</script>
 </body>
 </html>
     <?php
@@ -1622,9 +1471,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 
 <link rel="canonical" href="<?= e($pageUrl) ?>">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= adminLteAssetLinks() ?>
 <?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
 <?php endif; ?>
@@ -1635,74 +1482,54 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 <body class="bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-
   <main class="app-main">
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6"><h1 class="mb-0 fs-3">Timeline</h1></div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($post['display_name']) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>/timeline">Timeline</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Aggiornamento</li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <?= adminLteBreadcrumbHeader($slug, $post['display_name'], 'Aggiornamento', ['Timeline' => '/' . $slug . '/timeline']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
-            <div class="card mb-3">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
-                  <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['created_at'], $artist)) ?></span>
+
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
+                      <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['created_at'], $artist)) ?></span>
+                    </div>
+                    <?= renderPhotoCarousel($photos, (int) $post['id']) ?>
+                    <?php if ($post['testo']): ?><p class="mb-0"><?= nl2br(e($post['testo'])) ?></p><?php endif; ?>
+                  </div>
                 </div>
-                <?= renderPhotoCarousel($photos, (int) $post['id']) ?>
-                <?php if ($post['testo']): ?><p class="mb-0"><?= nl2br(e($post['testo'])) ?></p><?php endif; ?>
+
+                <?php if ($sameDayPosts): ?>
+                  <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayPosts) ?>)</h3>
+                  <?php foreach ($sameDayPosts as $sp):
+                    $spPhotos = array_values(array_filter(array_merge([$sp['image_path']], getTimelinePostPhotos((int) $sp['id']))));
+                  ?>
+                  <div class="card mb-3">
+                    <div class="card-body">
+                      <?= renderPhotoCarousel($spPhotos, (int) $sp['id']) ?>
+                      <small class="text-secondary"><?= e(formatLocalDateTime($sp['created_at'], $artist)) ?></small>
+                      <?php if ($sp['testo']): ?><p class="mb-0 mt-1"><?= nl2br(e($sp['testo'])) ?></p><?php endif; ?>
+                    </div>
+                  </div>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+
+                <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna alla Timeline</a>
               </div>
             </div>
-
-            <?php if ($sameDayPosts): ?>
-              <h3 class="h6 text-secondary text-center mb-3">Altri di questa giornata (<?= count($sameDayPosts) ?>)</h3>
-              <?php foreach ($sameDayPosts as $sp):
-                $spPhotos = array_values(array_filter(array_merge([$sp['image_path']], getTimelinePostPhotos((int) $sp['id']))));
-              ?>
-              <div class="card mb-3">
-                <div class="card-body">
-                  <?= renderPhotoCarousel($spPhotos, (int) $sp['id']) ?>
-                  <small class="text-secondary"><?= e(formatLocalDateTime($sp['created_at'], $artist)) ?></small>
-                  <?php if ($sp['testo']): ?><p class="mb-0 mt-1"><?= nl2br(e($sp['testo'])) ?></p><?php endif; ?>
-                </div>
-              </div>
-              <?php endforeach; ?>
-            <?php endif; ?>
-
-            <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna alla Timeline</a>
           </div>
         </div>
       </div>
     </div>
   </main>
-
-  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
-      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
-      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
-    </div>
-    <strong><?= e($post['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
-  </footer>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
-
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
 <script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
 <?php endif; ?>
@@ -1717,6 +1544,8 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts): string {
     $pageUrl = siteUrl('/' . $slug . '/blog');
     $avatarUrl = adminLteAvatarUrl($artist);
+    $pageSize = 20;
+    $finished = count($posts) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -1729,10 +1558,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
 <meta property="og:title" content="Blog di <?= e($artist['display_name']) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
@@ -1740,73 +1566,35 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
 <body class="bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-
   <main class="app-main">
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6"><h1 class="mb-0 fs-3">Blog</h1></div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
-                <li class="breadcrumb-item active" aria-current="page">Blog</li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Blog') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="">
-              <h3 class="mb-0">Blog di <?= e($artist['display_name']) ?></h3>
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'blog') ?></div>
+              <div class="card-body">
+
+                <?php if (!$posts): ?>
+                  <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
+                <?php else: ?>
+                  <div id="adminlte-list-feed"><?= renderAdminLteBlogRows($posts, $slug, $artist) ?></div>
+                  <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+                  <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+                  <div id="adminlte-list-sentinel" style="height:1px;"></div>
+                  <?= adminLteInfiniteScrollScript('blog', $slug, count($posts), $pageSize, $finished) ?>
+                <?php endif; ?>
+
+              </div>
             </div>
-
-            <?php if (!$posts): ?>
-              <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
-            <?php endif; ?>
-
-            <?php foreach ($posts as $p): ?>
-              <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="d-flex">
-                  <?php if ($p['cover_path']): ?>
-                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start" style="width:140px;height:140px;object-fit:cover;flex-shrink:0;">
-                  <?php else: ?>
-                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center" style="width:140px;height:140px;flex-shrink:0;">
-                      <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
-                    </div>
-                  <?php endif; ?>
-                  <div class="card-body">
-                    <h3 class="h5 mb-1"><?= e($p['title']) ?></h3>
-                    <p class="text-secondary small mb-2"><?= e(formatLocalDateTime($p['published_at'], $artist)) ?></p>
-                    <?php if ($p['excerpt']): ?><p class="mb-0 text-secondary"><?= e(textExcerpt($p['excerpt'], 160)) ?></p><?php endif; ?>
-                  </div>
-                </div>
-              </a>
-            <?php endforeach; ?>
-
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
           </div>
         </div>
       </div>
     </div>
   </main>
-
-  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
-      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
-      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
-    </div>
-    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
-  </footer>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
 </body>
 </html>
@@ -1846,9 +1634,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 
 <link rel="canonical" href="<?= e($permalink) ?>">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') ?>">
+<?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
@@ -1856,67 +1642,46 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
 <body class="bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-
   <main class="app-main">
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6"><h1 class="mb-0 fs-3">Blog</h1></div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($artist['display_name']) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>/blog">Blog</a></li>
-                <li class="breadcrumb-item active" aria-current="page"><?= e($post['title']) ?></li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $post['title'], ['Blog' => '/' . $slug . '/blog']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
-            <article class="card mb-3">
-              <?php if ($post['cover_path']): ?>
-                <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
-              <?php endif; ?>
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'blog') ?></div>
               <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
-                  <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
-                </div>
-                <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
-                <div><?= nl2br(e($post['content'])) ?></div>
-              </div>
-            </article>
 
-            <div class="card mb-3">
-              <div class="card-body">
-                <strong>Condividi questo articolo</strong><br>
-                <small class="text-secondary"><?= e($permalink) ?></small>
+                <article class="card mb-3">
+                  <?php if ($post['cover_path']): ?>
+                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
+                  <?php endif; ?>
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
+                      <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
+                    </div>
+                    <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
+                    <div><?= nl2br(e($post['content'])) ?></div>
+                  </div>
+                </article>
+
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <strong>Condividi questo articolo</strong><br>
+                    <small class="text-secondary"><?= e($permalink) ?></small>
+                  </div>
+                </div>
+
               </div>
             </div>
-
-            <a href="/<?= e($slug) ?>/blog" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al Blog</a>
           </div>
         </div>
       </div>
     </div>
   </main>
-
-  <?php $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: ''); ?>
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <a href="#" class="cky-banner-element text-decoration-none">Preferenze Cookie</a>
-      · <a href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>" class="text-decoration-none"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a>
-      · <a href="/credits.php" class="text-decoration-none">Crediti</a>
-    </div>
-    <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
-  </footer>
+  <?= adminLteFooterBlock($artist) ?>
 </div>
 </body>
 </html>
@@ -1952,23 +1717,28 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Che Amo') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
-            <?php if ($visibleModules): ?>
-            <div class="row g-3 text-center">
-              <?php foreach ($visibleModules as $mKey => $m): ?>
-                <div class="col-6 col-sm-4 col-lg-3">
-                  <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="card text-decoration-none text-body p-3 h-100">
-                    <div class="fs-2 text-primary mb-2"><i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$mKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
-                    <div class="fw-semibold small"><?= e($m['label']) ?></div>
-                  </a>
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
+                <?php if ($visibleModules): ?>
+                <div class="row g-3 text-center">
+                  <?php foreach ($visibleModules as $mKey => $m): ?>
+                    <div class="col-6 col-sm-4 col-lg-3">
+                      <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="card text-decoration-none text-body p-3 h-100">
+                        <div class="fs-2 text-primary mb-2"><i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$mKey] ?? 'bi-heart') ?>" aria-hidden="true"></i></div>
+                        <div class="fw-semibold small"><?= e($m['label']) ?></div>
+                      </a>
+                    </div>
+                  <?php endforeach; ?>
                 </div>
-              <?php endforeach; ?>
+                <?php else: ?>
+                  <div class="card"><div class="card-body text-secondary">Nessun contenuto ancora.</div></div>
+                <?php endif; ?>
+              </div>
             </div>
-            <?php else: ?>
-              <div class="card"><div class="card-body text-secondary">Nessun contenuto ancora.</div></div>
-            <?php endif; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
           </div>
         </div>
       </div>
@@ -1988,7 +1758,8 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
 function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $favorites, string $kind): string {
     $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$kind];
     $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment']);
-    $shapeStyle = ['circle' => 'width:64px;height:64px;border-radius:50%;', 'book' => 'width:64px;height:88px;border-radius:6px;', 'square' => 'width:80px;height:80px;border-radius:10px;'][$cfg['image_shape']];
+    $pageSize = 20;
+    $finished = count($favorites) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -2013,27 +1784,23 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $cfg['label'], ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
-            <?php if ($favorites): ?>
-            <div class="row g-3 text-center">
-              <?php foreach ($favorites as $f): $img = $f[$cfg['image_col']] ?? null; ?>
-                <div class="col-6 col-sm-4 col-lg-3">
-                  <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>/<?= (int) $f['id'] ?>" class="card text-decoration-none text-body p-3 h-100">
-                    <?php if ($img): ?>
-                      <img src="<?= e($img) ?>" alt="" loading="lazy" class="mx-auto mb-2 d-block" style="<?= $shapeStyle ?>object-fit:cover;">
-                    <?php endif; ?>
-                    <div class="fw-semibold small"><?= e($f[$cfg['name_col']]) ?></div>
-                    <?php if ($kind === 'album' && !empty($f['album_artist_name'])): ?><div class="text-secondary" style="font-size:11.5px;"><?= e($f['album_artist_name']) ?></div><?php endif; ?>
-                    <small class="text-secondary" style="font-size:11px;"><?= e(publishedAtLabel($f['publish_at'], $f['created_at'], $artist)) ?></small>
-                  </a>
-                </div>
-              <?php endforeach; ?>
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
+                <?php if ($favorites): ?>
+                <div class="row g-3 text-center" id="adminlte-list-feed"><?= renderAdminLteFanFavoriteRows($favorites, $slug, $kind, $artist) ?></div>
+                <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+                <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+                <div id="adminlte-list-sentinel" style="height:1px;"></div>
+                <?= adminLteInfiniteScrollScript($kind, $slug, count($favorites), $pageSize, $finished) ?>
+                <?php else: ?>
+                  <div class="card"><div class="card-body text-secondary">Nessun elemento aggiunto ancora.</div></div>
+                <?php endif; ?>
+              </div>
             </div>
-            <?php else: ?>
-              <div class="card"><div class="card-body text-secondary">Nessun elemento aggiunto ancora.</div></div>
-            <?php endif; ?>
-            <a href="/<?= e($slug) ?>/che-amo" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna a Che Amo</a>
           </div>
         </div>
       </div>
@@ -2094,8 +1861,12 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $name, ['Che Amo' => '/' . $slug . '/che-amo', $cfg['label'] => '/' . $slug . '/' . $cfg['list_url_segment']]) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2148,7 +1919,8 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
               <?php endforeach; ?>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>/<?= e($cfg['list_url_segment']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli elementi di <?= e(strtolower($cfg['label'])) ?></a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2186,11 +1958,15 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggi (' . $totalCount . ')') ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggi (' . $totalCount . ')', ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <?php if ($monthGroups): ?>
               <?php foreach ($monthGroups as $group): ?>
                 <h3 class="h6 text-secondary mt-3 mb-2"><?= e($group['label']) ?></h3>
@@ -2209,7 +1985,8 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
             <?php else: ?>
               <div class="card"><div class="card-body text-secondary">Nessun viaggio aggiunto ancora.</div></div>
             <?php endif; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2263,11 +2040,15 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $trip['place_name'], ['Viaggi' => '/' . $slug . '/viaggi']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $trip['place_name'], ['Che Amo' => '/' . $slug . '/che-amo', 'Viaggi' => '/' . $slug . '/viaggi']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
@@ -2309,7 +2090,8 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
               <?php endforeach; ?>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>/viaggi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i viaggi</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2328,6 +2110,8 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
 // Colorful (ogni riga ha anche i link a testo/voto).
 function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks): string {
     $pageUrl = siteUrl('/' . $slug . '/brani');
+    $pageSize = 20;
+    $finished = count($tracks) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -2352,35 +2136,23 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Brani che amo', ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <?php if (!$tracks): ?>
               <div class="card"><div class="card-body text-secondary">Nessun brano aggiunto ancora.</div></div>
+            <?php else: ?>
+              <div id="adminlte-list-feed"><?= renderAdminLteBraniRows($tracks, $slug, $artist) ?></div>
+              <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+              <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+              <div id="adminlte-list-sentinel" style="height:1px;"></div>
+              <?= adminLteInfiniteScrollScript('brani', $slug, count($tracks), $pageSize, $finished) ?>
             <?php endif; ?>
-            <?php foreach ($tracks as $t): $trackStats = getTrackRatingStats((int) $t['id']); ?>
-              <div class="card mb-3">
-                <div class="card-body d-flex align-items-center gap-3">
-                  <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/scheda" class="d-flex align-items-center gap-3 text-decoration-none text-body flex-grow-1" style="min-width:0;">
-                    <?php if ($t['track_image']): ?>
-                      <img src="<?= e($t['track_image']) ?>" alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-                    <?php else: ?>
-                      <div class="bg-body-tertiary rounded" style="width:64px;height:64px;flex-shrink:0;"></div>
-                    <?php endif; ?>
-                    <div style="min-width:0;">
-                      <strong class="d-block text-truncate"><?= e($t['track_name']) ?></strong>
-                      <small class="text-secondary"><?= e($t['artist_name']) ?></small><br>
-                      <small><?= renderCromeRating($trackStats['avg']) ?><?php if ($trackStats['count'] > 0): ?> <span class="text-secondary">(<?= $trackStats['count'] ?>)</span><?php endif; ?></small><br>
-                      <small class="text-secondary"><?= e(publishedAtLabel($t['publish_at'], $t['created_at'], $artist)) ?></small>
-                    </div>
-                  </a>
-                  <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                    <?php if (!empty($t['lyrics'])): ?><a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/testo" title="Testo e ascolto" class="text-decoration-none"><i class="bi bi-file-text fs-5"></i></a><?php endif; ?>
-                    <a href="/<?= e($slug) ?>/brani/<?= (int) $t['id'] ?>/votazioni" title="Vota questo brano" class="text-decoration-none text-warning"><i class="bi bi-star-fill fs-5"></i></a>
-                  </div>
-                </div>
               </div>
-            <?php endforeach; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+            </div>
           </div>
         </div>
       </div>
@@ -2431,11 +2203,15 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $track['track_name'], ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $track['track_name'], ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2475,7 +2251,8 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
               <?php endforeach; ?>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2514,11 +2291,15 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Testo e ascolto', ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Testo e ascolto', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2542,7 +2323,8 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
             </div>
 
             <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/votazioni"><i class="bi bi-star-fill me-1"></i>Vota questo brano →</a></p>
-            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2581,11 +2363,15 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Vota il brano', ['Brani che amo' => '/' . $slug . '/brani']) ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Vota il brano', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2616,7 +2402,8 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
             <?php if (!empty($track['lyrics'])): ?>
               <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/testo"><i class="bi bi-file-text me-1"></i>Testo e ascolto →</a></p>
             <?php endif; ?>
-            <a href="/<?= e($slug) ?>/brani" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i brani che ama</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2658,8 +2445,12 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Spotify') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'spotify') ?></div>
+              <div class="card-body">
 
             <?php if (!empty($artistDetails['genres'])): ?>
             <div class="mb-3">
@@ -2713,7 +2504,8 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
                 </a>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2755,8 +2547,12 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['spotify_show_name'] ?: 'Podcast') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'podcast') ?></div>
+              <div class="card-body">
             <?php if ($episodes): ?>
               <?php foreach ($episodes as $ep): ?>
                 <a class="card mb-2 text-decoration-none text-body" href="<?= e($ep['spotify_url']) ?>" target="_blank" rel="noopener">
@@ -2785,7 +2581,8 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
                 </a>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2826,8 +2623,12 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Video') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'video') ?></div>
+              <div class="card-body">
             <?php if ($videos): ?>
               <?php foreach ($videos as $v): ?>
                 <div class="card mb-3 p-0" style="overflow:hidden;">
@@ -2849,7 +2650,8 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
                 </a>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2898,8 +2700,12 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Menù') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'menu') ?></div>
+              <div class="card-body">
             <?php if ($categories): ?>
             <div class="card">
               <div class="card-header p-0 border-bottom-0">
@@ -2936,7 +2742,8 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
                 <?php foreach (MENU_ALLERGENS as $aId => $aLabel): ?><?= $aId ?>. <?= e($aLabel) ?><?= $aId < count(MENU_ALLERGENS) ? ' · ' : '' ?><?php endforeach; ?>
               </p>
             <?php endif; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-2"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2969,6 +2776,8 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
 // Elenco pubblico "Offerte speciali" a tema AdminLTE — offerte.php.
 function renderAdminLteOfferteListPage(array $artist, string $slug, array $offers): string {
     $pageUrl = siteUrl('/' . $slug . '/offerte');
+    $pageSize = 20;
+    $finished = count($offers) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -2993,24 +2802,23 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Offerte') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'offerte') ?></div>
+              <div class="card-body">
             <?php if (!$offers): ?>
               <div class="card"><div class="card-body text-secondary">Nessuna offerta attiva al momento.</div></div>
+            <?php else: ?>
+              <div id="adminlte-list-feed"><?= renderAdminLteOfferteRows($offers, $slug, $artist) ?></div>
+              <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+              <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+              <div id="adminlte-list-sentinel" style="height:1px;"></div>
+              <?= adminLteInfiniteScrollScript('offerte', $slug, count($offers), $pageSize, $finished) ?>
             <?php endif; ?>
-            <?php foreach ($offers as $of): ?>
-              <a href="/<?= e($slug) ?>/offerte/<?= (int) $of['id'] ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="card-body d-flex align-items-center gap-3">
-                  <?php if ($of['cover_path']): ?><img src="/<?= e($of['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
-                  <div class="flex-grow-1" style="min-width:0;">
-                    <strong><?= e($of['title']) ?></strong>
-                    <?php if ($of['price_label']): ?><div class="text-primary fw-bold"><?= e($of['price_label']) ?></div><?php endif; ?>
-                    <?php if ($of['valid_until']): ?><small class="text-secondary d-block mt-1">Valida fino al <?= e(formatLocalDateTime($of['valid_until'], $artist, 'd/m/Y')) ?></small><?php endif; ?>
-                  </div>
-                </div>
-              </a>
-            <?php endforeach; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3063,8 +2871,12 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $offer['title'], ['Offerte' => '/' . $slug . '/offerte']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'offerte') ?></div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
               <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3083,7 +2895,8 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
                 <?php if (!empty($offer['description'])): ?><p class="text-start mt-3"><?= nl2br(e($offer['description'])) ?></p><?php endif; ?>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>/offerte" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutte le offerte</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3126,8 +2939,12 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Foto') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'foto') ?></div>
+              <div class="card-body">
 
             <?php if ($albums): ?>
               <h3 class="h6 text-secondary mb-2">Album (<?= count($albums) ?>)</h3>
@@ -3169,7 +2986,8 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
               <div class="card"><div class="card-body text-secondary">Nessuna foto ancora.</div></div>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3225,8 +3043,12 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $album['title'], ['Foto' => '/' . $slug . '/foto']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'foto') ?></div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3238,7 +3060,8 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
                 <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
               </div>
             </div>
-            <a href="/<?= e($slug) ?>/foto" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutte le foto</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3256,6 +3079,8 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
 // Elenco pubblico "Servizi" a tema AdminLTE — servizi.php.
 function renderAdminLteServiziListPage(array $artist, string $slug, array $services): string {
     $pageUrl = siteUrl('/' . $slug . '/servizi');
+    $pageSize = 20;
+    $finished = count($services) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -3280,24 +3105,23 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Servizi') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'servizi') ?></div>
+              <div class="card-body">
             <?php if (!$services): ?>
               <div class="card"><div class="card-body text-secondary">Nessun servizio pubblicato al momento.</div></div>
+            <?php else: ?>
+              <div id="adminlte-list-feed"><?= renderAdminLteServiziRows($services, $slug) ?></div>
+              <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+              <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+              <div id="adminlte-list-sentinel" style="height:1px;"></div>
+              <?= adminLteInfiniteScrollScript('servizi', $slug, count($services), $pageSize, $finished) ?>
             <?php endif; ?>
-            <?php foreach ($services as $sv): ?>
-              <a href="/<?= e($slug) ?>/servizi/<?= (int) $sv['id'] ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="card-body d-flex align-items-center gap-3">
-                  <?php if ($sv['cover_path']): ?><img src="/<?= e($sv['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
-                  <div class="flex-grow-1" style="min-width:0;">
-                    <strong><?= e($sv['title']) ?></strong>
-                    <?php if ($sv['description']): ?><div class="text-secondary small mt-1"><?= e(textExcerpt($sv['description'], 90)) ?></div><?php endif; ?>
-                    <?php if ((int) $sv['accepts_inquiries'] === 1): ?><small class="text-primary fw-semibold d-block mt-1"><i class="bi bi-envelope me-1"></i>Richiedi informazioni</small><?php endif; ?>
-                  </div>
-                </div>
-              </a>
-            <?php endforeach; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3351,8 +3175,12 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $service['title'], ['Servizi' => '/' . $slug . '/servizi']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'servizi') ?></div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3386,7 +3214,8 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
             </div>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>/servizi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti i servizi</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3404,6 +3233,8 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 // Elenco pubblico "Eventi" a tema AdminLTE — eventi.php.
 function renderAdminLteEventiListPage(array $artist, string $slug, array $events): string {
     $pageUrl = siteUrl('/' . $slug . '/eventi');
+    $pageSize = 20;
+    $finished = count($events) < $pageSize;
     ob_start();
     ?>
 <!doctype html>
@@ -3428,25 +3259,23 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Eventi') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'eventi') ?></div>
+              <div class="card-body">
             <?php if (!$events): ?>
               <div class="card"><div class="card-body text-secondary">Nessun evento in programma al momento.</div></div>
+            <?php else: ?>
+              <div id="adminlte-list-feed"><?= renderAdminLteEventiRows($events, $slug, $artist) ?></div>
+              <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
+              <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
+              <div id="adminlte-list-sentinel" style="height:1px;"></div>
+              <?= adminLteInfiniteScrollScript('eventi', $slug, count($events), $pageSize, $finished) ?>
             <?php endif; ?>
-            <?php foreach ($events as $ev): $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false)); ?>
-              <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="card-body d-flex align-items-center gap-3">
-                  <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
-                  <div class="flex-grow-1" style="min-width:0;">
-                    <small class="text-secondary d-block"><?= e(formatLocalDateTime($ev['event_date'], $artist)) ?></small>
-                    <strong><?= e($ev['title']) ?></strong>
-                    <?php if ($ev['venue'] || $ev['city']): ?><small class="text-secondary d-block"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></small><?php endif; ?>
-                    <?php if ($scheduleLabel): ?><small class="fw-semibold d-block"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></small><?php endif; ?>
-                  </div>
-                </div>
-              </a>
-            <?php endforeach; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3500,8 +3329,12 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $event['title'], ['Eventi' => '/' . $slug . '/eventi']) ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'eventi') ?></div>
+              <div class="card-body">
             <div class="card mb-3">
               <?php if ($event['cover_path']): ?>
                 <div class="position-relative">
@@ -3544,7 +3377,8 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
             </div>
             <?php endif; ?>
 
-            <a href="/<?= e($slug) ?>/eventi" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli eventi</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3586,8 +3420,12 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Contatti') ?>
     <div class="app-content">
       <div class="container-fluid">
-        <div class="row g-3 justify-content-center">
-          <div class="col-lg-8">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'contatti') ?></div>
+              <div class="card-body">
             <?php if ($formSent): ?>
               <div class="alert alert-success">Messaggio inviato! Grazie, verrai ricontattato al più presto.</div>
               <?= embedClientSideConversionEvent('Contact', $conversionEventId, $artist) ?>
@@ -3605,7 +3443,8 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
                 </div>
               </div>
             <?php endif; ?>
-            <a href="/<?= e($slug) ?>" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna al profilo</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

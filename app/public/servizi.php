@@ -17,13 +17,14 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
+$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
 $services = getDB()->prepare("SELECT sv.*, (SELECT COUNT(*) FROM service_photos WHERE service_id = sv.id) AS extra_photos
     FROM services sv WHERE sv.user_id=? AND sv.show_in_feed = 1
-    AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.sort_order DESC");
+    AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.sort_order DESC" . ($isAdminLte ? ' LIMIT 20' : ''));
 $services->execute([$artist['id']]);
 $services = $services->fetchAll();
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if ($isAdminLte) {
     echo renderAdminLteServiziListPage($artist, $slug, $services);
     exit;
 }

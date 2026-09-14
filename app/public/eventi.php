@@ -19,11 +19,12 @@ if (!$artist) {
 
 // Un evento "perpetuo" (nessuna data di fine, es. ricorrente ogni settimana) resta sempre tra i
 // prossimi eventi, indipendentemente da event_date — vedi eventScheduleLabel() in functions.php.
-$events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC');
+$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC' . ($isAdminLte ? ' LIMIT 20' : ''));
 $events->execute([$artist['id']]);
 $events = $events->fetchAll();
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if ($isAdminLte) {
     echo renderAdminLteEventiListPage($artist, $slug, $events);
     exit;
 }
