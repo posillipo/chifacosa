@@ -890,6 +890,25 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
         'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
     ];
 
+    // Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget
+    // .timeline reale di AdminLTE (UI/timeline.html) nel tab Timeline qui sotto.
+    $timelineTypeMeta = [
+        'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
+        'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
+        'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
+        'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
+        'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
+        'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
+        'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
+        'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
+        'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
+        'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
+        'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
+        'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
+        'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
+        'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
+    ];
+
     ob_start();
     ?>
 <!doctype html>
@@ -1027,16 +1046,39 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                 <div class="tab-content">
 
                   <div class="tab-pane fade show active" id="tl" role="tabpanel">
-                    <?php if ($timelineItems): ?>
-                      <?php foreach ($timelineItems as $it): ?>
-                        <article class="mb-3 pb-3 border-bottom">
-                          <div class="d-flex justify-content-between">
-                            <strong><?= e($it['titolo']) ?></strong>
-                            <small class="text-secondary"><?= e(formatLocalDateTime($it['data'], $artist)) ?></small>
+                    <?php if ($timelineItems):
+                      // Widget .timeline reale di AdminLTE (UI/timeline.html): icona+colore per
+                      // tipo, etichetta di data quando cambia giorno rispetto all'elemento prima
+                      // (gli item arrivano già ordinati dal più recente), copertina nel corpo
+                      // quando c'è una foto — stessa struttura della pagina di esempio, con dati
+                      // veri al posto del testo segnaposto.
+                      $lastDay = null;
+                    ?>
+                    <div class="timeline">
+                      <?php foreach ($timelineItems as $it):
+                        $day = formatLocalDateTime($it['data'], $artist, 'd/m/Y');
+                        $meta = $timelineTypeMeta[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
+                      ?>
+                        <?php if ($day !== $lastDay): $lastDay = $day; ?>
+                        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
+                        <?php endif; ?>
+                        <div>
+                          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
+                          <div class="timeline-item">
+                            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], $artist, 'H:i')) ?></span>
+                            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
+                            <?php if (!empty($it['cover'])):
+                              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
+                            ?>
+                            <div class="timeline-body">
+                              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
+                            </div>
+                            <?php endif; ?>
                           </div>
-                          <a href="<?= e($it['url']) ?>" class="small">Apri →</a>
-                        </article>
+                        </div>
                       <?php endforeach; ?>
+                      <div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div>
+                    </div>
                     <?php else: ?>
                       <p class="text-secondary">Nessun aggiornamento ancora.</p>
                     <?php endif; ?>
@@ -1078,7 +1120,11 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                       <div class="list-group list-group-flush mb-3">
                         <?php foreach ($podcastEpisodes as $ep): ?>
                           <a href="<?= e($ep['spotify_url'] ?? '#') ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex gap-3">
-                            <div class="flex-shrink-0 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width:44px;height:44px;"><i class="bi bi-mic-fill" aria-hidden="true"></i></div>
+                            <?php if (!empty($ep['image'])): ?>
+                              <img src="<?= e($ep['image']) ?>" alt="" loading="lazy" class="flex-shrink-0 rounded-circle" style="width:44px;height:44px;object-fit:cover;">
+                            <?php else: ?>
+                              <div class="flex-shrink-0 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width:44px;height:44px;"><i class="bi bi-mic-fill" aria-hidden="true"></i></div>
+                            <?php endif; ?>
                             <div class="flex-grow-1">
                               <strong><?= e($ep['name']) ?></strong>
                               <p class="mb-0 text-secondary small"><?= e($ep['description']) ?></p>
@@ -1100,7 +1146,14 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
                         <?php foreach ($videos as $v): ?>
                           <div class="col-sm-4">
                             <a href="https://www.youtube.com/watch?v=<?= e($v['video_id']) ?>" target="_blank" rel="noopener" class="text-decoration-none">
-                              <div class="ratio ratio-16x9 rounded bg-body-secondary d-flex align-items-center justify-content-center text-secondary mb-2"><i class="bi bi-play-circle fs-1" aria-hidden="true"></i></div>
+                              <?php if (!empty($v['thumbnail'])): ?>
+                                <div class="ratio ratio-16x9 rounded mb-2 position-relative overflow-hidden">
+                                  <img src="<?= e($v['thumbnail']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+                                  <i class="bi bi-play-circle-fill position-absolute top-50 start-50 translate-middle text-white fs-1" style="text-shadow:0 1px 6px rgba(0,0,0,0.5);" aria-hidden="true"></i>
+                                </div>
+                              <?php else: ?>
+                                <div class="ratio ratio-16x9 rounded bg-body-secondary d-flex align-items-center justify-content-center text-secondary mb-2"><i class="bi bi-play-circle fs-1" aria-hidden="true"></i></div>
+                              <?php endif; ?>
                               <div class="fw-semibold small text-body"><?= e($v['title']) ?></div>
                             </a>
                           </div>
