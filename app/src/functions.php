@@ -850,6 +850,14 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
                 </a>
               </div>
             </div>
+
+            <?php if (empty($_SESSION['user_id'])): ?>
+            <div class="text-center small mt-3">
+              <a href="/login.php" class="text-decoration-none"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Accedi</a>
+              <span class="text-secondary mx-1">·</span>
+              <a href="/register.php" class="text-decoration-none"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Registrati</a>
+            </div>
+            <?php endif; ?>
           </div>
     <?php
     return ob_get_clean();
