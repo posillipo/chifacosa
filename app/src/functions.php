@@ -843,7 +843,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
 
     ob_start();
     ?>
-          <div class="col-md-3 order-2 order-md-1">
+          <div class="col-md-3">
             <div class="card">
               <div class="card-body text-center">
                 <img src="<?= e($avatarUrl) ?>" class="rounded-circle mb-3" style="width:96px;height:96px;object-fit:cover;" alt="<?= e($artist['display_name']) ?>">
@@ -1379,7 +1379,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
@@ -1432,7 +1432,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
@@ -1504,7 +1504,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'timeline') ?></div>
               <div class="card-body">
@@ -1588,7 +1588,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'blog') ?></div>
               <div class="card-body">
@@ -1664,7 +1664,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'blog') ?></div>
               <div class="card-body">
@@ -1735,7 +1735,7 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -1802,7 +1802,7 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -1879,7 +1879,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -1979,7 +1979,7 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2061,7 +2061,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2154,7 +2154,7 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2224,7 +2224,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2312,7 +2312,7 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2384,7 +2384,7 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'cheamo') ?></div>
               <div class="card-body">
@@ -2463,7 +2463,7 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'spotify') ?></div>
               <div class="card-body">
@@ -2565,7 +2565,7 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'podcast') ?></div>
               <div class="card-body">
@@ -2641,7 +2641,7 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'video') ?></div>
               <div class="card-body">
@@ -2718,7 +2718,7 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'menu') ?></div>
               <div class="card-body">
@@ -2820,7 +2820,7 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'offerte') ?></div>
               <div class="card-body">
@@ -2889,7 +2889,7 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'offerte') ?></div>
               <div class="card-body">
@@ -2957,7 +2957,7 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'foto') ?></div>
               <div class="card-body">
@@ -3061,7 +3061,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'foto') ?></div>
               <div class="card-body">
@@ -3123,7 +3123,7 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'servizi') ?></div>
               <div class="card-body">
@@ -3193,7 +3193,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'servizi') ?></div>
               <div class="card-body">
@@ -3277,7 +3277,7 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'eventi') ?></div>
               <div class="card-body">
@@ -3347,7 +3347,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'eventi') ?></div>
               <div class="card-body">
@@ -3438,7 +3438,7 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <div class="col-md-9 order-1 order-md-2">
+          <div class="col-md-9">
             <div class="card">
               <div class="card-header p-0 border-bottom-0"><?= renderAdminLteNavTabs($artist, $slug, 'contatti') ?></div>
               <div class="card-body">
