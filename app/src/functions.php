@@ -766,7 +766,14 @@ function adminLteAssetLinks(): string {
          // larghezza e schiaccia il titolo in una colonna strettissima che va a capo parola per
          // parola. Qui sotto 576px si riduce.
          . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;}'
-         . '@media (max-width:575.98px){.adminlte-blog-thumb{width:88px;height:88px;}}</style>';
+         . '@media (max-width:575.98px){.adminlte-blog-thumb{width:88px;height:88px;}}'
+         // renderPhotoCarousel() (condiviso col tema Colorful) dà alla foto il proprio bordo
+         // arrotondato + ombra, pensati per stare su uno sfondo piatto. Qui invece è sempre
+         // dentro una card AdminLTE, che ha già il proprio bordo: le due cornici affiancate (col
+         // padding della card in mezzo) si vedevano come un doppio bordo. Tolta l'ombra e
+         // ridotto l'arrotondamento della foto: resta solo quello della card.
+         . '.card-body>img,.card-body>.ig-carousel .ig-carousel-track{box-shadow:none!important;border-radius:8px!important}'
+         . '</style>';
 }
 
 // Blocco breadcrumb + titolo H1 dell'app-content-header. $trail sono le tappe intermedie tra
