@@ -759,6 +759,7 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
 function adminLteAssetLinks(): string {
     return '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media=\'all\'">' . "\n"
          . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">' . "\n"
+         . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">' . "\n"
          . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') . '">';
 }
 
@@ -824,7 +825,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
     $hasYoutube = !empty($artist['youtube_channel_id']);
     $hasPodcast = !empty($artist['spotify_show_id']);
 
-    $stmt = $db->prepare("SELECT label, url FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
+    $stmt = $db->prepare("SELECT id, label, url, cover_path, is_website_icon FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
     $stmt->execute([$uid]);
     $links = $stmt->fetchAll();
 
@@ -867,10 +868,25 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
               <div class="card-header"><h3 class="card-title">I miei link</h3></div>
               <div class="list-group list-group-flush">
                 <?php foreach ($links as $lk): ?>
-                <a href="<?= e($lk['url']) ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
-                  <i class="bi bi-link-45deg text-primary" aria-hidden="true"></i>
-                  <span class="flex-grow-1"><?= e($lk['label']) ?></span>
-                  <i class="bi bi-chevron-right text-secondary small" aria-hidden="true"></i>
+                <?php
+                    // Stessa icona per piattaforma già usata dal tema Colorful (detectPlatform()):
+                    // Instagram, Spotify, YouTube ecc. riconosciuti dal dominio dell'URL. Un link
+                    // segnato come "sito web personale" mostra sempre il globo, una copertina
+                    // personalizzata (se caricata) sostituisce l'icona con una miniatura.
+                    $platform = !empty($lk['is_website_icon'])
+                        ? ['icon_class' => 'fa-solid fa-globe', 'label' => 'Sito web']
+                        : (detectPlatform($lk['url']) ?? ['icon_class' => 'bi-link-45deg', 'label' => 'Link']);
+                ?>
+                <a href="/link.php?id=<?= (int) $lk['id'] ?>" target="_blank" rel="noopener" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                  <?php if (!empty($lk['cover_path'])): ?>
+                    <img src="/<?= e($lk['cover_path']) ?>" alt="" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;flex-shrink:0;">
+                  <?php else: ?>
+                    <span class="bg-body-secondary rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width:28px;height:28px;">
+                      <i class="<?= e($platform['icon_class']) ?> text-primary" style="font-size:.85rem;" aria-hidden="true" title="<?= e($platform['label']) ?>"></i>
+                    </span>
+                  <?php endif; ?>
+                  <span class="flex-grow-1 text-truncate"><?= e($lk['label']) ?></span>
+                  <i class="bi bi-chevron-right text-secondary small flex-shrink-0" aria-hidden="true"></i>
                 </a>
                 <?php endforeach; ?>
               </div>
