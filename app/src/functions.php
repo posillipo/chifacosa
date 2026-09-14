@@ -773,6 +773,10 @@ function adminLteAssetLinks(): string {
 // l'artista e la pagina corrente, come coppie [etichetta => url] (es. ['Che Amo' => '/slug/che-amo']
 // per la pagina di un singolo elemento) — vuoto per le pagine di primo livello.
 function adminLteBreadcrumbHeader(string $slug, string $displayName, string $current, array $trail = []): string {
+    // Sulla Home dell'artista $current è lo stesso $displayName (il titolo H1 è il suo nome):
+    // niente link di metà percorso in quel caso, altrimenti il nome comparirebbe due volte di
+    // fila nel breadcrumb ("Chi Fa Cosa / Nome / Nome").
+    $isOwnHome = ($current === $displayName) && !$trail;
     ob_start();
     ?>
     <div class="app-content-header">
@@ -783,7 +787,9 @@ function adminLteBreadcrumbHeader(string $slug, string $displayName, string $cur
             <nav aria-label="breadcrumb">
               <ol class="breadcrumb float-sm-end">
                 <li class="breadcrumb-item"><a href="/"><?= e(siteName()) ?></a></li>
-                <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($displayName) ?></a></li>
+                <?php if (!$isOwnHome): ?>
+                  <li class="breadcrumb-item"><a href="/<?= e($slug) ?>"><?= e($displayName) ?></a></li>
+                <?php endif; ?>
                 <?php foreach ($trail as $label => $url): ?>
                   <li class="breadcrumb-item"><a href="<?= e($url) ?>"><?= e($label) ?></a></li>
                 <?php endforeach; ?>
