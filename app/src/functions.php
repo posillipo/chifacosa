@@ -606,7 +606,12 @@ const PAGE_THEMES = [
     'galactic' => ['label' => 'Console Galattica', 'description' => 'Iperspazio animato su canvas con salto al passaggio del mouse, nebulosa che si muove, avatar olografico con scanline e glitch, pulsanti console e 4 stili di pulsante animati, cursore a lama energetica, suoni sintetizzati silenziabili — elementi originali, nessun logo o personaggio di alcun franchise', 'body_class' => 'galactic-page'],
     'cinemapop' =>['label' => 'Cinema Pop', 'description' => 'Ispirato a una sala cinematografica: sfondo scuro con un bagliore arancione da faretto dietro l\'avatar, pellicola con fori da film in alto e in basso, popcorn dorati che salgono dal basso in continuo, pulsanti a righe come un secchiello di popcorn con un riflesso lucido che scorre — colori e atmosfera originali, nessun logo di alcun cinema', 'body_class' => 'cinemapop-page'],
     'nightdrop' => ['label' => 'Drop Notturno', 'description' => 'Sfondo blu notte da vetrina "shop", pulsanti bianchi a pillola con freccina a cerchio sulla destra, un pulsante ogni tanto in rosso acceso come evidenziato, card scure per le griglie di contenuto', 'body_class' => 'nightdrop-page'],
-    'adminlte-profile' => ['label' => 'AdminLTE', 'description' => 'Layout a card in stile pannello gestionale (basato su AdminLTE 4): card "About" con follower e recensioni, i tuoi link, e le sezioni del sito raccolte in tab — Timeline, Che Amo, Podcast, Blog e le altre che hai attive', 'body_class' => 'adminlte-profile-page'],
+    // body_class = 'colorful-page' di proposito, non un nome dedicato: il tema AdminLTE sostituisce
+    // solo la Home (vedi il primo "if" in u.php), le altre pagine pubbliche (Timeline, Blog...) non
+    // hanno mai avuto un vestito AdminLTE e continuano a usare lo scheletro condiviso — senza
+    // questo fallback prenderebbero una classe CSS che non esiste da nessuna parte, cioè nessuno
+    // stile, non "Colorful in prestito".
+    'adminlte-profile' => ['label' => 'AdminLTE', 'description' => 'Layout a card in stile pannello gestionale (basato su AdminLTE 4): card "About" con follower e recensioni, i tuoi link, e le sezioni del sito raccolte in tab — Timeline, Che Amo, Podcast, Blog e le altre che hai attive. Vale solo per la Home: le altre pagine restano nel tema Colorful.', 'body_class' => 'colorful-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
