@@ -760,7 +760,13 @@ function adminLteAssetLinks(): string {
     return '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q=" crossorigin="anonymous" media="print" onload="this.media=\'all\'">' . "\n"
          . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous">' . "\n"
          . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">' . "\n"
-         . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') . '">';
+         . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') . '">' . "\n"
+         // La miniatura degli articoli del blog (renderAdminLteBlogRows()) è pensata per stare
+         // accanto al titolo: a 140px fissi, su schermi stretti mangia più di un terzo della
+         // larghezza e schiaccia il titolo in una colonna strettissima che va a capo parola per
+         // parola. Qui sotto 576px si riduce.
+         . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;}'
+         . '@media (max-width:575.98px){.adminlte-blog-thumb{width:88px;height:88px;}}</style>';
 }
 
 // Blocco breadcrumb + titolo H1 dell'app-content-header. $trail sono le tappe intermedie tra
@@ -1213,9 +1219,9 @@ function renderAdminLteBlogRows(array $posts, string $slug, array $artist): stri
               <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="card mb-3 text-decoration-none text-body">
                 <div class="d-flex">
                   <?php if ($p['cover_path']): ?>
-                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start" style="width:140px;height:140px;object-fit:cover;flex-shrink:0;">
+                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start adminlte-blog-thumb">
                   <?php else: ?>
-                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center" style="width:140px;height:140px;flex-shrink:0;">
+                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center adminlte-blog-thumb">
                       <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
                     </div>
                   <?php endif; ?>
