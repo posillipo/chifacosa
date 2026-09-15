@@ -978,6 +978,23 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
 
     $avatarUrl = adminLteAvatarUrl($artist);
 
+    // "I miei link" e "Chi sono" vivevano nella colonna extra (renderAdminLteProfileExtras, a
+    // destra insieme a "Che Amo"): spostati qui per bilanciare le due colonne laterali — a
+    // sinistra tutto ciò che riguarda il profilo (identità, link, informazioni), a destra solo
+    // "Che Amo".
+    $stmt = $db->prepare('SELECT citta, provincia FROM profiles WHERE user_id=?');
+    $stmt->execute([$uid]);
+    $extra = $stmt->fetch() ?: [];
+    $citta = trim($extra['citta'] ?? '');
+    $provincia = trim($extra['provincia'] ?? '');
+    $hasSpotify = !empty($artist['spotify_artist_id']);
+    $hasYoutube = !empty($artist['youtube_channel_id']);
+    $hasPodcast = !empty($artist['spotify_show_id']);
+
+    $stmt = $db->prepare("SELECT id, label, url, cover_path, is_website_icon FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
+    $stmt->execute([$uid]);
+    $links = $stmt->fetchAll();
+
     ob_start();
     ?>
           <div class="col-md-3 order-2 order-md-1">
@@ -1014,80 +1031,9 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
                 </ul>
               </div>
             </div>
-          </div>
-    <?php
-    return ob_get_clean();
-}
-
-// Terza colonna condivisa da TUTTE le pagine pubbliche a tema AdminLTE: "I miei link" e "Chi
-// sono", separati dalla card del profilo (renderAdminLteProfileSidebar) per lasciare più
-// spazio in larghezza al contenuto centrale. Stesso principio "self-contained" delle altre
-// funzioni condivise di questo tema: calcola da sé i propri dati a partire da $artist['id'].
-// L'ordine visivo (colonna profilo, poi contenuto, poi questa) è fissato via CSS (order-*),
-// non dalla posizione nel markup: così può essere richiamata subito dopo la sidebar in ogni
-// pagina, invece di dover trovare il punto esatto di chiusura della colonna centrale in
-// ciascuna delle funzioni che la usano.
-function renderAdminLteProfileExtras(array $artist, string $slug): string {
-    $uid = (int) $artist['id'];
-    $db = getDB();
-    $stmt = $db->prepare('SELECT citta, provincia FROM profiles WHERE user_id=?');
-    $stmt->execute([$uid]);
-    $extra = $stmt->fetch() ?: [];
-    $citta = trim($extra['citta'] ?? '');
-    $provincia = trim($extra['provincia'] ?? '');
-    $hasSpotify = !empty($artist['spotify_artist_id']);
-    $hasYoutube = !empty($artist['youtube_channel_id']);
-    $hasPodcast = !empty($artist['spotify_show_id']);
-
-    $stmt = $db->prepare("SELECT id, label, url, cover_path, is_website_icon FROM links WHERE user_id=? AND is_active=1 AND link_type='link' ORDER BY sort_order ASC, id ASC LIMIT 6");
-    $stmt->execute([$uid]);
-    $links = $stmt->fetchAll();
-
-    // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
-    // e con contenuto effettivo): il widget qui sotto elenca esattamente le stesse voci che
-    // compaiono sulla vetrina "Che Amo" dietro al tab omonimo, mai svuotato dalla barra
-    // orizzontale (resta lì, questo è solo un accesso rapido in più dalla colonna laterale).
-    $hiddenKeys = getHiddenNavKeys($uid);
-    $cheAmoItems = [];
-    if (!in_array('cheamo', $hiddenKeys, true)) {
-        foreach (CHE_AMO_MODULES as $key => $m) {
-            if (in_array($key, $hiddenKeys, true)) {
-                continue;
-            }
-            if ($m['check'] === null || $m['check']($uid)) {
-                $cheAmoItems[$key] = $m;
-            }
-        }
-    }
-
-    if (!$cheAmoItems && !$links && empty($artist['bio']) && !$citta && empty($artist['genere']) && !$hasSpotify && !$hasYoutube && !$hasPodcast) {
-        return '';
-    }
-
-    ob_start();
-    ?>
-          <div class="col-md-3 order-3 order-md-3">
-            <?php if ($cheAmoItems): ?>
-            <div class="card">
-              <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
-              <div class="card-body">
-                <?php $cheAmoColors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary']; $i = 0; ?>
-                <?php foreach ($cheAmoItems as $key => $m): ?>
-                <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="info-box text-decoration-none text-body<?= $i > 0 ? ' mt-2' : '' ?>">
-                  <span class="info-box-icon text-bg-<?= $cheAmoColors[$i % count($cheAmoColors)] ?> shadow-sm">
-                    <i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$key] ?? 'bi-heart') ?>" aria-hidden="true"></i>
-                  </span>
-                  <div class="info-box-content">
-                    <span class="info-box-text"><?= e($m['label']) ?></span>
-                  </div>
-                </a>
-                <?php $i++; endforeach; ?>
-              </div>
-            </div>
-            <?php endif; ?>
 
             <?php if ($links): ?>
-            <div class="card<?= $cheAmoItems ? ' mt-3' : '' ?>">
+            <div class="card mt-3">
               <div class="card-header"><h3 class="card-title">I miei link</h3></div>
               <div class="list-group list-group-flush">
                 <?php foreach ($links as $lk): ?>
@@ -1117,7 +1063,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
             <?php endif; ?>
 
             <?php if (!empty($artist['bio']) || $citta || !empty($artist['genere']) || $hasSpotify || $hasYoutube || $hasPodcast): ?>
-            <div class="card<?= ($cheAmoItems || $links) ? ' mt-3' : '' ?>">
+            <div class="card mt-3">
               <div class="card-header"><h3 class="card-title">Chi sono</h3></div>
               <div class="card-body small">
                 <?php if (!empty($artist['bio'])): ?>
@@ -1143,6 +1089,63 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
               </div>
             </div>
             <?php endif; ?>
+          </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Terza colonna condivisa da TUTTE le pagine pubbliche a tema AdminLTE: solo "Che Amo" (accesso
+// rapido ai moduli con contenuto, stessa vetrina dietro al tab omonimo nella barra di
+// navigazione). "I miei link" e "Chi sono" sono passati alla colonna del profilo
+// (renderAdminLteProfileSidebar) per bilanciare le due colonne laterali. Stesso principio
+// "self-contained" delle altre funzioni condivise di questo tema: calcola da sé i propri dati a
+// partire da $artist['id']. L'ordine visivo (colonna profilo, poi contenuto, poi questa) è
+// fissato via CSS (order-*), non dalla posizione nel markup: così può essere richiamata subito
+// dopo la sidebar in ogni pagina, invece di dover trovare il punto esatto di chiusura della
+// colonna centrale in ciascuna delle funzioni che la usano.
+function renderAdminLteProfileExtras(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+
+    // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
+    // e con contenuto effettivo): il widget qui sotto elenca esattamente le stesse voci che
+    // compaiono sulla vetrina "Che Amo" dietro al tab omonimo, mai svuotato dalla barra
+    // orizzontale (resta lì, questo è solo un accesso rapido in più dalla colonna laterale).
+    $hiddenKeys = getHiddenNavKeys($uid);
+    $cheAmoItems = [];
+    if (!in_array('cheamo', $hiddenKeys, true)) {
+        foreach (CHE_AMO_MODULES as $key => $m) {
+            if (in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+            if ($m['check'] === null || $m['check']($uid)) {
+                $cheAmoItems[$key] = $m;
+            }
+        }
+    }
+
+    if (!$cheAmoItems) {
+        return '';
+    }
+
+    ob_start();
+    ?>
+          <div class="col-md-3 order-3 order-md-3">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
+              <div class="card-body">
+                <?php $cheAmoColors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary']; $i = 0; ?>
+                <?php foreach ($cheAmoItems as $key => $m): ?>
+                <a href="/<?= e($slug) ?>/<?= e($m['segment']) ?>" class="info-box text-decoration-none text-body<?= $i > 0 ? ' mt-2' : '' ?>">
+                  <span class="info-box-icon text-bg-<?= $cheAmoColors[$i % count($cheAmoColors)] ?> shadow-sm">
+                    <i class="bi <?= e(ADMINLTE_CHE_AMO_ICONS[$key] ?? 'bi-heart') ?>" aria-hidden="true"></i>
+                  </span>
+                  <div class="info-box-content">
+                    <span class="info-box-text"><?= e($m['label']) ?></span>
+                  </div>
+                </a>
+                <?php $i++; endforeach; ?>
+              </div>
+            </div>
           </div>
     <?php
     return ob_get_clean();
