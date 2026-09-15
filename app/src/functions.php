@@ -996,7 +996,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
 // query. Il menu di navigazione, "Segui" e Accedi/Registrati vivevano prima qui sotto le
 // statistiche: sono passati alla barra in cima alla pagina (adminLteTopNav()) — qui resta solo
 // l'identità.
-function renderAdminLteProfileSidebar(array $artist, string $slug): string {
+function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFollowWidget = false): string {
     $uid = (int) $artist['id'];
     $db = getDB();
 
@@ -1122,6 +1122,72 @@ function renderAdminLteProfileSidebar(array $artist, string $slug): string {
                 <?php endif; ?>
               </div>
             </div>
+            <?php endif; ?>
+
+            <?php if ($showFollowWidget && !in_array('segui', getHiddenNavKeys($uid), true)): ?>
+            <div class="card mt-3" id="segui-widget">
+              <div class="card-body text-center">
+                <?php if (!empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] !== $uid): ?>
+                  <?php $alreadyFollowing = isFollowingAccount((int) $_SESSION['user_id'], $uid); ?>
+                  <form method="post" action="/follow_account.php" class="d-inline">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="user_id" value="<?= $uid ?>">
+                    <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
+                    <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+                    <button type="submit" class="btn <?= $alreadyFollowing ? 'btn-outline-primary' : 'btn-primary' ?>">
+                      <i class="bi <?= $alreadyFollowing ? 'bi-person-check-fill' : 'bi-person-plus' ?> me-1" aria-hidden="true"></i><?= $alreadyFollowing ? 'Segui già' : 'Segui' ?>
+                    </button>
+                  </form>
+                  <div class="text-secondary small mt-2"><?= (int) $followerCount ?> ti seguono su <?= e(siteName()) ?></div>
+                <?php else: ?>
+                  <?php $followTermsContent = trim(getSiteSetting('follow_terms_content') ?: ''); ?>
+                  <details id="segui-follow-details">
+                    <summary class="btn btn-primary" style="list-style:none;cursor:pointer;">
+                      <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
+                    </summary>
+                    <div class="mt-3 text-start">
+                      <p class="small text-secondary">Ti mandiamo un link di conferma via email: dopo averlo aperto ricevi un avviso ogni volta che <?= e($artist['display_name']) ?> pubblica qualcosa di nuovo.</p>
+                      <form method="post" action="/follow.php" class="d-flex flex-wrap gap-2 align-items-start">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="slug" value="<?= e($slug) ?>">
+                        <input type="email" name="email" class="form-control form-control-sm flex-grow-1" placeholder="La tua email" required style="min-width:160px;">
+                        <?php if ($followTermsContent !== ''): ?>
+                        <label class="form-check d-flex align-items-start gap-2 w-100 small">
+                          <input type="checkbox" name="accept_terms" value="1" class="form-check-input mt-1" required>
+                          <span>Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></span>
+                        </label>
+                        <?php endif; ?>
+                        <button type="submit" class="btn btn-primary btn-sm">Conferma</button>
+                      </form>
+                    </div>
+                  </details>
+                  <div class="text-secondary small mt-2">
+                    <?= $followerCount > 0 ? $followerCount . ($followerCount === 1 ? ' persona segue' : ' persone seguono') : 'ricevi una notifica quando pubblica' ?>
+                  </div>
+                <?php endif; ?>
+              </div>
+            </div>
+            <script>
+            (function () {
+              // Sia il "+" del profilo sia "Segui" nella barra di navigazione puntano qui
+              // (/slug#segui-widget), anche da un'altra pagina: se il modulo email esiste
+              // (visitatore non loggato), lo apre subito e ci mette il focus, invece di lasciare
+              // un secondo click per aprirlo dopo lo scroll.
+              function openFollowWidget() {
+                if (window.location.hash !== '#segui-widget') return;
+                var details = document.getElementById('segui-follow-details');
+                if (details && !details.open) {
+                  details.open = true;
+                  var emailInput = details.querySelector('input[name="email"]');
+                  if (emailInput) { setTimeout(function () { emailInput.focus(); }, 50); }
+                }
+                var widget = document.getElementById('segui-widget');
+                if (widget) { widget.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+              }
+              document.addEventListener('DOMContentLoaded', openFollowWidget);
+              window.addEventListener('hashchange', openFollowWidget);
+            })();
+            </script>
             <?php endif; ?>
           </div>
     <?php
@@ -1583,9 +1649,12 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug, true) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
+            <?php if (!empty($_GET['follow_msg'])): ?>
+            <div class="alert <?= !empty($_GET['follow_err']) ? 'alert-danger' : 'alert-success' ?> mb-3"><?= e($_GET['follow_msg']) ?></div>
+            <?php endif; ?>
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title"><?= e('Timeline') ?></h3>
