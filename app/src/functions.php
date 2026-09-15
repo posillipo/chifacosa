@@ -901,13 +901,14 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
 
     $avatarUrl = adminLteAvatarUrl($artist);
 
-    // Sul proprio profilo (o su uno gestito come co-admin, vedi canManageProfile()) il pulsante
-    // "Segui" non ha senso: diventa un accesso rapido alla dashboard di gestione. Altrimenti si
-    // comporta come "Segui" negli altri temi grafici (Colorful) — riflette se lo si sta già
-    // seguendo (isFollowingAccount()), stesso link all'ancora #segui-widget della Home.
+    // Solo sul proprio profilo (lo stesso account con cui si è loggati, non un profilo diverso
+    // gestito come co-admin — quelli restano seguibili come qualunque altro) il pulsante "Segui"
+    // non ha senso: diventa un accesso rapido alla dashboard di gestione. Altrimenti si comporta
+    // come "Segui" negli altri temi grafici (Colorful) — riflette se lo si sta già seguendo
+    // (isFollowingAccount()), stesso link all'ancora #segui-widget della Home.
     $viewerId = $_SESSION['user_id'] ?? null;
-    $isManaging = $viewerId && canManageProfile((int) $viewerId, $uid);
-    $isFollowing = ($viewerId && !$isManaging) ? isFollowingAccount((int) $viewerId, $uid) : false;
+    $isOwnProfile = $viewerId && (int) $viewerId === $uid;
+    $isFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
 
     ob_start();
     ?>
@@ -951,7 +952,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
               <li class="nav-item"><a class="nav-link" href="/register.php"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Registrati</a></li>
               <?php endif; ?>
               <li class="nav-item">
-                <?php if ($isManaging): ?>
+                <?php if ($isOwnProfile): ?>
                 <a href="/dashboard.php" class="btn btn-primary btn-sm my-2 my-lg-0">
                   <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Dashboard
                 </a>
