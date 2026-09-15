@@ -109,6 +109,18 @@ RewriteRule ^([a-zA-Z0-9_-]+)/squadre-che-amo/([0-9]+)/?$ fan_favorite_item.php?
 # /nomeartista/squadre-che-amo -> elenco completo squadre preferite
 RewriteRule ^([a-zA-Z0-9_-]+)/squadre-che-amo/?$ squadre_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/calciatori-che-amo/ID -> pagina dedicata al singolo calciatore preferito (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/calciatori-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=footballer&id=$2 [L,QSA]
+
+# /nomeartista/calciatori-che-amo -> elenco completo calciatori preferiti
+RewriteRule ^([a-zA-Z0-9_-]+)/calciatori-che-amo/?$ calciatori_che_amo.php?slug=$1 [L,QSA]
+
+# /nomeartista/partite-che-amo/ID -> pagina dedicata alla singola partita preferita (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/partite-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=match&id=$2 [L,QSA]
+
+# /nomeartista/partite-che-amo -> elenco completo partite preferite
+RewriteRule ^([a-zA-Z0-9_-]+)/partite-che-amo/?$ partite_che_amo.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 

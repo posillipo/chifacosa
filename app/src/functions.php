@@ -738,7 +738,7 @@ const ADMINLTE_CHE_AMO_ICONS = [
     'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
     'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
     'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc', 'ricettecheamo' => 'bi-egg-fried',
-    'squadrecheamo' => 'bi-shield-fill',
+    'squadrecheamo' => 'bi-shield-fill', 'calciatoricheamo' => 'bi-person-badge-fill', 'partitecheamo' => 'bi-calendar-event-fill',
 ];
 
 // Configurazione condivisa dei 6 moduli "che amo" con contenuto arricchito da un'API esterna
@@ -754,6 +754,8 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
     'album' => ['table' => 'fan_favorite_albums', 'external_id_col' => 'spotify_album_id', 'name_col' => 'album_name', 'image_col' => 'album_image', 'label' => 'Album che amo', 'nav_key' => 'albumcheamo', 'list_url_segment' => 'album-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/album/', 'image_shape' => 'square'],
     'recipe' => ['table' => 'fan_favorite_recipes', 'external_id_col' => 'spoonacular_recipe_id', 'name_col' => 'recipe_title', 'image_col' => 'recipe_image', 'label' => 'Ricette che amo', 'nav_key' => 'ricettecheamo', 'list_url_segment' => 'ricette-che-amo', 'external_label' => 'Vedi ricetta completa', 'external_url' => 'https://spoonacular.com/recipes/-', 'image_shape' => 'square'],
     'team' => ['table' => 'fan_favorite_teams', 'external_id_col' => 'thesportsdb_team_id', 'name_col' => 'team_name', 'image_col' => 'team_badge', 'label' => 'Squadre che amo', 'nav_key' => 'squadrecheamo', 'list_url_segment' => 'squadre-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/team/', 'image_shape' => 'square'],
+    'footballer' => ['table' => 'fan_favorite_players', 'external_id_col' => 'thesportsdb_player_id', 'name_col' => 'player_name', 'image_col' => 'player_photo', 'label' => 'Calciatori che amo', 'nav_key' => 'calciatoricheamo', 'list_url_segment' => 'calciatori-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/player/', 'image_shape' => 'circle'],
+    'match' => ['table' => 'fan_favorite_matches', 'external_id_col' => 'thesportsdb_event_id', 'name_col' => 'match_title', 'image_col' => 'match_image', 'label' => 'Partite che amo', 'nav_key' => 'partitecheamo', 'list_url_segment' => 'partite-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/event/', 'image_shape' => 'square'],
 ];
 
 // Helper condivisi per TUTTE le pagine pubbliche a tema AdminLTE oltre alla Home (Timeline, Blog,
@@ -1323,6 +1325,8 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
     'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning'],
     'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success'],
+    'calciatore_favorito' => ['icon' => 'bi-person-badge-fill', 'color' => 'primary'],
+    'partita_favorita' => ['icon' => 'bi-calendar-event-fill', 'color' => 'warning'],
 ];
 
 // Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
@@ -2461,6 +2465,11 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
                   <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
                   <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>
+                  <?php if ($kind === 'footballer' && !empty($apiDetails['team'])): ?> · <?= e($apiDetails['team']) ?><?php endif; ?>
+                  <?php if ($kind === 'footballer' && !empty($apiDetails['position'])): ?> · <?= e($apiDetails['position']) ?><?php endif; ?>
+                  <?php if ($kind === 'footballer' && !empty($apiDetails['nationality'])): ?> · <?= e($apiDetails['nationality']) ?><?php endif; ?>
+                  <?php if ($kind === 'match' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
+                  <?php if ($kind === 'match' && !empty($apiDetails['venue'])): ?> · <?= e($apiDetails['venue']) ?><?php endif; ?>
                 </p>
                 <small class="text-secondary"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
                 <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?><p class="mt-1 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
@@ -2486,6 +2495,20 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                 <?php endif; ?>
                 <?php if ($kind === 'team' && !empty($apiDetails['next_event'])): ?>
                   <div class="card text-start mt-3"><div class="card-body"><strong>Prossima partita</strong><p class="mb-0 mt-1"><?= e($apiDetails['next_event']) ?></p></div></div>
+                <?php endif; ?>
+                <?php if ($kind === 'footballer' && !empty($apiDetails['born'])): ?>
+                  <?php // Data di nascita pura (senza orario): niente conversione di fuso orario (formatLocalDateTime()) qui, sposterebbe il giorno per i profili con fuso molto indietro rispetto al server. ?>
+                  <p class="text-secondary small mt-2 mb-0"><i class="bi bi-balloon-heart me-1" aria-hidden="true"></i>Nato il <?= e(date('d/m/Y', strtotime($apiDetails['born']))) ?></p>
+                <?php endif; ?>
+                <?php if ($kind === 'match'): ?>
+                  <div class="card text-center mt-3"><div class="card-body">
+                    <?php if (!empty($apiDetails['result'])): ?>
+                      <div class="h4 mb-1"><?= e($apiDetails['home_team']) ?> <?= e($apiDetails['result']) ?> <?= e($apiDetails['away_team']) ?></div>
+                    <?php else: ?>
+                      <div class="text-secondary">Partita in programma</div>
+                    <?php endif; ?>
+                    <?php if (!empty($apiDetails['match_date'])): ?><small class="text-secondary"><?= e(trim($apiDetails['match_date'])) ?></small><?php endif; ?>
+                  </div></div>
                 <?php endif; ?>
                 <p class="mt-3"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary"><?= e($cfg['external_label']) ?></a></p>
               </div>
@@ -4430,6 +4453,18 @@ function hasFanFavoriteTeams(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoritePlayers(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_players WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+function hasFanFavoriteMatches(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_matches WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
 // — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
 // visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
@@ -4446,6 +4481,8 @@ const CHE_AMO_MODULES = [
     'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo', 'table' => 'fan_favorite_albums'],
     'ricettecheamo' => ['label' => 'Ricette che amo', 'icon' => 'fas fa-bowl-food', 'check' => 'hasFanFavoriteRecipes', 'segment' => 'ricette-che-amo', 'table' => 'fan_favorite_recipes'],
     'squadrecheamo' => ['label' => 'Squadre che amo', 'icon' => 'fas fa-futbol', 'check' => 'hasFanFavoriteTeams', 'segment' => 'squadre-che-amo', 'table' => 'fan_favorite_teams'],
+    'calciatoricheamo' => ['label' => 'Calciatori che amo', 'icon' => 'fas fa-shirt', 'check' => 'hasFanFavoritePlayers', 'segment' => 'calciatori-che-amo', 'table' => 'fan_favorite_players'],
+    'partitecheamo' => ['label' => 'Partite che amo', 'icon' => 'fas fa-calendar-check', 'check' => 'hasFanFavoriteMatches', 'segment' => 'partite-che-amo', 'table' => 'fan_favorite_matches'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -5995,6 +6032,38 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fp.id, fp.player_name, fp.player_photo, fp.note, fp.image_path, fp.image_thumb_path, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM fan_favorite_players fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fp.user_id IN ($placeholders) AND fp.show_in_feed = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $fpTitolo2 = $r['player_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fpTitolo2 .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'calciatore_favorito', 'titolo' => $fpTitolo2, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['player_photo']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/calciatori-che-amo/' . $r['id'],
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT fm.id, fm.match_title, fm.match_image, fm.note, fm.image_path, fm.image_thumb_path, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM fan_favorite_matches fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fm.user_id IN ($placeholders) AND fm.show_in_feed = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $fmTitolo = $r['match_title'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fmTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'partita_favorita', 'titolo' => $fmTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['match_image']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/partite-che-amo/' . $r['id'],
+        ];
+    }
+
     $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
@@ -6433,6 +6502,8 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Album che amo' => 'albumcheamo',
     'Ricette che amo' => 'ricettecheamo',
     'Squadre che amo' => 'squadrecheamo',
+    'Calciatori che amo' => 'calciatoricheamo',
+    'Partite che amo' => 'partitecheamo',
     'Menù' => 'menu',
     'Offerte' => 'offerte',
     'Foto' => 'foto',
@@ -6479,6 +6550,8 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Servizi', 'fas fa-briefcase', '/' . $slug . '/servizi', 23],
         ['Ricette che amo', 'fas fa-bowl-food', '/' . $slug . '/ricette-che-amo', 24],
         ['Squadre che amo', 'fas fa-futbol', '/' . $slug . '/squadre-che-amo', 25],
+        ['Calciatori che amo', 'fas fa-shirt', '/' . $slug . '/calciatori-che-amo', 26],
+        ['Partite che amo', 'fas fa-calendar-check', '/' . $slug . '/partite-che-amo', 27],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

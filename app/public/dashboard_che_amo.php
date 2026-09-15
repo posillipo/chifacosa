@@ -19,6 +19,8 @@ $moduleTables = [
     'albumcheamo' => 'fan_favorite_albums',
     'ricettecheamo' => 'fan_favorite_recipes',
     'squadrecheamo' => 'fan_favorite_teams',
+    'calciatoricheamo' => 'fan_favorite_players',
+    'partitecheamo' => 'fan_favorite_matches',
 ];
 $moduleUrls = [
     'bandcheamo' => '/dashboard_fan_bands.php',
@@ -31,6 +33,8 @@ $moduleUrls = [
     'albumcheamo' => '/dashboard_fan_albums.php',
     'ricettecheamo' => '/dashboard_fan_recipes.php',
     'squadrecheamo' => '/dashboard_fan_teams.php',
+    'calciatoricheamo' => '/dashboard_fan_players.php',
+    'partitecheamo' => '/dashboard_fan_matches.php',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

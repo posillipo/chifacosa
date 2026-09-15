@@ -108,6 +108,30 @@ const FAN_FAVORITE_KINDS = [
         'external_url' => 'https://www.thesportsdb.com/team/',
         'image_shape' => 'square',
     ],
+    'footballer' => [
+        'table' => 'fan_favorite_players',
+        'external_id_col' => 'thesportsdb_player_id',
+        'name_col' => 'player_name',
+        'image_col' => 'player_photo',
+        'label' => 'Calciatori che amo',
+        'nav_key' => 'calciatoricheamo',
+        'list_url_segment' => 'calciatori-che-amo',
+        'external_label' => 'Vedi su TheSportsDB',
+        'external_url' => 'https://www.thesportsdb.com/player/',
+        'image_shape' => 'circle',
+    ],
+    'match' => [
+        'table' => 'fan_favorite_matches',
+        'external_id_col' => 'thesportsdb_event_id',
+        'name_col' => 'match_title',
+        'image_col' => 'match_image',
+        'label' => 'Partite che amo',
+        'nav_key' => 'partitecheamo',
+        'list_url_segment' => 'partite-che-amo',
+        'external_label' => 'Vedi su TheSportsDB',
+        'external_url' => 'https://www.thesportsdb.com/event/',
+        'image_shape' => 'square',
+    ],
 ];
 
 $slug = $_GET['slug'] ?? '';
@@ -171,6 +195,10 @@ if ($kind === 'band') {
     $apiDetails = spoonacularGetRecipeDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'team') {
     $apiDetails = thesportsdbGetTeamDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'footballer') {
+    $apiDetails = thesportsdbGetPlayerDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'match') {
+    $apiDetails = thesportsdbGetEventDetails($item[$cfg['external_id_col']]);
 }
 
 // Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
@@ -258,6 +286,11 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
       <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
       <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>
+      <?php if ($kind === 'footballer' && !empty($apiDetails['team'])): ?> · <?= e($apiDetails['team']) ?><?php endif; ?>
+      <?php if ($kind === 'footballer' && !empty($apiDetails['position'])): ?> · <?= e($apiDetails['position']) ?><?php endif; ?>
+      <?php if ($kind === 'footballer' && !empty($apiDetails['nationality'])): ?> · <?= e($apiDetails['nationality']) ?><?php endif; ?>
+      <?php if ($kind === 'match' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
+      <?php if ($kind === 'match' && !empty($apiDetails['venue'])): ?> · <?= e($apiDetails['venue']) ?><?php endif; ?>
     </p>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
     <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>
@@ -297,6 +330,20 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <div class="card" style="text-align:left;margin-top:14px;">
         <strong>Prossima partita</strong>
         <p style="margin:6px 0 0;"><?= e($apiDetails['next_event']) ?></p>
+      </div>
+    <?php endif; ?>
+    <?php if ($kind === 'footballer' && !empty($apiDetails['born'])): ?>
+      <?php // Data di nascita pura (senza orario): niente conversione di fuso orario qui, vedi commento sull'equivalente AdminLTE. ?>
+      <p style="color:rgba(var(--text-rgb),0.6);font-size:13.5px;margin-top:10px;">🎂 Nato il <?= e(date('d/m/Y', strtotime($apiDetails['born']))) ?></p>
+    <?php endif; ?>
+    <?php if ($kind === 'match'): ?>
+      <div class="card" style="text-align:center;margin-top:14px;">
+        <?php if (!empty($apiDetails['result'])): ?>
+          <div style="font-size:19px;font-weight:700;"><?= e($apiDetails['home_team']) ?> <?= e($apiDetails['result']) ?> <?= e($apiDetails['away_team']) ?></div>
+        <?php else: ?>
+          <div style="opacity:0.75;">Partita in programma</div>
+        <?php endif; ?>
+        <?php if (!empty($apiDetails['match_date'])): ?><small style="color:rgba(var(--text-rgb),0.6);"><?= e(trim($apiDetails['match_date'])) ?></small><?php endif; ?>
       </div>
     <?php endif; ?>
 
