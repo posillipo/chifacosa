@@ -837,6 +837,21 @@ function adminLteFooterBlock(array $artist): string {
     </div>
     <strong><?= e($artist['display_name']) ?></strong> su <a href="/" class="text-decoration-none"><?= e(siteName()) ?></a>
   </footer>
+  <button type="button" id="adminlte-back-to-top" class="btn btn-primary rounded-circle shadow d-none" style="position:fixed;right:20px;bottom:20px;width:46px;height:46px;z-index:1030;" aria-label="Torna su">
+    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+  </button>
+  <script>
+  (function () {
+    var btn = document.getElementById('adminlte-back-to-top');
+    if (!btn) return;
+    window.addEventListener('scroll', function () {
+      btn.classList.toggle('d-none', window.scrollY <= 400);
+    });
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  })();
+  </script>
     <?php
     return ob_get_clean();
 }
