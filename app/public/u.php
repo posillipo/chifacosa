@@ -113,6 +113,7 @@ $cheAmoTableConfig = [
     'playlistcheamo' => ['table' => 'fan_favorite_playlists', 'name' => 'playlist_name', 'image' => 'playlist_image'],
     'albumcheamo' => ['table' => 'fan_favorite_albums', 'name' => 'album_name', 'image' => 'album_image'],
     'ricettecheamo' => ['table' => 'fan_favorite_recipes', 'name' => 'recipe_title', 'image' => 'recipe_image'],
+    'squadrecheamo' => ['table' => 'fan_favorite_teams', 'name' => 'team_name', 'image' => 'team_badge'],
 ];
 $cheAmoCarousel = [];
 foreach (CHE_AMO_MODULES as $key => $m) {

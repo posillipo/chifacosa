@@ -18,6 +18,7 @@ $moduleTables = [
     'playlistcheamo' => 'fan_favorite_playlists',
     'albumcheamo' => 'fan_favorite_albums',
     'ricettecheamo' => 'fan_favorite_recipes',
+    'squadrecheamo' => 'fan_favorite_teams',
 ];
 $moduleUrls = [
     'bandcheamo' => '/dashboard_fan_bands.php',
@@ -29,6 +30,7 @@ $moduleUrls = [
     'playlistcheamo' => '/dashboard_fan_playlists.php',
     'albumcheamo' => '/dashboard_fan_albums.php',
     'ricettecheamo' => '/dashboard_fan_recipes.php',
+    'squadrecheamo' => '/dashboard_fan_teams.php',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

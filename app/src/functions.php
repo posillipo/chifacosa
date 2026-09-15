@@ -738,6 +738,7 @@ const ADMINLTE_CHE_AMO_ICONS = [
     'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
     'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
     'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc', 'ricettecheamo' => 'bi-egg-fried',
+    'squadrecheamo' => 'bi-shield-fill',
 ];
 
 // Configurazione condivisa dei 6 moduli "che amo" con contenuto arricchito da un'API esterna
@@ -752,6 +753,7 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
     'playlist' => ['table' => 'fan_favorite_playlists', 'external_id_col' => 'spotify_playlist_id', 'name_col' => 'playlist_name', 'image_col' => 'playlist_image', 'label' => 'Playlist che amo', 'nav_key' => 'playlistcheamo', 'list_url_segment' => 'playlist-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/playlist/', 'image_shape' => 'square'],
     'album' => ['table' => 'fan_favorite_albums', 'external_id_col' => 'spotify_album_id', 'name_col' => 'album_name', 'image_col' => 'album_image', 'label' => 'Album che amo', 'nav_key' => 'albumcheamo', 'list_url_segment' => 'album-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/album/', 'image_shape' => 'square'],
     'recipe' => ['table' => 'fan_favorite_recipes', 'external_id_col' => 'spoonacular_recipe_id', 'name_col' => 'recipe_title', 'image_col' => 'recipe_image', 'label' => 'Ricette che amo', 'nav_key' => 'ricettecheamo', 'list_url_segment' => 'ricette-che-amo', 'external_label' => 'Vedi ricetta completa', 'external_url' => 'https://spoonacular.com/recipes/-', 'image_shape' => 'square'],
+    'team' => ['table' => 'fan_favorite_teams', 'external_id_col' => 'thesportsdb_team_id', 'name_col' => 'team_name', 'image_col' => 'team_badge', 'label' => 'Squadre che amo', 'nav_key' => 'squadrecheamo', 'list_url_segment' => 'squadre-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/team/', 'image_shape' => 'square'],
 ];
 
 // Helper condivisi per TUTTE le pagine pubbliche a tema AdminLTE oltre alla Home (Timeline, Blog,
@@ -1320,6 +1322,7 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
     'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
     'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning'],
+    'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success'],
 ];
 
 // Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
@@ -2455,6 +2458,9 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
                   <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
                   <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
+                  <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
+                  <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
+                  <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>
                 </p>
                 <small class="text-secondary"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
                 <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?><p class="mt-1 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
@@ -2474,6 +2480,12 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                       <?php foreach ($apiDetails['ingredients'] as $ing): ?><li><?= e($ing) ?></li><?php endforeach; ?>
                     </ul>
                   </div></div>
+                <?php endif; ?>
+                <?php if ($kind === 'team' && !empty($apiDetails['stadium'])): ?>
+                  <p class="text-secondary small mt-2 mb-0"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i><?= e($apiDetails['stadium']) ?></p>
+                <?php endif; ?>
+                <?php if ($kind === 'team' && !empty($apiDetails['next_event'])): ?>
+                  <div class="card text-start mt-3"><div class="card-body"><strong>Prossima partita</strong><p class="mb-0 mt-1"><?= e($apiDetails['next_event']) ?></p></div></div>
                 <?php endif; ?>
                 <p class="mt-3"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary"><?= e($cfg['external_label']) ?></a></p>
               </div>
@@ -4412,6 +4424,12 @@ function hasFanFavoriteRecipes(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoriteTeams(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_teams WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
 // — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
 // visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
@@ -4427,6 +4445,7 @@ const CHE_AMO_MODULES = [
     'playlistcheamo' => ['label' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'check' => 'hasFanFavoritePlaylists', 'segment' => 'playlist-che-amo', 'table' => 'fan_favorite_playlists'],
     'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo', 'table' => 'fan_favorite_albums'],
     'ricettecheamo' => ['label' => 'Ricette che amo', 'icon' => 'fas fa-bowl-food', 'check' => 'hasFanFavoriteRecipes', 'segment' => 'ricette-che-amo', 'table' => 'fan_favorite_recipes'],
+    'squadrecheamo' => ['label' => 'Squadre che amo', 'icon' => 'fas fa-futbol', 'check' => 'hasFanFavoriteTeams', 'segment' => 'squadre-che-amo', 'table' => 'fan_favorite_teams'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -5960,6 +5979,22 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT ft.id, ft.team_name, ft.team_badge, ft.note, ft.image_path, ft.image_thumb_path, ft.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM fan_favorite_teams ft JOIN users u ON u.id = ft.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE ft.user_id IN ($placeholders) AND ft.show_in_feed = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $ftTitolo = $r['team_name'];
+        if (trim($r['note'] ?? '') !== '') {
+            $ftTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'squadra_favorita', 'titolo' => $ftTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['team_badge']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/squadre-che-amo/' . $r['id'],
+        ];
+    }
+
     $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
@@ -6397,6 +6432,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Playlist che amo' => 'playlistcheamo',
     'Album che amo' => 'albumcheamo',
     'Ricette che amo' => 'ricettecheamo',
+    'Squadre che amo' => 'squadrecheamo',
     'Menù' => 'menu',
     'Offerte' => 'offerte',
     'Foto' => 'foto',
@@ -6442,6 +6478,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Foto', 'fas fa-images', '/' . $slug . '/foto', 22],
         ['Servizi', 'fas fa-briefcase', '/' . $slug . '/servizi', 23],
         ['Ricette che amo', 'fas fa-bowl-food', '/' . $slug . '/ricette-che-amo', 24],
+        ['Squadre che amo', 'fas fa-futbol', '/' . $slug . '/squadre-che-amo', 25],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

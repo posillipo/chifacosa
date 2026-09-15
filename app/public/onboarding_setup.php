@@ -29,6 +29,7 @@ $optionalModules = [
     ['name' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'desc' => 'Vetrina delle playlist Spotify che ami'],
     ['name' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'desc' => 'Vetrina degli album Spotify che ami'],
     ['name' => 'Ricette che amo', 'icon' => 'fas fa-bowl-food', 'desc' => 'Vetrina delle ricette che ami'],
+    ['name' => 'Squadre che amo', 'icon' => 'fas fa-futbol', 'desc' => 'Vetrina delle squadre sportive che ami'],
     ['name' => 'Menù', 'icon' => 'fas fa-utensils', 'desc' => 'Menù digitale (locali/ristoranti)'],
 ];
 if ($isBandOrLabel) {

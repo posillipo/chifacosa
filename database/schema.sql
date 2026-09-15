@@ -390,6 +390,25 @@ CREATE TABLE IF NOT EXISTS fan_favorite_recipes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Squadre sportive preferite, cercate sul catalogo TheSportsDB (stesso principio degli altri
+-- moduli "che amo" con catalogo esterno).
+CREATE TABLE IF NOT EXISTS fan_favorite_teams (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    thesportsdb_team_id VARCHAR(50) NOT NULL,
+    team_name VARCHAR(200) NOT NULL,
+    team_badge VARCHAR(500) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_team (user_id, thesportsdb_team_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- "Viaggi": diverso dagli altri moduli "che amo" perché non esiste un'API esterna gratuita con un
 -- ID canonico + foto per un luogo qualsiasi (a differenza di Spotify/TMDb/Google Books) — qui
 -- l'"entità" è la coppia di coordinate scelta dall'utente (ricerca libera via OpenStreetMap

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/tmdb.php';
 require_once __DIR__ . '/../src/googlebooks.php';
 require_once __DIR__ . '/../src/spoonacular.php';
+require_once __DIR__ . '/../src/thesportsdb.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -95,6 +96,18 @@ const FAN_FAVORITE_KINDS = [
         'external_url' => 'https://spoonacular.com/recipes/-',
         'image_shape' => 'square',
     ],
+    'team' => [
+        'table' => 'fan_favorite_teams',
+        'external_id_col' => 'thesportsdb_team_id',
+        'name_col' => 'team_name',
+        'image_col' => 'team_badge',
+        'label' => 'Squadre che amo',
+        'nav_key' => 'squadrecheamo',
+        'list_url_segment' => 'squadre-che-amo',
+        'external_label' => 'Vedi su TheSportsDB',
+        'external_url' => 'https://www.thesportsdb.com/team/',
+        'image_shape' => 'square',
+    ],
 ];
 
 $slug = $_GET['slug'] ?? '';
@@ -156,6 +169,8 @@ if ($kind === 'band') {
     $apiDetails = spotifyGetAlbum($item[$cfg['external_id_col']]);
 } elseif ($kind === 'recipe') {
     $apiDetails = spoonacularGetRecipeDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'team') {
+    $apiDetails = thesportsdbGetTeamDetails($item[$cfg['external_id_col']]);
 }
 
 // Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
@@ -240,6 +255,9 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
       <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
       <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
+      <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
+      <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
+      <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>
     </p>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
     <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>
@@ -270,6 +288,15 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
         <ul style="margin:6px 0 0;padding-left:20px;">
           <?php foreach ($apiDetails['ingredients'] as $ing): ?><li><?= e($ing) ?></li><?php endforeach; ?>
         </ul>
+      </div>
+    <?php endif; ?>
+    <?php if ($kind === 'team' && !empty($apiDetails['stadium'])): ?>
+      <p style="color:rgba(var(--text-rgb),0.6);font-size:13.5px;margin-top:10px;">📍 <?= e($apiDetails['stadium']) ?></p>
+    <?php endif; ?>
+    <?php if ($kind === 'team' && !empty($apiDetails['next_event'])): ?>
+      <div class="card" style="text-align:left;margin-top:14px;">
+        <strong>Prossima partita</strong>
+        <p style="margin:6px 0 0;"><?= e($apiDetails['next_event']) ?></p>
       </div>
     <?php endif; ?>
 

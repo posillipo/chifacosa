@@ -103,6 +103,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/ricette-che-amo/([0-9]+)/?$ fan_favorite_item.php?
 # /nomeartista/ricette-che-amo -> elenco completo ricette preferite
 RewriteRule ^([a-zA-Z0-9_-]+)/ricette-che-amo/?$ ricette_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/squadre-che-amo/ID -> pagina dedicata alla singola squadra preferita (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/squadre-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=team&id=$2 [L,QSA]
+
+# /nomeartista/squadre-che-amo -> elenco completo squadre preferite
+RewriteRule ^([a-zA-Z0-9_-]+)/squadre-che-amo/?$ squadre_che_amo.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 
