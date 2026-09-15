@@ -777,17 +777,17 @@ function adminLteAssetLinks(): string {
          // che il taglio.
          . '@media (min-width:992px){#topNavMenu .navbar-nav{flex-wrap:wrap;row-gap:.25rem;}}'
          // Le tre colonne del profilo (sidebar, contenuto, extra) sono già alte quanto la più alta
-         // delle tre (comportamento predefinito di flexbox su ".row") — ma la colonna centrale
-         // (.adminlte-main-col) aveva solo lo sfondo grigio della pagina sotto al suo contenuto
-         // quando più corto delle colonne laterali: pareva "non estendersi" come le altre, con
-         // uno spazio vuoto sprecato. Qui il suo contenuto (.p-3, e la card diretta al suo interno
-         // quando presente — es. il modulo di Contatti, la card di un'offerta/servizio/evento) si
-         // allunga fino a riempire tutta l'altezza disponibile, invece di fermarsi alla propria
-         // altezza naturale. Solo da tablet in su: sotto le colonne sono impilate e non c'è nessuna
-         // altezza da pareggiare.
+         // delle tre (comportamento predefinito di flexbox su ".row") — ma la card della colonna
+         // centrale (.adminlte-main-col) si fermava alla propria altezza naturale, lasciando lo
+         // sfondo grigio della pagina sotto quando il contenuto era più corto delle colonne
+         // laterali (es. il modulo di Contatti): pareva "non estendersi" come le altre, con uno
+         // spazio vuoto sprecato. Qui la card si allunga fino a riempire tutta l'altezza
+         // disponibile, e il suo card-body con lei (le card sono già "display:flex;flex-direction:
+         // column" di loro — vedi Bootstrap — basta farle crescere). Solo da tablet in su: sotto le
+         // colonne sono impilate e non c'è nessuna altezza da pareggiare.
          . '@media (min-width:768px){.adminlte-main-col{display:flex;flex-direction:column;}'
-         . '.adminlte-main-col>.p-3{flex:1 1 auto;display:flex;flex-direction:column;}'
-         . '.adminlte-main-col>.p-3>.card{flex:1 1 auto;}}'
+         . '.adminlte-main-col>.card{flex:1 1 auto;}'
+         . '.adminlte-main-col>.card>.card-body{flex:1 1 auto;}}'
          . '</style>';
 }
 
@@ -1549,11 +1549,19 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e($artist['display_name']) ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Timeline') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
                 <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
+            </div>
             </div>
           </div>
         </div>
@@ -1606,11 +1614,19 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Timeline') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Timeline') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
                 <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
+            </div>
             </div>
           </div>
         </div>
@@ -1682,10 +1698,17 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Aggiornamento') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Aggiornamento') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
 
                 <div class="card mb-3">
                   <div class="card-body">
@@ -1716,6 +1739,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
                 <?php endif; ?>
 
                 <a href="/<?= e($slug) ?>/timeline" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna alla Timeline</a>
+            </div>
             </div>
           </div>
         </div>
@@ -1772,10 +1796,17 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Blog') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Blog') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
 
                 <?php if (!$posts): ?>
                   <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
@@ -1787,6 +1818,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
                   <?= adminLteInfiniteScrollScript('blog', $slug, count($posts), $pageSize, $finished) ?>
                 <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -1853,10 +1885,17 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Articolo') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Articolo') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
 
                 <article class="card mb-3">
                   <?php if ($post['cover_path']): ?>
@@ -1879,6 +1918,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
                   </div>
                 </div>
 
+            </div>
             </div>
           </div>
         </div>
@@ -1929,10 +1969,17 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Che Amo') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Che Amo') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
                 <?php if ($visibleModules): ?>
                 <div class="row g-3 text-center">
                   <?php foreach ($visibleModules as $mKey => $m): ?>
@@ -1947,6 +1994,7 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
                 <?php else: ?>
                   <div class="card"><div class="card-body text-secondary">Nessun contenuto ancora.</div></div>
                 <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -2001,10 +2049,17 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e($cfg['label']) ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e($cfg['label']) ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
                 <?php if ($favorites): ?>
                 <div class="row g-3 text-center" id="adminlte-list-feed"><?= renderAdminLteFanFavoriteRows($favorites, $slug, $kind, $artist) ?></div>
                 <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
@@ -2014,6 +2069,7 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
                 <?php else: ?>
                   <div class="card"><div class="card-body text-secondary">Nessun elemento aggiunto ancora.</div></div>
                 <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -2083,10 +2139,17 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Scheda') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Scheda') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2142,6 +2205,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
             <?php endif; ?>
 
             </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2190,10 +2254,17 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Viaggi (' . $totalCount . ')') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Viaggi (' . $totalCount . ')') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($monthGroups): ?>
               <?php foreach ($monthGroups as $group): ?>
                 <div class="card mt-3 mb-2">
@@ -2214,6 +2285,7 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
             <?php else: ?>
               <div class="card"><div class="card-body text-secondary">Nessun viaggio aggiunto ancora.</div></div>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -2279,10 +2351,17 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Viaggio') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Viaggio') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
@@ -2326,6 +2405,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
               <?php endforeach; ?>
             <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -2379,10 +2459,17 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Brani che amo') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Brani che amo') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if (!$tracks): ?>
               <div class="card"><div class="card-body text-secondary">Nessun brano aggiunto ancora.</div></div>
             <?php else: ?>
@@ -2392,6 +2479,7 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
               <?= adminLteInfiniteScrollScript('brani', $slug, count($tracks), $pageSize, $finished) ?>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -2454,10 +2542,17 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Scheda') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Scheda') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2499,6 +2594,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
               <?php endforeach; ?>
             <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -2549,10 +2645,17 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Testo e ascolto') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Testo e ascolto') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2576,6 +2679,7 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
             </div>
 
             <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/votazioni"><i class="bi bi-star-fill me-1"></i>Vota questo brano →</a></p>
+            </div>
             </div>
           </div>
         </div>
@@ -2626,10 +2730,17 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Vota il brano') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Vota il brano') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2660,6 +2771,7 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
             <?php if (!empty($track['lyrics'])): ?>
               <p class="text-center"><a href="/<?= e($slug) ?>/brani/<?= (int) $track['id'] ?>/testo"><i class="bi bi-file-text me-1"></i>Testo e ascolto →</a></p>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -2710,10 +2822,17 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Spotify') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Spotify') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
 
             <?php if (!empty($artistDetails['genres'])): ?>
             <div class="card mb-3">
@@ -2774,6 +2893,7 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
               </div>
             </div>
             </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2823,10 +2943,17 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e($artist['spotify_show_name'] ?: 'Podcast') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e($artist['spotify_show_name'] ?: 'Podcast') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($episodes): ?>
               <?php foreach ($episodes as $ep): ?>
                 <a class="card mb-2 text-decoration-none text-body" href="<?= e($ep['spotify_url']) ?>" target="_blank" rel="noopener">
@@ -2854,6 +2981,7 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
                   <i class="bi bi-spotify me-1"></i>Ascolta tutti gli episodi su Spotify
                 </a>
               </div>
+            </div>
             </div>
             </div>
           </div>
@@ -2904,10 +3032,17 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Video') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Video') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($videos): ?>
               <?php foreach ($videos as $v): ?>
                 <div class="card mb-3 p-0" style="overflow:hidden;">
@@ -2928,6 +3063,7 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
                   <i class="bi bi-youtube me-1"></i>Vai al canale completo su YouTube
                 </a>
               </div>
+            </div>
             </div>
             </div>
           </div>
@@ -2986,10 +3122,17 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Menù') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Menù') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($categories): ?>
             <div class="card">
               <div class="card-header p-0 border-bottom-0">
@@ -3028,6 +3171,7 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
                 </div>
               </div>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -3095,10 +3239,17 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Offerte') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Offerte') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if (!$offers): ?>
               <div class="card"><div class="card-body text-secondary">Nessuna offerta attiva al momento.</div></div>
             <?php else: ?>
@@ -3108,6 +3259,7 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
               <?= adminLteInfiniteScrollScript('offerte', $slug, count($offers), $pageSize, $finished) ?>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -3169,10 +3321,17 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Offerta') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Offerta') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
               <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3190,6 +3349,7 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
                 <?php endif; ?>
                 <?php if (!empty($offer['description'])): ?><p class="text-start mt-3"><?= nl2br(e($offer['description'])) ?></p><?php endif; ?>
               </div>
+            </div>
             </div>
             </div>
           </div>
@@ -3242,10 +3402,17 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Foto') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Foto') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
 
             <?php if ($albums): ?>
               <div class="card mb-2">
@@ -3291,6 +3458,7 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
               <div class="card"><div class="card-body text-secondary">Nessuna foto ancora.</div></div>
             <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -3355,10 +3523,17 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Album') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Album') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3369,6 +3544,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
                 <p class="text-secondary">Album di <?= e($album['display_name']) ?> · <?= count($photos) ?> foto</p>
                 <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
               </div>
+            </div>
             </div>
             </div>
           </div>
@@ -3422,10 +3598,17 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Servizi') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Servizi') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if (!$services): ?>
               <div class="card"><div class="card-body text-secondary">Nessun servizio pubblicato al momento.</div></div>
             <?php else: ?>
@@ -3435,6 +3618,7 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
               <?= adminLteInfiniteScrollScript('servizi', $slug, count($services), $pageSize, $finished) ?>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -3497,10 +3681,17 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Servizio') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Servizio') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3534,6 +3725,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
             </div>
             <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -3586,10 +3778,17 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Eventi') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Eventi') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if (!$events): ?>
               <div class="card"><div class="card-body text-secondary">Nessun evento in programma al momento.</div></div>
             <?php else: ?>
@@ -3599,6 +3798,7 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
               <?= adminLteInfiniteScrollScript('eventi', $slug, count($events), $pageSize, $finished) ?>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
@@ -3661,10 +3861,17 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Evento') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Evento') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <div class="card mb-3">
               <?php if ($event['cover_path']): ?>
                 <div class="position-relative">
@@ -3707,6 +3914,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
             </div>
             <?php endif; ?>
 
+            </div>
             </div>
           </div>
         </div>
@@ -3757,10 +3965,17 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card mb-3">
-              <div class="card-header"><h3 class="card-title"><?= e('Contatti') ?></h3></div>
-            </div>
-            <div class="p-3">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e('Contatti') ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
             <?php if ($formSent): ?>
               <div class="alert alert-success">Messaggio inviato! Grazie, verrai ricontattato al più presto.</div>
               <?= embedClientSideConversionEvent('Contact', $conversionEventId, $artist) ?>
@@ -3778,6 +3993,7 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
                 </div>
               </div>
             <?php endif; ?>
+            </div>
             </div>
           </div>
         </div>
