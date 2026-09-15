@@ -4,6 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/tmdb.php';
 require_once __DIR__ . '/../src/googlebooks.php';
+require_once __DIR__ . '/../src/spoonacular.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -82,6 +83,18 @@ const FAN_FAVORITE_KINDS = [
         'external_url' => 'https://open.spotify.com/album/',
         'image_shape' => 'square', // copertina quadrata, come su Spotify
     ],
+    'recipe' => [
+        'table' => 'fan_favorite_recipes',
+        'external_id_col' => 'spoonacular_recipe_id',
+        'name_col' => 'recipe_title',
+        'image_col' => 'recipe_image',
+        'label' => 'Ricette che amo',
+        'nav_key' => 'ricettecheamo',
+        'list_url_segment' => 'ricette-che-amo',
+        'external_label' => 'Vedi ricetta completa',
+        'external_url' => 'https://spoonacular.com/recipes/-',
+        'image_shape' => 'square',
+    ],
 ];
 
 $slug = $_GET['slug'] ?? '';
@@ -141,6 +154,15 @@ if ($kind === 'band') {
     $apiDetails = spotifyGetPlaylist($item[$cfg['external_id_col']]);
 } elseif ($kind === 'album') {
     $apiDetails = spotifyGetAlbum($item[$cfg['external_id_col']]);
+} elseif ($kind === 'recipe') {
+    $apiDetails = spoonacularGetRecipeDetails($item[$cfg['external_id_col']]);
+}
+
+// Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
+// migliore è quello del sito originale della ricetta (sourceUrl, dai dettagli live dell'API) —
+// l'URL fisso di Spoonacular resta solo un ripiego per quando l'API non risponde.
+if ($kind === 'recipe' && !empty($apiDetails['source_url'])) {
+    $externalUrl = $apiDetails['source_url'];
 }
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
@@ -216,6 +238,8 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
+      <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
+      <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
     </p>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
     <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>
@@ -239,6 +263,14 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <p style="text-align:left;margin-top:10px;opacity:0.9;"><?= nl2br(e($apiDetails['overview'])) ?></p>
     <?php elseif (!empty($apiDetails['biography'])): ?>
       <p style="text-align:left;margin-top:10px;opacity:0.9;"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
+    <?php endif; ?>
+    <?php if ($kind === 'recipe' && !empty($apiDetails['ingredients'])): ?>
+      <div class="card" style="text-align:left;margin-top:14px;">
+        <strong>Ingredienti</strong>
+        <ul style="margin:6px 0 0;padding-left:20px;">
+          <?php foreach ($apiDetails['ingredients'] as $ing): ?><li><?= e($ing) ?></li><?php endforeach; ?>
+        </ul>
+      </div>
     <?php endif; ?>
 
     <p style="margin-top:16px;"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn small"><?= e($cfg['external_label']) ?></a></p>

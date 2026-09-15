@@ -737,7 +737,7 @@ function getContrastTextColor(?string $hexColor): string {
 const ADMINLTE_CHE_AMO_ICONS = [
     'bandcheamo' => 'bi-heart-pulse', 'attorichamo' => 'bi-mask', 'filmcheamo' => 'bi-film',
     'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
-    'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc',
+    'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc', 'ricettecheamo' => 'bi-egg-fried',
 ];
 
 // Configurazione condivisa dei 6 moduli "che amo" con contenuto arricchito da un'API esterna
@@ -751,6 +751,7 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
     'book' => ['table' => 'fan_favorite_books', 'external_id_col' => 'google_books_id', 'name_col' => 'book_title', 'image_col' => 'book_image', 'label' => 'Libri che amo', 'nav_key' => 'libricheamo', 'list_url_segment' => 'libri-che-amo', 'external_label' => 'Vedi su Google Books', 'external_url' => 'https://books.google.com/books?id=', 'image_shape' => 'book'],
     'playlist' => ['table' => 'fan_favorite_playlists', 'external_id_col' => 'spotify_playlist_id', 'name_col' => 'playlist_name', 'image_col' => 'playlist_image', 'label' => 'Playlist che amo', 'nav_key' => 'playlistcheamo', 'list_url_segment' => 'playlist-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/playlist/', 'image_shape' => 'square'],
     'album' => ['table' => 'fan_favorite_albums', 'external_id_col' => 'spotify_album_id', 'name_col' => 'album_name', 'image_col' => 'album_image', 'label' => 'Album che amo', 'nav_key' => 'albumcheamo', 'list_url_segment' => 'album-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/album/', 'image_shape' => 'square'],
+    'recipe' => ['table' => 'fan_favorite_recipes', 'external_id_col' => 'spoonacular_recipe_id', 'name_col' => 'recipe_title', 'image_col' => 'recipe_image', 'label' => 'Ricette che amo', 'nav_key' => 'ricettecheamo', 'list_url_segment' => 'ricette-che-amo', 'external_label' => 'Vedi ricetta completa', 'external_url' => 'https://spoonacular.com/recipes/-', 'image_shape' => 'square'],
 ];
 
 // Helper condivisi per TUTTE le pagine pubbliche a tema AdminLTE oltre alla Home (Timeline, Blog,
@@ -1318,6 +1319,7 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
     'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
     'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
+    'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning'],
 ];
 
 // Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
@@ -2381,7 +2383,12 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
     $image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
     $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
     $note = trim($item['note'] ?? '');
-    $externalUrl = $cfg['external_url'] . $item[$cfg['external_id_col']];
+    // Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
+    // migliore è quello del sito originale della ricetta (sourceUrl, dai dettagli live
+    // dell'API) — l'URL fisso di Spoonacular resta solo un ripiego per quando l'API non risponde.
+    $externalUrl = ($kind === 'recipe' && !empty($apiDetails['source_url']))
+        ? $apiDetails['source_url']
+        : $cfg['external_url'] . $item[$cfg['external_id_col']];
     $shapeStyle = ['circle' => 'width:160px;height:160px;border-radius:50%;', 'book' => 'width:140px;height:190px;border-radius:8px;', 'square' => 'width:170px;height:170px;border-radius:14px;'][$cfg['image_shape']];
     $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . (int) $item['id']);
     $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
@@ -2446,6 +2453,8 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
                   <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
                   <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
+                  <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
+                  <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
                 </p>
                 <small class="text-secondary"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
                 <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?><p class="mt-1 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
@@ -2458,6 +2467,13 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <p class="text-start mt-2"><?= nl2br(e($apiDetails['overview'])) ?></p>
                 <?php elseif (!empty($apiDetails['biography'])): ?>
                   <p class="text-start mt-2"><?= nl2br(e(textExcerpt($apiDetails['biography'], 500))) ?></p>
+                <?php endif; ?>
+                <?php if ($kind === 'recipe' && !empty($apiDetails['ingredients'])): ?>
+                  <div class="card text-start mt-3"><div class="card-body"><strong>Ingredienti</strong>
+                    <ul class="mb-0 mt-1">
+                      <?php foreach ($apiDetails['ingredients'] as $ing): ?><li><?= e($ing) ?></li><?php endforeach; ?>
+                    </ul>
+                  </div></div>
                 <?php endif; ?>
                 <p class="mt-3"><a href="<?= e($externalUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary"><?= e($cfg['external_label']) ?></a></p>
               </div>
@@ -4390,6 +4406,12 @@ function hasFanFavoriteAlbums(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoriteRecipes(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM fan_favorite_recipes WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
 // — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
 // visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
@@ -4404,6 +4426,7 @@ const CHE_AMO_MODULES = [
     'brani' => ['label' => 'Brani che amo', 'icon' => 'fas fa-music', 'check' => null, 'segment' => 'brani', 'table' => 'favorite_tracks'],
     'playlistcheamo' => ['label' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'check' => 'hasFanFavoritePlaylists', 'segment' => 'playlist-che-amo', 'table' => 'fan_favorite_playlists'],
     'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo', 'table' => 'fan_favorite_albums'],
+    'ricettecheamo' => ['label' => 'Ricette che amo', 'icon' => 'fas fa-bowl-food', 'check' => 'hasFanFavoriteRecipes', 'segment' => 'ricette-che-amo', 'table' => 'fan_favorite_recipes'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -5921,6 +5944,22 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fr.id, fr.recipe_title, fr.recipe_image, fr.note, fr.image_path, fr.image_thumb_path, fr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM fan_favorite_recipes fr JOIN users u ON u.id = fr.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fr.user_id IN ($placeholders) AND fr.show_in_feed = 1 AND (fr.publish_at IS NULL OR fr.publish_at <= NOW()) ORDER BY fr.created_at DESC LIMIT 200");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $frTitolo = $r['recipe_title'];
+        if (trim($r['note'] ?? '') !== '') {
+            $frTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'tipo' => 'ricetta_favorita', 'titolo' => $frTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['recipe_image']), 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/ricette-che-amo/' . $r['id'],
+        ];
+    }
+
     $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
@@ -6357,6 +6396,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Brani che amo' => 'brani',
     'Playlist che amo' => 'playlistcheamo',
     'Album che amo' => 'albumcheamo',
+    'Ricette che amo' => 'ricettecheamo',
     'Menù' => 'menu',
     'Offerte' => 'offerte',
     'Foto' => 'foto',
@@ -6401,6 +6441,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Offerte', 'fas fa-tags', '/' . $slug . '/offerte', 21],
         ['Foto', 'fas fa-images', '/' . $slug . '/foto', 22],
         ['Servizi', 'fas fa-briefcase', '/' . $slug . '/servizi', 23],
+        ['Ricette che amo', 'fas fa-bowl-food', '/' . $slug . '/ricette-che-amo', 24],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

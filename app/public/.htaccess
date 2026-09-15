@@ -97,6 +97,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)/album-che-amo/([0-9]+)/?$ fan_favorite_item.php?sl
 # /nomeartista/album-che-amo -> elenco completo album preferiti
 RewriteRule ^([a-zA-Z0-9_-]+)/album-che-amo/?$ album_che_amo.php?slug=$1 [L,QSA]
 
+# /nomeartista/ricette-che-amo/ID -> pagina dedicata alla singola ricetta preferita (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/ricette-che-amo/([0-9]+)/?$ fan_favorite_item.php?slug=$1&kind=recipe&id=$2 [L,QSA]
+
+# /nomeartista/ricette-che-amo -> elenco completo ricette preferite
+RewriteRule ^([a-zA-Z0-9_-]+)/ricette-che-amo/?$ ricette_che_amo.php?slug=$1 [L,QSA]
+
 # /nomeartista/contatti -> form di contatto
 RewriteRule ^([a-zA-Z0-9_-]+)/contatti/?$ contatti.php?slug=$1 [L,QSA]
 

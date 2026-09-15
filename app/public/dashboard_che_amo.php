@@ -17,6 +17,7 @@ $moduleTables = [
     'brani' => 'favorite_tracks',
     'playlistcheamo' => 'fan_favorite_playlists',
     'albumcheamo' => 'fan_favorite_albums',
+    'ricettecheamo' => 'fan_favorite_recipes',
 ];
 $moduleUrls = [
     'bandcheamo' => '/dashboard_fan_bands.php',
@@ -27,6 +28,7 @@ $moduleUrls = [
     'brani' => '/dashboard_audio.php',
     'playlistcheamo' => '/dashboard_fan_playlists.php',
     'albumcheamo' => '/dashboard_fan_albums.php',
+    'ricettecheamo' => '/dashboard_fan_recipes.php',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -112,6 +112,7 @@ $cheAmoTableConfig = [
     'brani' => ['table' => 'favorite_tracks', 'name' => 'track_name', 'image' => 'track_image'],
     'playlistcheamo' => ['table' => 'fan_favorite_playlists', 'name' => 'playlist_name', 'image' => 'playlist_image'],
     'albumcheamo' => ['table' => 'fan_favorite_albums', 'name' => 'album_name', 'image' => 'album_image'],
+    'ricettecheamo' => ['table' => 'fan_favorite_recipes', 'name' => 'recipe_title', 'image' => 'recipe_image'],
 ];
 $cheAmoCarousel = [];
 foreach (CHE_AMO_MODULES as $key => $m) {
