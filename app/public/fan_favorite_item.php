@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/tmdb.php';
 require_once __DIR__ . '/../src/googlebooks.php';
-require_once __DIR__ . '/../src/spoonacular.php';
+require_once __DIR__ . '/../src/themealdb.php';
 require_once __DIR__ . '/../src/thesportsdb.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -86,14 +86,14 @@ const FAN_FAVORITE_KINDS = [
     ],
     'recipe' => [
         'table' => 'fan_favorite_recipes',
-        'external_id_col' => 'spoonacular_recipe_id',
+        'external_id_col' => 'themealdb_recipe_id',
         'name_col' => 'recipe_title',
         'image_col' => 'recipe_image',
         'label' => 'Ricette che amo',
         'nav_key' => 'ricettecheamo',
         'list_url_segment' => 'ricette-che-amo',
         'external_label' => 'Vedi ricetta completa',
-        'external_url' => 'https://spoonacular.com/recipes/-',
+        'external_url' => 'https://www.themealdb.com/meal/',
         'image_shape' => 'square',
     ],
     'team' => [
@@ -192,7 +192,7 @@ if ($kind === 'band') {
 } elseif ($kind === 'album') {
     $apiDetails = spotifyGetAlbum($item[$cfg['external_id_col']]);
 } elseif ($kind === 'recipe') {
-    $apiDetails = spoonacularGetRecipeDetails($item[$cfg['external_id_col']]);
+    $apiDetails = themealdbGetRecipeDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'team') {
     $apiDetails = thesportsdbGetTeamDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'footballer') {
@@ -201,9 +201,9 @@ if ($kind === 'band') {
     $apiDetails = thesportsdbGetEventDetails($item[$cfg['external_id_col']]);
 }
 
-// Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
-// migliore è quello del sito originale della ricetta (sourceUrl, dai dettagli live dell'API) —
-// l'URL fisso di Spoonacular resta solo un ripiego per quando l'API non risponde.
+// Quando disponibile (non sempre compilato su TheMealDB), il link migliore è quello del sito
+// originale della ricetta (strSource, dai dettagli live dell'API) — l'URL fisso di TheMealDB
+// resta il ripiego per quando manca o l'API non risponde.
 if ($kind === 'recipe' && !empty($apiDetails['source_url'])) {
     $externalUrl = $apiDetails['source_url'];
 }
@@ -281,8 +281,8 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
       <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
       <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
-      <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
-      <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
+      <?php if ($kind === 'recipe' && !empty($apiDetails['category'])): ?> · <?= e($apiDetails['category']) ?><?php endif; ?>
+      <?php if ($kind === 'recipe' && !empty($apiDetails['area'])): ?> · <?= e($apiDetails['area']) ?><?php endif; ?>
       <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
       <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
       <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>

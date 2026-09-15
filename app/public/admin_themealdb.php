@@ -1,10 +1,10 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
-require_once __DIR__ . '/../src/spoonacular.php';
+require_once __DIR__ . '/../src/themealdb.php';
 $admin = requireAdmin();
-$activeAdminTab = 'spoonacular';
-$pageTitle = 'Spoonacular (Ricette)';
+$activeAdminTab = 'themealdb';
+$pageTitle = 'TheMealDB (Ricette)';
 $success = null;
 $testResult = null;
 
@@ -13,17 +13,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'save';
 
     if ($action === 'save') {
-        setSiteSetting('spoonacular_api_key', trim($_POST['spoonacular_api_key'] ?? ''));
-        $success = 'Chiave API Spoonacular salvata.';
+        setSiteSetting('themealdb_api_key', trim($_POST['themealdb_api_key'] ?? ''));
+        $success = 'Chiave API TheMealDB salvata.';
     } elseif ($action === 'test') {
-        $testResults = spoonacularSearchRecipe('pasta');
+        $testResults = themealdbSearchRecipe('pasta');
         $testResult = $testResults
-            ? ['ok' => true, 'msg' => 'Connessione a Spoonacular riuscita: trovata "' . $testResults[0]['name'] . '".']
+            ? ['ok' => true, 'msg' => 'Connessione a TheMealDB riuscita: trovata "' . $testResults[0]['title'] . '".']
             : ['ok' => false, 'msg' => 'Connessione fallita. Controlla la API Key, o i log del container chifacosa_app.'];
     }
 }
 
-$apiKey = getSiteSetting('spoonacular_api_key') ?: '';
+$apiKey = getSiteSetting('themealdb_api_key') ?: '';
 
 include __DIR__ . '/_admin_header.php';
 ?>
@@ -36,20 +36,22 @@ include __DIR__ . '/_admin_header.php';
     <strong>Come funziona</strong>
     <p style="color:var(--text-muted)">
       Abilita il modulo "Ricette che amo" nella dashboard: chi lo gestisce può cercare ricette (su
-      tutto il catalogo Spoonacular) e aggiungerle alla propria lista, mostrata poi sulla pagina
+      tutto il catalogo TheMealDB) e aggiungerle alla propria lista, mostrata poi sulla pagina
       pubblica del profilo — stesso principio già usato per "Attori che amo" con TMDb.
     </p>
     <p style="color:var(--text-muted)">
-      Per ottenere la chiave: vai su <a href="https://spoonacular.com/food-api/console#Dashboard" target="_blank">spoonacular.com/food-api/console</a>,
-      crea un account gratuito (150 richieste/giorno incluse) e copia la tua API Key dalla dashboard.
+      Funziona subito senza fare nulla: <code>1</code> è la chiave di test pubblica, sempre valida
+      per l'uso base, già impostata di default se lasci il campo vuoto. Se in futuro dovesse
+      diventare troppo limitata, una chiave personale gratuita si ottiene su
+      <a href="https://www.patreon.com/themealdb" target="_blank">patreon.com/themealdb</a>.
     </p>
   </div>
 
   <form method="post" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="save">
-    <label>Spoonacular API Key</label>
-    <input type="text" name="spoonacular_api_key" value="<?= e($apiKey) ?>" placeholder="es. a1b2c3d4e5f6...">
+    <label>TheMealDB API Key</label>
+    <input type="text" name="themealdb_api_key" value="<?= e($apiKey) ?>" placeholder="es. 1 (chiave di test, va bene per iniziare)">
     <button type="submit" class="btn">Salva chiave</button>
   </form>
 
