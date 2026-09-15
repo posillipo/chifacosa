@@ -801,6 +801,14 @@ function adminLteAssetLinks(): string {
          // testo non tocca comunque i bordi).
          . '@media (max-width:767.98px){.app-content .container-fluid{padding-left:0;padding-right:0;}'
          . '.app-content .row.g-3{--bs-gutter-x:0;}}'
+         // Gli elementi della Timeline (.timeline-item/.timeline-body) hanno un padding/margine
+         // laterale importato di serie da AdminLTE, pensato per un contenuto testuale — con le
+         // foto (che ora sono anche più grandi, 140px invece di 80px, vedi renderAdminLteTimelineRows())
+         // lasciava via via più spazio vuoto sui lati via via che la card si stringeva. Qui viene
+         // ridotto: il gutter per l'icona/linea a sinistra resta uguale (è l'allineamento
+         // strutturale del widget), stringe solo il margine destro e il padding interno.
+         . '.timeline>div>.timeline-item{margin-right:6px;}'
+         . '.timeline>div>.timeline-item>.timeline-body{padding:6px;}'
          . '</style>';
 }
 
@@ -1373,11 +1381,11 @@ function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): arr
               $extraPhotos = $extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [];
             ?>
             <div class="timeline-body">
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;<?= $extraPhotos ? 'margin:0 6px 6px 0;' : '' ?>"></a>
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:140px;height:140px;object-fit:cover;border-radius:6px;margin:<?= $extraPhotos ? '0 6px 6px 0' : '0' ?>;"></a>
               <?php foreach ($extraPhotos as $extra):
                 $extraUrl = str_starts_with($extra, 'http') ? $extra : '/' . $extra;
               ?>
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($extraUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;margin:0 6px 6px 0;"></a>
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($extraUrl) ?>" alt="" loading="lazy" style="width:140px;height:140px;object-fit:cover;border-radius:6px;margin:0 6px 6px 0;"></a>
               <?php endforeach; ?>
             </div>
             <?php endif; ?>
