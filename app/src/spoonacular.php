@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/spotify.php'; // riusa la funzione httpRequest() già scritta lì
+require_once __DIR__ . '/gemini.php'; // per tradurre sommario/ingredienti in italiano, vedi sotto
 
 /**
  * Client minimale per l'API di Spoonacular — ricerca ricette. Stesso approccio già usato per
@@ -53,6 +54,34 @@ function spoonacularSearchRecipe(string $query): array {
     return $results;
 }
 
+// A differenza di TMDb/TheSportsDB, Spoonacular non ha contenuti multilingua: sommario e
+// ingredienti arrivano quasi sempre in inglese, presi così come sono dal sito di origine della
+// ricetta. Qui si traducono in italiano con Gemini (se configurato in Area Admin → Assistente
+// AI) — un'unica chiamata per entrambi i testi, per non raddoppiare i tempi di caricamento della
+// pagina. Se Gemini non è configurato, o la traduzione fallisce o torna un numero di ingredienti
+// diverso dall'originale (segno che il modello non ha seguito il formato atteso), si tiene il
+// testo inglese originale piuttosto che rischiare una traduzione incompleta o disallineata.
+function spoonacularTranslateToItalian(string $overview, array $ingredients): array {
+    $original = ['overview' => $overview, 'ingredients' => $ingredients];
+    if (!getGeminiApiKey() || ($overview === '' && !$ingredients)) {
+        return $original;
+    }
+    $prompt = "Traduci in italiano naturale, senza aggiungere né togliere informazioni, la seguente descrizione di una ricetta di cucina e il suo elenco di ingredienti. Rispondi SOLO nel formato esatto qui sotto, senza nessun altro testo prima o dopo:\n\n"
+        . "DESCRIZIONE:\n<qui la descrizione tradotta>\n\nINGREDIENTI:\n<un ingrediente tradotto per riga, esattamente lo stesso numero di righe dell'elenco originale>\n\n"
+        . "--- TESTO ORIGINALE ---\nDescrizione:\n" . $overview . "\n\nIngredienti:\n" . implode("\n", $ingredients);
+
+    $response = geminiGenerateText($prompt);
+    if (!$response || !preg_match('/DESCRIZIONE:\s*(.*?)\s*INGREDIENTI:\s*(.*)/is', $response, $m)) {
+        return $original;
+    }
+    $translatedOverview = trim($m[1]);
+    $translatedIngredients = array_values(array_filter(array_map('trim', explode("\n", $m[2]))));
+    if ($translatedOverview === '' || count($translatedIngredients) !== count($ingredients)) {
+        return $original;
+    }
+    return ['overview' => $translatedOverview, 'ingredients' => $translatedIngredients];
+}
+
 // Dettagli di una ricetta (usata nella pagina dedicata di "Ricette che amo" per mostrare tempo di
 // preparazione, porzioni, ingredienti e link alla ricetta completa oltre al titolo e alla foto già
 // salvati).
@@ -76,11 +105,14 @@ function spoonacularGetRecipeDetails(string $recipeId): ?array {
             $ingredients[] = $ing['original'];
         }
     }
+    $overview = cleanSpoonacularSummary($r['summary'] ?? '');
+    $translated = spoonacularTranslateToItalian($overview, $ingredients);
+
     return [
-        'overview' => cleanSpoonacularSummary($r['summary'] ?? ''),
+        'overview' => $translated['overview'],
         'ready_in_minutes' => $r['readyInMinutes'] ?? null,
         'servings' => $r['servings'] ?? null,
-        'ingredients' => $ingredients,
+        'ingredients' => $translated['ingredients'],
         'source_url' => $r['sourceUrl'] ?? null,
         'spoonacular_url' => 'https://spoonacular.com/recipes/-' . $r['id'],
     ];
