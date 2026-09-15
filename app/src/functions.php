@@ -780,14 +780,14 @@ function adminLteAssetLinks(): string {
          // delle tre (comportamento predefinito di flexbox su ".row") — ma la colonna centrale
          // (.adminlte-main-col) aveva solo lo sfondo grigio della pagina sotto al suo contenuto
          // quando più corto delle colonne laterali: pareva "non estendersi" come le altre, con
-         // uno spazio vuoto sprecato. Qui il suo contenuto (.p-3, e la card diretta al suo interno
+         // uno spazio vuoto sprecato. Qui il suo contenuto (.py-3, e la card diretta al suo interno
          // quando presente — es. il modulo di Contatti, la card di un'offerta/servizio/evento) si
          // allunga fino a riempire tutta l'altezza disponibile, invece di fermarsi alla propria
          // altezza naturale. Solo da tablet in su: sotto le colonne sono impilate e non c'è nessuna
          // altezza da pareggiare.
          . '@media (min-width:768px){.adminlte-main-col{display:flex;flex-direction:column;}'
-         . '.adminlte-main-col>.p-3{flex:1 1 auto;display:flex;flex-direction:column;}'
-         . '.adminlte-main-col>.p-3>.card{flex:1 1 auto;}}'
+         . '.adminlte-main-col>.py-3{flex:1 1 auto;display:flex;flex-direction:column;}'
+         . '.adminlte-main-col>.py-3>.card{flex:1 1 auto;}}'
          . '</style>';
 }
 
@@ -1552,7 +1552,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e($artist['display_name']) ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
                 <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
             </div>
           </div>
@@ -1609,7 +1609,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Timeline') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
                 <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
             </div>
           </div>
@@ -1685,7 +1685,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Aggiornamento') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
 
                 <div class="card mb-3">
                   <div class="card-body">
@@ -1775,7 +1775,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Blog') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
 
                 <?php if (!$posts): ?>
                   <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
@@ -1856,7 +1856,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Articolo') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
 
                 <article class="card mb-3">
                   <?php if ($post['cover_path']): ?>
@@ -1932,7 +1932,7 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Che Amo') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
                 <?php if ($visibleModules): ?>
                 <div class="row g-3 text-center">
                   <?php foreach ($visibleModules as $mKey => $m): ?>
@@ -2004,7 +2004,7 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e($cfg['label']) ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
                 <?php if ($favorites): ?>
                 <div class="row g-3 text-center" id="adminlte-list-feed"><?= renderAdminLteFanFavoriteRows($favorites, $slug, $kind, $artist) ?></div>
                 <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
@@ -2086,7 +2086,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Scheda') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($name) ?>" class="mb-3" style="<?= $shapeStyle ?>object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2193,7 +2193,7 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Viaggi (' . $totalCount . ')') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($monthGroups): ?>
               <?php foreach ($monthGroups as $group): ?>
                 <div class="card mt-3 mb-2">
@@ -2282,7 +2282,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Viaggio') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?= renderPhotoCarousel($photos, (int) $trip['id']) ?>
@@ -2382,7 +2382,7 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Brani che amo') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if (!$tracks): ?>
               <div class="card"><div class="card-body text-secondary">Nessun brano aggiunto ancora.</div></div>
             <?php else: ?>
@@ -2457,7 +2457,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Scheda') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($imageUrl): ?><img src="<?= e($imageUrl) ?>" alt="<?= e($track['track_name']) ?>" class="mb-3 rounded-4" style="width:220px;height:220px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.18);"><?php endif; ?>
@@ -2552,7 +2552,7 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Testo e ascolto') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2629,7 +2629,7 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Vota il brano') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <div class="card-body text-center">
                 <?php if ($track['track_image']): ?><img src="<?= e($track['track_image']) ?>" class="mb-2 rounded-3" style="width:96px;height:96px;object-fit:cover;"><?php endif; ?>
@@ -2713,7 +2713,7 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Spotify') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
 
             <?php if (!empty($artistDetails['genres'])): ?>
             <div class="card mb-3">
@@ -2826,7 +2826,7 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e($artist['spotify_show_name'] ?: 'Podcast') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($episodes): ?>
               <?php foreach ($episodes as $ep): ?>
                 <a class="card mb-2 text-decoration-none text-body" href="<?= e($ep['spotify_url']) ?>" target="_blank" rel="noopener">
@@ -2907,7 +2907,7 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Video') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($videos): ?>
               <?php foreach ($videos as $v): ?>
                 <div class="card mb-3 p-0" style="overflow:hidden;">
@@ -2989,7 +2989,7 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Menù') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($categories): ?>
             <div class="card">
               <div class="card-header p-0 border-bottom-0">
@@ -3098,7 +3098,7 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Offerte') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if (!$offers): ?>
               <div class="card"><div class="card-body text-secondary">Nessuna offerta attiva al momento.</div></div>
             <?php else: ?>
@@ -3172,7 +3172,7 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Offerta') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
               <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3245,7 +3245,7 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Foto') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
 
             <?php if ($albums): ?>
               <div class="card mb-2">
@@ -3358,7 +3358,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Album') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3425,7 +3425,7 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Servizi') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if (!$services): ?>
               <div class="card"><div class="card-body text-secondary">Nessun servizio pubblicato al momento.</div></div>
             <?php else: ?>
@@ -3500,7 +3500,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Servizio') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -3589,7 +3589,7 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Eventi') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if (!$events): ?>
               <div class="card"><div class="card-body text-secondary">Nessun evento in programma al momento.</div></div>
             <?php else: ?>
@@ -3664,7 +3664,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Evento') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <div class="card mb-3">
               <?php if ($event['cover_path']): ?>
                 <div class="position-relative">
@@ -3760,7 +3760,7 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
             <div class="card mb-3">
               <div class="card-header"><h3 class="card-title"><?= e('Contatti') ?></h3></div>
             </div>
-            <div class="p-3">
+            <div class="py-3">
             <?php if ($formSent): ?>
               <div class="alert alert-success">Messaggio inviato! Grazie, verrai ricontattato al più presto.</div>
               <?= embedClientSideConversionEvent('Contact', $conversionEventId, $artist) ?>
