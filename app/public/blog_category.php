@@ -6,6 +6,8 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $userSlug = $_GET['slug'] ?? '';
+$categorySlug = $_GET['category'] ?? '';
+
 $stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.privacy_tracking_settings, p.genere
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
@@ -17,28 +19,36 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
-$stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW() ORDER BY published_at DESC' . ($isAdminLte ? ' LIMIT 20' : ''));
-$stmt->execute([$artist['id']]);
+$stmt = getDB()->prepare('SELECT * FROM blog_categories WHERE user_id = ? AND slug = ?');
+$stmt->execute([$artist['id'], $categorySlug]);
+$category = $stmt->fetch();
+
+if (!$category) {
+    http_response_code(404);
+    exit('Categoria non trovata.');
+}
+
+$stmt = getDB()->prepare('SELECT b.* FROM blog_posts b JOIN blog_post_categories pc ON pc.post_id = b.id
+                          WHERE pc.category_id = ? AND b.published_at <= NOW() ORDER BY b.published_at DESC');
+$stmt->execute([$category['id']]);
 $posts = $stmt->fetchAll();
 
-// Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — con scroll infinito
-// (vedi adminlte_list_more.php), non solo la prima pagina.
+$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
 if ($isAdminLte) {
-    echo renderAdminLteBlogIndexPage($artist, $userSlug, $posts);
+    echo renderAdminLteBlogCategoryPage($artist, $userSlug, $category, $posts);
     exit;
 }
 
-$pageUrl = siteUrl('/' . $userSlug . '/blog');
+$pageUrl = siteUrl(blogCategoryUrl($userSlug, $category));
 ?>
 <!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<title><?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:title" content="<?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
@@ -59,8 +69,13 @@ $pageUrl = siteUrl('/' . $userSlug . '/blog');
 <div class="container">
   <?= publicProfileHeader($artist, 'blog') ?>
 
+  <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:18px 0 10px;">
+    Categoria: <?= e($category['name']) ?>
+  </div>
+  <p style="text-align:center;margin-bottom:18px;"><a href="/<?= e($userSlug) ?>/blog">← Tutti gli articoli</a></p>
+
   <?php if (!$posts): ?>
-    <div class="card">Nessun articolo pubblicato ancora.</div>
+    <div class="card">Nessun articolo in questa categoria ancora.</div>
   <?php endif; ?>
 
   <?php foreach ($posts as $i => $p): ?>

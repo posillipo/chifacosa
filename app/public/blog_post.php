@@ -18,7 +18,7 @@ $stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_
                           FROM blog_posts b
                           JOIN users u ON u.id = b.user_id
                           JOIN profiles p ON p.user_id = u.id
-                          WHERE u.slug = ? AND b.slug = ? AND u.is_active = 1');
+                          WHERE u.slug = ? AND b.slug = ? AND u.is_active = 1 AND b.published_at <= NOW()');
 $stmt->execute([$userSlug, $postSlug]);
 $post = $stmt->fetch();
 
@@ -51,6 +51,13 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 
 $permalink = siteUrl(blogPostUrl($userSlug, $post));
 $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
+$postCategories = getBlogPostCategories((int) $post['id']);
+$linkedAlbum = null;
+if (!empty($post['album_id'])) {
+    $albStmt = getDB()->prepare('SELECT id, title, cover_path FROM photo_albums WHERE id=? AND user_id=?');
+    $albStmt->execute([$post['album_id'], $post['user_id']]);
+    $linkedAlbum = $albStmt->fetch() ?: null;
+}
 ?>
 <!doctype html>
 <html lang="it">
@@ -102,8 +109,30 @@ $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_p
     <?php endif; ?>
     <div class="date"><?= e(formatLocalDateTime($post['published_at'], $artist)) ?></div>
     <h2><?= e($post['title']) ?></h2>
+    <?php if ($postCategories): ?>
+      <p style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
+        <?php foreach ($postCategories as $cat): ?>
+          <a href="<?= e(blogCategoryUrl($userSlug, $cat)) ?>" class="color-link-btn" style="padding:4px 12px;font-size:12.5px;font-weight:700;background:rgba(var(--text-rgb),0.08);"><?= e($cat['name']) ?></a>
+        <?php endforeach; ?>
+      </p>
+    <?php endif; ?>
     <div><?= nl2br(e($post['content'])) ?></div>
+    <?php if ($post['tags']): ?>
+      <p style="margin-top:16px;color:rgba(var(--text-rgb),0.6);font-size:13px;">🏷️ <?= e($post['tags']) ?></p>
+    <?php endif; ?>
   </article>
+
+  <?php if ($linkedAlbum): ?>
+    <a href="/<?= e($userSlug) ?>/album/<?= (int) $linkedAlbum['id'] ?>" class="card" style="margin-top:16px;display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;">
+      <?php if ($linkedAlbum['cover_path']): ?>
+        <img src="/<?= e($linkedAlbum['cover_path']) ?>" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+      <?php endif; ?>
+      <span>
+        <small style="display:block;color:rgba(var(--text-rgb),0.6);">📷 Album collegato</small>
+        <strong><?= e($linkedAlbum['title']) ?></strong>
+      </span>
+    </a>
+  <?php endif; ?>
 
   <div class="card" style="margin-top:24px;">
     <strong>Condividi questo articolo</strong><br>

@@ -17,6 +17,9 @@ RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 # /nomeartista/blog/anno.mese.giorno.slug-articolo -> singolo articolo (permalink SEO)
 RewriteRule ^([a-zA-Z0-9_-]+)/blog/([0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[a-zA-Z0-9-]+)/?$ blog_post.php?slug=$1&post=$2 [L,QSA]
 
+# /nomeartista/blog/categoria/nome-categoria -> elenco articoli filtrato per categoria
+RewriteRule ^([a-zA-Z0-9_-]+)/blog/categoria/([a-zA-Z0-9-]+)/?$ blog_category.php?slug=$1&category=$2 [L,QSA]
+
 # /nomeartista/blog -> elenco articoli
 RewriteRule ^([a-zA-Z0-9_-]+)/blog/?$ blog_index.php?slug=$1 [L,QSA]
 

@@ -88,7 +88,7 @@ foreach ($stmt->fetchAll() as $p) {
 // Singoli post del blog (permalink SEO con data)
 $stmt = $db->query("SELECT b.slug, b.published_at, u.slug AS user_slug
     FROM blog_posts b JOIN users u ON u.id = b.user_id
-    WHERE u.is_active = 1");
+    WHERE u.is_active = 1 AND b.published_at <= NOW()");
 foreach ($stmt->fetchAll() as $b) {
     sitemapUrl(siteUrl(blogPostUrl($b['user_slug'], $b)), $b['published_at'], 'monthly', '0.6');
 }

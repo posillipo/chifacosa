@@ -1006,7 +1006,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
     $stmt = $db->prepare("SELECT COUNT(*) c FROM timeline_posts WHERE user_id=? AND visibility='public'");
     $stmt->execute([$uid]);
     $contentCount += (int) $stmt->fetch()['c'];
-    $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=?');
+    $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=? AND published_at <= NOW()');
     $stmt->execute([$uid]);
     $contentCount += (int) $stmt->fetch()['c'];
 
@@ -1942,6 +1942,79 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
     return ob_get_clean();
 }
 
+// Pagina pubblica "Categoria del blog" a tema AdminLTE — stesso elenco della pagina Blog
+// (renderAdminLteBlogRows()), filtrato per una categoria. Niente scroll infinito qui (a
+// differenza del Blog intero): un elenco filtrato è normalmente già abbastanza corto da non
+// servire, evitando di dover insegnare anche a adminlte_list_more.php a filtrare per categoria.
+function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $category, array $posts): string {
+    $pageUrl = siteUrl(blogCategoryUrl($slug, $category));
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="fixed-header bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'blog') ?>
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $category['name'], ['Blog' => '/' . $slug . '/blog']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><?= e($category['name']) ?></h3>
+                <div class="card-tools">
+                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+
+                <p class="mb-3"><a href="/<?= e($slug) ?>/blog"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli articoli</a></p>
+
+                <?php if (!$posts): ?>
+                  <div class="card"><div class="card-body text-secondary">Nessun articolo in questa categoria ancora.</div></div>
+                <?php else: ?>
+                  <?= renderAdminLteBlogRows($posts, $slug, $artist) ?>
+                <?php endif; ?>
+
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
 // Pagina pubblica "Articolo del blog" a tema AdminLTE — stesso principio "a scena" della Home.
 // $post contiene sia le colonne di blog_posts sia quelle di profiles/users già unite dalla query
 // di blog_post.php (stessa forma usata dal tema Colorful); $artist è l'array "adattatore" già
@@ -1950,6 +2023,13 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
     $permalink = siteUrl(blogPostUrl($slug, $post));
     $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
     $avatarUrl = adminLteAvatarUrl($artist);
+    $postCategories = getBlogPostCategories((int) $post['id']);
+    $linkedAlbum = null;
+    if (!empty($post['album_id'])) {
+        $albStmt = getDB()->prepare('SELECT id, title, cover_path FROM photo_albums WHERE id=? AND user_id=?');
+        $albStmt->execute([$post['album_id'], $post['user_id']]);
+        $linkedAlbum = $albStmt->fetch() ?: null;
+    }
     ob_start();
     ?>
 <!doctype html>
@@ -2013,9 +2093,33 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
                       <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
                     </div>
                     <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
+                    <?php if ($postCategories): ?>
+                      <p class="mb-3">
+                        <?php foreach ($postCategories as $cat): ?>
+                          <a href="<?= e(blogCategoryUrl($slug, $cat)) ?>" class="badge text-bg-secondary text-decoration-none me-1"><?= e($cat['name']) ?></a>
+                        <?php endforeach; ?>
+                      </p>
+                    <?php endif; ?>
                     <div><?= nl2br(e($post['content'])) ?></div>
+                    <?php if ($post['tags']): ?>
+                      <p class="text-secondary small mt-3 mb-0"><i class="bi bi-tags me-1" aria-hidden="true"></i><?= e($post['tags']) ?></p>
+                    <?php endif; ?>
                   </div>
                 </article>
+
+                <?php if ($linkedAlbum): ?>
+                <a href="/<?= e($slug) ?>/album/<?= (int) $linkedAlbum['id'] ?>" class="card mb-3 text-decoration-none text-body">
+                  <div class="d-flex align-items-center gap-3 p-3">
+                    <?php if ($linkedAlbum['cover_path']): ?>
+                      <img src="/<?= e($linkedAlbum['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;" alt="">
+                    <?php endif; ?>
+                    <div>
+                      <small class="text-secondary d-block"><i class="bi bi-images me-1" aria-hidden="true"></i>Album collegato</small>
+                      <strong><?= e($linkedAlbum['title']) ?></strong>
+                    </div>
+                  </div>
+                </a>
+                <?php endif; ?>
 
                 <div class="card mb-3">
                   <div class="card-body">
@@ -5545,7 +5649,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE b.user_id IN ($placeholders) ORDER BY b.published_at DESC LIMIT 200");
+        WHERE b.user_id IN ($placeholders) AND b.published_at <= NOW() ORDER BY b.published_at DESC LIMIT 200");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -6063,10 +6167,46 @@ function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId 
     }
 }
 
+// Stesso principio di generateUniquePostSlug(), per le categorie del blog — usato per la pagina
+// pubblica filtrata per categoria (/nomeutente/blog/categoria/slug-categoria).
+function generateUniqueBlogCategorySlug(int $userId, string $name, ?int $excludeCategoryId = null): string {
+    $base = slugify($name) ?: 'categoria';
+    $slug = $base;
+    $i = 2;
+    while (true) {
+        $sql = 'SELECT id FROM blog_categories WHERE user_id = ? AND slug = ?';
+        $params = [$userId, $slug];
+        if ($excludeCategoryId) {
+            $sql .= ' AND id != ?';
+            $params[] = $excludeCategoryId;
+        }
+        $stmt = getDB()->prepare($sql);
+        $stmt->execute($params);
+        if (!$stmt->fetch()) {
+            return $slug;
+        }
+        $slug = $base . '-' . $i;
+        $i++;
+    }
+}
+
 // Costruisce il permalink SEO di un articolo: /nomeutente/blog/anno.mese.giorno.slug-articolo
 function blogPostUrl(string $userSlug, array $post): string {
     $datePart = date('Y.m.d', strtotime($post['published_at']));
     return '/' . $userSlug . '/blog/' . $datePart . '.' . $post['slug'];
+}
+
+// URL della pagina pubblica di una categoria del blog (elenco filtrato).
+function blogCategoryUrl(string $userSlug, array $category): string {
+    return '/' . $userSlug . '/blog/categoria/' . $category['slug'];
+}
+
+// Categorie assegnate a un articolo, in ordine alfabetico — usata sia in dashboard (per
+// precompilare le checkbox in modifica) sia lato pubblico (badge sotto il titolo).
+function getBlogPostCategories(int $postId): array {
+    $stmt = getDB()->prepare('SELECT c.* FROM blog_categories c JOIN blog_post_categories pc ON pc.category_id = c.id WHERE pc.post_id = ? ORDER BY c.name ASC');
+    $stmt->execute([$postId]);
+    return $stmt->fetchAll();
 }
 
 // URL assoluta del sito (per meta tag Open Graph / condivisione social), usa SITE_URL se impostata

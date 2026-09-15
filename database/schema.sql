@@ -211,6 +211,13 @@ CREATE TABLE IF NOT EXISTS table_reservations (
     INDEX idx_guest_email (guest_email)
 ) ENGINE=InnoDB;
 
+-- published_at è sia la data mostrata pubblicamente sia la data usata nel permalink SEO
+-- (blogPostUrl()) sia — impostandola nel futuro dal form della dashboard — la programmazione
+-- della pubblicazione: un articolo con published_at futuro non compare in nessuna pagina/feed
+-- pubblico finché quella data non arriva (stesso principio di publish_at in photo_albums, qui
+-- riusa il campo già esistente invece di aggiungerne uno parallelo). album_id collega
+-- opzionalmente l'articolo a un album della sezione Foto (ON DELETE SET NULL: se l'album viene
+-- eliminato l'articolo resta, semplicemente senza più l'album collegato).
 CREATE TABLE IF NOT EXISTS blog_posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -219,9 +226,33 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     excerpt VARCHAR(300),
     content TEXT NOT NULL,
     cover_path VARCHAR(255) DEFAULT NULL,
+    album_id INT DEFAULT NULL,
+    tags VARCHAR(300) DEFAULT NULL,
     published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE SET NULL,
     UNIQUE KEY uniq_user_slug (user_id, slug)
+) ENGINE=InnoDB;
+
+-- Categorie del blog: elenco gestito dal profilo (aggiungi/rinomina/elimina in dashboard_blog.php),
+-- ogni articolo può averne una o più (blog_post_categories). slug usato per la pagina pubblica
+-- filtrata per categoria (/nomeartista/blog/categoria/nome-categoria).
+CREATE TABLE IF NOT EXISTS blog_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(120) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_slug (user_id, slug),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS blog_post_categories (
+    post_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (post_id, category_id),
+    FOREIGN KEY (post_id) REFERENCES blog_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES blog_categories(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS contact_requests (

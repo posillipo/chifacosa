@@ -32,7 +32,7 @@ $html = '';
 $count = 0;
 
 if ($type === 'blog') {
-    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? ORDER BY published_at DESC LIMIT ? OFFSET ?');
+    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW() ORDER BY published_at DESC LIMIT ? OFFSET ?');
     $stmt->bindValue(1, $uid, PDO::PARAM_INT);
     $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);
     $stmt->bindValue(3, $offset, PDO::PARAM_INT);
