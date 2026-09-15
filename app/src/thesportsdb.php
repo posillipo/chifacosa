@@ -29,14 +29,14 @@ function thesportsdbSearchTeam(string $query): array {
     $data = json_decode($response, true);
     $results = [];
     foreach (array_slice($data['teams'] ?? [], 0, 10) as $t) {
-        if (empty($t['strTeamBadge'])) {
+        if (empty($t['strBadge'])) {
             continue;
         }
         $results[] = [
             'id' => (string) $t['idTeam'],
             'name' => $t['strTeam'] . (!empty($t['strLeague']) ? ' — ' . $t['strLeague'] : ''),
             'title' => $t['strTeam'],
-            'image' => $t['strTeamBadge'],
+            'image' => $t['strBadge'],
         ];
     }
     return $results;
