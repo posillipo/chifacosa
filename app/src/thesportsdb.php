@@ -72,8 +72,16 @@ function thesportsdbGetTeamDetails(string $teamId): ?array {
         }
     }
 
+    // La descrizione in italiano non è sempre compilata per ogni squadra (a differenza
+    // dell'inglese, quasi sempre presente): quando manca si ripiega sull'inglese piuttosto che
+    // lasciare la scheda senza descrizione.
+    $overview = trim($t['strDescriptionIT'] ?? '');
+    if ($overview === '') {
+        $overview = trim($t['strDescriptionEN'] ?? '');
+    }
+
     return [
-        'overview' => trim($t['strDescriptionEN'] ?? ''),
+        'overview' => $overview,
         'league' => $t['strLeague'] ?? null,
         'country' => $t['strCountry'] ?? null,
         'stadium' => $t['strStadium'] ?? null,
