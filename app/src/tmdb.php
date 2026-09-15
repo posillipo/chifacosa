@@ -7,7 +7,11 @@ require_once __DIR__ . '/spotify.php'; // riusa la funzione httpRequest() già s
  * la "API Key (v3 auth)", passata come parametro nell'URL (non il token v4, più complesso).
  */
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w185';
+// w342 invece di w185: quest'ultima (185px di larghezza) è sotto ai 200x200 minimi richiesti da
+// Facebook/Meta per og:image (vedi Debugger di condivisione — "URL non valido: dimensioni minime
+// non rispettate"), che serve proprio questa stessa immagine dato che diventa actor_image/
+// movie_image salvata sull'elemento "che amo" scelto dalla ricerca.
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w342';
 
 function getTmdbApiKey(): ?string {
     $key = getSiteSetting('tmdb_api_key');
