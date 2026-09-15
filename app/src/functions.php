@@ -767,12 +767,15 @@ function adminLteAssetLinks(): string {
          // parola. Qui sotto 576px si riduce.
          . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;}'
          . '@media (max-width:575.98px){.adminlte-blog-thumb{width:88px;height:88px;}}'
-         // Il menu di navigazione nel footer della card profilo (renderAdminLteProfileSidebar())
-         // usa un <ul class="nav flex-column"> semplice, senza "nav-pills"/"nav-tabs": senza
-         // quella classe contenitore Bootstrap non colora affatto la voce ".active" (le regole
-         // di colore richiedono tutte un antenato .nav-tabs/.nav-pills/ecc.) — qui la voce della
-         // pagina corrente resterebbe indistinguibile dalle altre, perdendo "l'effetto focus".
-         . '.card-footer .nav-link.active{font-weight:700;background-color:var(--bs-tertiary-bg)}'
+         // Nome del profilo nel brand della barra di navigazione (adminLteTopNav()): troncato per
+         // non spingere fuori schermo le voci di menu quando il nome è lungo.
+         . '.topnav-brand-name{max-width:180px;display:inline-block;}'
+         // Con molte voci visibili contemporaneamente (Che Amo, Spotify, Podcast, Video, Blog,
+         // Menù, Offerte, Foto, Servizi, Eventi, Contatti) la barra può non stare su una riga sola
+         // alle larghezze desktop più strette: Bootstrap non manda a capo le voci di ".navbar-nav"
+         // di default (le farebbe uscire dallo schermo) — qui si permette il ritorno a capo invece
+         // che il taglio.
+         . '@media (min-width:992px){#topNavMenu .navbar-nav{flex-wrap:wrap;row-gap:.25rem;}}'
          . '</style>';
 }
 
@@ -826,41 +829,37 @@ function adminLteFooterBlock(array $artist): string {
     return ob_get_clean();
 }
 
-// Colonna sinistra del profilo (avatar/follower/recensioni/Segui, menu di navigazione, "I miei
-// link", "Chi sono") — era solo nella Home, ora condivisa da OGNI pagina pubblica a tema
-// AdminLTE (Timeline, Che Amo, Spotify...), così chi naviga dentro il profilo la vede sempre,
-// non solo in Home. Self-contained: calcola da sola i dati che le servono a partire da
-// $artist/$slug, così ogni pagina chiamante non deve ripetere le stesse query.
+// Barra di navigazione in cima a OGNI pagina pubblica a tema AdminLTE — layout "Top Nav" di
+// AdminLTE 4 (https://adminlte.io/themes/v4/layout/top-nav.html): niente <aside>, il menu vive
+// in un <nav class="app-header navbar navbar-expand-lg"> con toggler su mobile, sempre visibile
+// (la pagina chiamante aggiunge "fixed-header" al <body>, che lo rende "sticky" in cima durante
+// lo scroll — vedi .fixed-header .app-header nel CSS di AdminLTE).
 //
-// Il menu di navigazione (Che Amo, Spotify, Podcast, Video, Blog...) viveva prima in una barra
-// orizzontale in cima alla colonna centrale (renderAdminLteNavTabs(), ora eliminata insieme alla
-// card che la conteneva): qui sotto "Recensioni" nello stesso elenco, con la voce della pagina
-// corrente marcata "active" (l'"effetto focus" richiesto), stessa logica di visibilità di prima
-// (riusa hasAnyVisibleCheAmo() ecc.) — solo la posizione è cambiata, la scelta di quali voci
-// mostrare resta la stessa.
-function renderAdminLteProfileSidebar(array $artist, string $slug, string $activeKey): string {
+// Prima queste voci (Che Amo, Spotify, Podcast, Video, Blog...) vivevano in fondo alla colonna
+// del profilo, raggiungibili solo dopo aver scrollato oltre la card utente e le statistiche: da
+// qui sono raggiungibili subito, da qualunque pagina, senza scroll. "Che Amo" diventa un menu a
+// tendina con tutti i moduli (Band/Attori/Film/Libri/Playlist/Album/Viaggi/Brani che amo) invece
+// di portare prima alla vetrina e poi a un secondo click — un passaggio in meno per arrivare al
+// contenuto specifico. "Segui" e Accedi/Registrati, prima sotto la card profilo, sono spostati
+// qui per lo stesso motivo: azioni, non contenuto, restano più utili sempre a portata di mano.
+function adminLteTopNav(array $artist, string $slug, string $activeKey): string {
     $uid = (int) $artist['id'];
-    $db = getDB();
-
-    $followerCount = getAccountFollowerCount($uid);
-    $reviewStats = getBandRatingStats($uid);
-    $contentCount = 0;
-    $stmt = $db->prepare("SELECT COUNT(*) c FROM timeline_posts WHERE user_id=? AND visibility='public'");
-    $stmt->execute([$uid]);
-    $contentCount += (int) $stmt->fetch()['c'];
-    $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=?');
-    $stmt->execute([$uid]);
-    $contentCount += (int) $stmt->fetch()['c'];
-
-    $avatarUrl = adminLteAvatarUrl($artist);
-
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
     $hiddenKeys = getHiddenNavKeys($uid);
-    $navItems = [];
-    $navItems['timeline'] = ['label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
-    if (hasAnyVisibleCheAmo($uid, $hiddenKeys)) {
-        $navItems['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo'];
+
+    // Stessa selezione di che_amo.php (la vetrina): un modulo compare nel menu a tendina solo se
+    // non nascosto da "Menu di Navigazione" e ha davvero del contenuto pubblico.
+    $cheAmoModules = [];
+    foreach (CHE_AMO_MODULES as $key => $m) {
+        if (in_array($key, $hiddenKeys, true)) {
+            continue;
+        }
+        if ($m['check'] === null || $m['check']($uid)) {
+            $cheAmoModules[$key] = $m;
+        }
     }
+
+    $navItems = [];
     if ($isBandOrLabel && !empty($artist['spotify_artist_id'])) {
         $navItems['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
     }
@@ -887,6 +886,85 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, string $activ
         $navItems['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
     }
     $navItems['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+
+    $avatarUrl = adminLteAvatarUrl($artist);
+
+    ob_start();
+    ?>
+      <nav class="app-header navbar navbar-expand-lg bg-body">
+        <div class="container-fluid">
+          <a href="/<?= e($slug) ?>" class="navbar-brand d-flex align-items-center">
+            <img src="<?= e($avatarUrl) ?>" alt="" width="30" height="30" class="rounded-circle shadow-sm me-2">
+            <span class="fw-semibold text-truncate topnav-brand-name"><?= e($artist['display_name']) ?></span>
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavMenu" aria-controls="topNavMenu" aria-expanded="false" aria-label="Menu di navigazione">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="topNavMenu">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a href="/<?= e($slug) ?>/timeline" class="nav-link<?= $activeKey === 'timeline' ? ' active' : '' ?>">Timeline</a>
+              </li>
+              <?php if ($cheAmoModules): ?>
+              <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle<?= $activeKey === 'cheamo' ? ' active' : '' ?>" role="button" data-bs-toggle="dropdown" aria-expanded="false">Che Amo</a>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/<?= e($slug) ?>/che-amo">Tutti</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <?php foreach ($cheAmoModules as $m): ?>
+                  <li><a class="dropdown-item" href="/<?= e($slug) ?>/<?= e($m['segment']) ?>"><i class="<?= e($m['icon']) ?> me-2" aria-hidden="true"></i><?= e($m['label']) ?></a></li>
+                  <?php endforeach; ?>
+                </ul>
+              </li>
+              <?php endif; ?>
+              <?php foreach (['spotify', 'podcast', 'video', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
+                <?php if (isset($navItems[$key])): ?>
+              <li class="nav-item">
+                <a href="<?= e($navItems[$key]['url']) ?>" class="nav-link<?= $activeKey === $key ? ' active' : '' ?>"><?= e($navItems[$key]['label']) ?></a>
+              </li>
+                <?php endif; ?>
+              <?php endforeach; ?>
+            </ul>
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+              <?php if (empty($_SESSION['user_id'])): ?>
+              <li class="nav-item"><a class="nav-link" href="/login.php"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Accedi</a></li>
+              <li class="nav-item"><a class="nav-link" href="/register.php"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Registrati</a></li>
+              <?php endif; ?>
+              <li class="nav-item">
+                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary btn-sm my-2 my-lg-0">
+                  <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    <?php
+    return ob_get_clean();
+}
+
+// Colonna sinistra del profilo (avatar/follower/recensioni) — era solo nella Home, ora condivisa
+// da OGNI pagina pubblica a tema AdminLTE (Timeline, Che Amo, Spotify...), così chi naviga dentro
+// il profilo la vede sempre, non solo in Home. Self-contained: calcola da sola i dati che le
+// servono a partire da $artist/$slug, così ogni pagina chiamante non deve ripetere le stesse
+// query. Il menu di navigazione, "Segui" e Accedi/Registrati vivevano prima qui sotto le
+// statistiche: sono passati alla barra in cima alla pagina (adminLteTopNav()) — qui resta solo
+// l'identità.
+function renderAdminLteProfileSidebar(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+    $db = getDB();
+
+    $followerCount = getAccountFollowerCount($uid);
+    $reviewStats = getBandRatingStats($uid);
+    $contentCount = 0;
+    $stmt = $db->prepare("SELECT COUNT(*) c FROM timeline_posts WHERE user_id=? AND visibility='public'");
+    $stmt->execute([$uid]);
+    $contentCount += (int) $stmt->fetch()['c'];
+    $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=?');
+    $stmt->execute([$uid]);
+    $contentCount += (int) $stmt->fetch()['c'];
+
+    $avatarUrl = adminLteAvatarUrl($artist);
 
     ob_start();
     ?>
@@ -924,31 +1002,6 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, string $activ
                 </ul>
               </div>
             </div>
-
-            <div class="card mt-3">
-              <div class="card-header"><h3 class="card-title">Menù</h3></div>
-              <div class="card-footer p-0">
-                <ul class="nav flex-column">
-                  <?php foreach ($navItems as $key => $item): ?>
-                  <li class="nav-item">
-                    <a href="<?= e($item['url']) ?>" class="nav-link<?= $key === $activeKey ? ' active' : '' ?>"><?= e($item['label']) ?></a>
-                  </li>
-                  <?php endforeach; ?>
-                </ul>
-              </div>
-            </div>
-
-            <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary w-100 mt-3">
-              <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
-            </a>
-
-            <?php if (empty($_SESSION['user_id'])): ?>
-            <div class="text-center small mt-3">
-              <a href="/login.php" class="text-decoration-none"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Accedi</a>
-              <span class="text-secondary mx-1">·</span>
-              <a href="/register.php" class="text-decoration-none"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Registrati</a>
-            </div>
-            <?php endif; ?>
           </div>
     <?php
     return ob_get_clean();
@@ -1472,15 +1525,16 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'timeline') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['display_name']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'timeline') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1496,6 +1550,8 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
@@ -1526,15 +1582,16 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'timeline') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Timeline') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'timeline') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1550,6 +1607,8 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
@@ -1599,15 +1658,16 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'timeline') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $post['display_name'], 'Aggiornamento', ['Timeline' => '/' . $slug . '/timeline']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'timeline') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1652,6 +1712,8 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
 <script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
@@ -1686,15 +1748,16 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'blog') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Blog') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'blog') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1720,6 +1783,9 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -1763,15 +1829,16 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'blog') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Articolo', ['Blog' => '/' . $slug . '/blog']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'blog') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1808,6 +1875,9 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -1835,15 +1905,16 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Che Amo') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1872,6 +1943,9 @@ function renderAdminLteCheAmoIndexPage(array $artist, string $slug, array $visib
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -1903,15 +1977,16 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $cfg['label'], ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -1935,6 +2010,9 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -1981,15 +2059,16 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Scheda', ['Che Amo' => '/' . $slug . '/che-amo', $cfg['label'] => '/' . $slug . '/' . $cfg['list_url_segment']]) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2058,6 +2137,9 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2084,15 +2166,16 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggi (' . $totalCount . ')', ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2127,6 +2210,9 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2169,15 +2255,16 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Viaggio', ['Che Amo' => '/' . $slug . '/che-amo', 'Viaggi' => '/' . $slug . '/viaggi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2235,6 +2322,9 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if ($anyMultiPhoto): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
@@ -2265,15 +2355,16 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Brani che amo', ['Che Amo' => '/' . $slug . '/che-amo']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2297,6 +2388,9 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2336,15 +2430,16 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Scheda', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2400,6 +2495,9 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2427,15 +2525,16 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Testo e ascolto', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2473,6 +2572,9 @@ function renderAdminLteTrackLyricsPage(array $artist, string $slug, array $track
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2500,15 +2602,16 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'cheamo') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Vota il brano', ['Che Amo' => '/' . $slug . '/che-amo', 'Brani che amo' => '/' . $slug . '/brani']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'cheamo') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2553,6 +2656,9 @@ function renderAdminLteTrackReviewPage(array $artist, string $slug, array $track
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2580,15 +2686,16 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'spotify') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Spotify') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'spotify') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2662,6 +2769,9 @@ function renderAdminLteSpotifyPage(array $artist, string $slug, array $albums, a
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2689,15 +2799,16 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'podcast') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['spotify_show_name'] ?: 'Podcast') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'podcast') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2740,6 +2851,9 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2766,15 +2880,16 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'video') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Video') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'video') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2810,6 +2925,9 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -2844,15 +2962,16 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'menu') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Menù') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'menu') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2905,6 +3024,9 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <script>
 (function () {
   var tabs = document.getElementById('menu-tabs');
@@ -2949,15 +3071,16 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'offerte') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Offerte') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'offerte') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -2981,6 +3104,9 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -3019,15 +3145,16 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'offerte') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Offerta', ['Offerte' => '/' . $slug . '/offerte']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'offerte') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3060,6 +3187,9 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -3088,15 +3218,16 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'foto') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Foto') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'foto') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3156,6 +3287,9 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if ($timelinePhotos): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
@@ -3197,15 +3331,16 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'foto') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Album', ['Foto' => '/' . $slug . '/foto']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'foto') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3231,6 +3366,9 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
@@ -3260,15 +3398,16 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'servizi') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Servizi') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'servizi') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3292,6 +3431,9 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -3331,15 +3473,16 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'servizi') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Servizio', ['Servizi' => '/' . $slug . '/servizi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'servizi') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3387,6 +3530,9 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 <?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
@@ -3416,15 +3562,16 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'eventi') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Eventi') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'eventi') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3448,6 +3595,9 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -3487,15 +3637,16 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'eventi') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Evento', ['Eventi' => '/' . $slug . '/eventi']) ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'eventi') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3552,6 +3703,9 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
@@ -3579,15 +3733,16 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="bg-body-tertiary">
+<body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'contatti') ?>
   <main class="app-main">
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Contatti') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug, 'contatti') ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-2">
             <div class="card mb-3">
@@ -3619,6 +3774,9 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
   </main>
   <?= adminLteFooterBlock($artist) ?>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
     <?php
