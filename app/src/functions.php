@@ -1203,13 +1203,15 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
 // fissato via CSS (order-*), non dalla posizione nel markup: così può essere richiamata subito
 // dopo la sidebar in ogni pagina, invece di dover trovare il punto esatto di chiusura della
 // colonna centrale in ciascuna delle funzioni che la usano.
-function renderAdminLteProfileExtras(array $artist, string $slug): string {
+function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = ''): string {
     $uid = (int) $artist['id'];
+    $db = getDB();
 
     // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
     // e con contenuto effettivo): il widget qui sotto elenca esattamente le stesse voci che
     // compaiono sulla vetrina "Che Amo" dietro al tab omonimo, mai svuotato dalla barra
     // orizzontale (resta lì, questo è solo un accesso rapido in più dalla colonna laterale).
+    // Ogni voce visibile porta anche il conteggio dei suoi elementi (es. "Attori che amo").
     $hiddenKeys = getHiddenNavKeys($uid);
     $cheAmoItems = [];
     if (!in_array('cheamo', $hiddenKeys, true)) {
@@ -1218,18 +1220,22 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
                 continue;
             }
             if ($m['check'] === null || $m['check']($uid)) {
+                $stmt = $db->prepare("SELECT COUNT(*) c FROM {$m['table']} WHERE user_id=?");
+                $stmt->execute([$uid]);
+                $m['count'] = (int) $stmt->fetch()['c'];
                 $cheAmoItems[$key] = $m;
             }
         }
     }
 
-    if (!$cheAmoItems) {
+    if (!$cheAmoItems && $extraCardsHtml === '') {
         return '';
     }
 
     ob_start();
     ?>
           <div class="col-md-3 order-3 order-md-3">
+            <?php if ($cheAmoItems): ?>
             <div class="card">
               <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
               <div class="card-body">
@@ -1241,12 +1247,47 @@ function renderAdminLteProfileExtras(array $artist, string $slug): string {
                   </span>
                   <div class="info-box-content">
                     <span class="info-box-text"><?= e($m['label']) ?></span>
+                    <span class="info-box-number"><?= (int) $m['count'] ?></span>
                   </div>
                 </a>
                 <?php $i++; endforeach; ?>
               </div>
             </div>
+            <?php endif; ?>
+            <?php if ($extraCardsHtml !== ''): ?>
+            <div<?= $cheAmoItems ? ' class="mt-3"' : '' ?>><?= $extraCardsHtml ?></div>
+            <?php endif; ?>
           </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Card "Categorie del blog" (colonna destra) — elenco alfabetico delle categorie dell'artista,
+// ognuna verso la sua pagina pubblica filtrata (blogCategoryUrl()). Mostrata solo sulla pagina di
+// un articolo (vedi renderAdminLteBlogPostPage()), passata come $extraCardsHtml a
+// renderAdminLteProfileExtras() così convive nella stessa colonna della card "Che Amo" invece di
+// aprirne una quarta. Nessuna card se l'artista non ha ancora categorie.
+function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug): string {
+    $stmt = getDB()->prepare('SELECT id, name, slug FROM blog_categories WHERE user_id=? ORDER BY name ASC');
+    $stmt->execute([$userId]);
+    $categories = $stmt->fetchAll();
+    if (!$categories) {
+        return '';
+    }
+    ob_start();
+    ?>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Categorie del blog</h3></div>
+              <div class="list-group list-group-flush">
+                <?php foreach ($categories as $cat): ?>
+                <a href="<?= e(blogCategoryUrl($slug, $cat)) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                  <i class="bi bi-folder2 text-secondary" aria-hidden="true"></i>
+                  <span class="flex-grow-1"><?= e($cat['name']) ?></span>
+                  <i class="bi bi-chevron-right text-secondary small" aria-hidden="true"></i>
+                </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
     <?php
     return ob_get_clean();
 }
@@ -1278,6 +1319,25 @@ const ADMINLTE_TIMELINE_TYPE_META = [
 // il primo elemento di questa chiamata cade nello stesso giorno; il valore restituito serve a far
 // proseguire correttamente la chiamata successiva.
 function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): array {
+    // Foto aggiuntive dei post "pensiero" con più foto (carosello) presenti in questa pagina di
+    // risultati: un'unica query per tutte invece di una per post, stesso principio del conteggio
+    // già fatto in getTimelineFeedForUsers().
+    $extraPhotosByPost = [];
+    $multiPhotoIds = [];
+    foreach ($items as $it) {
+        if (($it['tipo'] ?? '') === 'pensiero' && !empty($it['has_multi_photo']) && !empty($it['id'])) {
+            $multiPhotoIds[] = (int) $it['id'];
+        }
+    }
+    if ($multiPhotoIds) {
+        $ph = implode(',', array_fill(0, count($multiPhotoIds), '?'));
+        $stmt = getDB()->prepare("SELECT post_id, image_path FROM timeline_post_photos WHERE post_id IN ($ph) ORDER BY sort_order ASC, id ASC");
+        $stmt->execute($multiPhotoIds);
+        foreach ($stmt->fetchAll() as $r) {
+            $extraPhotosByPost[(int) $r['post_id']][] = $r['image_path'];
+        }
+    }
+
     $lastDay = $afterDay;
     ob_start();
     foreach ($items as $it):
@@ -1293,9 +1353,15 @@ function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): arr
             <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
             <?php if (!empty($it['cover'])):
               $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
+              $extraPhotos = $extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [];
             ?>
             <div class="timeline-body">
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;"></a>
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;<?= $extraPhotos ? 'margin:0 6px 6px 0;' : '' ?>"></a>
+              <?php foreach ($extraPhotos as $extra):
+                $extraUrl = str_starts_with($extra, 'http') ? $extra : '/' . $extra;
+              ?>
+              <a href="<?= e($it['url']) ?>"><img src="<?= e($extraUrl) ?>" alt="" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:6px;margin:0 6px 6px 0;"></a>
+              <?php endforeach; ?>
             </div>
             <?php endif; ?>
           </div>
@@ -2069,7 +2135,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug)) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -4322,14 +4388,14 @@ function hasFanFavoriteAlbums(int $userId): bool {
 // amo" non ha una funzione di controllo contenuto: non l'ha mai avuta (era il modulo originale,
 // sempre mostrato), si mantiene lo stesso comportamento anche da dentro la vetrina.
 const CHE_AMO_MODULES = [
-    'bandcheamo' => ['label' => 'Band che amo', 'icon' => 'fas fa-heart-circle-check', 'check' => 'hasFanFavoriteBands', 'segment' => 'band-che-amo'],
-    'attorichamo' => ['label' => 'Attori che amo', 'icon' => 'fas fa-clapperboard', 'check' => 'hasFanFavoriteActors', 'segment' => 'attori-che-amo'],
-    'filmcheamo' => ['label' => 'Film che amo', 'icon' => 'fas fa-film', 'check' => 'hasFanFavoriteMovies', 'segment' => 'film-che-amo'],
-    'libricheamo' => ['label' => 'Libri che amo', 'icon' => 'fas fa-book', 'check' => 'hasFanFavoriteBooks', 'segment' => 'libri-che-amo'],
-    'viaggi' => ['label' => 'Viaggi', 'icon' => 'fas fa-plane', 'check' => 'hasFanFavoriteTrips', 'segment' => 'viaggi'],
-    'brani' => ['label' => 'Brani che amo', 'icon' => 'fas fa-music', 'check' => null, 'segment' => 'brani'],
-    'playlistcheamo' => ['label' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'check' => 'hasFanFavoritePlaylists', 'segment' => 'playlist-che-amo'],
-    'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo'],
+    'bandcheamo' => ['label' => 'Band che amo', 'icon' => 'fas fa-heart-circle-check', 'check' => 'hasFanFavoriteBands', 'segment' => 'band-che-amo', 'table' => 'fan_favorite_bands'],
+    'attorichamo' => ['label' => 'Attori che amo', 'icon' => 'fas fa-clapperboard', 'check' => 'hasFanFavoriteActors', 'segment' => 'attori-che-amo', 'table' => 'fan_favorite_actors'],
+    'filmcheamo' => ['label' => 'Film che amo', 'icon' => 'fas fa-film', 'check' => 'hasFanFavoriteMovies', 'segment' => 'film-che-amo', 'table' => 'fan_favorite_movies'],
+    'libricheamo' => ['label' => 'Libri che amo', 'icon' => 'fas fa-book', 'check' => 'hasFanFavoriteBooks', 'segment' => 'libri-che-amo', 'table' => 'fan_favorite_books'],
+    'viaggi' => ['label' => 'Viaggi', 'icon' => 'fas fa-plane', 'check' => 'hasFanFavoriteTrips', 'segment' => 'viaggi', 'table' => 'fan_favorite_trips'],
+    'brani' => ['label' => 'Brani che amo', 'icon' => 'fas fa-music', 'check' => null, 'segment' => 'brani', 'table' => 'favorite_tracks'],
+    'playlistcheamo' => ['label' => 'Playlist che amo', 'icon' => 'fas fa-list-ul', 'check' => 'hasFanFavoritePlaylists', 'segment' => 'playlist-che-amo', 'table' => 'fan_favorite_playlists'],
+    'albumcheamo' => ['label' => 'Album che amo', 'icon' => 'fas fa-compact-disc', 'check' => 'hasFanFavoriteAlbums', 'segment' => 'album-che-amo', 'table' => 'fan_favorite_albums'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -5713,6 +5779,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     }
     foreach ($pensieroRows as $r) {
         $items[] = [
+            'id' => (int) $r['id'],
             'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'],
             'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
             'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($pensieroPhotoCounts[(int) $r['id']]),
