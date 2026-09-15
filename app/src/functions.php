@@ -788,6 +788,14 @@ function adminLteAssetLinks(): string {
          . '@media (min-width:768px){.adminlte-main-col{display:flex;flex-direction:column;}'
          . '.adminlte-main-col>.card{flex:1 1 auto;}'
          . '.adminlte-main-col>.card>.card-body{flex:1 1 auto;}}'
+         // Sotto i 768px le tre colonne (sidebar, contenuto, extra) sono impilate una sopra
+         // l'altra: il padding del container Bootstrap (.75rem) sommato al gutter della riga
+         // (.5rem, da "row g-3") lasciava fino a 20px di sfondo vuoto per lato attorno alle card,
+         // uno spreco su schermi già stretti. Qui sotto vengono azzerati entrambi, così le card
+         // toccano i bordi dello schermo (il loro padding interno, card-body, resta invariato: il
+         // testo non tocca comunque i bordi).
+         . '@media (max-width:767.98px){.app-content .container-fluid{padding-left:0;padding-right:0;}'
+         . '.app-content .row.g-3{--bs-gutter-x:0;}}'
          . '</style>';
 }
 
