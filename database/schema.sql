@@ -371,22 +371,27 @@ CREATE TABLE IF NOT EXISTS fan_favorite_books (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Ricette preferite, cercate sul catalogo TheMealDB (stesso principio di Band/Attori/Film/Libri
+-- Ricette preferite, cercate sul catalogo Spoonacular (stesso principio di Band/Attori/Film/Libri
 -- che amo: ricerca su un catalogo esterno, non solo ricette già presenti su CHI FA COSA).
+-- cached_details: dettagli (tempo di preparazione, porzioni, ingredienti, già tradotti in
+-- italiano) salvati in JSON alla prima richiesta invece di richiamare Spoonacular a ogni visita
+-- della pagina pubblica — il piano gratuito concede solo 150 richieste/giorno. Vedi
+-- fan_favorite_item.php e la funzione spoonacularGetRecipeDetails() in spoonacular.php.
 CREATE TABLE IF NOT EXISTS fan_favorite_recipes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    themealdb_recipe_id VARCHAR(50) NOT NULL,
+    spoonacular_recipe_id VARCHAR(50) NOT NULL,
     recipe_title VARCHAR(200) NOT NULL,
     recipe_image VARCHAR(500) DEFAULT NULL,
     note TEXT DEFAULT NULL,
     image_path VARCHAR(500) DEFAULT NULL,
     image_thumb_path VARCHAR(500) DEFAULT NULL,
+    cached_details TEXT DEFAULT NULL,
     show_in_feed TINYINT(1) NOT NULL DEFAULT 1,
     publish_at DATETIME DEFAULT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_user_recipe (user_id, themealdb_recipe_id),
+    UNIQUE KEY uniq_user_recipe (user_id, spoonacular_recipe_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
-require_once __DIR__ . '/../src/themealdb.php';
+require_once __DIR__ . '/../src/spoonacular.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'che_amo';
@@ -26,14 +26,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
             // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT IGNORE INTO fan_favorite_recipes
-                (user_id, themealdb_recipe_id, recipe_title, recipe_image, show_in_feed, sort_order)
+                (user_id, spoonacular_recipe_id, recipe_title, recipe_image, show_in_feed, sort_order)
                 VALUES (?, ?, ?, ?, 0, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_recipes WHERE user_id=?) t))');
             $stmt->execute([$profile['id'], $recipeId, $recipeName, $recipeImage ?: null, $profile['id']]);
             // Non ci si fida di lastInsertId(): con INSERT IGNORE su un duplicato resterebbe a 0
             // o non aggiornato — si rilegge sempre la riga vera dal database.
-            $stmt = getDB()->prepare('SELECT * FROM fan_favorite_recipes WHERE user_id=? AND themealdb_recipe_id=?');
+            $stmt = getDB()->prepare('SELECT * FROM fan_favorite_recipes WHERE user_id=? AND spoonacular_recipe_id=?');
             $stmt->execute([$profile['id'], $recipeId]);
             $addedRow = $stmt->fetch() ?: null;
+            // Precarica subito i dettagli (tempo di preparazione, porzioni, ingredienti) nella
+            // cache — vedi fan_favorite_item.php: così la primissima visita della pagina pubblica
+            // non deve più aspettare né consumare una richiesta Spoonacular al volo.
+            if ($addedRow && empty($addedRow['cached_details'])) {
+                $details = spoonacularGetRecipeDetails($recipeId);
+                if ($details) {
+                    $cachedJson = json_encode($details);
+                    $stmt = getDB()->prepare('UPDATE fan_favorite_recipes SET cached_details=? WHERE id=?');
+                    $stmt->execute([$cachedJson, $addedRow['id']]);
+                    $addedRow['cached_details'] = $cachedJson;
+                }
+            }
         }
         if ($isAjax) {
             header('Content-Type: application/json; charset=UTF-8');
@@ -129,12 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'search') {
         $searchQuery = trim($_POST['query'] ?? '');
         if ($searchQuery !== '') {
-            $searchResults = themealdbSearchRecipe($searchQuery);
+            $searchResults = spoonacularSearchRecipe($searchQuery);
         }
         if ($isAjax) {
-            $stmt = getDB()->prepare('SELECT themealdb_recipe_id FROM fan_favorite_recipes WHERE user_id=?');
+            $stmt = getDB()->prepare('SELECT spoonacular_recipe_id FROM fan_favorite_recipes WHERE user_id=?');
             $stmt->execute([$profile['id']]);
-            $favIds = array_column($stmt->fetchAll(), 'themealdb_recipe_id');
+            $favIds = array_column($stmt->fetchAll(), 'spoonacular_recipe_id');
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(['results' => $searchResults, 'favoriteIds' => $favIds]);
             exit;
@@ -145,17 +157,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = getDB()->prepare('SELECT * FROM fan_favorite_recipes WHERE user_id=? ORDER BY sort_order DESC');
 $stmt->execute([$profile['id']]);
 $favorites = $stmt->fetchAll();
-$favoriteIds = array_column($favorites, 'themealdb_recipe_id');
+$favoriteIds = array_column($favorites, 'spoonacular_recipe_id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Cerca ricette pubbliche su TheMealDB e aggiungile alla tua lista — qualsiasi ricetta del
+      Cerca ricette pubbliche su Spoonacular e aggiungile alla tua lista — qualsiasi ricetta del
       suo catalogo. Comparirà sulla tua pagina pubblica come vetrina di ciò che ami cucinare/
-      mangiare, con categoria, cucina di provenienza, procedimento e ingredienti (tradotti in
-      italiano automaticamente, se l'Assistente AI è configurato).
+      mangiare, con tempo di preparazione, porzioni e ingredienti (tradotti in italiano
+      automaticamente, se l'Assistente AI è configurato).
       La ricerca parte da sola mentre scrivi, e aggiungere/rimuovere una ricetta aggiorna la lista
       all'istante, senza ricaricare la pagina.
     </p>
@@ -178,7 +190,7 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" class="card" id="rp-search-form">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="search">
-    <label>Cerca una ricetta su TheMealDB</label>
+    <label>Cerca una ricetta su Spoonacular</label>
     <input type="text" name="query" id="rp-search-input" value="<?= e($searchQuery) ?>" placeholder="es. nome del piatto" autocomplete="off">
     <button type="submit" class="btn">Cerca</button>
     <p id="rp-search-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
@@ -219,7 +231,7 @@ include __DIR__ . '/_dash_header.php';
         $isPrivate = !$f['show_in_feed'];
         $isScheduled = $f['publish_at'] && strtotime($f['publish_at']) > time();
       ?>
-      <div class="link-item" data-rp-favorite="<?= (int)$f['id'] ?>" data-rp-recipe-id="<?= e($f['themealdb_recipe_id']) ?>"
+      <div class="link-item" data-rp-favorite="<?= (int)$f['id'] ?>" data-rp-recipe-id="<?= e($f['spoonacular_recipe_id']) ?>"
            data-rp-note="<?= e($note) ?>" data-rp-has-image="<?= $f['image_path'] ? '1' : '0' ?>"
            style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
@@ -399,7 +411,7 @@ include __DIR__ . '/_dash_header.php';
       const div = document.createElement('div');
       div.className = 'link-item';
       div.setAttribute('data-rp-favorite', item.id);
-      div.setAttribute('data-rp-recipe-id', item.themealdb_recipe_id);
+      div.setAttribute('data-rp-recipe-id', item.spoonacular_recipe_id);
       div.setAttribute('data-rp-note', '');
       div.setAttribute('data-rp-has-image', '0');
       div.style.flexDirection = 'column';

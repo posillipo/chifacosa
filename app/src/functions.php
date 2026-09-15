@@ -752,7 +752,7 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
     'book' => ['table' => 'fan_favorite_books', 'external_id_col' => 'google_books_id', 'name_col' => 'book_title', 'image_col' => 'book_image', 'label' => 'Libri che amo', 'nav_key' => 'libricheamo', 'list_url_segment' => 'libri-che-amo', 'external_label' => 'Vedi su Google Books', 'external_url' => 'https://books.google.com/books?id=', 'image_shape' => 'book'],
     'playlist' => ['table' => 'fan_favorite_playlists', 'external_id_col' => 'spotify_playlist_id', 'name_col' => 'playlist_name', 'image_col' => 'playlist_image', 'label' => 'Playlist che amo', 'nav_key' => 'playlistcheamo', 'list_url_segment' => 'playlist-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/playlist/', 'image_shape' => 'square'],
     'album' => ['table' => 'fan_favorite_albums', 'external_id_col' => 'spotify_album_id', 'name_col' => 'album_name', 'image_col' => 'album_image', 'label' => 'Album che amo', 'nav_key' => 'albumcheamo', 'list_url_segment' => 'album-che-amo', 'external_label' => 'Ascolta su Spotify', 'external_url' => 'https://open.spotify.com/album/', 'image_shape' => 'square'],
-    'recipe' => ['table' => 'fan_favorite_recipes', 'external_id_col' => 'themealdb_recipe_id', 'name_col' => 'recipe_title', 'image_col' => 'recipe_image', 'label' => 'Ricette che amo', 'nav_key' => 'ricettecheamo', 'list_url_segment' => 'ricette-che-amo', 'external_label' => 'Vedi ricetta completa', 'external_url' => 'https://www.themealdb.com/meal/', 'image_shape' => 'square'],
+    'recipe' => ['table' => 'fan_favorite_recipes', 'external_id_col' => 'spoonacular_recipe_id', 'name_col' => 'recipe_title', 'image_col' => 'recipe_image', 'label' => 'Ricette che amo', 'nav_key' => 'ricettecheamo', 'list_url_segment' => 'ricette-che-amo', 'external_label' => 'Vedi ricetta completa', 'external_url' => 'https://spoonacular.com/recipes/-', 'image_shape' => 'square'],
     'team' => ['table' => 'fan_favorite_teams', 'external_id_col' => 'thesportsdb_team_id', 'name_col' => 'team_name', 'image_col' => 'team_badge', 'label' => 'Squadre che amo', 'nav_key' => 'squadrecheamo', 'list_url_segment' => 'squadre-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/team/', 'image_shape' => 'square'],
     'footballer' => ['table' => 'fan_favorite_players', 'external_id_col' => 'thesportsdb_player_id', 'name_col' => 'player_name', 'image_col' => 'player_photo', 'label' => 'Calciatori che amo', 'nav_key' => 'calciatoricheamo', 'list_url_segment' => 'calciatori-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/player/', 'image_shape' => 'circle'],
     'match' => ['table' => 'fan_favorite_matches', 'external_id_col' => 'thesportsdb_event_id', 'name_col' => 'match_title', 'image_col' => 'match_image', 'label' => 'Partite che amo', 'nav_key' => 'partitecheamo', 'list_url_segment' => 'partite-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/event/', 'image_shape' => 'square'],
@@ -2390,9 +2390,9 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
     $image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
     $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
     $note = trim($item['note'] ?? '');
-    // Quando disponibile (non sempre compilato su TheMealDB), il link migliore è quello del sito
-    // originale della ricetta (strSource, dai dettagli live dell'API) — l'URL fisso di TheMealDB
-    // resta il ripiego per quando manca o l'API non risponde.
+    // Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
+    // migliore è quello del sito originale della ricetta (sourceUrl, dai dettagli live
+    // dell'API) — l'URL fisso di Spoonacular resta solo un ripiego per quando l'API non risponde.
     $externalUrl = ($kind === 'recipe' && !empty($apiDetails['source_url']))
         ? $apiDetails['source_url']
         : $cfg['external_url'] . $item[$cfg['external_id_col']];
@@ -2460,8 +2460,8 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <?php if (!empty($apiDetails['tracks_total'])): ?> · <?= (int) $apiDetails['tracks_total'] ?> brani<?php endif; ?>
                   <?php if (!empty($apiDetails['release_date'])): ?> · <?= e(substr($apiDetails['release_date'], 0, 4)) ?><?php endif; ?>
                   <?php if (!empty($apiDetails['known_for_department'])): ?> · <?= e($apiDetails['known_for_department']) ?><?php endif; ?>
-                  <?php if ($kind === 'recipe' && !empty($apiDetails['category'])): ?> · <?= e($apiDetails['category']) ?><?php endif; ?>
-                  <?php if ($kind === 'recipe' && !empty($apiDetails['area'])): ?> · <?= e($apiDetails['area']) ?><?php endif; ?>
+                  <?php if ($kind === 'recipe' && !empty($apiDetails['ready_in_minutes'])): ?> · <?= (int) $apiDetails['ready_in_minutes'] ?> min<?php endif; ?>
+                  <?php if ($kind === 'recipe' && !empty($apiDetails['servings'])): ?> · <?= (int) $apiDetails['servings'] ?> porzioni<?php endif; ?>
                   <?php if ($kind === 'team' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
                   <?php if ($kind === 'team' && !empty($apiDetails['country'])): ?> · <?= e($apiDetails['country']) ?><?php endif; ?>
                   <?php if ($kind === 'team' && !empty($apiDetails['founded_year'])): ?> · dal <?= e($apiDetails['founded_year']) ?><?php endif; ?>
