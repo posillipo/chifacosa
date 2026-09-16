@@ -1259,8 +1259,11 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
     ob_start();
     ?>
           <div class="col-md-3 order-3 order-md-3">
+            <?php if ($extraCardsHtml !== ''): ?>
+            <?= $extraCardsHtml ?>
+            <?php endif; ?>
             <?php if ($cheAmoItems): ?>
-            <div class="card">
+            <div class="card<?= $extraCardsHtml !== '' ? ' mt-3' : '' ?>">
               <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
               <div class="card-body">
                 <?php $cheAmoColors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary']; $i = 0; ?>
@@ -1278,20 +1281,18 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
               </div>
             </div>
             <?php endif; ?>
-            <?php if ($extraCardsHtml !== ''): ?>
-            <div<?= $cheAmoItems ? ' class="mt-3"' : '' ?>><?= $extraCardsHtml ?></div>
-            <?php endif; ?>
           </div>
     <?php
     return ob_get_clean();
 }
 
 // Card "Categorie del blog" (colonna destra) — elenco alfabetico delle categorie dell'artista,
-// ognuna verso la sua pagina pubblica filtrata (blogCategoryUrl()). Mostrata solo sulla pagina di
-// un articolo (vedi renderAdminLteBlogPostPage()), passata come $extraCardsHtml a
-// renderAdminLteProfileExtras() così convive nella stessa colonna della card "Che Amo" invece di
-// aprirne una quarta. Nessuna card se l'artista non ha ancora categorie.
-function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug): string {
+// ognuna verso la sua pagina pubblica filtrata (blogCategoryUrl()). Passata come $extraCardsHtml a
+// renderAdminLteProfileExtras() (che ora la mostra per prima, con "Che Amo" subito sotto) su
+// tutte e tre le pagine pubbliche del blog: indice, categoria e articolo. Nessuna card se
+// l'artista non ha ancora categorie. $activeCategoryId evidenzia la categoria corrente quando la
+// card compare sulla sua stessa pagina, invece di lasciarla indistinguibile dalle altre.
+function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug, ?int $activeCategoryId = null): string {
     $stmt = getDB()->prepare('SELECT id, name, slug FROM blog_categories WHERE user_id=? ORDER BY name ASC');
     $stmt->execute([$userId]);
     $categories = $stmt->fetchAll();
@@ -1304,10 +1305,11 @@ function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug): string 
               <div class="card-header"><h3 class="card-title">Categorie del blog</h3></div>
               <div class="list-group list-group-flush">
                 <?php foreach ($categories as $cat): ?>
-                <a href="<?= e(blogCategoryUrl($slug, $cat)) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
-                  <i class="bi bi-folder2 text-secondary" aria-hidden="true"></i>
+                <?php $isActive = $activeCategoryId !== null && (int) $cat['id'] === $activeCategoryId; ?>
+                <a href="<?= e(blogCategoryUrl($slug, $cat)) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2<?= $isActive ? ' active' : '' ?>" <?= $isActive ? 'aria-current="page"' : '' ?>>
+                  <i class="bi bi-folder2<?= $isActive ? '' : ' text-secondary' ?>" aria-hidden="true"></i>
                   <span class="flex-grow-1"><?= e($cat['name']) ?></span>
-                  <i class="bi bi-chevron-right text-secondary small" aria-hidden="true"></i>
+                  <i class="bi bi-chevron-right<?= $isActive ? '' : ' text-secondary' ?> small" aria-hidden="true"></i>
                 </a>
                 <?php endforeach; ?>
               </div>
@@ -1967,6 +1969,12 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
     $avatarUrl = adminLteAvatarUrl($artist);
     $pageSize = 20;
     $finished = count($posts) < $pageSize;
+    // Descrizione SEO: cita gli articoli più recenti quando ce ne sono, altrimenti resta generica
+    // — sempre meglio del "Blog di X" ripetuto identico su ogni profilo, che Google tratterebbe
+    // come contenuto duplicato tra loro.
+    $blogDescription = $posts
+        ? 'Blog di ' . $artist['display_name'] . ': ' . textExcerpt(implode(', ', array_column(array_slice($posts, 0, 5), 'title')), 155)
+        : 'Il blog di ' . $artist['display_name'] . ' su ' . siteName() . '.';
     ob_start();
     ?>
 <!doctype html>
@@ -1975,10 +1983,13 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($blogDescription) ?>">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($blogDescription) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= blogListJsonLd($pageUrl, 'Blog di ' . $artist['display_name'], $blogDescription, $posts, $slug) ?>
 <?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
@@ -1994,7 +2005,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, renderAdminLteBlogCategoriesNavCard((int) $artist['id'], $slug)) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -2042,6 +2053,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
 // servire, evitando di dover insegnare anche a adminlte_list_more.php a filtrare per categoria.
 function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $category, array $posts): string {
     $pageUrl = siteUrl(blogCategoryUrl($slug, $category));
+    $categoryDescription = 'Articoli della categoria "' . $category['name'] . '" nel blog di ' . $artist['display_name'] . '.';
     ob_start();
     ?>
 <!doctype html>
@@ -2050,10 +2062,18 @@ function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $cate
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($categoryDescription) ?>">
 <meta property="og:type" content="website">
 <meta property="og:title" content="<?= e($category['name']) ?> — Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($categoryDescription) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= blogListJsonLd($pageUrl, $category['name'] . ' — Blog di ' . $artist['display_name'], $categoryDescription, $posts, $slug) ?>
+<?= breadcrumbJsonLd([
+    ['name' => $artist['display_name'], 'url' => siteUrl('/' . $slug)],
+    ['name' => 'Blog', 'url' => siteUrl('/' . $slug . '/blog')],
+    ['name' => $category['name'], 'url' => $pageUrl],
+]) ?>
 <?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
@@ -2069,7 +2089,7 @@ function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $cate
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, renderAdminLteBlogCategoriesNavCard((int) $artist['id'], $slug, (int) $category['id'])) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -2148,6 +2168,12 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 
 <link rel="canonical" href="<?= e($permalink) ?>">
+<?= blogPostingJsonLd($post, $post['display_name'], $permalink, $ogImage) ?>
+<?= breadcrumbJsonLd([
+    ['name' => $post['display_name'], 'url' => siteUrl('/' . $slug)],
+    ['name' => 'Blog', 'url' => siteUrl('/' . $slug . '/blog')],
+    ['name' => $post['title'], 'url' => $permalink],
+]) ?>
 <?= adminLteAssetLinks() ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
@@ -6433,6 +6459,56 @@ function blogPostUrl(string $userSlug, array $post): string {
 // URL della pagina pubblica di una categoria del blog (elenco filtrato).
 function blogCategoryUrl(string $userSlug, array $category): string {
     return '/' . $userSlug . '/blog/categoria/' . $category['slug'];
+}
+
+// JSON-LD BreadcrumbList — aiuta Google a mostrare il percorso (es. "Nome > Blog > Categoria")
+// nei risultati di ricerca invece del solo URL. $items: elenco ordinato di ['name'=>.., 'url'=>..].
+// Il default di json_encode (senza JSON_UNESCAPED_SLASHES) lascia "/" escapato apposta: evita che
+// un titolo contenente "</script>" possa interrompere il blocco <script> che lo racchiude.
+function breadcrumbJsonLd(array $items): string {
+    $list = [];
+    foreach ($items as $i => $item) {
+        $list[] = ['@type' => 'ListItem', 'position' => $i + 1, 'name' => $item['name'], 'item' => $item['url']];
+    }
+    $data = ['@context' => 'https://schema.org', '@type' => 'BreadcrumbList', 'itemListElement' => $list];
+    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_UNICODE) . "</script>\n";
+}
+
+// JSON-LD BlogPosting per la pagina di un articolo — headline/autore/immagine/data di
+// pubblicazione: rende l'articolo idoneo ai rich result "Articolo" di Google, oltre agli
+// Open Graph/Twitter Card già presenti (che servono solo per le anteprime sui social).
+function blogPostingJsonLd(array $post, string $displayName, string $permalink, ?string $ogImage): string {
+    $data = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BlogPosting',
+        'headline' => $post['title'],
+        'description' => $post['excerpt'] ?: textExcerpt($post['content']),
+        'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $permalink],
+        'url' => $permalink,
+        'datePublished' => date(DATE_ATOM, strtotime($post['published_at'])),
+        'author' => ['@type' => 'Person', 'name' => $displayName],
+        'publisher' => ['@type' => 'Organization', 'name' => siteName()],
+    ];
+    if ($ogImage) {
+        $data['image'] = [$ogImage];
+    }
+    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_UNICODE) . "</script>\n";
+}
+
+// JSON-LD Blog — per l'indice del blog e per le pagine categoria: elenca gli articoli visibili
+// come tipo Blog/blogPost, così Google riconosce la pagina come un indice di articoli correlati
+// (non solo un elenco generico di link). Limitato ai primi 20 per non gonfiare inutilmente il
+// markup su blog molto popolati.
+function blogListJsonLd(string $pageUrl, string $name, string $description, array $posts, string $userSlug): string {
+    $items = [];
+    foreach (array_slice($posts, 0, 20) as $post) {
+        $items[] = ['@type' => 'BlogPosting', 'headline' => $post['title'], 'url' => siteUrl(blogPostUrl($userSlug, $post))];
+    }
+    $data = ['@context' => 'https://schema.org', '@type' => 'Blog', 'name' => $name, 'description' => $description, 'url' => $pageUrl];
+    if ($items) {
+        $data['blogPost'] = $items;
+    }
+    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_UNICODE) . "</script>\n";
 }
 
 // Categorie assegnate a un articolo, in ordine alfabetico — usata sia in dashboard (per

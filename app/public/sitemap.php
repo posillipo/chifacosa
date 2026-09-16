@@ -93,6 +93,18 @@ foreach ($stmt->fetchAll() as $b) {
     sitemapUrl(siteUrl(blogPostUrl($b['user_slug'], $b)), $b['published_at'], 'monthly', '0.6');
 }
 
+// Pagine categoria del blog — solo quelle con almeno un articolo pubblicato, altrimenti Google
+// indicizzerebbe pagine vuote senza reale valore per la ricerca organica.
+$stmt = $db->query("SELECT DISTINCT c.slug, c.name, u.slug AS user_slug
+    FROM blog_categories c
+    JOIN users u ON u.id = c.user_id
+    JOIN blog_post_categories pc ON pc.category_id = c.id
+    JOIN blog_posts b ON b.id = pc.post_id AND b.published_at <= NOW()
+    WHERE u.is_active = 1");
+foreach ($stmt->fetchAll() as $c) {
+    sitemapUrl(siteUrl(blogCategoryUrl($c['user_slug'], $c)), null, 'weekly', '0.5');
+}
+
 // Singoli eventi
 $stmt = $db->query("SELECT e.id, e.created_at, u.slug AS user_slug
     FROM events e JOIN users u ON u.id = e.user_id

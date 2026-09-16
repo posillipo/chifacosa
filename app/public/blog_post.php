@@ -81,6 +81,12 @@ if (!empty($post['album_id'])) {
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 
 <link rel="canonical" href="<?= e($permalink) ?>">
+<?= blogPostingJsonLd($post, $post['display_name'], $permalink, $ogImage) ?>
+<?= breadcrumbJsonLd([
+    ['name' => $post['display_name'], 'url' => siteUrl('/' . $userSlug)],
+    ['name' => 'Blog', 'url' => siteUrl('/' . $userSlug . '/blog')],
+    ['name' => $post['title'], 'url' => $permalink],
+]) ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <style>:root { --accent: <?= e($post['theme_color'] ?: '#6C5CE7') ?>; --accent-text: <?= e(getContrastTextColor($post['theme_color'])) ?>; }</style>

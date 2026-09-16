@@ -30,6 +30,12 @@ if ($isAdminLte) {
 }
 
 $pageUrl = siteUrl('/' . $userSlug . '/blog');
+// Descrizione SEO: cita gli articoli più recenti quando ce ne sono, altrimenti resta generica —
+// sempre meglio del "Blog di X" ripetuto identico su ogni profilo, che Google tratterebbe come
+// contenuto duplicato tra loro.
+$blogDescription = $posts
+    ? 'Blog di ' . $artist['display_name'] . ': ' . textExcerpt(implode(', ', array_column(array_slice($posts, 0, 5), 'title')), 155)
+    : 'Il blog di ' . $artist['display_name'] . ' su ' . siteName() . '.';
 ?>
 <!doctype html>
 <html lang="it">
@@ -37,10 +43,13 @@ $pageUrl = siteUrl('/' . $userSlug . '/blog');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($blogDescription) ?>">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Blog di <?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($blogDescription) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= blogListJsonLd($pageUrl, 'Blog di ' . $artist['display_name'], $blogDescription, $posts, $userSlug) ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <style>:root { --accent: <?= e($artist['theme_color'] ?: '#6C5CE7') ?>; --accent-text: <?= e(getContrastTextColor($artist['theme_color'])) ?>; }</style>
