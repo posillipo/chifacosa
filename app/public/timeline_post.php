@@ -55,7 +55,7 @@ $sameDayPosts = getSameDayTimelinePosts((int) $post['user_id'], $post['publish_a
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts);
+    echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts, $isOwner, $isScheduledFuture);
     exit;
 }
 
@@ -107,6 +107,10 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
 <?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'timeline') ?>
+
+  <?php if ($isOwner && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php endif; ?>
 
   <div class="card">
     <?= renderPhotoCarousel($photos, $postId) ?>

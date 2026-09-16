@@ -21,6 +21,16 @@ if (!$track) {
     exit('Brano non trovato.');
 }
 
+// Stessa regola di favorite_track_item.php: un brano "Solo io" o ancora programmato non è
+// raggiungibile da nessun altro, nemmeno con il link diretto alla pagina di voto — e non deve
+// nemmeno accettare voti mentre resta non pubblico.
+$isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $track['user_id'];
+$isScheduledFuture = $track['publish_at'] && strtotime($track['publish_at']) > time();
+if (!$isOwner && (!(int) $track['is_public'] || $isScheduledFuture)) {
+    http_response_code(404);
+    exit('Brano non trovato.');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rate_track') {
     checkCsrf();
     $viewerId = $_SESSION['user_id'] ?? null;

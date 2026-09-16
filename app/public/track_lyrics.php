@@ -21,6 +21,15 @@ if (!$track) {
     exit('Brano non trovato.');
 }
 
+// Stessa regola di favorite_track_item.php: un brano "Solo io" o ancora programmato non è
+// raggiungibile da nessun altro, nemmeno con il link diretto al testo.
+$isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $track['user_id'];
+$isScheduledFuture = $track['publish_at'] && strtotime($track['publish_at']) > time();
+if (!$isOwner && (!(int) $track['is_public'] || $isScheduledFuture)) {
+    http_response_code(404);
+    exit('Brano non trovato.');
+}
+
 // Se non è mai stato aggiunto un testo, non ha senso avere questa pagina indicizzabile a sé:
 // rimandiamo alla pagina di voto, che resta comunque il punto di riferimento del brano.
 if (empty($track['lyrics'])) {

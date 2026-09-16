@@ -1850,7 +1850,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 // forma usata dal tema Colorful): qui cambia solo il vestito, non le query. Il carosello foto
 // (renderPhotoCarousel(), classi .ig-carousel/.ig-lightbox) è un componente a sé, con il proprio
 // CSS/JS dedicato — funziona identico dentro la card AdminLTE.
-function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts): string {
+function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts, bool $isOwner = false, bool $isScheduledFuture = false): string {
     $pageUrl = siteUrl('/' . $slug . '/timeline/' . (int) $post['id']);
     $avatarUrl = adminLteAvatarUrl($artist);
     $ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
@@ -1910,6 +1910,9 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
                 </div>
               </div>
               <div class="card-body">
+                <?php if ($isOwner && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
+                  <div class="alert alert-warning">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+                <?php endif; ?>
 
                 <div class="card mb-3">
                   <div class="card-body">
@@ -5826,10 +5829,18 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $placeholders = implode(',', array_fill(0, count($userIds), '?'));
     $db = getDB();
     $items = [];
+    // Ogni sotto-query qui sotto è limitata di suo (prima di unire e ordinare tutto in PHP più in
+    // basso): un profilo/insieme di profili con più di 200 elementi PUBBLICATI di un solo tipo
+    // (es. oltre 200 "brani che amo") perderebbe silenziosamente quelli più vecchi di quel tipo,
+    // mai recuperati dal DB e quindi mai raggiungibili nemmeno scorrendo altre pagine. Il limite
+    // per tipo deve quindi coprire almeno $offset+$limit (fin dove questa chiamata può arrivare),
+    // non un valore fisso — 200 resta comunque il minimo, per non appesantire query più frequenti
+    // e già coperte dal caso comune (poche decine di elementi per tipo).
+    $perTypeLimit = max(200, $offset + $limit);
 
     $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE b.user_id IN ($placeholders) AND b.published_at <= NOW() ORDER BY b.published_at DESC LIMIT 200");
+        WHERE b.user_id IN ($placeholders) AND b.published_at <= NOW() ORDER BY b.published_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -5841,7 +5852,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT tr.id, tr.track_name, tr.track_image, tr.artist_name, tr.note, tr.image_path, tr.image_thumb_path, tr.in_feed, tr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM favorite_tracks tr JOIN users u ON u.id = tr.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE tr.user_id IN ($placeholders) AND tr.is_public = 1 AND (tr.publish_at IS NULL OR tr.publish_at <= NOW()) ORDER BY tr.created_at DESC LIMIT 200");
+        WHERE tr.user_id IN ($placeholders) AND tr.is_public = 1 AND (tr.publish_at IS NULL OR tr.publish_at <= NOW()) ORDER BY tr.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $brTitolo = $r['track_name'] . ' — ' . $r['artist_name'];
@@ -5857,7 +5868,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT 200");
+        WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -5871,7 +5882,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.image_thumb_path, tp.in_feed, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM timeline_posts tp JOIN users u ON u.id = tp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
-        ORDER BY tp.created_at DESC LIMIT 200");
+        ORDER BY tp.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     $pensieroRows = $stmt->fetchAll();
     // Quanti post hanno più di una foto (carosello) — serve solo a feed.php, per sapere quali
@@ -5904,7 +5915,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fb.id, fb.spotify_artist_name, fb.artist_image, fb.note, fb.image_path, fb.image_thumb_path, fb.in_feed, fb.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_bands fb JOIN users u ON u.id = fb.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fb.user_id IN ($placeholders) AND fb.is_public = 1 AND (fb.publish_at IS NULL OR fb.publish_at <= NOW()) ORDER BY fb.created_at DESC LIMIT 200");
+        WHERE fb.user_id IN ($placeholders) AND fb.is_public = 1 AND (fb.publish_at IS NULL OR fb.publish_at <= NOW()) ORDER BY fb.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fbTitolo = $r['spotify_artist_name'];
@@ -5920,7 +5931,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fa.id, fa.actor_name, fa.actor_image, fa.note, fa.image_path, fa.image_thumb_path, fa.in_feed, fa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_actors fa JOIN users u ON u.id = fa.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fa.user_id IN ($placeholders) AND fa.is_public = 1 AND (fa.publish_at IS NULL OR fa.publish_at <= NOW()) ORDER BY fa.created_at DESC LIMIT 200");
+        WHERE fa.user_id IN ($placeholders) AND fa.is_public = 1 AND (fa.publish_at IS NULL OR fa.publish_at <= NOW()) ORDER BY fa.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $faTitolo = $r['actor_name'];
@@ -5936,7 +5947,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fm.id, fm.movie_title, fm.movie_image, fm.note, fm.image_path, fm.image_thumb_path, fm.in_feed, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_movies fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fm.user_id IN ($placeholders) AND fm.is_public = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT 200");
+        WHERE fm.user_id IN ($placeholders) AND fm.is_public = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fmTitolo = $r['movie_title'];
@@ -5952,7 +5963,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fk.id, fk.book_title, fk.book_image, fk.note, fk.image_path, fk.image_thumb_path, fk.in_feed, fk.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_books fk JOIN users u ON u.id = fk.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fk.user_id IN ($placeholders) AND fk.is_public = 1 AND (fk.publish_at IS NULL OR fk.publish_at <= NOW()) ORDER BY fk.created_at DESC LIMIT 200");
+        WHERE fk.user_id IN ($placeholders) AND fk.is_public = 1 AND (fk.publish_at IS NULL OR fk.publish_at <= NOW()) ORDER BY fk.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fkTitolo = $r['book_title'];
@@ -5968,7 +5979,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT ft.id, ft.place_name, ft.map_image_path, ft.note, ft.image_path, ft.image_thumb_path, ft.in_feed, ft.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_trips ft JOIN users u ON u.id = ft.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE ft.user_id IN ($placeholders) AND ft.is_public = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT 200");
+        WHERE ft.user_id IN ($placeholders) AND ft.is_public = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     $tripRows = $stmt->fetchAll();
     // Vedi commento sopra (blocco "pensiero"): stesso calcolo, per i viaggi con più foto.
@@ -5997,7 +6008,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fp.id, fp.playlist_name, fp.playlist_image, fp.note, fp.image_path, fp.image_thumb_path, fp.in_feed, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_playlists fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fp.user_id IN ($placeholders) AND fp.is_public = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT 200");
+        WHERE fp.user_id IN ($placeholders) AND fp.is_public = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fpTitolo = $r['playlist_name'];
@@ -6013,7 +6024,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fal.id, fal.album_name, fal.album_artist_name, fal.album_image, fal.note, fal.image_path, fal.image_thumb_path, fal.in_feed, fal.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_albums fal JOIN users u ON u.id = fal.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fal.user_id IN ($placeholders) AND fal.is_public = 1 AND (fal.publish_at IS NULL OR fal.publish_at <= NOW()) ORDER BY fal.created_at DESC LIMIT 200");
+        WHERE fal.user_id IN ($placeholders) AND fal.is_public = 1 AND (fal.publish_at IS NULL OR fal.publish_at <= NOW()) ORDER BY fal.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $falTitolo = $r['album_name'] . ($r['album_artist_name'] ? ' — ' . $r['album_artist_name'] : '');
@@ -6029,7 +6040,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fr.id, fr.recipe_title, fr.recipe_image, fr.note, fr.image_path, fr.image_thumb_path, fr.in_feed, fr.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_recipes fr JOIN users u ON u.id = fr.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fr.user_id IN ($placeholders) AND fr.is_public = 1 AND (fr.publish_at IS NULL OR fr.publish_at <= NOW()) ORDER BY fr.created_at DESC LIMIT 200");
+        WHERE fr.user_id IN ($placeholders) AND fr.is_public = 1 AND (fr.publish_at IS NULL OR fr.publish_at <= NOW()) ORDER BY fr.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $frTitolo = $r['recipe_title'];
@@ -6045,7 +6056,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT ft.id, ft.team_name, ft.team_badge, ft.note, ft.image_path, ft.image_thumb_path, ft.in_feed, ft.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_teams ft JOIN users u ON u.id = ft.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE ft.user_id IN ($placeholders) AND ft.is_public = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT 200");
+        WHERE ft.user_id IN ($placeholders) AND ft.is_public = 1 AND (ft.publish_at IS NULL OR ft.publish_at <= NOW()) ORDER BY ft.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $ftTitolo = $r['team_name'];
@@ -6061,7 +6072,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fp.id, fp.player_name, fp.player_photo, fp.note, fp.image_path, fp.image_thumb_path, fp.in_feed, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_players fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fp.user_id IN ($placeholders) AND fp.is_public = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT 200");
+        WHERE fp.user_id IN ($placeholders) AND fp.is_public = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fpTitolo2 = $r['player_name'];
@@ -6077,7 +6088,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT fm.id, fm.match_title, fm.match_image, fm.note, fm.image_path, fm.image_thumb_path, fm.in_feed, fm.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM fan_favorite_matches fm JOIN users u ON u.id = fm.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE fm.user_id IN ($placeholders) AND fm.is_public = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT 200");
+        WHERE fm.user_id IN ($placeholders) AND fm.is_public = 1 AND (fm.publish_at IS NULL OR fm.publish_at <= NOW()) ORDER BY fm.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $fmTitolo = $r['match_title'];
@@ -6095,7 +6106,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
           AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())
-        ORDER BY so.created_at DESC LIMIT 200");
+        ORDER BY so.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $soTitolo = $r['title'] . ($r['price_label'] ? ' — ' . $r['price_label'] : '');
@@ -6108,7 +6119,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT pa.id, pa.title, pa.cover_path, pa.in_feed, pa.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM photo_albums pa JOIN users u ON u.id = pa.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE pa.user_id IN ($placeholders) AND pa.is_public = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW()) ORDER BY pa.created_at DESC LIMIT 200");
+        WHERE pa.user_id IN ($placeholders) AND pa.is_public = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW()) ORDER BY pa.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     $albumRows = $stmt->fetchAll();
     // Vedi commento sopra (blocco "pensiero"): stesso calcolo, per gli album con più foto oltre
@@ -6136,7 +6147,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT sv.id, sv.title, sv.cover_path, sv.in_feed, sv.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM services sv JOIN users u ON u.id = sv.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE sv.user_id IN ($placeholders) AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.created_at DESC LIMIT 200");
+        WHERE sv.user_id IN ($placeholders) AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -6238,7 +6249,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -6270,7 +6281,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {

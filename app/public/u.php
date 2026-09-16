@@ -128,13 +128,13 @@ foreach (CHE_AMO_MODULES as $key => $m) {
     // Viaggi fa eccezione: mostra l'ultimo punto aggiunto (dove sei stato più di recente),
     // non il primo — a differenza delle altre categorie, dove conta cosa hai amato per prima.
     $order = $key === 'viaggi' ? 'sort_order DESC, id DESC' : 'sort_order ASC, id ASC';
-    $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? ORDER BY {$order} LIMIT 1");
+    $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY {$order} LIMIT 1");
     $stmt->execute([$uid]);
     $first = $stmt->fetch();
     if (!$first) {
         continue;
     }
-    $stmt = getDB()->prepare("SELECT MAX(COALESCE(publish_at, created_at)) d FROM {$cfg['table']} WHERE user_id=?");
+    $stmt = getDB()->prepare("SELECT MAX(COALESCE(publish_at, created_at)) d FROM {$cfg['table']} WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
     $stmt->execute([$uid]);
     $latestActivity = $stmt->fetch()['d'];
     $cheAmoCarousel[] = [
