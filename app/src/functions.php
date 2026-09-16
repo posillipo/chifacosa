@@ -2473,6 +2473,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
+            <h3 class="mb-3"><?= e($cfg['label']) ?></h3>
             <?php if ($isOwner && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -2711,6 +2712,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
+            <h3 class="mb-3"><?= e('Viaggi') ?></h3>
             <?php if ($isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -2891,6 +2893,7 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
+            <h3 class="mb-3"><?= e('Brani che amo') ?></h3>
             <?php if ($isOwner && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
