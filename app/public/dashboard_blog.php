@@ -25,8 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // blog_post_categories ha ON DELETE CASCADE: gli articoli restano, perdono solo
         // l'assegnazione a questa categoria.
         getDB()->prepare('DELETE FROM blog_categories WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
-    } elseif ($action === 'add' || $action === 'edit') {
-        $id = $action === 'edit' ? (int) ($_POST['id'] ?? 0) : 0;
+    } elseif ($action === 'add') {
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $albumId = (int) ($_POST['album_id'] ?? 0) ?: null;
@@ -60,45 +59,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $excerpt = textExcerpt($content, 200);
             $coverPath = handleCoverUpload($profile['slug']);
 
-            if ($action === 'add') {
-                $slug = generateUniquePostSlug((int) $profile['id'], $title);
-                $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, album_id, tags, published_at) VALUES (?,?,?,?,?,?,?,?,?)');
-                $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt]);
-                $newId = (int) getDB()->lastInsertId();
-                if ($categoryIds) {
-                    $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
-                    foreach ($categoryIds as $cid) {
-                        $insCat->execute([$newId, $cid]);
-                    }
+            $slug = generateUniquePostSlug((int) $profile['id'], $title);
+            $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, album_id, tags, published_at) VALUES (?,?,?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt]);
+            $newId = (int) getDB()->lastInsertId();
+            if ($categoryIds) {
+                $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
+                foreach ($categoryIds as $cid) {
+                    $insCat->execute([$newId, $cid]);
                 }
-                if (strtotime($publishedAt) <= time()) {
-                    $postUrl = siteUrl(blogPostUrl($profile['slug'], ['published_at' => $publishedAt, 'slug' => $slug]));
-                    notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'blog', $title, $postUrl);
-                }
-            } else {
-                // Lo slug (e quindi la parte finale del permalink) non cambia mai in modifica,
-                // anche se il titolo cambia: un link già condiviso deve continuare a funzionare.
-                $stmt = getDB()->prepare('SELECT cover_path FROM blog_posts WHERE id=? AND user_id=?');
-                $stmt->execute([$id, $profile['id']]);
-                $existing = $stmt->fetch();
-                if (!$existing) {
-                    $error = 'Articolo non trovato.';
-                } else {
-                    if (!$coverPath) {
-                        $coverPath = $existing['cover_path'];
-                    } else {
-                        deleteCoverFile($existing['cover_path']);
-                    }
-                    $stmt = getDB()->prepare('UPDATE blog_posts SET title=?, excerpt=?, content=?, cover_path=?, album_id=?, tags=?, published_at=? WHERE id=? AND user_id=?');
-                    $stmt->execute([$title, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $id, $profile['id']]);
-                    getDB()->prepare('DELETE FROM blog_post_categories WHERE post_id=?')->execute([$id]);
-                    if ($categoryIds) {
-                        $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
-                        foreach ($categoryIds as $cid) {
-                            $insCat->execute([$id, $cid]);
-                        }
-                    }
-                }
+            }
+            if (strtotime($publishedAt) <= time()) {
+                $postUrl = siteUrl(blogPostUrl($profile['slug'], ['published_at' => $publishedAt, 'slug' => $slug]));
+                notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'blog', $title, $postUrl);
             }
         }
     } elseif ($action === 'delete') {
@@ -233,11 +206,14 @@ include __DIR__ . '/_dash_header.php';
   </form>
 
   <div class="section-title">I tuoi post (<?= count($posts) ?>)</div>
+  <?php if (!$posts): ?>
+    <div class="alert error">Non hai ancora scritto nessun articolo.</div>
+  <?php endif; ?>
   <?php foreach ($posts as $p): ?>
     <?php $isScheduled = strtotime($p['published_at']) > time(); ?>
     <div class="blog-item" style="display:flex;gap:14px;align-items:flex-start;">
       <?php if ($p['cover_path']): ?>
-        <img src="/<?= e($p['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+        <img src="/<?= e($p['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
         <?php if ($isScheduled): ?>
@@ -246,65 +222,18 @@ include __DIR__ . '/_dash_header.php';
           <div class="date"><?= e(formatLocalDateTime($p['published_at'], $profile)) ?></div>
         <?php endif; ?>
         <strong><?= e($p['title']) ?></strong>
-        <p style="color:var(--text-muted)"><?= nl2br(e($p['content'])) ?></p>
-        <?php if ($p['tags']): ?><p style="color:var(--text-muted);font-size:12.5px;"><i class="fa-solid fa-tags"></i> <?= e($p['tags']) ?></p><?php endif; ?>
+        <p style="color:var(--text-muted);font-size:13px;margin:4px 0;"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
         <?php $pCats = array_filter($categories, fn ($c) => in_array((int) $c['id'], $postCategoryIds[(int) $p['id']], true)); ?>
-        <?php if ($pCats): ?>
+        <?php if ($pCats || $p['tags']): ?>
           <p style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
             <?php foreach ($pCats as $c): ?><span class="icon-btn" style="width:auto;padding:0 10px;font-size:12px;"><?= e($c['name']) ?></span><?php endforeach; ?>
+            <?php if ($p['tags']): ?><span style="color:var(--text-muted);font-size:12.5px;align-self:center;"><i class="fa-solid fa-tags"></i> <?= e($p['tags']) ?></span><?php endif; ?>
           </p>
         <?php endif; ?>
-        <?php if ($p['album_id']): ?>
-          <?php $alTitle = array_column($albums, 'title', 'id')[$p['album_id']] ?? null; ?>
-          <?php if ($alTitle): ?><p style="color:var(--text-muted);font-size:12.5px;"><i class="fa-solid fa-images"></i> Album collegato: <?= e($alTitle) ?></p><?php endif; ?>
-        <?php endif; ?>
-        <p><a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank"><?= e(siteName()) ?><?= e(blogPostUrl($profile['slug'], $p)) ?> ↗</a></p>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <details style="display:inline-block;">
-            <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-            <form method="post" enctype="multipart/form-data" class="card" style="margin-top:10px;">
-              <?= csrfField() ?>
-              <input type="hidden" name="action" value="edit">
-              <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
-              <input type="hidden" name="tz_offset_minutes" value="">
-              <label>Titolo post</label>
-              <input type="text" name="title" value="<?= e($p['title']) ?>" required>
-              <label>Contenuto</label>
-              <textarea name="content" rows="6" required><?= e($p['content']) ?></textarea>
-              <label>Nuova copertina (opzionale — lascia vuoto per non cambiarla)</label>
-              <input type="file" name="cover" accept="image/*">
-
-              <label>Album collegato (opzionale)</label>
-              <select name="album_id">
-                <option value="">— Nessun album —</option>
-                <?php foreach ($albums as $al): ?>
-                  <option value="<?= (int) $al['id'] ?>" <?= (int) ($p['album_id'] ?? 0) === (int) $al['id'] ? 'selected' : '' ?>><?= e($al['title']) ?></option>
-                <?php endforeach; ?>
-              </select>
-
-              <label>Tag (opzionale, separati da virgola)</label>
-              <input type="text" name="tags" value="<?= e($p['tags'] ?? '') ?>" placeholder="es. concerti, novità, napoli">
-
-              <?php if ($categories): ?>
-                <label>Categorie</label>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px;">
-                  <?php foreach ($categories as $cat): ?>
-                    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                      <input type="checkbox" name="category_ids[]" value="<?= (int) $cat['id'] ?>" style="width:auto;" <?= in_array((int) $cat['id'], $postCategoryIds[(int) $p['id']], true) ? 'checked' : '' ?>>
-                      <?= e($cat['name']) ?>
-                    </label>
-                  <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
-
-              <label>Data di pubblicazione</label>
-              <input type="datetime-local" name="published_at" value="<?= e(date('Y-m-d\TH:i', strtotime($p['published_at']))) ?>">
-              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Impostala nel futuro per (ri)programmare l'articolo.</p>
-
-              <button type="submit" class="btn small">Salva modifiche</button>
-            </form>
-          </details>
+          <a href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>" class="btn small secondary">✏️ Modifica</a>
+          <a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank" class="btn small secondary">↗ Vedi online</a>
           <form method="post" onsubmit="return confirm('Eliminare questo post?');">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="delete">
