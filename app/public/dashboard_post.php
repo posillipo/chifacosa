@@ -191,7 +191,7 @@ include __DIR__ . '/_dash_header.php';
     <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
       <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
     </label>
-    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella Timeline), all'orario di pubblicazione.</p>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
       <div style="flex:1;min-width:220px;">

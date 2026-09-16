@@ -28,7 +28,17 @@ if (!$artist) {
 
 // I Brani che amo ora hanno una loro pagina di dettaglio con og:image propria (come gli altri
 // tipi "che amo"), quindi da qui in poi restano nel feed invece di essere esclusi.
-$feed = getTimelineFeedForUsers([$artist['id']], 30);
+//
+// A differenza della Timeline pubblica del sito (che mostra tutto ciò che è Pubblico), questo RSS
+// — letto da automazioni come Metricool per pubblicare sui social — mostra solo gli elementi con
+// "Includi nel Feed" spuntato (in_feed): un contenuto può restare Pubblico e visibile sul sito
+// senza per questo finire anche sui social. Si prende un pool più ampio di quanto serve (100
+// invece di 30) prima di filtrare, altrimenti il taglio ai primi 30 elementi avvenuto dentro
+// getTimelineFeedForUsers() potrebbe escludere elementi "in feed" arrivati dopo qualche elemento
+// pubblico-ma-non-in-feed, restituendo meno di 30 voci anche quando ce ne sarebbero abbastanza.
+$feed = getTimelineFeedForUsers([$artist['id']], 100);
+$feed = array_values(array_filter($feed, fn ($item) => ($item['in_feed'] ?? 1) == 1));
+$feed = array_slice($feed, 0, 30);
 
 $channelUrl = siteUrl('/' . $slug);
 $feedUrl = siteUrl('/' . $slug . '/feed');
