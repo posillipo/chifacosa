@@ -118,8 +118,10 @@ $cheAmoTableConfig = [
     'partitecheamo' => ['table' => 'fan_favorite_matches', 'name' => 'match_title', 'image' => 'match_image'],
 ];
 $cheAmoCarousel = [];
+// "cheamo" tra le chiavi nascoste (es. disattivato per tutta l'installazione da Area Admin →
+// Funzioni del sito) spegne l'intero carosello, non solo i singoli moduli.
 foreach (CHE_AMO_MODULES as $key => $m) {
-    if (in_array($key, $hiddenNavKeys, true) || !isset($cheAmoTableConfig[$key])) {
+    if (in_array('cheamo', $hiddenNavKeys, true) || in_array($key, $hiddenNavKeys, true) || !isset($cheAmoTableConfig[$key])) {
         continue;
     }
     $cfg = $cheAmoTableConfig[$key];

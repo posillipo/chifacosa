@@ -37,6 +37,17 @@ $navVisibility = array_column(
     'is_visible',
     'name'
 );
+// Anche le sezioni disattivate dall'amministratore per tutta l'installazione (Area Admin →
+// Funzioni del sito) spariscono dalla barra della dashboard, non solo dal menu pubblico —
+// altrimenti resterebbe gestibile un modulo che nessun visitatore potrà mai vedere.
+$siteDisabledKeys = getSiteDisabledNavKeys();
+if ($siteDisabledKeys) {
+    foreach (PUBLIC_NAV_ITEM_KEYS as $navName => $navKey) {
+        if (in_array($navKey, $siteDisabledKeys, true)) {
+            $navVisibility[$navName] = 0;
+        }
+    }
+}
 
 // Ordine delle schede in dashboard: lo stesso scelto in "Menu di Navigazione" (Dashboard →
 // menù hamburger, trascinando le voci o con "Ripristina l'ordine predefinito"), così le due
@@ -47,11 +58,15 @@ $navVisibility = array_column(
 // che amo, e i futuri Playlist/Album che amo): porta a dashboard_che_amo.php, una vetrina con
 // una card per modulo — visibile se almeno uno dei moduli non è stato nascosto da "Menu di
 // Navigazione". Ogni modulo resta gestito nella sua pagina di sempre, invariata.
+// "Che Amo" già forzato a nascosto sopra se disattivato da Area Admin → Funzioni del sito:
+// se così, non serve nemmeno guardare i singoli moduli.
 $hasVisibleCheAmoModule = false;
-foreach (CHE_AMO_MODULES as $m) {
-    if ($navVisibility[$m['label']] ?? 1) {
-        $hasVisibleCheAmoModule = true;
-        break;
+if ($navVisibility['Che Amo'] ?? 1) {
+    foreach (CHE_AMO_MODULES as $m) {
+        if ($navVisibility[$m['label']] ?? 1) {
+            $hasVisibleCheAmoModule = true;
+            break;
+        }
     }
 }
 $dashTabs = [];

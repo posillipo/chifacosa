@@ -24,12 +24,16 @@ if (!$artist) {
 $hiddenKeys = getHiddenNavKeys((int) $artist['id']);
 $navOrder = getNavItemOrder((int) $artist['id']);
 $visibleModules = [];
-foreach (CHE_AMO_MODULES as $key => $m) {
-    if (in_array($key, $hiddenKeys, true)) {
-        continue;
-    }
-    if ($m['check'] === null || $m['check']((int) $artist['id'])) {
-        $visibleModules[$key] = $m;
+// "cheamo" tra le chiavi nascoste (es. disattivato per tutta l'installazione da Area Admin →
+// Funzioni del sito) spegne l'intera vetrina, non solo i singoli moduli.
+if (!in_array('cheamo', $hiddenKeys, true)) {
+    foreach (CHE_AMO_MODULES as $key => $m) {
+        if (in_array($key, $hiddenKeys, true)) {
+            continue;
+        }
+        if ($m['check'] === null || $m['check']((int) $artist['id'])) {
+            $visibleModules[$key] = $m;
+        }
     }
 }
 uksort($visibleModules, fn ($a, $b) => ($navOrder[$a] ?? 999) <=> ($navOrder[$b] ?? 999));

@@ -896,14 +896,17 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     $hiddenKeys = getHiddenNavKeys($uid);
 
     // Stessa selezione di che_amo.php (la vetrina): un modulo compare nel menu a tendina solo se
-    // non nascosto da "Menu di Navigazione" e ha davvero del contenuto pubblico.
+    // non nascosto da "Menu di Navigazione" e ha davvero del contenuto pubblico. "cheamo" tra le
+    // chiavi nascoste spegne l'intero menu a tendina, non solo i singoli moduli.
     $cheAmoModules = [];
-    foreach (CHE_AMO_MODULES as $key => $m) {
-        if (in_array($key, $hiddenKeys, true)) {
-            continue;
-        }
-        if ($m['check'] === null || $m['check']($uid)) {
-            $cheAmoModules[$key] = $m;
+    if (!in_array('cheamo', $hiddenKeys, true)) {
+        foreach (CHE_AMO_MODULES as $key => $m) {
+            if (in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+            if ($m['check'] === null || $m['check']($uid)) {
+                $cheAmoModules[$key] = $m;
+            }
         }
     }
 
@@ -4494,8 +4497,13 @@ const CHE_AMO_MODULES = [
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
-// contenuto — decide se mostrare il tab riepilogativo "Che Amo" nel menu pubblico.
+// contenuto — decide se mostrare il tab riepilogativo "Che Amo" nel menu pubblico. "cheamo"
+// stesso tra le chiavi nascoste (es. disattivato per tutta l'installazione da Area Admin →
+// Funzioni del sito) spegne l'intera vetrina a prescindere dai singoli moduli.
 function hasAnyVisibleCheAmo(int $userId, array $hiddenKeys = []): bool {
+    if (in_array('cheamo', $hiddenKeys, true)) {
+        return false;
+    }
     foreach (CHE_AMO_MODULES as $key => $m) {
         if (in_array($key, $hiddenKeys, true)) {
             continue;
@@ -6615,10 +6623,34 @@ function updateProfileNavMenuVisibility(int $userId, string $name, bool $isVisib
 // aperto "Menu di Navigazione" in dashboard non ha righe in tabella: nessuna riga nascosta,
 // nessun filtro, comportamento identico a prima di questa funzionalità (nessun bisogno di
 // seedare i default solo per calcolare questo elenco).
+// Voci di menu disattivate dall'amministratore per TUTTA l'installazione (Area Admin → Funzioni
+// del sito), non da un singolo profilo — pensato per chi installa "Chi Fa Cosa" per un tipo di
+// attività che non ha bisogno di certi moduli (es. un ristorante non ha bisogno di "Squadre che
+// amo"): invece di doverlo disattivare profilo per profilo, un solo interruttore vale per tutti,
+// anche quelli creati in futuro. Salvate come lista JSON di chiavi interne (le stesse di
+// PUBLIC_NAV_ITEM_KEYS) in un'unica riga di site_settings, stesso principio già usato per le
+// impostazioni di Privacy/Tracking di profilo.
+function getSiteDisabledNavKeys(): array {
+    $raw = getSiteSetting('disabled_nav_keys');
+    if (!$raw) {
+        return [];
+    }
+    $keys = json_decode($raw, true);
+    return is_array($keys) ? $keys : [];
+}
+
+function setSiteDisabledNavKeys(array $keys): void {
+    setSiteSetting('disabled_nav_keys', json_encode(array_values(array_unique($keys))));
+}
+
+// Voci nascoste per QUESTO profilo — unione di ciò che il profilo stesso ha disattivato (Menu di
+// Navigazione) e ciò che l'amministratore ha disattivato per tutta l'installazione: chi consuma
+// questa lista (publicNav(), adminLteTopNav(), che_amo.php, dashboard_che_amo.php, il carosello
+// Home...) non deve sapere da dove viene un nascondimento, gli basta questo unico elenco.
 function getHiddenNavKeys(int $userId): array {
     $stmt = getDB()->prepare('SELECT name FROM profile_navigation_menu WHERE user_id = ? AND is_visible = 0');
     $stmt->execute([$userId]);
-    $hidden = [];
+    $hidden = getSiteDisabledNavKeys();
     foreach ($stmt->fetchAll() as $row) {
         if (isset(PUBLIC_NAV_ITEM_KEYS[$row['name']])) {
             $hidden[] = PUBLIC_NAV_ITEM_KEYS[$row['name']];
