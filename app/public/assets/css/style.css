@@ -215,21 +215,31 @@ form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-
    di piccole pillole uniformi — su schermo stretto ogni voce diventa un riquadro colorato a
    piena vista, più facile da toccare e più "scenografico" della lista di link piccoli. */
 @media (max-width: 760px) {
+  /* Bordo a bordo: annulla il padding orizzontale di .container (20px) e quello di .tabs-wrap
+     (4px) così la griglia tocca davvero i due margini dello schermo, invece di restare
+     "incorniciata" dentro lo spazio bianco della pagina. */
+  .tabs-wrap { margin: 0 -20px; padding: 0; }
   #dash-tabs {
     grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
+    /* L'altezza viene impostata via JS (vedi script subito dopo questa griglia in
+       _dash_header.php) in modo che l'intera griglia entri nello schermo visibile senza dover
+       scorrere: grid-auto-rows: 1fr fa sì che, qualunque sia il numero di righe (varia da
+       account ad account, secondo i moduli attivati), si dividano in parti uguali quell'altezza
+       fissa — niente più tile quadrate a dimensione fissa, che con molte voci sforerebbero lo
+       schermo.  */
+    grid-auto-rows: 1fr;
+    gap: 2px;
   }
   #dash-tabs a {
-    aspect-ratio: 1 / 1;
     display: flex;
     align-items: flex-end;
-    padding: 12px;
+    padding: 10px 12px;
     border-radius: 0;
     border: none;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.15;
     text-align: left;
     white-space: normal;
     overflow: visible;

@@ -333,3 +333,27 @@ if (switcherEl && navbarEl) {
     <?php endforeach; ?>
   </div>
   </div>
+<script>
+// Solo sotto i 760px (vedi media query in style.css): dà alla griglia delle tile un'altezza
+// fissa pari allo spazio davvero rimasto sotto la barra in alto, così tutte le tile entrano
+// nello schermo senza dover scorrere, qualunque sia il numero di righe (varia da profilo a
+// profilo secondo i moduli attivati) — grid-auto-rows: 1fr fa il resto, dividendo quell'altezza
+// in parti uguali tra le righe. Ricalcolata al resize/rotazione; rimossa se si torna a schermi
+// larghi, per non lasciare un'altezza fissa indesiderata sulla griglia compatta da desktop.
+(function () {
+  var grid = document.getElementById('dash-tabs');
+  if (!grid) return;
+  function sizeDashTabs() {
+    if (!window.matchMedia('(max-width: 760px)').matches) {
+      grid.style.height = '';
+      return;
+    }
+    var top = grid.getBoundingClientRect().top;
+    var available = window.innerHeight - top - 8;
+    grid.style.height = Math.max(available, 220) + 'px';
+  }
+  sizeDashTabs();
+  window.addEventListener('resize', sizeDashTabs);
+  window.addEventListener('orientationchange', sizeDashTabs);
+})();
+</script>
