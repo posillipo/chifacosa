@@ -10,12 +10,15 @@ $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     setSiteSetting('google_oauth_client_id', trim($_POST['google_oauth_client_id'] ?? ''));
-    setSiteSetting('google_oauth_client_secret', trim($_POST['google_oauth_client_secret'] ?? ''));
+    $newSecret = trim($_POST['google_oauth_client_secret'] ?? '');
+    if ($newSecret !== '') {
+        setSiteSetting('google_oauth_client_secret', $newSecret);
+    }
     $success = 'Credenziali Google salvate.';
 }
 
 $clientId = getSiteSetting('google_oauth_client_id') ?: '';
-$clientSecret = getSiteSetting('google_oauth_client_secret') ?: '';
+$hasSecret = (getSiteSetting('google_oauth_client_secret') ?: '') !== '';
 $redirectUri = googleOAuthRedirectUri();
 
 include __DIR__ . '/_admin_header.php';
@@ -48,7 +51,7 @@ include __DIR__ . '/_admin_header.php';
     <label>Google OAuth Client ID</label>
     <input type="text" name="google_oauth_client_id" value="<?= e($clientId) ?>" placeholder="es. 123456-abc.apps.googleusercontent.com">
     <label>Google OAuth Client Secret</label>
-    <input type="text" name="google_oauth_client_secret" value="<?= e($clientSecret) ?>" placeholder="es. GOCSPX-...">
+    <input type="password" name="google_oauth_client_secret" placeholder="<?= $hasSecret ? '••••••••  (lascia vuoto per non modificarlo)' : 'es. GOCSPX-...' ?>">
     <button type="submit" class="btn">Salva credenziali</button>
   </form>
 <?php include __DIR__ . '/_admin_footer.php'; ?>

@@ -70,7 +70,11 @@ function googleOAuthGetUserInfo(string $accessToken): ?array {
         return null;
     }
     $data = json_decode($response, true);
-    if (empty($data['email'])) {
+    // Non basta che Google restituisca un indirizzo: se email_verified non è true, quell'email
+    // non è stata effettivamente confermata sull'account Google (es. alias di dominio aggiunto
+    // da un admin Workspace ma mai verificato) — accettarla comunque permetterebbe di autenticarsi
+    // come un account chifacosa esistente con quella email senza averne mai dimostrato il possesso.
+    if (empty($data['email']) || empty($data['email_verified'])) {
         return null;
     }
     return [

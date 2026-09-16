@@ -9,6 +9,7 @@ if (!empty($user['account_type_chosen'])) {
 }
 
 $profile = getActingProfile($user);
+requireFullOwnerAccess($user, $profile);
 $error = null;
 
 // Voci di menu "base": restano sempre attive e visibili, non compaiono come scelta qui — solo

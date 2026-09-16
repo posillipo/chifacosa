@@ -23,6 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$u) {
         $error = 'Codice non valido o scaduto.';
+    } elseif (!$u['is_active']) {
+        // Ricontrollato qui e non solo in login_otp_request.php: l'account potrebbe essere
+        // stato disattivato nel frattempo, mentre il codice (valido alcuni minuti) è già in mano
+        // all'utente — senza questo controllo il login andrebbe comunque a buon fine.
+        $error = 'Account disattivato.';
     } elseif ((int) $u['otp_attempts'] >= 5) {
         // Troppi tentativi falliti: il codice va invalidato subito, non basta aspettare che
         // scada — altrimenti resterebbe comunque attaccabile a forza bruta per tutti i minuti
