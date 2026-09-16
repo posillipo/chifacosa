@@ -209,6 +209,45 @@ form label { display: block; margin-bottom: 6px; color: var(--text-muted); font-
 }
 .tabs a.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* Solo la barra principale della dashboard (#dash-tabs — NON i mini-tab in-pagina come quelli di
+   dashboard_reservations.php, che restano la griglia compatta di sopra) e solo sotto i 760px:
+   tasti grandi e colorati in stile "tile" di Windows Phone (Start screen), invece della griglia
+   di piccole pillole uniformi — su schermo stretto ogni voce diventa un riquadro colorato a
+   piena vista, più facile da toccare e più "scenografico" della lista di link piccoli. */
+@media (max-width: 760px) {
+  #dash-tabs {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+  #dash-tabs a {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+    border-radius: 0;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  #dash-tabs a:nth-child(8n+1) { background: #0050ef; } /* cobalto */
+  #dash-tabs a:nth-child(8n+2) { background: #008a00; } /* smeraldo */
+  #dash-tabs a:nth-child(8n+3) { background: #a20025; } /* cremisi */
+  #dash-tabs a:nth-child(8n+4) { background: #6a00ff; } /* indaco */
+  #dash-tabs a:nth-child(8n+5) { background: #1ba1e2; } /* ciano */
+  #dash-tabs a:nth-child(8n+6) { background: #d80073; } /* magenta */
+  #dash-tabs a:nth-child(8n+7) { background: #fa6800; } /* arancio */
+  #dash-tabs a:nth-child(8n+0) { background: #00aba9; } /* petrolio */
+  /* La tile attiva mantiene il proprio colore (niente più tinta unita var(--accent), che qui
+     appiattirebbe l'effetto "a mosaico"): si distingue con un bordo bianco interno. */
+  #dash-tabs a.active { box-shadow: inset 0 0 0 3px #fff; }
+}
+
 /* Barra laterale "Account e impostazioni" (Profilo, password, integrazioni) */
 /* Menu a comparsa "Stai gestendo" (switch tra profili), ancorato all'avatar in alto a destra —
    stile simile allo switcher account di Facebook. Usa <details>/<summary>, nessun JS. */
