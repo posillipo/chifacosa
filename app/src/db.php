@@ -116,12 +116,20 @@ function importSchemaIfEmpty(PDO $pdo): bool {
     // che altrimenti spezzerebbero a metà lo statement successivo.
     $sql = preg_replace('/^\s*--.*$/m', '', $sql);
 
-    foreach (explode(';', $sql) as $statement) {
-        $statement = trim($statement);
-        if ($statement === '') {
-            continue;
+    try {
+        foreach (explode(';', $sql) as $statement) {
+            $statement = trim($statement);
+            if ($statement === '') {
+                continue;
+            }
+            $pdo->exec($statement);
         }
-        $pdo->exec($statement);
+    } catch (PDOException $e) {
+        // Mantiene la promessa del commento sopra ("restituisce false senza sollevare eccezioni"):
+        // altrimenti un singolo statement fallito (es. uno schema.sql aggiornato in modo
+        // incompatibile con questo checkout) farebbe fallire il wizard con un errore fatale
+        // invece di far ripiegare chi chiama sull'importazione manuale.
+        return false;
     }
     return true;
 }

@@ -45,9 +45,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run')
             $user = $getSlug((int) $data['legacy_gestore_id']);
             if (!$user) { $skippedNoMatch++; continue; }
 
-            $stmt = $db->prepare('INSERT INTO timeline_posts (user_id, testo, created_at) VALUES (?, ?, ?)');
-            $stmt->execute([$user['id'], $data['testo'], parseOldDate($data['data'])]);
-            $importedTesto++;
+            try {
+                $stmt = $db->prepare('INSERT INTO timeline_posts (user_id, testo, created_at) VALUES (?, ?, ?)');
+                $stmt->execute([$user['id'], $data['testo'], parseOldDate($data['data'])]);
+                $importedTesto++;
+            } catch (Exception $e) {
+                $errors[] = "Post testo (gestore {$data['legacy_gestore_id']}): " . $e->getMessage();
+            }
         }
         fclose($handle);
     }
@@ -73,9 +77,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run')
                 continue; // né immagine trovata né testo: nulla da importare
             }
 
-            $stmt = $db->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, created_at) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$user['id'], $data['testo'] ?: null, $imagePath, parseOldDate($data['data'])]);
-            $importedFoto++;
+            try {
+                $stmt = $db->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, created_at) VALUES (?, ?, ?, ?)');
+                $stmt->execute([$user['id'], $data['testo'] ?: null, $imagePath, parseOldDate($data['data'])]);
+                $importedFoto++;
+            } catch (Exception $e) {
+                $errors[] = "Post foto (gestore {$data['legacy_gestore_id']}): " . $e->getMessage();
+            }
         }
         fclose($handle);
     }
@@ -85,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run')
         'importedFoto' => $importedFoto,
         'importedFotoConImmagine' => $importedFotoConImmagine,
         'skippedNoMatch' => $skippedNoMatch,
+        'errors' => $errors,
     ];
 }
 
@@ -115,6 +124,16 @@ include __DIR__ . '/_admin_header.php';
     <div class="card">
       <p style="color:var(--text-muted)">Saltati (nessun account corrispondente): <?= $result['skippedNoMatch'] ?></p>
     </div>
+    <?php if ($result['errors']): ?>
+    <div class="card">
+      <p style="color:var(--text-muted)">Righe con errore (non importate): <?= count($result['errors']) ?></p>
+      <ul style="color:var(--text-muted)">
+        <?php foreach (array_slice($result['errors'], 0, 20) as $err): ?>
+          <li><?= e($err) ?></li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+    <?php endif; ?>
   <?php endif; ?>
 
   <form method="post" onsubmit="return confirm('Importare i post storici della vecchia timeline? Operazione da lanciare una sola volta.');">

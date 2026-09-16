@@ -29,6 +29,15 @@ class SimpleSmtpMailer {
      */
     public function send(string $fromEmail, string $fromName, string $toEmail, string $toName, string $subject, string $body): bool {
         try {
+            // $fromEmail/$toEmail finiscono grezzi negli envelope SMTP MAIL FROM/RCPT TO (righe
+            // sotto): a differenza degli header (From/To/Subject, già protetti perché codificati
+            // in base64), un CR/LF in uno di questi due permetterebbe di iniettare comandi SMTP
+            // arbitrari. Qui si blocca a monte, una volta sola, invece di fidarsi che ogni
+            // chiamante presente e futuro li validi già con FILTER_VALIDATE_EMAIL.
+            if (preg_match('/[\r\n]/', $fromEmail) || preg_match('/[\r\n]/', $toEmail)) {
+                throw new Exception('Indirizzo email non valido (contiene un ritorno a capo).');
+            }
+
             $remote = ($this->secure === 'ssl' ? 'ssl://' : '') . $this->host;
 
             // Contesto SSL: molti hosting (es. Aruba) usano un hostname "vetrina" personalizzato
