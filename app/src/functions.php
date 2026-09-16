@@ -963,7 +963,10 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
           <div class="collapse navbar-collapse" id="topNavMenu">
             <ul class="navbar-nav mx-lg-auto">
               <li class="nav-item">
-                <a href="/<?= e($slug) ?>/timeline" class="nav-link<?= $activeKey === 'timeline' ? ' active' : '' ?>">Timeline</a>
+                <!-- Porta comunque a /timeline (la pagina resta la stessa, con lo stesso feed): solo
+                     l'etichetta nel menu diventa "Home", più intuitiva come primo/punto di ingresso
+                     rispetto a "Timeline" per chi non conosce già il sito. -->
+                <a href="/<?= e($slug) ?>/timeline" class="nav-link<?= $activeKey === 'timeline' ? ' active' : '' ?>">Home</a>
               </li>
               <?php if ($cheAmoModules): ?>
               <li class="nav-item dropdown">
