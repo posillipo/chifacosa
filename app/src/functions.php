@@ -6519,6 +6519,24 @@ function getBlogPostCategories(int $postId): array {
     return $stmt->fetchAll();
 }
 
+// Tag effettivamente in uso da questo profilo, con quante volte compare ciascuno — a differenza
+// delle categorie, i tag sono un campo di testo libero per articolo (blog_posts.tags, separati
+// da virgola), non una tabella a sé: qui li aggreghiamo per poterli gestire (rinominarli o
+// eliminarli ovunque compaiano) come se lo fossero. Confronto case-sensitive: "Napoli" e "napoli"
+// restano due tag distinti, esattamente come sono stati scritti negli articoli.
+function getBlogTagCounts(int $userId): array {
+    $stmt = getDB()->prepare("SELECT tags FROM blog_posts WHERE user_id=? AND tags IS NOT NULL AND tags <> ''");
+    $stmt->execute([$userId]);
+    $counts = [];
+    foreach ($stmt->fetchAll() as $row) {
+        foreach (array_filter(array_map('trim', explode(',', $row['tags']))) as $tag) {
+            $counts[$tag] = ($counts[$tag] ?? 0) + 1;
+        }
+    }
+    ksort($counts, SORT_NATURAL | SORT_FLAG_CASE);
+    return $counts;
+}
+
 // URL assoluta del sito (per meta tag Open Graph / condivisione social), usa SITE_URL se impostata
 function siteUrl(string $path = ''): string {
     $base = rtrim(getenv('SITE_URL') ?: '', '/');

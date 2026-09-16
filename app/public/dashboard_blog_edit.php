@@ -82,14 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $insCat->execute([$id, $cid]);
             }
         }
-        header('Location: /dashboard_blog.php');
+        header('Location: /dashboard_blog_posts.php');
         exit;
     }
 }
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
+  <p><a href="/dashboard_blog_posts.php"><i class="fa-solid fa-arrow-left"></i> Torna agli articoli</a></p>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
@@ -140,6 +140,6 @@ include __DIR__ . '/_dash_header.php';
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Impostala nel futuro per (ri)programmare l'articolo.</p>
 
     <button type="submit" class="btn">Salva modifiche</button>
-    <a href="/dashboard_blog.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
+    <a href="/dashboard_blog_posts.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
   </form>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
