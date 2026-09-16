@@ -961,7 +961,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="topNavMenu">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav mx-lg-auto">
               <li class="nav-item">
                 <a href="/<?= e($slug) ?>/timeline" class="nav-link<?= $activeKey === 'timeline' ? ' active' : '' ?>">Timeline</a>
               </li>
@@ -985,7 +985,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                 <?php endif; ?>
               <?php endforeach; ?>
             </ul>
-            <ul class="navbar-nav ms-auto align-items-lg-center">
+            <ul class="navbar-nav align-items-lg-center">
               <?php if (empty($_SESSION['user_id'])): ?>
               <li class="nav-item"><a class="nav-link" href="/login.php"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Accedi</a></li>
               <li class="nav-item"><a class="nav-link" href="/register.php"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Registrati</a></li>
