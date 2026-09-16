@@ -1337,9 +1337,10 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'partita_favorita' => ['icon' => 'bi-calendar-event-fill', 'color' => 'warning', 'label' => 'Partita che amo'],
 ];
 
-// Righe della Timeline in stile "social" AdminLTE (mix fra i componenti nativi .card/.user-block
-// e .post/.user-block: intestazione con avatar+nome+badge tipo, foto a piena larghezza o griglia,
-// link "Apri" in fondo), senza contenitore esterno: usata sia per il primo carico che, tramite
+// Righe della Timeline in stile "social" AdminLTE: ogni elemento è una .card a sé (componente
+// nativo .card/.user-block, mescolato con la griglia foto del pattern .post) con intestazione
+// avatar+nome+badge tipo, foto a piena larghezza o griglia, link "Apri" nel card-footer: usata sia
+// per il primo carico che, tramite
 // timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
 // standalone. Tutti gli item appartengono allo stesso profilo, quindi avatar/nome vengono presi
 // una sola volta da $artist invece che dal singolo item. $afterDay è l'ultima etichetta di data già
@@ -1376,52 +1377,56 @@ function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterD
         if ($day !== $lastDay): $lastDay = $day; ?>
         <div class="text-center my-3"><span class="badge rounded-pill text-bg-secondary px-3 py-2"><?= e($day) ?></span></div>
         <?php endif; ?>
-        <div class="post">
-          <div class="user-block">
-            <img src="<?= e($avatarUrl) ?>" alt="<?= e($displayName) ?>" class="rounded-circle">
-            <span class="username"><a href="<?= e($it['url']) ?>"><?= e($displayName) ?></a></span>
-            <span class="description">
-              <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?></span>
-              <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?>
-            </span>
-          </div>
-          <p class="mb-2"><a href="<?= e($it['url']) ?>" class="link-body-emphasis fw-semibold text-decoration-none"><?= e($it['titolo']) ?></a></p>
-          <?php
-            $photos = [];
-            if (!empty($it['cover'])) {
-                $photos[] = $it['cover'];
-                foreach ($extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [] as $extra) {
-                    $photos[] = $extra;
-                }
-            }
-          ?>
-          <?php if (count($photos) === 1):
-            $soloUrl = str_starts_with($photos[0], 'http') ? $photos[0] : '/' . $photos[0];
-          ?>
-          <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded mb-2" style="max-height:420px;width:100%;object-fit:cover;"></a>
-          <?php elseif (count($photos) > 1):
-            $shown = array_slice($photos, 0, 4);
-            $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
-          ?>
-          <div class="row g-2 mb-2">
-            <?php foreach ($shown as $i => $ph):
-              $phUrl = str_starts_with($ph, 'http') ? $ph : '/' . $ph;
-              $isLastTile = $i === 3 && count($photos) > 4;
-            ?>
-            <div class="<?= $colClass ?>">
-              <a href="<?= e($it['url']) ?>" class="position-relative d-block">
-                <img src="<?= e($phUrl) ?>" alt="" loading="lazy" class="img-fluid rounded w-100" style="height:140px;object-fit:cover;">
-                <?php if ($isLastTile): ?>
-                <span class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded text-white fw-semibold" style="background:rgba(0,0,0,.5);">+<?= count($photos) - 4 ?></span>
-                <?php endif; ?>
-              </a>
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="user-block">
+              <img src="<?= e($avatarUrl) ?>" alt="<?= e($displayName) ?>" class="rounded-circle">
+              <span class="username"><a href="<?= e($it['url']) ?>"><?= e($displayName) ?></a></span>
+              <span class="description">
+                <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?></span>
+                <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?>
+              </span>
             </div>
-            <?php endforeach; ?>
           </div>
-          <?php endif; ?>
-          <p class="mb-0 pt-2 border-top">
+          <div class="card-body">
+            <p class="mb-2"><a href="<?= e($it['url']) ?>" class="link-body-emphasis fw-semibold text-decoration-none"><?= e($it['titolo']) ?></a></p>
+            <?php
+              $photos = [];
+              if (!empty($it['cover'])) {
+                  $photos[] = $it['cover'];
+                  foreach ($extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [] as $extra) {
+                      $photos[] = $extra;
+                  }
+              }
+            ?>
+            <?php if (count($photos) === 1):
+              $soloUrl = str_starts_with($photos[0], 'http') ? $photos[0] : '/' . $photos[0];
+            ?>
+            <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:420px;width:100%;object-fit:cover;"></a>
+            <?php elseif (count($photos) > 1):
+              $shown = array_slice($photos, 0, 4);
+              $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
+            ?>
+            <div class="row g-2">
+              <?php foreach ($shown as $i => $ph):
+                $phUrl = str_starts_with($ph, 'http') ? $ph : '/' . $ph;
+                $isLastTile = $i === 3 && count($photos) > 4;
+              ?>
+              <div class="<?= $colClass ?>">
+                <a href="<?= e($it['url']) ?>" class="position-relative d-block">
+                  <img src="<?= e($phUrl) ?>" alt="" loading="lazy" class="img-fluid rounded w-100" style="height:140px;object-fit:cover;">
+                  <?php if ($isLastTile): ?>
+                  <span class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded text-white fw-semibold" style="background:rgba(0,0,0,.5);">+<?= count($photos) - 4 ?></span>
+                  <?php endif; ?>
+                </a>
+              </div>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+          </div>
+          <div class="card-footer">
             <a href="<?= e($it['url']) ?>" class="link-body-emphasis text-decoration-none small"><i class="bi bi-box-arrow-up-right me-1"></i>Apri</a>
-          </p>
+          </div>
         </div>
     <?php endforeach;
     return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
