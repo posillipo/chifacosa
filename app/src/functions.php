@@ -1407,7 +1407,7 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
               ?>
               <div class="<?= $colClass ?>">
                 <a href="<?= e($it['url']) ?>" class="position-relative d-block">
-                  <img src="<?= e($phUrl) ?>" alt="" loading="lazy" class="img-fluid rounded w-100" style="height:140px;object-fit:cover;">
+                  <img src="<?= e($phUrl) ?>" alt="" loading="lazy" class="img-fluid rounded w-100" style="aspect-ratio:1/1;object-fit:cover;">
                   <?php if ($isLastTile): ?>
                   <span class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded text-white fw-semibold" style="background:rgba(0,0,0,.5);">+<?= count($photos) - 4 ?></span>
                   <?php endif; ?>
