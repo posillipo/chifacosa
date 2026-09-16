@@ -1775,20 +1775,8 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
             <?php if (!empty($_GET['follow_msg'])): ?>
             <div class="alert <?= !empty($_GET['follow_err']) ? 'alert-danger' : 'alert-success' ?> mb-3"><?= e($_GET['follow_msg']) ?></div>
             <?php endif; ?>
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Timeline') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
-                <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
-            </div>
-            </div>
+            <h3 class="mb-3"><?= e('Timeline') ?></h3>
+            <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
           </div>
         </div>
       </div>
@@ -1840,20 +1828,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Timeline') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
-                <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
-            </div>
-            </div>
+            <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
           </div>
         </div>
       </div>
