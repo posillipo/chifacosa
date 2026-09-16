@@ -801,14 +801,6 @@ function adminLteAssetLinks(): string {
          // testo non tocca comunque i bordi).
          . '@media (max-width:767.98px){.app-content .container-fluid{padding-left:0;padding-right:0;}'
          . '.app-content .row.g-3{--bs-gutter-x:0;}}'
-         // Gli elementi della Timeline (.timeline-item/.timeline-body) hanno un padding/margine
-         // laterale importato di serie da AdminLTE, pensato per un contenuto testuale — con le
-         // foto (che ora sono anche più grandi, 140px invece di 80px, vedi renderAdminLteTimelineRows())
-         // lasciava via via più spazio vuoto sui lati via via che la card si stringeva. Qui viene
-         // ridotto: il gutter per l'icona/linea a sinistra resta uguale (è l'allineamento
-         // strutturale del widget), stringe solo il margine destro e il padding interno.
-         . '.timeline>div>.timeline-item{margin-right:6px;}'
-         . '.timeline>div>.timeline-item>.timeline-body{padding:6px;}'
          . '</style>';
 }
 
@@ -1325,33 +1317,35 @@ function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug, ?int $ac
 // reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
 // la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
 const ADMINLTE_TIMELINE_TYPE_META = [
-    'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary'],
-    'blog' => ['icon' => 'bi-newspaper', 'color' => 'info'],
-    'brano' => ['icon' => 'bi-music-note', 'color' => 'warning'],
-    'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success'],
-    'offerta' => ['icon' => 'bi-tag', 'color' => 'danger'],
-    'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary'],
-    'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger'],
-    'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary'],
-    'film_favorito' => ['icon' => 'bi-film', 'color' => 'info'],
-    'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary'],
-    'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success'],
-    'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning'],
-    'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary'],
-    'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary'],
-    'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning'],
-    'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success'],
-    'calciatore_favorito' => ['icon' => 'bi-person-badge-fill', 'color' => 'primary'],
-    'partita_favorita' => ['icon' => 'bi-calendar-event-fill', 'color' => 'warning'],
+    'pensiero' => ['icon' => 'bi-chat-text', 'color' => 'primary', 'label' => 'Pensiero'],
+    'blog' => ['icon' => 'bi-newspaper', 'color' => 'info', 'label' => 'Blog'],
+    'brano' => ['icon' => 'bi-music-note', 'color' => 'warning', 'label' => 'Brano che amo'],
+    'evento' => ['icon' => 'bi-calendar-event', 'color' => 'success', 'label' => 'Evento'],
+    'offerta' => ['icon' => 'bi-tag', 'color' => 'danger', 'label' => 'Offerta'],
+    'servizio' => ['icon' => 'bi-briefcase', 'color' => 'secondary', 'label' => 'Servizio'],
+    'band_favorita' => ['icon' => 'bi-heart-pulse', 'color' => 'danger', 'label' => 'Band che amo'],
+    'attore_favorito' => ['icon' => 'bi-mask', 'color' => 'secondary', 'label' => 'Attore che amo'],
+    'film_favorito' => ['icon' => 'bi-film', 'color' => 'info', 'label' => 'Film che amo'],
+    'libro_favorito' => ['icon' => 'bi-book', 'color' => 'primary', 'label' => 'Libro che amo'],
+    'viaggio_favorito' => ['icon' => 'bi-airplane', 'color' => 'success', 'label' => 'Viaggio'],
+    'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning', 'label' => 'Playlist che amo'],
+    'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary', 'label' => 'Album che amo'],
+    'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary', 'label' => 'Album foto'],
+    'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning', 'label' => 'Ricetta che amo'],
+    'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success', 'label' => 'Squadra che amo'],
+    'calciatore_favorito' => ['icon' => 'bi-person-badge-fill', 'color' => 'primary', 'label' => 'Calciatore che amo'],
+    'partita_favorita' => ['icon' => 'bi-calendar-event-fill', 'color' => 'warning', 'label' => 'Partita che amo'],
 ];
 
-// Righe del widget .timeline reale di AdminLTE (etichette di data + item), senza il contenitore
-// <div class="timeline"> né il tappo finale: usata sia per il primo carico che, tramite
+// Righe della Timeline in stile "social" AdminLTE (mix fra i componenti nativi .card/.user-block
+// e .post/.user-block: intestazione con avatar+nome+badge tipo, foto a piena larghezza o griglia,
+// link "Apri" in fondo), senza contenitore esterno: usata sia per il primo carico che, tramite
 // timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
-// standalone. $afterDay è l'ultima etichetta di data già mostrata in pagina, per non ripeterla se
-// il primo elemento di questa chiamata cade nello stesso giorno; il valore restituito serve a far
-// proseguire correttamente la chiamata successiva.
-function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): array {
+// standalone. Tutti gli item appartengono allo stesso profilo, quindi avatar/nome vengono presi
+// una sola volta da $artist invece che dal singolo item. $afterDay è l'ultima etichetta di data già
+// mostrata in pagina, per non ripeterla se il primo elemento di questa chiamata cade nello stesso
+// giorno; il valore restituito serve a far proseguire correttamente la chiamata successiva.
+function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterDay = null): array {
     // Foto aggiuntive dei post "pensiero" con più foto (carosello) presenti in questa pagina di
     // risultati: un'unica query per tutte invece di una per post, stesso principio del conteggio
     // già fatto in getTimelineFeedForUsers().
@@ -1371,46 +1365,77 @@ function renderAdminLteTimelineRows(array $items, ?string $afterDay = null): arr
         }
     }
 
+    $avatarUrl = adminLteAvatarUrl($artist);
+    $displayName = $artist['display_name'] ?? '';
+
     $lastDay = $afterDay;
     ob_start();
     foreach ($items as $it):
         $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
-        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary'];
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
         if ($day !== $lastDay): $lastDay = $day; ?>
-        <div class="time-label"><span class="text-bg-<?= $meta['color'] ?>"><?= e($day) ?></span></div>
+        <div class="text-center my-3"><span class="badge rounded-pill text-bg-secondary px-3 py-2"><?= e($day) ?></span></div>
         <?php endif; ?>
-        <div>
-          <i class="timeline-icon bi <?= e($meta['icon']) ?> text-bg-<?= $meta['color'] ?>"></i>
-          <div class="timeline-item">
-            <span class="time"><i class="bi bi-clock-fill"></i> <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?></span>
-            <h3 class="timeline-header no-border"><a href="<?= e($it['url']) ?>"><?= e($it['titolo']) ?></a></h3>
-            <?php if (!empty($it['cover'])):
-              $itCoverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
-              $extraPhotos = $extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [];
-            ?>
-            <div class="timeline-body">
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($itCoverUrl) ?>" alt="" loading="lazy" style="width:140px;height:140px;object-fit:cover;border-radius:6px;margin:<?= $extraPhotos ? '0 6px 6px 0' : '0' ?>;"></a>
-              <?php foreach ($extraPhotos as $extra):
-                $extraUrl = str_starts_with($extra, 'http') ? $extra : '/' . $extra;
-              ?>
-              <a href="<?= e($it['url']) ?>"><img src="<?= e($extraUrl) ?>" alt="" loading="lazy" style="width:140px;height:140px;object-fit:cover;border-radius:6px;margin:0 6px 6px 0;"></a>
-              <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
+        <div class="post">
+          <div class="user-block">
+            <img src="<?= e($avatarUrl) ?>" alt="<?= e($displayName) ?>" class="rounded-circle">
+            <span class="username"><a href="<?= e($it['url']) ?>"><?= e($displayName) ?></a></span>
+            <span class="description">
+              <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?></span>
+              <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?>
+            </span>
           </div>
+          <p class="mb-2"><a href="<?= e($it['url']) ?>" class="link-body-emphasis fw-semibold text-decoration-none"><?= e($it['titolo']) ?></a></p>
+          <?php
+            $photos = [];
+            if (!empty($it['cover'])) {
+                $photos[] = $it['cover'];
+                foreach ($extraPhotosByPost[(int) ($it['id'] ?? 0)] ?? [] as $extra) {
+                    $photos[] = $extra;
+                }
+            }
+          ?>
+          <?php if (count($photos) === 1):
+            $soloUrl = str_starts_with($photos[0], 'http') ? $photos[0] : '/' . $photos[0];
+          ?>
+          <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded mb-2" style="max-height:420px;width:100%;object-fit:cover;"></a>
+          <?php elseif (count($photos) > 1):
+            $shown = array_slice($photos, 0, 4);
+            $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
+          ?>
+          <div class="row g-2 mb-2">
+            <?php foreach ($shown as $i => $ph):
+              $phUrl = str_starts_with($ph, 'http') ? $ph : '/' . $ph;
+              $isLastTile = $i === 3 && count($photos) > 4;
+            ?>
+            <div class="<?= $colClass ?>">
+              <a href="<?= e($it['url']) ?>" class="position-relative d-block">
+                <img src="<?= e($phUrl) ?>" alt="" loading="lazy" class="img-fluid rounded w-100" style="height:140px;object-fit:cover;">
+                <?php if ($isLastTile): ?>
+                <span class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded text-white fw-semibold" style="background:rgba(0,0,0,.5);">+<?= count($photos) - 4 ?></span>
+                <?php endif; ?>
+              </a>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <?php endif; ?>
+          <p class="mb-0 pt-2 border-top">
+            <a href="<?= e($it['url']) ?>" class="link-body-emphasis text-decoration-none small"><i class="bi bi-box-arrow-up-right me-1"></i>Apri</a>
+          </p>
         </div>
     <?php endforeach;
     return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
 }
 
-// Widget .timeline completo (contenitore + tappo finale), per un elenco fisso non paginato — il
-// tab Timeline della Home a tema AdminLTE mostra solo gli ultimi elementi, senza scroll infinito.
-function renderAdminLteTimelineWidget(array $items): string {
+// Elenco completo (senza scroll infinito) della Timeline in stile "social": attualmente non
+// richiamata da nessuna pagina (le due pagine che mostrano la Timeline usano entrambe lo scroll
+// infinito reale via renderAdminLteTimelineFeedBlock()), tenuta per un eventuale widget a elenco
+// fisso.
+function renderAdminLteTimelineWidget(array $items, array $artist): string {
     if (!$items) {
         return '<p class="text-secondary">Nessun aggiornamento ancora.</p>';
     }
-    $rows = renderAdminLteTimelineRows($items);
-    return '<div class="timeline">' . $rows['html'] . '<div><i class="timeline-icon bi bi-clock-fill text-bg-secondary"></i></div></div>';
+    return renderAdminLteTimelineRows($items, $artist)['html'];
 }
 
 // Contenuto della card Timeline con scroll infinito reale — condiviso fra la Home (che ora mostra
@@ -1421,14 +1446,14 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $uid = (int) $artist['id'];
     $pageSize = 20;
     $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
-    $rows = renderAdminLteTimelineRows($feed);
+    $rows = renderAdminLteTimelineRows($feed, $artist);
     $finished = count($feed) < $pageSize;
     ob_start();
     ?>
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
                 <?php else: ?>
-                  <div class="timeline" id="timeline-feed"><?= $rows['html'] ?></div>
+                  <div id="timeline-feed"><?= $rows['html'] ?></div>
                 <?php endif; ?>
                 <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
                 <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
