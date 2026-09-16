@@ -660,12 +660,19 @@ include __DIR__ . '/_dash_header.php';
       resultsBox.innerHTML = html;
     }
 
+    // Ogni ricerca costa punti sul piano gratuito di Spoonacular (150/giorno): una query già
+    // cercata di recente (es. l'Invio dopo che la ricerca live è già partita da sola, o due
+    // pause di battitura sullo stesso testo) non va rimandata all'API una seconda volta.
+    let lastSearchedQuery = null;
     function runSearch(query) {
-      if (query.trim() === '') { resultsBox.innerHTML = ''; searchStatus.textContent = ''; return; }
+      const trimmed = query.trim();
+      if (trimmed === '') { resultsBox.innerHTML = ''; searchStatus.textContent = ''; lastSearchedQuery = null; return; }
+      if (trimmed.toLowerCase() === lastSearchedQuery) { return; }
+      lastSearchedQuery = trimmed.toLowerCase();
       searchStatus.textContent = 'Ricerca in corso...';
       const params = new URLSearchParams();
       params.set('action', 'search');
-      params.set('query', query);
+      params.set('query', trimmed);
       post(params).then(function (data) {
         searchStatus.textContent = '';
         renderResults(data.results || [], data.favoriteIds || []);
@@ -674,11 +681,15 @@ include __DIR__ . '/_dash_header.php';
       });
     }
 
+    // Debounce più lungo (era 400ms) e almeno 3 caratteri prima di partire da sola: chi digita con
+    // pause naturali tra una parola e l'altra altrimenti genera più chiamate reali per una singola
+    // ricerca — ogni chiamata di troppo consuma punti della quota giornaliera gratuita di Spoonacular.
     let debounceTimer = null;
     searchInput.addEventListener('input', function () {
       clearTimeout(debounceTimer);
       const query = searchInput.value;
-      debounceTimer = setTimeout(function () { runSearch(query); }, 400);
+      if (query.trim().length > 0 && query.trim().length < 3) { searchStatus.textContent = ''; return; }
+      debounceTimer = setTimeout(function () { runSearch(query); }, 700);
     });
     searchForm.addEventListener('submit', function (e) {
       e.preventDefault();
