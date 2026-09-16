@@ -1375,7 +1375,11 @@ function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterD
         $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
         $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
         if ($day !== $lastDay): $lastDay = $day; ?>
-        <div class="text-center my-3"><span class="badge rounded-pill text-bg-secondary px-3 py-2"><?= e($day) ?></span></div>
+        <div class="d-flex align-items-center gap-2 my-3">
+          <hr class="flex-grow-1 my-0">
+          <span class="badge rounded-pill text-bg-secondary px-3 py-2 flex-shrink-0"><?= e($day) ?></span>
+          <hr class="flex-grow-1 my-0">
+        </div>
         <?php endif; ?>
         <div class="card mb-3">
           <div class="card-header">
