@@ -300,7 +300,7 @@ include __DIR__ . '/_dash_header.php';
   <?php endforeach; ?>
 
   <script>
-    // Genera nel browser una miniatura JPEG leggera (max 320px, qualità 0.82) dalla foto
+    // Genera nel browser una miniatura JPEG leggera (max 600px, qualità 0.82) dalla foto
     // selezionata, per alleggerire la lista/feed — l'originale caricato resta a piena qualità.
     (function () {
       const imageInput = document.getElementById('post-image-input');
@@ -316,7 +316,7 @@ include __DIR__ . '/_dash_header.php';
         const reader = new FileReader();
         reader.onload = function (e) {
           img.onload = function () {
-            const maxDim = 320;
+            const maxDim = 600;
             const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
             const canvas = document.createElement('canvas');
             canvas.width = Math.round(img.width * scale);

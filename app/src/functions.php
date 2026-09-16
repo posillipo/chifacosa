@@ -2473,17 +2473,6 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Scheda') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
             <?php if ($isOwner && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -2577,9 +2566,6 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
               </div>
               <?php endforeach; ?>
             <?php endif; ?>
-
-            </div>
-            </div>
           </div>
         </div>
       </div>
@@ -2725,17 +2711,6 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Viaggio') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
             <?php if ($isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -2781,9 +2756,6 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
               </div>
               <?php endforeach; ?>
             <?php endif; ?>
-
-            </div>
-            </div>
           </div>
         </div>
       </div>
@@ -2919,17 +2891,6 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Scheda') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
             <?php if ($isOwner && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
             <?php endif; ?>
@@ -2973,9 +2934,6 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
               </div>
               <?php endforeach; ?>
             <?php endif; ?>
-
-            </div>
-            </div>
           </div>
         </div>
       </div>

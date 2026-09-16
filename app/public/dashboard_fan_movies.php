@@ -443,14 +443,14 @@ include __DIR__ . '/_dash_header.php';
       }).catch(function () { btn.disabled = false; });
     });
 
-    // Genera una miniatura JPEG leggera (max 320px) dalla foto selezionata, nel browser — vedi
+    // Genera una miniatura JPEG leggera (max 600px) dalla foto selezionata, nel browser — vedi
     // stessa logica in dashboard_post.php.
     function generateThumb(file, callback) {
       const img = new Image();
       const reader = new FileReader();
       reader.onload = function (e) {
         img.onload = function () {
-          const maxDim = 320;
+          const maxDim = 600;
           const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
           const canvas = document.createElement('canvas');
           canvas.width = Math.round(img.width * scale);
