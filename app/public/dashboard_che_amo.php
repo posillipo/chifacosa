@@ -85,11 +85,18 @@ foreach ($moduleTables as $key => $table) {
 // dashboard_nav_menu.php (profile_navigation_menu), dato che ogni modulo "che amo" ha già una
 // sua riga lì: trascinare qui aggiorna anche l'ordine della barra di navigazione pubblica per
 // queste voci, e viceversa.
+// Stesse regole di visibilità della vetrina pubblica (che_amo.php): un modulo nascosto da
+// "Menu di Navigazione" o disattivato per tutta l'installazione da Area Admin → Funzioni del
+// sito non deve avere una card qui, altrimenti resterebbe gestibile un modulo che nessun
+// visitatore potrà mai vedere.
+$hiddenKeys = getHiddenNavKeys((int) $profile['id']);
 $cheAmoNavRows = [];
-foreach (getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']) as $row) {
-    $key = PUBLIC_NAV_ITEM_KEYS[$row['name']] ?? null;
-    if ($key !== null && isset(CHE_AMO_MODULES[$key])) {
-        $cheAmoNavRows[] = ['id' => (int) $row['id'], 'key' => $key];
+if (!in_array('cheamo', $hiddenKeys, true)) {
+    foreach (getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']) as $row) {
+        $key = PUBLIC_NAV_ITEM_KEYS[$row['name']] ?? null;
+        if ($key !== null && isset(CHE_AMO_MODULES[$key]) && !in_array($key, $hiddenKeys, true)) {
+            $cheAmoNavRows[] = ['id' => (int) $row['id'], 'key' => $key];
+        }
     }
 }
 
