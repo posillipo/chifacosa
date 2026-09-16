@@ -4618,38 +4618,50 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         });
     }
 
+    // "Home" resta sempre per prima e "Segui" sempre per ultima, qualunque sia l'ordine
+    // personalizzato scelto dal profilo o lo spostamento della voce attiva qui sotto — le uniche
+    // due il cui posto non deve mai cambiare (Home è il punto fisso da cui ripartire, Segui il
+    // pulsante di richiamo che deve restare sempre raggiungibile in fondo a destra).
+    $pinHomeAndSegui = function (array $t): array {
+        $first = [];
+        $last = [];
+        if (isset($t['home'])) {
+            $first['home'] = $t['home'];
+            unset($t['home']);
+        }
+        if (isset($t['segui'])) {
+            $last['segui'] = $t['segui'];
+            unset($t['segui']);
+        }
+        return $first + $t + $last;
+    };
+
+    // Ordine "naturale" (quello scelto dal profilo in Menu di Navigazione, con Home/Segui
+    // pinnati) prima dello spostamento della voce attiva qui sotto — usato solo su desktop (vedi
+    // @media (min-width:761px) su ".colorful-nav a" in style.css) per tenere ferma ogni pillola al
+    // proprio posto: lì il menu si vede quasi sempre per intero senza scorrere, e lo spostamento
+    // risulterebbe solo un salto innaturale invece che un aiuto.
+    $naturalOrder = array_flip(array_keys($pinHomeAndSegui($tabs)));
+
     // La voce attiva passa al secondo posto (subito dopo la prima) SOLO nella resa di questa
-    // pagina — l'ordine salvato in Menu di Navigazione (sopra) resta quello scelto dal
-    // proprietario, invariato. Aiuta chi naviga fra tante voci a ritrovare sempre subito in vista
-    // la sezione in cui si trova, senza dover scorrere il menu ogni volta.
+    // pagina, e solo su mobile (l'ordine "naturale" qui sopra vince su desktop via CSS) — l'ordine
+    // salvato in Menu di Navigazione resta quello scelto dal proprietario, invariato. Aiuta chi
+    // naviga fra tante voci su una barra che scorre in orizzontale a ritrovare sempre subito in
+    // vista la sezione in cui si trova, senza dover scorrere il menu ogni volta.
     if (isset($tabs[$active])) {
         $activeEntry = [$active => $tabs[$active]];
         unset($tabs[$active]);
         $tabs = array_slice($tabs, 0, 1, true) + $activeEntry + array_slice($tabs, 1, null, true);
     }
-
-    // "Home" resta sempre per prima e "Segui" sempre per ultima, qualunque sia l'ordine
-    // personalizzato scelto dal profilo o lo spostamento della voce attiva qui sopra — le uniche
-    // due il cui posto non deve mai cambiare (Home è il punto fisso da cui ripartire, Segui il
-    // pulsante di richiamo che deve restare sempre raggiungibile in fondo a destra).
-    $pinnedFirst = [];
-    $pinnedLast = [];
-    if (isset($tabs['home'])) {
-        $pinnedFirst['home'] = $tabs['home'];
-        unset($tabs['home']);
-    }
-    if (isset($tabs['segui'])) {
-        $pinnedLast['segui'] = $tabs['segui'];
-        unset($tabs['segui']);
-    }
-    $tabs = $pinnedFirst + $tabs + $pinnedLast;
+    $tabs = $pinHomeAndSegui($tabs);
 
     $parts = [];
     foreach ($tabs as $key => $t) {
         $classes = trim(($t['class'] ?? '') . ($key === $active ? ' nav-active-tab' : ''));
         $classAttr = $classes !== '' ? ' class="' . e($classes) . '"' : '';
         $icon = !empty($t['icon']) ? '<i class="' . e($t['icon']) . '"></i> ' : '';
-        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . '>' . $icon . e($t['label']) . '</a>';
+        $orderStyle = ' style="--nav-order:' . (int) ($naturalOrder[$key] ?? 0) . ';"';
+        $parts[] = '<a href="' . e($t['url']) . '"' . $classAttr . $orderStyle . '>' . $icon . e($t['label']) . '</a>';
     }
     return '<div class="colorful-nav-wrap">'
         . '<nav class="colorful-nav">' . implode('', $parts) . '</nav>'

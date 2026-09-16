@@ -651,6 +651,15 @@ body.colorful-page {
   .colorful-nav a { font-size: 13.5px; padding: 4px 10px; }
 }
 
+/* Su desktop il menu si vede quasi sempre per intero: lo spostamento della voce attiva al
+   secondo posto (utile su mobile per ritrovarla subito su una barra che scorre in orizzontale,
+   vedi publicNav() in functions.php) qui risulterebbe solo un salto innaturale — ogni pillola
+   torna quindi al proprio posto "naturale" (quello scelto in Menu di Navigazione), grazie
+   all'indice che publicNav() scrive già in --nav-order su ciascun link. */
+@media (min-width: 761px) {
+  .colorful-nav a { order: var(--nav-order, 0); }
+}
+
 .colorful-nav-wrap { position: relative; }
 
 /* Indicatore statico "c'è altro da scorrere" sul menu, ispirato al comportamento della
