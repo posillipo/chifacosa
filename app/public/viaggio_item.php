@@ -34,6 +34,15 @@ if (!$trip) {
     exit('Viaggio non trovato.');
 }
 
+// Stessa regola di fan_favorite_item.php/album_item.php/servizio_item.php: un viaggio "Solo io" o
+// ancora programmato non è raggiungibile da nessun altro, nemmeno con il link diretto.
+$isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $trip['user_id'];
+$isScheduledFuture = $trip['publish_at'] && strtotime($trip['publish_at']) > time();
+if (!$isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)) {
+    http_response_code(404);
+    exit('Viaggio non trovato.');
+}
+
 $note = trim($trip['note'] ?? '');
 // La foto caricata dal proprietario ha sempre la precedenza; senza di essa si usa la miniatura
 // mappa generata automaticamente (Geoapify) — così ogni viaggio ha sempre un'immagine da
@@ -55,7 +64,7 @@ $imageUrl = $image ? siteUrl($image) : null;
 $sameDayItems = getSameDayFavorites('fan_favorite_trips', $artist['id'], $trip['publish_at'], $trip['created_at'], $tripId);
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteViaggioDetailPage($artist, $slug, $trip, $photos, $sameDayItems);
+    echo renderAdminLteViaggioDetailPage($artist, $slug, $trip, $photos, $sameDayItems, $isOwner, $isScheduledFuture);
     exit;
 }
 
@@ -104,6 +113,10 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
 <?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'viaggi') ?>
+
+  <?php if ($isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php endif; ?>
 
   <div class="card" style="text-align:center;">
     <?= renderPhotoCarousel($photos, $tripId) ?>

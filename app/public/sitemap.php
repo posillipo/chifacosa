@@ -126,7 +126,7 @@ foreach ($stmt->fetchAll() as $so) {
 // Singoli album fotografici — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT pa.id, pa.created_at, u.slug AS user_slug
     FROM photo_albums pa JOIN users u ON u.id = pa.user_id
-    WHERE u.is_active = 1 AND pa.show_in_feed = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW())");
+    WHERE u.is_active = 1 AND pa.is_public = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $al) {
     sitemapUrl(siteUrl('/' . $al['user_slug'] . '/album/' . $al['id']), $al['created_at'], 'monthly', '0.4');
 }
@@ -134,7 +134,7 @@ foreach ($stmt->fetchAll() as $al) {
 // Singoli servizi — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT sv.id, sv.created_at, u.slug AS user_slug
     FROM services sv JOIN users u ON u.id = sv.user_id
-    WHERE u.is_active = 1 AND sv.show_in_feed = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW())");
+    WHERE u.is_active = 1 AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $sv) {
     sitemapUrl(siteUrl('/' . $sv['user_slug'] . '/servizi/' . $sv['id']), $sv['created_at'], 'monthly', '0.4');
 }
@@ -148,10 +148,10 @@ foreach ($stmt->fetchAll() as $tp) {
     sitemapUrl(siteUrl('/' . $tp['user_slug'] . '/timeline/' . $tp['id']), $tp['created_at'], 'monthly', '0.5');
 }
 
-// Singoli brani (pagina dedicata, condivisibile)
+// Singoli brani (pagina dedicata, condivisibile) — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT f.id, f.created_at, u.slug AS user_slug
     FROM favorite_tracks f JOIN users u ON u.id = f.user_id
-    WHERE u.is_active = 1");
+    WHERE u.is_active = 1 AND f.is_public = 1 AND (f.publish_at IS NULL OR f.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $t) {
     sitemapUrl(siteUrl('/' . $t['user_slug'] . '/brani/' . $t['id']), $t['created_at'], 'monthly', '0.4');
 }

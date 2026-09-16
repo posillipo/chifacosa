@@ -60,10 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $matchImage = trim($_POST['match_image'] ?? '');
         $addedRow = null;
         if ($eventId !== '') {
-            // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
+            // is_public=0 di proposito: un elemento appena aggiunto parte "Solo io", la
             // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT IGNORE INTO fan_favorite_matches
-                (user_id, thesportsdb_event_id, match_title, match_image, show_in_feed, sort_order)
+                (user_id, thesportsdb_event_id, match_title, match_image, is_public, sort_order)
                 VALUES (?, ?, ?, ?, 0, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_matches WHERE user_id=?) t))');
             $stmt->execute([$profile['id'], $eventId, $matchTitle, $matchImage ?: null, $profile['id']]);
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_matches WHERE user_id=? AND thesportsdb_event_id=?');
@@ -97,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int) ($_POST['id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
-        $showInFeed = $visibility === 'public' ? 1 : 0;
+        $isPublic = $visibility === 'public' ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
 
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
         if ($publishAt && strtotime($publishAt) <= time()) {
@@ -142,11 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 deleteCoverFile($old['image_path']);
                 deleteCoverFile($old['image_thumb_path']);
             }
-            $stmt = getDB()->prepare('UPDATE fan_favorite_matches SET note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
-            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_matches SET note=?, is_public=?, in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
+            $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
         } else {
-            $stmt = getDB()->prepare('UPDATE fan_favorite_matches SET note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-            $stmt->execute([$note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_matches SET note=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
         if ($isAjax) {
@@ -252,7 +253,7 @@ include __DIR__ . '/_dash_header.php';
     <?php foreach ($favorites as $f): ?>
       <?php
         $note = trim($f['note'] ?? '');
-        $isPrivate = !$f['show_in_feed'];
+        $isPrivate = !$f['is_public'];
         $isScheduled = $f['publish_at'] && strtotime($f['publish_at']) > time();
       ?>
       <div class="link-item" data-mt-favorite="<?= (int)$f['id'] ?>" data-mt-event-id="<?= e($f['thesportsdb_event_id']) ?>"
@@ -299,7 +300,7 @@ include __DIR__ . '/_dash_header.php';
             <input type="hidden" class="mt-pub-image-thumb-data">
             <?php if ($f['image_path']): ?><p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p><?php endif; ?>
 
-            <label>Privacy (comparsa nel Feed)</label>
+            <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" class="mt-pub-visibility" name="visibility" value="public" <?= $isPrivate ? '' : 'checked' ?> style="width:auto;"> Pubblico
@@ -309,9 +310,14 @@ include __DIR__ . '/_dash_header.php';
               </label>
             </div>
 
-            <label>Programma la comparsa nel Feed (opzionale)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+              <input type="checkbox" class="mt-pub-in-feed" name="in_feed" value="1" <?= ($f['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+            </label>
+            <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella sua pagina), all'orario di pubblicazione.</p>
+
+            <label>Programma la pubblicazione (opzionale)</label>
             <input type="datetime-local" class="mt-pub-publish-at" value="<?= $f['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($f['publish_at']))) : '' ?>">
-            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
 
             <label>Link personalizzato per il feed (opzionale)</label>
             <input type="url" class="mt-pub-custom-link" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
@@ -480,7 +486,7 @@ include __DIR__ . '/_dash_header.php';
 
     function renderBadges(item) {
       const isScheduled = item.publish_at && new Date(item.publish_at.replace(' ', 'T')).getTime() > Date.now();
-      const isPrivate = !item.show_in_feed || item.show_in_feed == 0;
+      const isPrivate = !item.is_public || item.is_public == 0;
       let html = '';
       if (isScheduled) html += '<span class="mt-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il ' + escapeHtml(item.publish_at) + '</span>';
       if (isPrivate) html += '<span class="mt-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io (non nel Feed)</span>';
@@ -518,13 +524,15 @@ include __DIR__ . '/_dash_header.php';
         + '<label>Foto (opzionale)</label>'
         + '<input type="file" class="mt-pub-image-input" accept="image/*">'
         + '<input type="hidden" class="mt-pub-image-thumb-data">'
-        + '<label>Privacy (comparsa nel Feed)</label>'
+        + '<label>Privacy</label>'
         + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="mt-pub-visibility" name="visibility" value="public"' + (item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="mt-pub-visibility" name="visibility" value="private"' + (!item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
-        + '<label>Programma la comparsa nel Feed (opzionale)</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="mt-pub-visibility" name="visibility" value="public"' + (item.is_public ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="mt-pub-visibility" name="visibility" value="private"' + (!item.is_public ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;"><input type="checkbox" class="mt-pub-in-feed" name="in_feed" value="1"' + (item.in_feed == 1 ? ' checked' : '') + ' style="width:auto;"> Includi nel Feed</label>'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella sua pagina), all\'orario di pubblicazione.</p>'
+        + '<label>Programma la pubblicazione (opzionale)</label>'
         + '<input type="datetime-local" class="mt-pub-publish-at">'
-        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>'
         + '<label>Link personalizzato per il feed (opzionale)</label>'
         + '<input type="url" class="mt-pub-custom-link" value="' + escapeHtml(customLink) + '" placeholder="https://...">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">' + sinceHint + '</p>'
@@ -674,6 +682,7 @@ include __DIR__ . '/_dash_header.php';
         const id = row.getAttribute('data-mt-favorite');
         const note = editor.querySelector('.mt-pub-textarea').value;
         const visibility = editor.querySelector('.mt-pub-visibility:checked').value;
+        const inFeed = editor.querySelector('.mt-pub-in-feed').checked;
         const publishAt = editor.querySelector('.mt-pub-publish-at').value;
         const customLink = editor.querySelector('.mt-pub-custom-link').value;
         const imageInput = editor.querySelector('.mt-pub-image-input');
@@ -688,6 +697,7 @@ include __DIR__ . '/_dash_header.php';
           formData.set('id', id);
           formData.set('note', note);
           formData.set('visibility', visibility);
+          formData.set('in_feed', inFeed ? '1' : '');
           formData.set('publish_at', publishAt);
           formData.set('tz_offset_minutes', new Date().getTimezoneOffset());
           formData.set('custom_feed_guid', customLink);

@@ -164,6 +164,17 @@ if (!$item) {
     exit('Elemento non trovato.');
 }
 
+// Un elemento "Solo io" o ancora programmato per il futuro non è raggiungibile da nessun altro,
+// nemmeno con il link diretto — stessa regola già in uso per Album (album_item.php) e Servizi
+// (servizio_item.php). Il proprietario continua a vederlo (con un avviso), per poterlo controllare
+// prima che diventi davvero pubblico.
+$isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $item['user_id'];
+$isScheduledFuture = $item['publish_at'] && strtotime($item['publish_at']) > time();
+if (!$isOwner && (!(int) $item['is_public'] || $isScheduledFuture)) {
+    http_response_code(404);
+    exit('Elemento non trovato.');
+}
+
 $name = $item[$cfg['name_col']];
 $image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
 $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
@@ -223,7 +234,7 @@ if ($kind === 'recipe' && !empty($apiDetails['source_url'])) {
 }
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteFanFavoriteDetailPage($artist, $slug, $kind, $item, $sameDayItems, $apiDetails);
+    echo renderAdminLteFanFavoriteDetailPage($artist, $slug, $kind, $item, $sameDayItems, $apiDetails, $isOwner, $isScheduledFuture);
     exit;
 }
 
@@ -272,6 +283,10 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 <?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, $cfg['nav_key']) ?>
+
+  <?php if ($isOwner && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php endif; ?>
 
   <div class="card" style="text-align:center;">
     <?php if ($imageUrl): ?>

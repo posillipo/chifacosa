@@ -18,7 +18,7 @@ if (!$artist) {
 }
 
 $isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
-$sql = 'SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC, id DESC' . ($isAdminLte ? ' LIMIT 20' : '');
+$sql = 'SELECT * FROM favorite_tracks WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC, id DESC' . ($isAdminLte ? ' LIMIT 20' : '');
 $tracks = getDB()->prepare($sql);
 $tracks->execute([$artist['id']]);
 $tracks = $tracks->fetchAll();

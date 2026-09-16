@@ -49,10 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // show_in_feed=0 di proposito: un elemento appena aggiunto parte "Solo io", la
+            // is_public=0 di proposito: un elemento appena aggiunto parte "Solo io", la
             // pubblicazione nel Feed va confermata a mano dal pannello di pubblicazione.
             $stmt = getDB()->prepare('INSERT INTO fan_favorite_trips
-                (user_id, place_name, address, lat, lng, show_in_feed, sort_order)
+                (user_id, place_name, address, lat, lng, is_public, sort_order)
                 VALUES (?, ?, ?, ?, ?, 0, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fan_favorite_trips WHERE user_id=?) t))');
             $stmt->execute([$profile['id'], $placeName, $address ?: null, $lat, $lng, $profile['id']]);
             $newId = (int) getDB()->lastInsertId();
@@ -113,7 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $note = trim($_POST['note'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
-        $showInFeed = $visibility === 'public' ? 1 : 0;
+        $isPublic = $visibility === 'public' ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
 
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
@@ -174,8 +175,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             getDB()->prepare('DELETE FROM fan_favorite_trip_photos WHERE trip_id=?')->execute([$id]);
 
-            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, show_in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
-            $stmt->execute([$placeName, $note !== '' ? $note : null, $showInFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, is_public=?, in_feed=?, publish_at=?, image_path=?, image_thumb_path=? WHERE id=? AND user_id=?');
+            $stmt->execute([$placeName, $note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $imagePath, $imageThumbPath, $id, $profile['id']]);
 
             if ($extraPhotos) {
                 $insPhoto = getDB()->prepare('INSERT INTO fan_favorite_trip_photos (trip_id, image_path, sort_order) VALUES (?,?,?)');
@@ -184,8 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
-            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-            $stmt->execute([$placeName, $note !== '' ? $note : null, $showInFeed, $publishAt, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE fan_favorite_trips SET place_name=?, note=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$placeName, $note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
         if ($isAjax) {
@@ -319,7 +320,7 @@ include __DIR__ . '/_dash_header.php';
     <?php foreach ($favorites as $f): ?>
       <?php
         $note = trim($f['note'] ?? '');
-        $isPrivate = !$f['show_in_feed'];
+        $isPrivate = !$f['is_public'];
         $isScheduled = $f['publish_at'] && strtotime($f['publish_at']) > time();
         $thumb = $f['image_path'] ?: $f['map_image_path'];
         $extraPhotoCount = $f['image_path'] ? count(getTripPhotos((int) $f['id'])) : 0;
@@ -409,7 +410,7 @@ include __DIR__ . '/_dash_header.php';
               <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Senza foto, l'anteprima social usa una miniatura della mappa.</p>
             <?php endif; ?>
 
-            <label>Privacy (comparsa nel Feed)</label>
+            <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" class="tr-pub-visibility" name="visibility" value="public" <?= $isPrivate ? '' : 'checked' ?> style="width:auto;"> Pubblico
@@ -419,9 +420,14 @@ include __DIR__ . '/_dash_header.php';
               </label>
             </div>
 
-            <label>Programma la comparsa nel Feed (opzionale)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+              <input type="checkbox" class="tr-pub-in-feed" name="in_feed" value="1" <?= ($f['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+            </label>
+            <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella sua pagina), all'orario di pubblicazione.</p>
+
+            <label>Programma la pubblicazione (opzionale)</label>
             <input type="datetime-local" class="tr-pub-publish-at" value="<?= $f['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($f['publish_at']))) : '' ?>">
-            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
 
             <label>Link personalizzato per il feed (opzionale)</label>
             <input type="url" class="tr-pub-custom-link" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
@@ -478,7 +484,7 @@ include __DIR__ . '/_dash_header.php';
 
     function renderBadges(item, extraPhotoCount) {
       const isScheduled = item.publish_at && new Date(item.publish_at.replace(' ', 'T')).getTime() > Date.now();
-      const isPrivate = !item.show_in_feed || item.show_in_feed == 0;
+      const isPrivate = !item.is_public || item.is_public == 0;
       const hasExtraPhotos = (extraPhotoCount || 0) > 0;
       let html = '';
       if (isScheduled) html += '<span class="tr-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il ' + escapeHtml(item.publish_at) + '</span>';
@@ -523,13 +529,15 @@ include __DIR__ . '/_dash_header.php';
         + '<input type="file" class="tr-pub-image-input" accept="image/*" multiple>'
         + '<input type="hidden" class="tr-pub-image-thumb-data">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Senza foto, l\'anteprima social usa una miniatura della mappa.</p>'
-        + '<label>Privacy (comparsa nel Feed)</label>'
+        + '<label>Privacy</label>'
         + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="tr-pub-visibility" name="visibility" value="public"' + (item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="tr-pub-visibility" name="visibility" value="private"' + (!item.show_in_feed ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
-        + '<label>Programma la comparsa nel Feed (opzionale)</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="tr-pub-visibility" name="visibility" value="public"' + (item.is_public ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="tr-pub-visibility" name="visibility" value="private"' + (!item.is_public ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;"><input type="checkbox" class="tr-pub-in-feed" name="in_feed" value="1"' + (item.in_feed == 1 ? ' checked' : '') + ' style="width:auto;"> Includi nel Feed</label>'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella sua pagina), all\'orario di pubblicazione.</p>'
+        + '<label>Programma la pubblicazione (opzionale)</label>'
         + '<input type="datetime-local" class="tr-pub-publish-at">'
-        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per mostrarlo subito nel Feed (se Pubblico). Resta comunque sempre visibile in questa lista e nella sua pagina.</p>'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>'
         + '<label>Link personalizzato per il feed (opzionale)</label>'
         + '<input type="url" class="tr-pub-custom-link" value="' + escapeHtml(customLink) + '" placeholder="https://...">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">' + sinceHint + '</p>'
@@ -758,6 +766,7 @@ include __DIR__ . '/_dash_header.php';
         const placeName = editor.querySelector('.tr-pub-place-name').value.trim();
         const note = editor.querySelector('.tr-pub-textarea').value;
         const visibility = editor.querySelector('.tr-pub-visibility:checked').value;
+        const inFeed = editor.querySelector('.tr-pub-in-feed').checked;
         const publishAt = editor.querySelector('.tr-pub-publish-at').value;
         const customLink = editor.querySelector('.tr-pub-custom-link').value;
         const imageInput = editor.querySelector('.tr-pub-image-input');
@@ -781,6 +790,7 @@ include __DIR__ . '/_dash_header.php';
           formData.set('place_name', placeName);
           formData.set('note', note);
           formData.set('visibility', visibility);
+          formData.set('in_feed', inFeed ? '1' : '');
           formData.set('publish_at', publishAt);
           // Il fuso orario del profilo (Dashboard -> Profilo e anagrafica) descrive come va
           // MOSTRATO il contenuto pubblicato, non necessariamente dove si trova chi lo sta

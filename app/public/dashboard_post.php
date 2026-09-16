@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
@@ -72,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($testo === '' && !$imagePath) {
             $error = 'Scrivi qualcosa o allega una foto.';
         } else {
-            $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, publish_at) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $publishAt]);
+            $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, in_feed, publish_at) VALUES (?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $inFeed, $publishAt]);
             $newPostId = (int) getDB()->lastInsertId();
 
             if ($extraPhotos) {
@@ -187,6 +188,10 @@ include __DIR__ . '/_dash_header.php';
         <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
       </label>
     </div>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
+    </label>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella Timeline), all'orario di pubblicazione.</p>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
       <div style="flex:1;min-width:220px;">
@@ -237,6 +242,8 @@ include __DIR__ . '/_dash_header.php';
           <?php endif; ?>
           <?php if ($isPrivate): ?>
             <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>
+          <?php elseif (!(int) ($p['in_feed'] ?? 1)): ?>
+            <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
           <?php endif; ?>
           <?php if ($extraPhotoCount > 0): ?>
             <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>

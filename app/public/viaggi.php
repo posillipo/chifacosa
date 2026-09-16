@@ -20,7 +20,7 @@ if (!$artist) {
 // Ordinati per data effettiva (publish_at se impostato, altrimenti created_at — stesso criterio
 // di publishedAtLabel()), non più per sort_order: serve per raggruppare per mese qui sotto, cosa
 // che un ordine di inserimento manuale non garantirebbe.
-$stmt = getDB()->prepare('SELECT * FROM fan_favorite_trips WHERE user_id=? ORDER BY COALESCE(publish_at, created_at) DESC, sort_order DESC');
+$stmt = getDB()->prepare('SELECT * FROM fan_favorite_trips WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY COALESCE(publish_at, created_at) DESC, sort_order DESC');
 $stmt->execute([$artist['id']]);
 $favorites = $stmt->fetchAll();
 

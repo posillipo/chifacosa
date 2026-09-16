@@ -42,7 +42,7 @@ if ($type === 'blog') {
     $count = count($rows);
 } elseif (isset(ADMINLTE_FAN_FAVORITE_KINDS[$type])) {
     $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$type];
-    $stmt = $db->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? ORDER BY sort_order DESC LIMIT ? OFFSET ?");
+    $stmt = $db->prepare("SELECT * FROM {$cfg['table']} WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC LIMIT ? OFFSET ?");
     $stmt->bindValue(1, $uid, PDO::PARAM_INT);
     $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);
     $stmt->bindValue(3, $offset, PDO::PARAM_INT);
@@ -51,7 +51,7 @@ if ($type === 'blog') {
     $html = renderAdminLteFanFavoriteRows($rows, $slug, $type, $artist);
     $count = count($rows);
 } elseif ($type === 'brani') {
-    $stmt = $db->prepare('SELECT * FROM favorite_tracks WHERE user_id=? ORDER BY sort_order DESC, id DESC LIMIT ? OFFSET ?');
+    $stmt = $db->prepare('SELECT * FROM favorite_tracks WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC, id DESC LIMIT ? OFFSET ?');
     $stmt->bindValue(1, $uid, PDO::PARAM_INT);
     $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);
     $stmt->bindValue(3, $offset, PDO::PARAM_INT);
@@ -72,7 +72,7 @@ if ($type === 'blog') {
     $count = count($rows);
 } elseif ($type === 'servizi') {
     $stmt = $db->prepare("SELECT sv.*, (SELECT COUNT(*) FROM service_photos WHERE service_id = sv.id) AS extra_photos
-        FROM services sv WHERE sv.user_id=? AND sv.show_in_feed = 1
+        FROM services sv WHERE sv.user_id=? AND sv.is_public = 1
         AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.sort_order DESC LIMIT ? OFFSET ?");
     $stmt->bindValue(1, $uid, PDO::PARAM_INT);
     $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);

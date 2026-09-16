@@ -23,7 +23,7 @@ if (!$album) {
 
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $album['user_id'];
 $isScheduledFuture = $album['publish_at'] && strtotime($album['publish_at']) > time();
-if (!$isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)) {
+if (!$isOwner && (!(int) $album['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Album non trovato.');
 }
@@ -104,7 +104,7 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 <div class="container">
   <?= publicProfileHeader($artist, 'foto') ?>
 
-  <?php if ($isOwner && (!(int) $album['show_in_feed'] || $isScheduledFuture)): ?>
+  <?php if ($isOwner && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
     <div class="alert error">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
   <?php endif; ?>
 

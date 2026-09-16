@@ -22,7 +22,7 @@ if (!$artist) {
 // una sola pagina.
 $timelinePhotos = getPublicTimelinePhotos((int) $artist['id']);
 
-$albums = getDB()->prepare("SELECT * FROM photo_albums WHERE user_id=? AND show_in_feed = 1
+$albums = getDB()->prepare("SELECT * FROM photo_albums WHERE user_id=? AND is_public = 1
     AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC");
 $albums->execute([$artist['id']]);
 $albums = $albums->fetchAll();

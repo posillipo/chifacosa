@@ -23,7 +23,7 @@ if (!$service) {
 
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $service['user_id'];
 $isScheduledFuture = $service['publish_at'] && strtotime($service['publish_at']) > time();
-if (!$isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)) {
+if (!$isOwner && (!(int) $service['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Servizio non trovato.');
 }
@@ -130,7 +130,7 @@ $ogDescription = $service['description'] ? textExcerpt($service['description'], 
 <div class="container">
   <?= publicProfileHeader($artist, 'servizi') ?>
 
-  <?php if ($isOwner && (!(int) $service['show_in_feed'] || $isScheduledFuture)): ?>
+  <?php if ($isOwner && (!(int) $service['is_public'] || $isScheduledFuture)): ?>
     <div class="alert error">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
   <?php endif; ?>
 

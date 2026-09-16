@@ -19,7 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
-        $showInFeed = $visibility === 'public' ? 1 : 0;
+        $isPublic = $visibility === 'public' ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
         $acceptsInquiries = isset($_POST['accepts_inquiries']) ? 1 : 0;
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
         if ($publishAt && strtotime($publishAt) <= time()) {
@@ -37,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$newCoverPath) {
                     $error = 'Carica almeno una foto.';
                 } else {
-                    $stmt = getDB()->prepare('INSERT INTO services (user_id, title, description, cover_path, accepts_inquiries, show_in_feed, publish_at, sort_order)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM services WHERE user_id=?) t))');
-                    $stmt->execute([$profile['id'], $title, $description ?: null, $newCoverPath, $acceptsInquiries, $showInFeed, $publishAt, $profile['id']]);
+                    $stmt = getDB()->prepare('INSERT INTO services (user_id, title, description, cover_path, accepts_inquiries, is_public, in_feed, publish_at, sort_order)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM services WHERE user_id=?) t))');
+                    $stmt->execute([$profile['id'], $title, $description ?: null, $newCoverPath, $acceptsInquiries, $isPublic, $inFeed, $publishAt, $profile['id']]);
                     $newId = (int) getDB()->lastInsertId();
                     if ($extraPhotos) {
                         $insPhoto = getDB()->prepare('INSERT INTO service_photos (service_id, image_path, sort_order) VALUES (?,?,?)');
@@ -66,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     getDB()->prepare('DELETE FROM service_photos WHERE service_id=?')->execute([$id]);
 
-                    $stmt = getDB()->prepare('UPDATE services SET title=?, description=?, cover_path=?, accepts_inquiries=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-                    $stmt->execute([$title, $description ?: null, $newCoverPath, $acceptsInquiries, $showInFeed, $publishAt, $id, $profile['id']]);
+                    $stmt = getDB()->prepare('UPDATE services SET title=?, description=?, cover_path=?, accepts_inquiries=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+                    $stmt->execute([$title, $description ?: null, $newCoverPath, $acceptsInquiries, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
                     if ($extraPhotos) {
                         $insPhoto = getDB()->prepare('INSERT INTO service_photos (service_id, image_path, sort_order) VALUES (?,?,?)');
                         foreach ($extraPhotos as $i => $p) {
@@ -75,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 } else {
-                    $stmt = getDB()->prepare('UPDATE services SET title=?, description=?, accepts_inquiries=?, show_in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-                    $stmt->execute([$title, $description ?: null, $acceptsInquiries, $showInFeed, $publishAt, $id, $profile['id']]);
+                    $stmt = getDB()->prepare('UPDATE services SET title=?, description=?, accepts_inquiries=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+                    $stmt->execute([$title, $description ?: null, $acceptsInquiries, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
                 }
             }
         }
@@ -167,6 +168,10 @@ include __DIR__ . '/_dash_header.php';
         <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
       </label>
     </div>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
+    </label>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella pagina Servizi), all'orario di pubblicazione.</p>
     <label>Programma la pubblicazione (opzionale)</label>
     <input type="datetime-local" name="publish_at">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
@@ -186,12 +191,12 @@ include __DIR__ . '/_dash_header.php';
       <div style="flex:1;min-width:0;">
         <strong><?= e($sv['title']) ?></strong>
         <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $photoCount ?> foto</span>
-        <?php if (!(int) $sv['show_in_feed']): ?>
+        <?php if (!(int) $sv['is_public']): ?>
           <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-lock"></i> Solo io</div>
         <?php elseif ($isScheduled): ?>
           <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($sv['publish_at'], $profile)) ?></div>
         <?php else: ?>
-          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Pubblico</div>
+          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Pubblico<?= (int) ($sv['in_feed'] ?? 1) ? '' : ' · non nel Feed' ?></div>
         <?php endif; ?>
         <?php if ((int) $sv['accepts_inquiries'] === 1): ?>
           <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-envelope-open-text"></i> Richiedi informazioni attivo</div>
@@ -268,12 +273,16 @@ include __DIR__ . '/_dash_header.php';
             <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="visibility" value="public" <?= (int) $sv['show_in_feed'] === 1 ? 'checked' : '' ?> style="width:auto;"> Pubblico
+                <input type="radio" name="visibility" value="public" <?= (int) $sv['is_public'] === 1 ? 'checked' : '' ?> style="width:auto;"> Pubblico
               </label>
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="visibility" value="private" <?= (int) $sv['show_in_feed'] === 0 ? 'checked' : '' ?> style="width:auto;"> Solo io
+                <input type="radio" name="visibility" value="private" <?= (int) $sv['is_public'] === 0 ? 'checked' : '' ?> style="width:auto;"> Solo io
               </label>
             </div>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+              <input type="checkbox" name="in_feed" value="1" <?= (int) ($sv['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+            </label>
+            <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Se spuntato, compare anche nel flusso degli aggiornamenti (oltre che nella pagina Servizi), all'orario di pubblicazione.</p>
             <label>Programma la pubblicazione (opzionale)</label>
             <input type="datetime-local" name="publish_at" value="<?= $sv['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($sv['publish_at']))) : '' ?>">
             <button type="submit" class="btn small" style="margin-top:10px;">Salva modifiche</button>
