@@ -1339,14 +1339,11 @@ const ADMINLTE_TIMELINE_TYPE_META = [
 
 // Righe della Timeline in stile "social" AdminLTE: ogni elemento è una .card a sé (componente
 // nativo .card/.user-block, mescolato con la griglia foto del pattern .post) con intestazione
-// avatar+nome+badge tipo, foto a piena larghezza o griglia, link "Apri" nel card-footer: usata sia
-// per il primo carico che, tramite
-// timeline_more.php, per le pagine successive dello scroll infinito della pagina Timeline
-// standalone. Tutti gli item appartengono allo stesso profilo, quindi avatar/nome vengono presi
-// una sola volta da $artist invece che dal singolo item. $afterDay è l'ultima etichetta di data già
-// mostrata in pagina, per non ripeterla se il primo elemento di questa chiamata cade nello stesso
-// giorno; il valore restituito serve a far proseguire correttamente la chiamata successiva.
-function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterDay = null): array {
+// avatar+nome+badge tipo+data/ora, foto a piena larghezza o griglia, link "Apri" nel card-footer:
+// usata sia per il primo carico che, tramite timeline_more.php, per le pagine successive dello
+// scroll infinito della pagina Timeline standalone. Tutti gli item appartengono allo stesso
+// profilo, quindi avatar/nome vengono presi una sola volta da $artist invece che dal singolo item.
+function renderAdminLteTimelineRows(array $items, array $artist): string {
     // Foto aggiuntive dei post "pensiero" con più foto (carosello) presenti in questa pagina di
     // risultati: un'unica query per tutte invece di una per post, stesso principio del conteggio
     // già fatto in getTimelineFeedForUsers().
@@ -1369,18 +1366,10 @@ function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterD
     $avatarUrl = adminLteAvatarUrl($artist);
     $displayName = $artist['display_name'] ?? '';
 
-    $lastDay = $afterDay;
     ob_start();
     foreach ($items as $it):
-        $day = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
         $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
-        if ($day !== $lastDay): $lastDay = $day; ?>
-        <div class="d-flex align-items-center gap-2 my-3">
-          <hr class="flex-grow-1 my-0">
-          <span class="badge rounded-pill text-bg-secondary px-3 py-2 flex-shrink-0"><?= e($day) ?></span>
-          <hr class="flex-grow-1 my-0">
-        </div>
-        <?php endif; ?>
+        ?>
         <div class="card mb-3">
           <div class="card-header">
             <div class="user-block">
@@ -1388,7 +1377,7 @@ function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterD
               <span class="username"><a href="<?= e($it['url']) ?>"><?= e($displayName) ?></a></span>
               <span class="description">
                 <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?></span>
-                <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'H:i')) ?>
+                <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y · H:i')) ?>
               </span>
             </div>
           </div>
@@ -1433,7 +1422,7 @@ function renderAdminLteTimelineRows(array $items, array $artist, ?string $afterD
           </div>
         </div>
     <?php endforeach;
-    return ['html' => ob_get_clean(), 'lastDay' => $lastDay];
+    return ob_get_clean();
 }
 
 // Elenco completo (senza scroll infinito) della Timeline in stile "social": attualmente non
@@ -1444,7 +1433,7 @@ function renderAdminLteTimelineWidget(array $items, array $artist): string {
     if (!$items) {
         return '<p class="text-secondary">Nessun aggiornamento ancora.</p>';
     }
-    return renderAdminLteTimelineRows($items, $artist)['html'];
+    return renderAdminLteTimelineRows($items, $artist);
 }
 
 // Contenuto della card Timeline con scroll infinito reale — condiviso fra la Home (che ora mostra
@@ -1455,14 +1444,14 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $uid = (int) $artist['id'];
     $pageSize = 20;
     $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
-    $rows = renderAdminLteTimelineRows($feed, $artist);
+    $html = renderAdminLteTimelineRows($feed, $artist);
     $finished = count($feed) < $pageSize;
     ob_start();
     ?>
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
                 <?php else: ?>
-                  <div id="timeline-feed"><?= $rows['html'] ?></div>
+                  <div id="timeline-feed"><?= $html ?></div>
                 <?php endif; ?>
                 <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
                 <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
@@ -1474,7 +1463,6 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
                   var pageSize = <?= (int) $pageSize ?>;
                   var loading = false;
                   var finished = <?= $finished ? 'true' : 'false' ?>;
-                  var lastDay = <?= json_encode($rows['lastDay']) ?>;
                   var feedEl = document.getElementById('timeline-feed');
                   var loadingEl = document.getElementById('timeline-loading');
                   var endEl = document.getElementById('timeline-end');
@@ -1484,12 +1472,11 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
                     if (loading || finished || !feedEl) return;
                     loading = true;
                     loadingEl.style.display = 'block';
-                    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset + '&after_day=' + encodeURIComponent(lastDay || ''))
+                    fetch('/timeline_more.php?slug=' + encodeURIComponent(slug) + '&offset=' + offset)
                       .then(function (r) { return r.json(); })
                       .then(function (data) {
                         loadingEl.style.display = 'none';
                         if (data.html) { feedEl.insertAdjacentHTML('beforeend', data.html); }
-                        if (data.lastDay) { lastDay = data.lastDay; }
                         offset += data.count;
                         if (data.count < pageSize) {
                           finished = true;
