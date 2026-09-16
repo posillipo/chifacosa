@@ -1239,7 +1239,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
                 continue;
             }
             if ($m['check'] === null || $m['check']($uid)) {
-                $stmt = $db->prepare("SELECT COUNT(*) c FROM {$m['table']} WHERE user_id=?");
+                $stmt = $db->prepare("SELECT COUNT(*) c FROM {$m['table']} WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
                 $stmt->execute([$uid]);
                 $m['count'] = (int) $stmt->fetch()['c'];
                 $cheAmoItems[$key] = $m;
