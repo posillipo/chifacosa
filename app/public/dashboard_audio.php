@@ -3,7 +3,10 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 $user = requireLogin();
-$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+// Niente requireFullOwnerAccess() qui: "Brani che amo", come Timeline, è uno dei due ambiti che
+// un co-admin può gestire per un profilo altrui (vedi dashboard_team.php) — a differenza di tutti
+// gli altri moduli "che amo", riservati al solo owner.
+$profile = getActingProfile($user);
 $activeTab = 'che_amo';
 $pageTitle = 'Brani che amo';
 
@@ -314,7 +317,7 @@ include __DIR__ . '/_dash_header.php';
             </div>
 
             <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
-              <input type="checkbox" class="ft-pub-in-feed" name="in_feed" value="1" <?= ($f['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+              <input type="checkbox" class="ft-pub-in-feed" name="in_feed" value="1" <?= ($t['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
             </label>
             <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
