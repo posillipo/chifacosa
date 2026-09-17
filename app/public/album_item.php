@@ -67,7 +67,6 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($album['custom_feed_guid'], $album['custom_feed_guid_since'], $album['created_at']); ?>
 <title><?= e($album['title']) ?> — <?= e($album['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($ogDescription) ?>">
 

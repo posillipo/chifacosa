@@ -65,7 +65,6 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'], $artist['custom_feed_guid_since'], $track['created_at']); ?>
 <title><?= e($track['track_name']) ?> — Brani che amo di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
 

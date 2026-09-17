@@ -76,7 +76,6 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'], $artist['custom_feed_guid_since'], $trip['created_at']); ?>
 <title><?= e($trip['place_name']) ?> — Viaggi di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
 

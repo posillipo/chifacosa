@@ -246,7 +246,6 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($artist['custom_feed_guid'], $artist['custom_feed_guid_since'], $item['created_at']); ?>
 <title><?= e($name) ?> — <?= e($cfg['label']) ?> di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e(textExcerpt($ogDescription, 200)) ?>">
 

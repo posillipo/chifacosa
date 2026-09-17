@@ -55,7 +55,6 @@ $ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($ev
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($event['custom_feed_guid'], $event['custom_feed_guid_since'], $event['created_at']); ?>
 <title><?= e($event['title']) ?> — <?= e($event['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($ogDescription) ?>">
 

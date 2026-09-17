@@ -72,23 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $publishAt = null;
         }
 
-        // Link personalizzato per il feed: impostazione di profilo condivisa con la Timeline
-        // (non del singolo elemento) — cambiarlo da qui vale per tutti i contenuti.
-        $customFeedGuid = trim($_POST['custom_feed_guid'] ?? '');
-        if ($customFeedGuid !== '' && !filter_var($customFeedGuid, FILTER_VALIDATE_URL)) {
-            $error = 'Il link personalizzato per il feed non è un URL valido.';
-        } else {
-            $customFeedGuid = $customFeedGuid ?: null;
-            $customFeedGuidSince = $profile['custom_feed_guid_since'] ?? null;
-            if ($customFeedGuid !== ($profile['custom_feed_guid'] ?? null)) {
-                $customFeedGuidSince = $customFeedGuid ? date('Y-m-d H:i:s') : null;
-            }
-            $stmt = getDB()->prepare('UPDATE profiles SET custom_feed_guid=?, custom_feed_guid_since=? WHERE user_id=?');
-            $stmt->execute([$customFeedGuid, $customFeedGuidSince, $profile['id']]);
-            $user = currentUser();
-            $profile = getActingProfile($user);
-        }
-
         $imagePath = handleCoverUpload($profile['slug'], 'image');
         $imageThumbPath = null;
         if ($imagePath) {
@@ -287,14 +270,6 @@ include __DIR__ . '/_dash_header.php';
             <input type="datetime-local" class="fa-pub-publish-at" value="<?= $f['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($f['publish_at']))) : '' ?>">
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
 
-            <label>Link personalizzato per il feed (opzionale)</label>
-            <input type="url" class="fa-pub-custom-link" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
-            <?php if (!empty($profile['custom_feed_guid_since'])): ?>
-              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Attivo dal <?= e(formatLocalDateTime($profile['custom_feed_guid_since'], $profile)) ?>. Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
-            <?php else: ?>
-              <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Vale per tutti i contenuti del profilo, non solo per questo elemento.</p>
-            <?php endif; ?>
-
             <p class="fa-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <button type="button" class="btn small fa-pub-save">Salva</button>
@@ -361,11 +336,6 @@ include __DIR__ . '/_dash_header.php';
     function favoriteRowHtml(item) {
       const badges = renderBadges(item);
       const img = item.actor_image ? '<img src="' + escapeHtml(item.actor_image) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '';
-      const customLink = <?= json_encode($profile['custom_feed_guid'] ?? '') ?>;
-      const customLinkSince = <?= json_encode($profile['custom_feed_guid_since'] ?? '') ?>;
-      const sinceHint = customLinkSince
-        ? 'Attivo dal ' + escapeHtml(customLinkSince) + '. Vale per tutti i contenuti del profilo, non solo per questo elemento.'
-        : 'Vale per tutti i contenuti del profilo, non solo per questo elemento.';
       return '<div style="display:flex;align-items:center;gap:12px;">'
         + '<a href="/' + escapeHtml(profileSlug) + '/attori-che-amo/' + item.id + '" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;min-width:0;">'
         + img + '<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(item.actor_name) + '</strong></a>'
@@ -398,9 +368,6 @@ include __DIR__ . '/_dash_header.php';
         + '<label>Programma la pubblicazione (opzionale)</label>'
         + '<input type="datetime-local" class="fa-pub-publish-at">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>'
-        + '<label>Link personalizzato per il feed (opzionale)</label>'
-        + '<input type="url" class="fa-pub-custom-link" value="' + escapeHtml(customLink) + '" placeholder="https://...">'
-        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">' + sinceHint + '</p>'
         + '<p class="fa-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>'
         + '<div style="display:flex;gap:8px;margin-top:4px;">'
         + '<button type="button" class="btn small fa-pub-save">Salva</button>'
@@ -574,7 +541,6 @@ include __DIR__ . '/_dash_header.php';
         const visibility = editor.querySelector('.fa-pub-visibility:checked').value;
         const inFeed = editor.querySelector('.fa-pub-in-feed').checked;
         const publishAt = editor.querySelector('.fa-pub-publish-at').value;
-        const customLink = editor.querySelector('.fa-pub-custom-link').value;
         const imageInput = editor.querySelector('.fa-pub-image-input');
         const statusEl = editor.querySelector('.fa-pub-status');
         const file = imageInput.files && imageInput.files[0];
@@ -595,7 +561,6 @@ include __DIR__ . '/_dash_header.php';
           // invece l'orologio reale di chi sta digitando, quindi ha sempre la precedenza in
           // lettura (vedi parseLocalDateTime() in functions.php).
           formData.set('tz_offset_minutes', new Date().getTimezoneOffset());
-          formData.set('custom_feed_guid', customLink);
           if (file) {
             formData.set('image', file);
             formData.set('image_thumb_data', thumbDataUrl || '');

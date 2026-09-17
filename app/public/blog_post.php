@@ -64,7 +64,6 @@ if (!empty($post['album_id'])) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['published_at']); ?>
 <title><?= e($post['title']) ?> — <?= e($post['display_name']) ?></title>
 <meta name="description" content="<?= e($post['excerpt'] ?: textExcerpt($post['content'])) ?>">
 

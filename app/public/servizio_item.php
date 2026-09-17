@@ -93,7 +93,6 @@ $ogDescription = $service['description'] ? textExcerpt($service['description'], 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($service['custom_feed_guid'] ?? null, $service['custom_feed_guid_since'] ?? null, $service['created_at']); ?>
 <title><?= e($service['title']) ?> — <?= e($service['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($ogDescription) ?>">
 

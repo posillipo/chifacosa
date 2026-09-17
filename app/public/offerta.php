@@ -59,7 +59,6 @@ $ogDescription = $ogDescriptionParts ? implode(' — ', $ogDescriptionParts) : (
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($offer['custom_feed_guid'], $offer['custom_feed_guid_since'], $offer['created_at']); ?>
 <title><?= e($offer['title']) ?> — <?= e($offer['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($ogDescription) ?>">
 
