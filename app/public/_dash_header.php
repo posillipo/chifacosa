@@ -72,6 +72,9 @@ if ($navVisibility['Che Amo'] ?? 1) {
 $dashTabs = [];
 $dashTabs['timeline'] = ['label' => 'Timeline', 'url' => '/dashboard_post.php', 'active' => 'post', 'visible' => $navVisibility['Timeline'] ?? 1];
 $dashTabs['link'] = ['label' => 'Link', 'url' => '/dashboard_links.php', 'active' => 'links', 'visible' => $navVisibility['Link'] ?? 1];
+// Non corrisponde a nessuna voce del "Menu di Navigazione" pubblico (non è una sezione del sito,
+// è uno strumento di gestione): sempre visibile, non gated su $navVisibility come le altre.
+$dashTabs['featured'] = ['label' => 'Primo Piano', 'url' => '/dashboard_featured.php', 'active' => 'featured', 'visible' => true];
 $dashTabs['cheamo'] = ['label' => 'Che Amo', 'url' => '/dashboard_che_amo.php', 'active' => 'che_amo', 'visible' => $hasVisibleCheAmoModule];
 $dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active' => 'blog', 'visible' => $navVisibility['Blog'] ?? 1];
 $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];

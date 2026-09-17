@@ -801,6 +801,24 @@ function adminLteAssetLinks(): string {
          // testo non tocca comunque i bordi).
          . '@media (max-width:767.98px){.app-content .container-fluid{padding-left:0;padding-right:0;}'
          . '.app-content .row.g-3{--bs-gutter-x:0;}}'
+         // Mini-carosello generico a schede (renderAdminLteMiniCarousel()): una slide a piena
+         // larghezza per volta, swipe/scroll orizzontale nativo (scroll-snap, niente libreria),
+         // con due freccette per chi preferisce cliccare — usato sia per raggruppare elementi
+         // omogenei dello stesso giorno sia per il carosello "Primo Piano". Le freccette sono
+         // gestite da un solo script delegato in adminLteFooterBlock(), valido per tutte le
+         // istanze della pagina.
+         . '.admlte-carousel-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-ms-overflow-style:none;scrollbar-width:none;}'
+         . '.admlte-carousel-track::-webkit-scrollbar{display:none;}'
+         . '.admlte-carousel-slide{flex:0 0 100%;scroll-snap-align:start;min-width:0;}'
+         . '.admlte-carousel-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:32px;height:32px;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:none;display:flex;align-items:center;justify-content:center;}'
+         . '.admlte-carousel-nav:hover{background:rgba(0,0,0,.65);}'
+         . '.admlte-carousel-nav.admlte-carousel-prev{left:8px;}'
+         . '.admlte-carousel-nav.admlte-carousel-next{right:8px;}'
+         // Card "Primo Piano" (renderAdminLtePinnedCarousel()): stesso impianto delle altre card
+         // della Timeline, con un accento cromatico dedicato per distinguerla a colpo d'occhio dal
+         // resto del feed cronologico.
+         . '.admlte-pinned-card{border:2px solid #f0ad4e;}'
+         . '.admlte-pinned-card>.card-header{background:#fff8ec;}'
          . '</style>';
 }
 
@@ -864,6 +882,17 @@ function adminLteFooterBlock(array $artist): string {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   })();
+  // Freccette del mini-carosello generico (renderAdminLteMiniCarousel()): un solo listener
+  // delegato sul documento, valido per tutte le istanze già presenti nella pagina e per quelle
+  // aggiunte poi dallo scroll infinito della Timeline — niente da (ri)collegare a ogni caricamento.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.admlte-carousel-nav');
+    if (!btn) return;
+    var track = btn.closest('.admlte-carousel-wrap').querySelector('.admlte-carousel-track');
+    if (!track) return;
+    var dir = btn.classList.contains('admlte-carousel-next') ? 1 : -1;
+    track.scrollBy({ left: track.clientWidth * dir, behavior: 'smooth' });
+  });
   </script>
     <?php
     return ob_get_clean();
@@ -1366,10 +1395,60 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
     $avatarUrl = adminLteAvatarUrl($artist);
     $displayName = $artist['display_name'] ?? '';
 
+    // Elementi omogenei (stesso 'tipo') pubblicati nella stessa giornata locale del proprietario
+    // vengono raggruppati in un'unica card con un mini-carosello interno, invece di N card
+    // separate identiche a colpo d'occhio (stesso avatar/badge, cambia solo immagine/titolo) —
+    // es. 3 "Calciatori che amo" aggiunti lo stesso giorno diventano una sola card con 3 slide.
+    // Il raggruppamento guarda tutti gli elementi di questa pagina, non solo quelli consecutivi
+    // (tra due Calciatori potrebbe essersi inserito un Blog pubblicato nel mezzo): può quindi
+    // capitare che un gruppo finisca diviso in due se il confine tra una pagina di scroll
+    // infinito e la successiva cade a metà — compromesso accettato, questi moduli non sono mai
+    // molto frequenti.
+    $groupKeys = [];
+    $groupCounts = [];
+    foreach ($items as $it) {
+        $dayKey = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
+        $groupKey = $dayKey . '|' . $it['tipo'];
+        $groupKeys[] = $groupKey;
+        $groupCounts[$groupKey] = ($groupCounts[$groupKey] ?? 0) + 1;
+    }
+
     ob_start();
-    foreach ($items as $it):
+    $renderedGroups = [];
+    foreach ($items as $i => $it):
+        $groupKey = $groupKeys[$i];
+        if (isset($renderedGroups[$groupKey])) {
+            continue;
+        }
         $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
-        ?>
+
+        if ($groupCounts[$groupKey] > 1):
+            $renderedGroups[$groupKey] = true;
+            $groupItems = [];
+            foreach ($items as $j => $other) {
+                if ($groupKeys[$j] === $groupKey) {
+                    $groupItems[] = $other;
+                }
+            }
+            $dayLabel = formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y');
+            $slides = array_map(fn ($g) => ['url' => $g['url'], 'titolo' => $g['titolo'], 'cover' => $g['cover'] ?? null], $groupItems);
+            ?>
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="user-block">
+              <img src="<?= e($avatarUrl) ?>" alt="<?= e($displayName) ?>" class="rounded-circle">
+              <span class="username"><?= e($displayName) ?></span>
+              <span class="description">
+                <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?> (<?= count($groupItems) ?>)</span>
+                <?= e($dayLabel) ?>
+              </span>
+            </div>
+          </div>
+          <div class="card-body">
+            <?= renderAdminLteMiniCarousel($slides) ?>
+          </div>
+        </div>
+        <?php else: ?>
         <div class="card mb-3">
           <div class="card-header">
             <div class="user-block">
@@ -1401,9 +1480,9 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
               $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
             ?>
             <div class="row g-2">
-              <?php foreach ($shown as $i => $ph):
+              <?php foreach ($shown as $k => $ph):
                 $phUrl = str_starts_with($ph, 'http') ? $ph : '/' . $ph;
-                $isLastTile = $i === 3 && count($photos) > 4;
+                $isLastTile = $k === 3 && count($photos) > 4;
               ?>
               <div class="<?= $colClass ?>">
                 <a href="<?= e($it['url']) ?>" class="position-relative d-block">
@@ -1421,7 +1500,8 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
             <a href="<?= e($it['url']) ?>" class="link-body-emphasis text-decoration-none small"><i class="bi bi-box-arrow-up-right me-1"></i>Apri</a>
           </div>
         </div>
-    <?php endforeach;
+        <?php endif;
+    endforeach;
     return ob_get_clean();
 }
 
@@ -1446,8 +1526,13 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
     $html = renderAdminLteTimelineRows($feed, $artist);
     $finished = count($feed) < $pageSize;
+    // Fuori da #timeline-feed apposta: deve restare fisso in cima anche quando lo scroll
+    // infinito aggiunge altri elementi in fondo, non fare parte del flusso che si "consuma"
+    // scorrendo.
+    $pinnedHtml = renderAdminLtePinnedCarousel(getPinnedItemsForUser($uid));
     ob_start();
     ?>
+                <?= $pinnedHtml ?>
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
                 <?php else: ?>
@@ -6159,6 +6244,298 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
     return array_slice($items, $offset, $limit);
+}
+
+// ===== Elementi fissati in "Primo Piano" (pinned_items) =====
+// Config per i tipi di contenuto pinnabili — stessa lista di 'tipo' prodotta da
+// getTimelineFeedForUsers() qui sopra, usata sia dalla ricerca di dashboard_featured.php sia da
+// getPinnedItemsForUser() per recuperare titolo/copertina/URL di un pin. 'visibility' seleziona
+// quale regola applicare quando si mostra il carosello sul sito pubblico: 'standard' = is_public +
+// publish_at (la maggioranza dei moduli "che amo"), 'timeline' = colonna visibility enum di
+// timeline_posts, 'blog' = solo published_at, 'offerta' = is_active + valid_from/valid_until,
+// 'none' = nessun filtro (eventi, che oggi non hanno una programmazione propria).
+const PINNABLE_CONTENT_TYPES = [
+    'pensiero' => ['table' => 'timeline_posts', 'title_col' => 'testo', 'cover_cols' => ['image_thumb_path', 'image_path'], 'date_col' => 'created_at', 'visibility' => 'timeline', 'url_tpl' => '/%s/timeline/%d', 'label' => 'Pensiero'],
+    'blog' => ['table' => 'blog_posts', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'published_at', 'visibility' => 'blog', 'url_tpl' => null, 'label' => 'Blog'],
+    'brano' => ['table' => 'favorite_tracks', 'title_col' => 'track_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'track_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/brani/%d/scheda', 'label' => 'Brano che amo'],
+    'evento' => ['table' => 'events', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'none', 'url_tpl' => '/%s/eventi/%d', 'label' => 'Evento'],
+    'band_favorita' => ['table' => 'fan_favorite_bands', 'title_col' => 'spotify_artist_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'artist_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/band-che-amo/%d', 'label' => 'Band che amo'],
+    'attore_favorito' => ['table' => 'fan_favorite_actors', 'title_col' => 'actor_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'actor_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/attori-che-amo/%d', 'label' => 'Attore che amo'],
+    'film_favorito' => ['table' => 'fan_favorite_movies', 'title_col' => 'movie_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'movie_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/film-che-amo/%d', 'label' => 'Film che amo'],
+    'libro_favorito' => ['table' => 'fan_favorite_books', 'title_col' => 'book_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'book_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/libri-che-amo/%d', 'label' => 'Libro che amo'],
+    'viaggio_favorito' => ['table' => 'fan_favorite_trips', 'title_col' => 'place_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'map_image_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/viaggi/%d', 'label' => 'Viaggio'],
+    'playlist_favorita' => ['table' => 'fan_favorite_playlists', 'title_col' => 'playlist_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'playlist_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/playlist-che-amo/%d', 'label' => 'Playlist che amo'],
+    'album_favorito' => ['table' => 'fan_favorite_albums', 'title_col' => 'album_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'album_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/album-che-amo/%d', 'label' => 'Album che amo'],
+    'ricetta_favorita' => ['table' => 'fan_favorite_recipes', 'title_col' => 'recipe_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'recipe_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/ricette-che-amo/%d', 'label' => 'Ricetta che amo'],
+    'squadra_favorita' => ['table' => 'fan_favorite_teams', 'title_col' => 'team_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'team_badge'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/squadre-che-amo/%d', 'label' => 'Squadra che amo'],
+    'calciatore_favorito' => ['table' => 'fan_favorite_players', 'title_col' => 'player_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'player_photo'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/calciatori-che-amo/%d', 'label' => 'Calciatore che amo'],
+    'partita_favorita' => ['table' => 'fan_favorite_matches', 'title_col' => 'match_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'match_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/partite-che-amo/%d', 'label' => 'Partita che amo'],
+    'offerta' => ['table' => 'special_offers', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'offerta', 'url_tpl' => '/%s/offerte/%d', 'label' => 'Offerta'],
+    'album_foto' => ['table' => 'photo_albums', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/album/%d', 'label' => 'Album foto'],
+    'servizio' => ['table' => 'services', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/servizi/%d', 'label' => 'Servizio'],
+];
+
+// Frammento SQL di visibilità per tipo — vedi commento sopra su PINNABLE_CONTENT_TYPES.
+function pinnableVisibilityClause(string $mode): string {
+    return match ($mode) {
+        'standard' => "AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())",
+        'timeline' => "AND visibility = 'public' AND (publish_at IS NULL OR publish_at <= NOW())",
+        'blog' => "AND published_at <= NOW()",
+        'offerta' => "AND is_active = 1 AND (valid_from IS NULL OR valid_from <= NOW()) AND (valid_until IS NULL OR valid_until >= NOW())",
+        default => '',
+    };
+}
+
+// Elementi attualmente fissati in "Primo Piano" per un profilo, in ordine di visualizzazione
+// (sort_order). $respectVisibility=true filtra via quelli non ancora pubblici/programmati (per il
+// carosello sul sito pubblico); false li mostra comunque (per la gestione in dashboard, dove il
+// proprietario deve vedere ed eventualmente togliere anche un pin su un elemento non ancora
+// pubblicato). Una query per ogni tipo effettivamente presente tra i pin (non una per ognuno dei
+// tipi possibili), raggruppando gli ID per tipo — stesso principio di batching già usato altrove
+// in questo file per le foto extra dei post Timeline/Viaggi/Album.
+function getPinnedItemsForUser(int $userId, bool $respectVisibility = true): array {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT * FROM pinned_items WHERE user_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$userId]);
+    $pins = $stmt->fetchAll();
+    if (!$pins) {
+        return [];
+    }
+
+    $stmt = $db->prepare('SELECT slug FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $slug = $stmt->fetchColumn();
+    if (!$slug) {
+        return [];
+    }
+
+    $idsByType = [];
+    foreach ($pins as $p) {
+        $idsByType[$p['content_type']][] = (int) $p['content_id'];
+    }
+
+    $itemsByKey = [];
+    foreach ($idsByType as $type => $ids) {
+        $cfg = PINNABLE_CONTENT_TYPES[$type] ?? null;
+        if (!$cfg) {
+            continue;
+        }
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $visClause = $respectVisibility ? pinnableVisibilityClause($cfg['visibility']) : '';
+
+        if ($type === 'blog') {
+            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, {$cfg['date_col']} AS data, slug AS post_slug
+                FROM {$cfg['table']} WHERE id IN ($ph) AND user_id = ? {$visClause}");
+            $stmt->execute(array_merge($ids, [$userId]));
+            foreach ($stmt->fetchAll() as $r) {
+                $itemsByKey[$type . ':' . $r['id']] = [
+                    'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $r['titolo'], 'cover' => $r['cover'], 'data' => $r['data'],
+                    'url' => blogPostUrl($slug, $r),
+                ];
+            }
+            continue;
+        }
+
+        $coverExpr = 'COALESCE(' . implode(', ', array_map(fn ($c) => "NULLIF($c,'')", $cfg['cover_cols'])) . ')';
+        $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$coverExpr} AS cover, {$cfg['date_col']} AS data
+            FROM {$cfg['table']} WHERE id IN ($ph) AND user_id = ? {$visClause}");
+        $stmt->execute(array_merge($ids, [$userId]));
+        foreach ($stmt->fetchAll() as $r) {
+            $titolo = ($r['titolo'] !== null && $r['titolo'] !== '') ? $r['titolo'] : '📷 Foto';
+            $itemsByKey[$type . ':' . $r['id']] = [
+                'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $titolo, 'cover' => $r['cover'], 'data' => $r['data'],
+                'url' => sprintf($cfg['url_tpl'], $slug, (int) $r['id']),
+            ];
+        }
+    }
+
+    // Ricompone nell'ordine di sort_order salvato: le query sopra, raggruppate per tipo, non
+    // preservano l'ordine originale dei pin.
+    $ordered = [];
+    foreach ($pins as $p) {
+        $key = $p['content_type'] . ':' . $p['content_id'];
+        if (isset($itemsByKey[$key])) {
+            $ordered[] = $itemsByKey[$key] + ['pin_id' => (int) $p['id']];
+        }
+    }
+    return $ordered;
+}
+
+// Cerca tra tutti i tipi di contenuto pinnabili di un profilo (per titolo/nome) — usata dal
+// motorino di ricerca di dashboard_featured.php. Nessun filtro di visibilità: il proprietario deve
+// poter trovare e fissare anche un contenuto "Solo io" o ancora programmato (il carosello
+// pubblico lo mostrerà comunque solo quando diventa visibile, vedi getPinnedItemsForUser()).
+function searchPinnableContent(int $userId, string $query, int $limitPerType = 5): array {
+    $query = trim($query);
+    if ($query === '') {
+        return [];
+    }
+    $db = getDB();
+    $likeTerm = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query) . '%';
+
+    $stmt = $db->prepare('SELECT slug FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $slug = $stmt->fetchColumn();
+    if (!$slug) {
+        return [];
+    }
+
+    $stmt = $db->prepare('SELECT content_type, content_id FROM pinned_items WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $pinnedKeys = [];
+    foreach ($stmt->fetchAll() as $p) {
+        $pinnedKeys[$p['content_type'] . ':' . $p['content_id']] = true;
+    }
+
+    $results = [];
+    foreach (PINNABLE_CONTENT_TYPES as $type => $cfg) {
+        if ($type === 'blog') {
+            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, slug AS post_slug
+                FROM {$cfg['table']} WHERE user_id = ? AND {$cfg['title_col']} LIKE ? ESCAPE '\\\\'
+                ORDER BY {$cfg['date_col']} DESC LIMIT {$limitPerType}");
+            $stmt->execute([$userId, $likeTerm]);
+            foreach ($stmt->fetchAll() as $r) {
+                $results[] = [
+                    'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $r['titolo'], 'cover' => $r['cover'],
+                    'url' => blogPostUrl($slug, $r), 'label' => $cfg['label'],
+                    'pinned' => isset($pinnedKeys[$type . ':' . $r['id']]),
+                ];
+            }
+            continue;
+        }
+        $coverExpr = 'COALESCE(' . implode(', ', array_map(fn ($c) => "NULLIF($c,'')", $cfg['cover_cols'])) . ')';
+        $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$coverExpr} AS cover
+            FROM {$cfg['table']} WHERE user_id = ? AND {$cfg['title_col']} LIKE ? ESCAPE '\\\\'
+            ORDER BY {$cfg['date_col']} DESC LIMIT {$limitPerType}");
+        $stmt->execute([$userId, $likeTerm]);
+        foreach ($stmt->fetchAll() as $r) {
+            $titolo = ($r['titolo'] !== null && $r['titolo'] !== '') ? $r['titolo'] : '📷 Foto';
+            $results[] = [
+                'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $titolo, 'cover' => $r['cover'],
+                'url' => sprintf($cfg['url_tpl'], $slug, (int) $r['id']), 'label' => $cfg['label'],
+                'pinned' => isset($pinnedKeys[$type . ':' . $r['id']]),
+            ];
+        }
+    }
+    return $results;
+}
+
+// Fissa un contenuto in "Primo Piano": in coda all'ordine attuale. INSERT IGNORE perché la
+// UNIQUE KEY (user_id, content_type, content_id) impedisce comunque il doppio pin dello stesso
+// elemento — un secondo tentativo (es. doppio click) non fa nulla invece di sollevare un errore.
+function pinContentItem(int $userId, string $type, int $contentId): void {
+    if (!isset(PINNABLE_CONTENT_TYPES[$type])) {
+        return;
+    }
+    $db = getDB();
+    $stmt = $db->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM pinned_items WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $nextOrder = (int) $stmt->fetchColumn();
+    $stmt = $db->prepare('INSERT IGNORE INTO pinned_items (user_id, content_type, content_id, sort_order) VALUES (?, ?, ?, ?)');
+    $stmt->execute([$userId, $type, $contentId, $nextOrder]);
+}
+
+function unpinContentItem(int $userId, int $pinId): void {
+    $stmt = getDB()->prepare('DELETE FROM pinned_items WHERE id = ? AND user_id = ?');
+    $stmt->execute([$pinId, $userId]);
+}
+
+// Scambia la posizione (sort_order) di un pin con quello immediatamente sopra/sotto — riordino a
+// tasti, senza drag & drop: nessun'altra lista di questa dashboard usa il drag, meglio restare
+// coerenti con il pattern già presente piuttosto che introdurne uno nuovo per questa sola pagina.
+function movePinnedItem(int $userId, int $pinId, string $direction): void {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT id, sort_order FROM pinned_items WHERE user_id = ? ORDER BY sort_order ASC, id ASC');
+    $stmt->execute([$userId]);
+    $rows = $stmt->fetchAll();
+    $index = null;
+    foreach ($rows as $i => $r) {
+        if ((int) $r['id'] === $pinId) {
+            $index = $i;
+            break;
+        }
+    }
+    if ($index === null) {
+        return;
+    }
+    $swapWith = $direction === 'up' ? $index - 1 : $index + 1;
+    if ($swapWith < 0 || $swapWith >= count($rows)) {
+        return;
+    }
+    $a = $rows[$index];
+    $b = $rows[$swapWith];
+    $db->prepare('UPDATE pinned_items SET sort_order = ? WHERE id = ? AND user_id = ?')->execute([$b['sort_order'], $a['id'], $userId]);
+    $db->prepare('UPDATE pinned_items SET sort_order = ? WHERE id = ? AND user_id = ?')->execute([$a['sort_order'], $b['id'], $userId]);
+}
+
+// Mini-carosello generico a schede: una slide a piena larghezza per volta (foto+titolo, cliccabile
+// per intero), swipe/scroll orizzontale nativo — vedi il CSS in adminLteAssetLinks() e il JS
+// delegato in adminLteFooterBlock(). Usato sia per raggruppare elementi omogenei dello stesso
+// giorno (renderAdminLteTimelineRows()) sia per il carosello "Primo Piano" qui sotto. Ogni slide:
+// ['url','titolo','cover'] + opzionale ['badge_label','badge_color','badge_icon'].
+function renderAdminLteMiniCarousel(array $slides): string {
+    if (!$slides) {
+        return '';
+    }
+    ob_start();
+    ?>
+    <div class="admlte-carousel-wrap position-relative">
+      <div class="admlte-carousel-track">
+        <?php foreach ($slides as $s): ?>
+        <div class="admlte-carousel-slide">
+          <a href="<?= e($s['url']) ?>" class="text-decoration-none text-body d-block">
+            <?php if (!empty($s['badge_label'])): ?>
+            <span class="badge text-bg-<?= e($s['badge_color'] ?? 'secondary') ?> mb-2"><?php if (!empty($s['badge_icon'])): ?><i class="bi <?= e($s['badge_icon']) ?> me-1"></i><?php endif; ?><?= e($s['badge_label']) ?></span>
+            <?php endif; ?>
+            <p class="fw-semibold mb-2"><?= e($s['titolo']) ?></p>
+            <?php if (!empty($s['cover'])):
+              $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
+            ?>
+            <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:320px;width:100%;object-fit:cover;">
+            <?php endif; ?>
+          </a>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php if (count($slides) > 1): ?>
+      <button type="button" class="admlte-carousel-nav admlte-carousel-prev" aria-label="Precedente"><i class="bi bi-chevron-left"></i></button>
+      <button type="button" class="admlte-carousel-nav admlte-carousel-next" aria-label="Successivo"><i class="bi bi-chevron-right"></i></button>
+      <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Carosello "Primo Piano": mostrato SOLO con almeno 2 pin attivi e visibili (con uno solo non ha
+// senso parlare di carosello — vedi renderAdminLteTimelineFeedBlock(), che decide quando chiamare
+// questa funzione). Card con lo stesso impianto delle altre della Timeline ma un accento
+// cromatico dedicato (.admlte-pinned-card), per distinguerla a colpo d'occhio dal feed
+// cronologico sotto — gli elementi fissati vi restano comunque anche nella loro posizione
+// cronologica normale, non ne vengono rimossi.
+function renderAdminLtePinnedCarousel(array $pinnedItems): string {
+    if (count($pinnedItems) < 2) {
+        return '';
+    }
+    $slides = [];
+    foreach ($pinnedItems as $it) {
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
+        $slides[] = [
+            'url' => $it['url'], 'titolo' => $it['titolo'], 'cover' => $it['cover'],
+            'badge_label' => $meta['label'], 'badge_color' => $meta['color'], 'badge_icon' => $meta['icon'],
+        ];
+    }
+    ob_start();
+    ?>
+    <div class="card admlte-pinned-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title h6 mb-0"><i class="bi bi-pin-angle-fill me-1"></i>In Primo Piano</h3>
+      </div>
+      <div class="card-body">
+        <?= renderAdminLteMiniCarousel($slides) ?>
+      </div>
+    </div>
+    <?php
+    return ob_get_clean();
 }
 
 // Rendering HTML condiviso di un singolo elemento della Timeline, riusato sia dal primo

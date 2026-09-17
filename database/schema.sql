@@ -748,4 +748,23 @@ INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_c
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('youtube_api_key', '');
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_client_secret', '');
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_app_token', '');
+
+-- Elementi fissati in "Primo Piano" nella Timeline pubblica a tema AdminLTE (carosello sempre in
+-- cima, mostrato solo con almeno 2 pin attivi — vedi renderAdminLtePinnedCarousel() in
+-- functions.php). content_type/content_id sono polimorfici (puntano a una riga qualsiasi tra i
+-- ~18 tipi di contenuto uniti da getTimelineFeedForUsers(), es. 'pensiero'+id di timeline_posts,
+-- 'calciatore_favorito'+id di fan_favorite_players): una sola tabella generica invece di una
+-- colonna is_pinned su ognuna delle tabelle di contenuto, per poter fissare elementi "di natura
+-- diversa" senza una migration su ogni tabella.
+CREATE TABLE IF NOT EXISTS pinned_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    content_type VARCHAR(30) NOT NULL,
+    content_id INT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    pinned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_content (user_id, content_type, content_id),
+    KEY idx_user_sort (user_id, sort_order),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_app_token_expires', '');
