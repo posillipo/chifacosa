@@ -173,7 +173,7 @@ include __DIR__ . '/_dash_header.php';
     </div>
     <label>Foto (fino a 10, opzionale)</label>
     <input type="file" name="images[]" id="post-image-input" accept="image/*" multiple>
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
       Se ne carichi più di una, sulla pagina del post appariranno in un carosello scorrevole
       (come su Instagram) — nel Feed e in Timeline continua a comparire solo la prima.
     </p>

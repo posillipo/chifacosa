@@ -528,7 +528,7 @@ include __DIR__ . '/_dash_header.php';
         + '<label>Foto (fino a 10, opzionale)</label>'
         + '<input type="file" class="tr-pub-image-input" accept="image/*" multiple>'
         + '<input type="hidden" class="tr-pub-image-thumb-data">'
-        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Senza foto, l\'anteprima social usa una miniatura della mappa.</p>'
+        + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Senza foto, l\'anteprima social usa una miniatura della mappa.</p>'
         + '<label>Privacy</label>'
         + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
         + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="tr-pub-visibility" name="visibility" value="public"' + (item.is_public ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'

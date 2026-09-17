@@ -113,7 +113,7 @@ include __DIR__ . '/_dash_header.php';
     <textarea name="description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."></textarea>
     <label>Copertina (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
     <label>Ricorrenza</label>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
@@ -192,7 +192,7 @@ include __DIR__ . '/_dash_header.php';
             <textarea name="description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."><?= e($ev['description'] ?? '') ?></textarea>
             <label>Copertina (opzionale — lascia vuoto per non cambiarla)</label>
             <input type="file" name="cover" accept="image/*">
-            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
               <?= $ev['cover_path'] ? 'Hai già caricato una copertina — seleziona un nuovo file per sostituirla.' : 'Comparirà così come l\'hai caricata, senza ritagli — qualsiasi proporzione va bene.' ?>
             </p>
             <label>Ricorrenza</label>

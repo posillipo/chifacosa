@@ -266,7 +266,7 @@ include __DIR__ . '/_dash_header.php';
             <label>Foto (opzionale)</label>
             <input type="file" class="fm-pub-image-input" accept="image/*">
             <input type="hidden" class="fm-pub-image-thumb-data">
-            <?php if ($f['image_path']): ?><p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p><?php endif; ?>
+            <?php if ($f['image_path']): ?><p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p><?php endif; ?>
 
             <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">

@@ -154,7 +154,7 @@ include __DIR__ . '/_dash_header.php';
     <textarea name="description" rows="4" placeholder="Cosa comprende, come funziona..."></textarea>
     <label>Foto (fino a <?= SERVICE_MAX_PHOTOS ?>)</label>
     <input type="file" name="images[]" accept="image/*" multiple required>
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">La prima foto selezionata diventa la copertina.</p>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">La prima foto selezionata diventa la copertina.</p>
     <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0 16px;">
       <input type="checkbox" name="accepts_inquiries" value="1" checked style="width:auto;margin-bottom:0;">
       Mostra il pulsante "Richiedi informazioni" lato pubblico

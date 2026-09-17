@@ -107,7 +107,7 @@ include __DIR__ . '/_dash_header.php';
     <textarea name="description" rows="4" placeholder="Dettagli, condizioni, cosa include..."></textarea>
     <label>Foto (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Comparirà così come l'hai caricata, senza ritagli.</p>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;">
         <label>Valida dal (opzionale)</label>
