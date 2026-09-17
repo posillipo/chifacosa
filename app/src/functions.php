@@ -6187,7 +6187,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.in_feed, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
           AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())
@@ -6196,7 +6196,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     foreach ($stmt->fetchAll() as $r) {
         $soTitolo = $r['title'] . ($r['price_label'] ? ' — ' . $r['price_label'] : '');
         $items[] = [
-            'tipo' => 'offerta', 'titolo' => $soTitolo, 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'offerta', 'titolo' => $soTitolo, 'cover' => $r['cover_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/offerte/' . $r['id'],
         ];

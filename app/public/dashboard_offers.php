@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $validFrom = parseLocalDateTime($_POST['valid_from'] ?? '', $profile, browserTzOffsetFromRequest());
         $validUntil = parseLocalDateTime($_POST['valid_until'] ?? '', $profile, browserTzOffsetFromRequest());
         $isActive = isset($_POST['is_active']) ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
 
         if ($title === '') {
             $error = 'Il titolo è obbligatorio.';
@@ -28,9 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'La data di inizio non può essere dopo la data di fine.';
         } elseif ($action === 'add') {
             $coverPath = handleCoverUpload($profile['slug']);
-            $stmt = getDB()->prepare('INSERT INTO special_offers (user_id, title, description, price_label, cover_path, valid_from, valid_until, is_active, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM special_offers WHERE user_id=?) t))');
-            $stmt->execute([$profile['id'], $title, $description ?: null, $priceLabel ?: null, $coverPath, $validFrom, $validUntil, $isActive, $profile['id']]);
+            $stmt = getDB()->prepare('INSERT INTO special_offers (user_id, title, description, price_label, cover_path, valid_from, valid_until, is_active, in_feed, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM special_offers WHERE user_id=?) t))');
+            $stmt->execute([$profile['id'], $title, $description ?: null, $priceLabel ?: null, $coverPath, $validFrom, $validUntil, $isActive, $inFeed, $profile['id']]);
             $newId = (int) getDB()->lastInsertId();
 
             $offerUrl = siteUrl('/' . $profile['slug'] . '/offerte/' . $newId);
@@ -45,11 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($old = $stmt->fetch()) {
                     deleteCoverFile($old['cover_path']);
                 }
-                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, cover_path=?, valid_from=?, valid_until=?, is_active=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $newCoverPath, $validFrom, $validUntil, $isActive, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, cover_path=?, valid_from=?, valid_until=?, is_active=?, in_feed=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $newCoverPath, $validFrom, $validUntil, $isActive, $inFeed, $id, $profile['id']]);
             } else {
-                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, valid_from=?, valid_until=?, is_active=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $validFrom, $validUntil, $isActive, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, valid_from=?, valid_until=?, is_active=?, in_feed=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $validFrom, $validUntil, $isActive, $inFeed, $id, $profile['id']]);
             }
         }
     } elseif ($action === 'delete') {
@@ -119,9 +120,13 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia entrambe vuote per un'offerta sempre attiva.</p>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0 16px;">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0;">
       <input type="checkbox" name="is_active" value="1" checked style="width:auto;margin-bottom:0;">
       Attiva
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:0 0 16px;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;margin-bottom:0;">
+      Includi nel Feed
     </label>
     <button type="submit" class="btn">Aggiungi offerta</button>
   </form>
@@ -144,7 +149,7 @@ include __DIR__ . '/_dash_header.php';
         <?php elseif (!$isCurrentlyValid): ?>
           <div style="color:#c0392b;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Fuori validità (non visibile lato pubblico)</div>
         <?php else: ?>
-          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Visibile lato pubblico</div>
+          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Visibile lato pubblico<?= (int) ($of['in_feed'] ?? 1) ? '' : ' · non nel Feed' ?></div>
         <?php endif; ?>
         <?php if ($of['valid_from'] || $of['valid_until']): ?>
           <div style="color:var(--text-muted);font-size:12.5px;margin-top:2px;">
@@ -194,9 +199,13 @@ include __DIR__ . '/_dash_header.php';
                 <input type="datetime-local" name="valid_until" value="<?= $of['valid_until'] ? e(date('Y-m-d\TH:i', strtotime($of['valid_until']))) : '' ?>">
               </div>
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0 16px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0;">
               <input type="checkbox" name="is_active" value="1" <?= (int) $of['is_active'] === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
               Attiva
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:0 0 16px;">
+              <input type="checkbox" name="in_feed" value="1" <?= (int) ($of['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
+              Includi nel Feed
             </label>
             <button type="submit" class="btn small">Salva modifiche</button>
           </form>
