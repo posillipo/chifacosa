@@ -1660,6 +1660,7 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     ob_start();
     ?>
                 <?= $pinnedHtml ?>
+                <h3 class="mb-3">Timeline</h3>
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
                 <?php else: ?>
@@ -1987,7 +1988,6 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
             <?php if (!empty($_GET['follow_msg'])): ?>
             <div class="alert <?= !empty($_GET['follow_err']) ? 'alert-danger' : 'alert-success' ?> mb-3"><?= e($_GET['follow_msg']) ?></div>
             <?php endif; ?>
-            <h3 class="mb-3"><?= e('Timeline') ?></h3>
             <?= renderAdminLteTimelineFeedBlock($artist, $slug) ?>
           </div>
         </div>
