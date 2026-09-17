@@ -534,6 +534,8 @@ function detectPlatform(string $url): ?array {
         'wa.me'            => ['key' => 'whatsapp',   'icon_class' => 'fa-brands fa-whatsapp',   'label' => 'WhatsApp'],
         'x.com'            => ['key' => 'x',          'icon_class' => 'fa-brands fa-x-twitter',  'label' => 'X'],
         'twitter.com'      => ['key' => 'x',          'icon_class' => 'fa-brands fa-x-twitter',  'label' => 'X'],
+        'pinterest.com'    => ['key' => 'pinterest',  'icon_class' => 'fa-brands fa-pinterest',  'label' => 'Pinterest'],
+        'pin.it'           => ['key' => 'pinterest',  'icon_class' => 'fa-brands fa-pinterest',  'label' => 'Pinterest'],
     ];
     foreach ($map as $domain => $info) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {

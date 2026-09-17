@@ -381,7 +381,7 @@ include __DIR__ . '/_dash_header.php';
   <div class="section-title">I tuoi link (<?= count($links) ?>)</div>
   <p style="color:var(--text-muted);font-size:13px;">
     Le icone (Spotify, Apple Music, Instagram, Facebook, TikTok, YouTube, LinkedIn, SoundCloud,
-    WhatsApp, sito web) vengono riconosciute automaticamente e mostrate in cima alla pagina
+    Pinterest, X, WhatsApp, sito web) vengono riconosciute automaticamente e mostrate in cima alla pagina
     pubblica — solo la <strong>prima</strong> di ciascun tipo, seguendo l'ordine in cui i link
     compaiono qui sotto; eventuali duplicati restano tra i pulsanti. Usa le frecce per decidere
     l'ordine.
