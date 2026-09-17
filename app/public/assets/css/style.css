@@ -1670,6 +1670,56 @@ body.agent-silver-page {
 .agent-gold-page .link-divider::before, .agent-gold-page .link-divider::after,
 .agent-silver-page .link-divider::before, .agent-silver-page .link-divider::after { background: var(--agent-metal); opacity: 0.5; }
 
+/* ===== Tema "Sartoria Elegante": nero caldo da boutique con dettagli oro, un motivo a righe
+   sartoriali (pinstripe) molto sottile sullo sfondo che richiama il tessuto di un abito su
+   misura, titoli in serif e pulsanti bordati invece che pieni — stessa impalcatura dei temi
+   "007" ma con tono da sartoria/moda uomo invece che da spionaggio. ===== */
+body.sartoria-page {
+  color: #f1ead9; --text-rgb: 241,234,217; --sartoria-gold: #c9a227; --sartoria-gold-bright: #e0be55; --sartoria-panel: #1c1914;
+  background-color: #14120d;
+  background-image: repeating-linear-gradient(115deg, rgba(201,162,39,0.06) 0px, rgba(201,162,39,0.06) 1px, transparent 1px, transparent 26px);
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+}
+.sartoria-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .sartoria-page .container { max-width: 720px; } }
+.sartoria-page footer.site { color: rgba(var(--text-rgb),0.5); }
+.sartoria-page .avatar { border: 2px solid var(--sartoria-gold); box-shadow: 0 10px 26px rgba(0,0,0,0.55); }
+.sartoria-page .profile-header h1 {
+  font-family: Georgia, 'Times New Roman', serif; color: #fff; font-size: 27px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+}
+.sartoria-page .profile-header p { font-family: Georgia, 'Times New Roman', serif; font-style: italic; color: rgba(var(--text-rgb),0.75); }
+.sartoria-page .profile-meta { color: rgba(var(--text-rgb),0.55); letter-spacing: 1px; }
+.sartoria-page .colorful-nav a {
+  background: rgba(255,255,255,0.03); color: var(--sartoria-gold-bright); border: 1px solid var(--sartoria-gold);
+  border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12.5px;
+}
+.sartoria-page .colorful-nav a:hover { background: rgba(255,255,255,0.07); }
+.sartoria-page .social-icon-btn {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--sartoria-gold); color: var(--sartoria-gold-bright);
+}
+.sartoria-page .color-link-btn {
+  background: var(--sartoria-panel) !important; border: 1px solid var(--sartoria-gold) !important; border-radius: 4px;
+  color: var(--sartoria-gold-bright) !important; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.sartoria-page .color-link-btn:hover {
+  background: #201c15 !important; transform: translateY(-2px); border-color: var(--sartoria-gold-bright) !important;
+}
+.sartoria-page .card {
+  background: var(--sartoria-panel); border: 1px solid var(--sartoria-gold); border-radius: 4px; color: rgba(var(--text-rgb),0.95);
+}
+.sartoria-page .section-title { font-family: Georgia, 'Times New Roman', serif; color: var(--sartoria-gold); text-transform: uppercase; letter-spacing: 1.5px; }
+.sartoria-page .event-item, .sartoria-page .blog-item { border-bottom-color: rgba(var(--text-rgb),0.12); }
+.sartoria-page a { color: var(--sartoria-gold-bright); }
+.sartoria-page form textarea, .sartoria-page form input {
+  background: var(--sartoria-panel); border: 1px solid var(--sartoria-gold); color: rgba(var(--text-rgb),0.95); border-radius: 4px;
+}
+.sartoria-page form label { color: rgba(var(--text-rgb),0.6); }
+.sartoria-page .help-box { background: var(--sartoria-panel); border-color: var(--sartoria-gold); color: rgba(var(--text-rgb),0.95); }
+.sartoria-page .link-divider { color: var(--sartoria-gold); }
+.sartoria-page .link-divider::before, .sartoria-page .link-divider::after { background: var(--sartoria-gold); opacity: 0.5; }
+
 /* ===== Tema "Coniglietti": pastello rosa soffice, ombre morbide (sfocate, non nette come nei
    temi Cosplay) e due orecchie da coniglio disegnate in puro CSS (::before/::after su
    .avatar-wrap, già position:relative) che spuntano dietro l'avatar — nessuna immagine esterna.
