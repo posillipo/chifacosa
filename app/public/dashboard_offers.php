@@ -92,6 +92,11 @@ include __DIR__ . '/_dash_header.php';
       lato pubblico (resta comunque qui, puoi riattivarla cambiando le date). Il pulsante
       Attiva/Disattiva sospende un'offerta manualmente, senza doverla eliminare.
     </p>
+    <p style="color:var(--text-muted)">
+      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
+      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
+      modificare liberamente prima di salvare.
+    </p>
   </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -105,7 +110,19 @@ include __DIR__ . '/_dash_header.php';
     <label>Prezzo/sconto (opzionale)</label>
     <input type="text" name="price_label" placeholder="es. -20%, 2x1, €19,90 invece di €29,90">
     <label>Descrizione (opzionale)</label>
-    <textarea name="description" rows="4" placeholder="Dettagli, condizioni, cosa include..."></textarea>
+    <textarea name="description" id="off-add-description" rows="4" placeholder="Dettagli, condizioni, cosa include..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="off-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="off-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="off-add-ai-keywords" rows="2" placeholder="es. -20% su tutti gli abiti da cerimonia fino a fine mese"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="off-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="off-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="off-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
     <label>Foto (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli.</p>
@@ -186,7 +203,19 @@ include __DIR__ . '/_dash_header.php';
             <label>Prezzo/sconto (opzionale)</label>
             <input type="text" name="price_label" value="<?= e($of['price_label'] ?? '') ?>">
             <label>Descrizione (opzionale)</label>
-            <textarea name="description" rows="4"><?= e($of['description'] ?? '') ?></textarea>
+            <textarea name="description" class="off-edit-description" rows="4"><?= e($of['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary off-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="off-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="off-edit-ai-keywords" rows="2" placeholder="es. -20% su tutti gli abiti da cerimonia fino a fine mese"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small off-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary off-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="off-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
             <label>Foto (opzionale — lascia vuoto per non cambiarla)</label>
             <input type="file" name="cover" accept="image/*">
             <div style="display:flex;gap:16px;flex-wrap:wrap;">
@@ -213,4 +242,103 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('off-add-ai-toggle');
+    const panel = document.getElementById('off-add-ai-panel');
+    const cancelBtn = document.getElementById('off-add-ai-cancel');
+    const generateBtn = document.getElementById('off-add-ai-generate');
+    const keywordsInput = document.getElementById('off-add-ai-keywords');
+    const statusEl = document.getElementById('off-add-ai-status');
+    const textarea = document.getElementById('off-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.off-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.off-edit-ai-cancel');
+    const generateBtn = e.target.closest('.off-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.off-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.off-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.off-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.off-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.off-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.off-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.off-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.off-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

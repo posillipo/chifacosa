@@ -110,7 +110,19 @@ include __DIR__ . '/_dash_header.php';
     <label>Link biglietti (opzionale)</label>
     <input type="url" name="ticket_url" placeholder="https://...">
     <label>Descrizione (opzionale)</label>
-    <textarea name="description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."></textarea>
+    <textarea name="description" id="ev-add-description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="ev-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="ev-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="ev-add-ai-keywords" rows="2" placeholder="es. concerto acustico sabato, ospite speciale a sorpresa"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="ev-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="ev-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="ev-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
     <label>Copertina (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
@@ -189,7 +201,19 @@ include __DIR__ . '/_dash_header.php';
             <label>Link biglietti (opzionale)</label>
             <input type="url" name="ticket_url" value="<?= e($ev['ticket_url'] ?? '') ?>" placeholder="https://...">
             <label>Descrizione (opzionale)</label>
-            <textarea name="description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."><?= e($ev['description'] ?? '') ?></textarea>
+            <textarea name="description" class="ev-edit-description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."><?= e($ev['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary ev-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="ev-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="ev-edit-ai-keywords" rows="2" placeholder="es. concerto acustico sabato, ospite speciale a sorpresa"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small ev-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary ev-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="ev-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
             <label>Copertina (opzionale — lascia vuoto per non cambiarla)</label>
             <input type="file" name="cover" accept="image/*">
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
@@ -221,4 +245,103 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('ev-add-ai-toggle');
+    const panel = document.getElementById('ev-add-ai-panel');
+    const cancelBtn = document.getElementById('ev-add-ai-cancel');
+    const generateBtn = document.getElementById('ev-add-ai-generate');
+    const keywordsInput = document.getElementById('ev-add-ai-keywords');
+    const statusEl = document.getElementById('ev-add-ai-status');
+    const textarea = document.getElementById('ev-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.ev-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.ev-edit-ai-cancel');
+    const generateBtn = e.target.closest('.ev-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.ev-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.ev-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.ev-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.ev-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.ev-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.ev-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.ev-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.ev-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

@@ -133,6 +133,11 @@ include __DIR__ . '/_dash_header.php';
       non compare nella pagina pubblica né nel Feed, uno programmato compare automaticamente alla
       data scelta.
     </p>
+    <p style="color:var(--text-muted)">
+      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
+      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
+      modificare liberamente prima di salvare.
+    </p>
   </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -144,7 +149,19 @@ include __DIR__ . '/_dash_header.php';
     <label>Titolo album</label>
     <input type="text" name="title" required placeholder="es. Il nostro tour 2026">
     <label>Descrizione (opzionale)</label>
-    <textarea name="description" rows="4" placeholder="Racconta l'album..."></textarea>
+    <textarea name="description" id="alb-add-description" rows="4" placeholder="Racconta l'album..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="alb-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="alb-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="alb-add-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="alb-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="alb-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="alb-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
     <label>Foto (fino a <?= ALBUM_MAX_PHOTOS ?>)</label>
     <input type="file" name="images[]" accept="image/*" multiple required>
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">La prima foto selezionata diventa la copertina dell'album.</p>
@@ -243,7 +260,19 @@ include __DIR__ . '/_dash_header.php';
             <label>Titolo album</label>
             <input type="text" name="title" value="<?= e($al['title']) ?>" required>
             <label>Descrizione (opzionale)</label>
-            <textarea name="description" rows="4"><?= e($al['description'] ?? '') ?></textarea>
+            <textarea name="description" class="alb-edit-description" rows="4"><?= e($al['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary alb-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="alb-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="alb-edit-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small alb-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary alb-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="alb-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
             <label>Aggiungi altre foto (opzionale — lascia vuoto per non cambiarle, altrimenti sostituisce l'intero set)</label>
             <input type="file" name="images[]" accept="image/*" multiple>
             <label>Privacy</label>
@@ -267,4 +296,103 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('alb-add-ai-toggle');
+    const panel = document.getElementById('alb-add-ai-panel');
+    const cancelBtn = document.getElementById('alb-add-ai-cancel');
+    const generateBtn = document.getElementById('alb-add-ai-generate');
+    const keywordsInput = document.getElementById('alb-add-ai-keywords');
+    const statusEl = document.getElementById('alb-add-ai-status');
+    const textarea = document.getElementById('alb-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.alb-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.alb-edit-ai-cancel');
+    const generateBtn = e.target.closest('.alb-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.alb-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.alb-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.alb-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.alb-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.alb-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.alb-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.alb-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.alb-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

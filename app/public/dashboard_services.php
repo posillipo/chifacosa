@@ -133,6 +133,11 @@ include __DIR__ . '/_dash_header.php';
       pubblico si può attivare o disattivare per ciascun servizio — quando è attivo, chi lo compila
       ti arriva via email e nella scheda "Richieste" qui sotto.
     </p>
+    <p style="color:var(--text-muted)">
+      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
+      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
+      modificare liberamente prima di salvare.
+    </p>
   </details>
 
   <?php if ($unreadInquiries > 0): ?>
@@ -151,7 +156,19 @@ include __DIR__ . '/_dash_header.php';
     <label>Titolo servizio</label>
     <input type="text" name="title" required placeholder="es. Consulenza personalizzata">
     <label>Descrizione (opzionale)</label>
-    <textarea name="description" rows="4" placeholder="Cosa comprende, come funziona..."></textarea>
+    <textarea name="description" id="sv-add-description" rows="4" placeholder="Cosa comprende, come funziona..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="sv-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="sv-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="sv-add-ai-keywords" rows="2" placeholder="es. servizio di trucco per matrimoni, a domicilio"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="sv-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="sv-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="sv-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
     <label>Foto (fino a <?= SERVICE_MAX_PHOTOS ?>)</label>
     <input type="file" name="images[]" accept="image/*" multiple required>
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">La prima foto selezionata diventa la copertina.</p>
@@ -263,7 +280,19 @@ include __DIR__ . '/_dash_header.php';
             <label>Titolo servizio</label>
             <input type="text" name="title" value="<?= e($sv['title']) ?>" required>
             <label>Descrizione (opzionale)</label>
-            <textarea name="description" rows="4"><?= e($sv['description'] ?? '') ?></textarea>
+            <textarea name="description" class="sv-edit-description" rows="4"><?= e($sv['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary sv-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="sv-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="sv-edit-ai-keywords" rows="2" placeholder="es. servizio di trucco per matrimoni, a domicilio"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small sv-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary sv-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="sv-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
             <label>Aggiungi altre foto (opzionale — lascia vuoto per non cambiarle, altrimenti sostituisce l'intera galleria)</label>
             <input type="file" name="images[]" accept="image/*" multiple>
             <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0 16px;">
@@ -291,4 +320,103 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('sv-add-ai-toggle');
+    const panel = document.getElementById('sv-add-ai-panel');
+    const cancelBtn = document.getElementById('sv-add-ai-cancel');
+    const generateBtn = document.getElementById('sv-add-ai-generate');
+    const keywordsInput = document.getElementById('sv-add-ai-keywords');
+    const statusEl = document.getElementById('sv-add-ai-status');
+    const textarea = document.getElementById('sv-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.sv-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.sv-edit-ai-cancel');
+    const generateBtn = e.target.closest('.sv-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.sv-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.sv-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.sv-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.sv-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.sv-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.sv-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.sv-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.sv-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
