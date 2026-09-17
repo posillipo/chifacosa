@@ -7155,6 +7155,50 @@ function resetProfileNavMenuOrder(int $userId): void {
     }
 }
 
+// ===== Ordine dei tasti nella barra della dashboard (indipendente dal menu pubblico) =====
+// Elenco/etichette dei tasti riordinabili, nell'ordine predefinito — usato sia come fallback per
+// chi non ha mai riordinato nulla sia dal tasto "Ripristina l'ordine predefinito" in
+// dashboard_nav_menu.php. A differenza di PUBLIC_NAV_ITEM_KEYS/profile_navigation_menu (che
+// riguarda solo le sezioni della pagina pubblica), copre anche voci senza equivalente pubblico:
+// Feed e Primo Piano sono strumenti solo di gestione, Richieste/Prenotazioni sono le sotto-voci
+// di Servizi/Eventi che nella barra della dashboard compaiono come tasti a sé.
+const DASHBOARD_TAB_KEYS = [
+    'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
+    'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album',
+    'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
+    'segui' => 'Follower', 'contatti' => 'Contatti',
+];
+
+// Ordine personalizzato (trascinamento in dashboard_nav_menu.php) della barra della dashboard di
+// questo profilo, come chiave interna => sort_order — usata da _dash_header.php. Nessuna riga
+// significa nessun ordine personalizzato: chi chiama ricade sull'ordine con cui costruisce i tab.
+function getDashboardTabOrder(int $userId): array {
+    $stmt = getDB()->prepare('SELECT tab_key, sort_order FROM dashboard_tab_order WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $order = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $order[$r['tab_key']] = (int) $r['sort_order'];
+    }
+    return $order;
+}
+
+// Salva il nuovo ordine dopo un trascinamento in dashboard_nav_menu.php — $orderedKeys è
+// l'elenco delle chiavi DASHBOARD_TAB_KEYS nell'ordine scelto dall'utente.
+function saveDashboardTabOrder(int $userId, array $orderedKeys): void {
+    $stmt = getDB()->prepare('INSERT INTO dashboard_tab_order (user_id, tab_key, sort_order) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)');
+    foreach ($orderedKeys as $i => $key) {
+        if (!isset(DASHBOARD_TAB_KEYS[$key])) {
+            continue;
+        }
+        $stmt->execute([$userId, $key, $i + 1]);
+    }
+}
+
+function resetDashboardTabOrder(int $userId): void {
+    getDB()->prepare('DELETE FROM dashboard_tab_order WHERE user_id = ?')->execute([$userId]);
+}
+
 // ===== Cinema: sincronizzazione film in programmazione (modulo Link) =====
 // Funzionalità dedicata ai profili "cinema": un JSON esterno (formato 18tickets,
 // {"films": [{id, title, film_url, playbill_path, ...}]}) diventa una serie di pulsanti nel

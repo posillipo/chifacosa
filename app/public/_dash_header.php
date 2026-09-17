@@ -69,7 +69,12 @@ if ($navVisibility['Che Amo'] ?? 1) {
         }
     }
 }
+// Elenco "piatto" (niente più sotto-voci annidate come "Richieste"/"Prenotazioni"): ogni tasto
+// mostrato nella barra è una voce a sé, riordinabile indipendentemente dalle altre — vedi
+// DASHBOARD_TAB_KEYS/getDashboardTabOrder() in functions.php, e la sezione di riordino in
+// dashboard_nav_menu.php.
 $dashTabs = [];
+$dashTabs['feed'] = ['label' => 'Feed', 'url' => '/dashboard_timeline.php', 'active' => 'timeline', 'visible' => true];
 $dashTabs['timeline'] = ['label' => 'Timeline', 'url' => '/dashboard_post.php', 'active' => 'post', 'visible' => $navVisibility['Timeline'] ?? 1];
 $dashTabs['link'] = ['label' => 'Link', 'url' => '/dashboard_links.php', 'active' => 'links', 'visible' => $navVisibility['Link'] ?? 1];
 // Non corrisponde a nessuna voce del "Menu di Navigazione" pubblico (non è una sezione del sito,
@@ -80,26 +85,20 @@ $dashTabs['blog'] = ['label' => 'Blog', 'url' => '/dashboard_blog.php', 'active'
 $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active' => 'menu', 'visible' => $navVisibility['Menù'] ?? 1];
 $dashTabs['offerte'] = ['label' => 'Offerte', 'url' => '/dashboard_offers.php', 'active' => 'offers', 'visible' => $navVisibility['Offerte'] ?? 1];
 $dashTabs['foto'] = ['label' => 'Album', 'url' => '/dashboard_albums.php', 'active' => 'albums', 'visible' => $navVisibility['Foto'] ?? 1];
-$dashTabs['servizi'] = [
-    'label' => 'Servizi', 'url' => '/dashboard_services.php', 'active' => 'services',
-    'visible' => $navVisibility['Servizi'] ?? 1,
-    'extra' => ['label' => 'Richieste', 'url' => '/dashboard_service_inquiries.php', 'active' => 'service_inquiries'],
-];
-$dashTabs['eventi'] = [
-    'label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events',
-    'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1),
-    'extra' => ['label' => 'Prenotazioni', 'url' => '/dashboard_reservations.php', 'active' => 'reservations'],
-];
+$dashTabs['servizi'] = ['label' => 'Servizi', 'url' => '/dashboard_services.php', 'active' => 'services', 'visible' => $navVisibility['Servizi'] ?? 1];
+$dashTabs['service_inquiries'] = ['label' => 'Richieste', 'url' => '/dashboard_service_inquiries.php', 'active' => 'service_inquiries', 'visible' => $navVisibility['Servizi'] ?? 1];
+$dashTabs['eventi'] = ['label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
+$dashTabs['reservations'] = ['label' => 'Prenotazioni', 'url' => '/dashboard_reservations.php', 'active' => 'reservations', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
 $dashTabs['segui'] = ['label' => 'Follower', 'url' => '/dashboard_followers.php', 'active' => 'followers', 'visible' => $navVisibility['Segui'] ?? 1];
 $dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
 
 $dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
 
-$dashNavOrder = getNavItemOrder($countsForId);
+$dashTabOrder = getDashboardTabOrder($countsForId);
 $dashKeysInOrder = array_keys($dashTabs);
-uksort($dashTabs, function ($a, $b) use ($dashNavOrder, $dashKeysInOrder) {
-    $posA = $dashNavOrder[$a] ?? (1000 + array_search($a, $dashKeysInOrder, true));
-    $posB = $dashNavOrder[$b] ?? (1000 + array_search($b, $dashKeysInOrder, true));
+uksort($dashTabs, function ($a, $b) use ($dashTabOrder, $dashKeysInOrder) {
+    $posA = $dashTabOrder[$a] ?? (1000 + array_search($a, $dashKeysInOrder, true));
+    $posB = $dashTabOrder[$b] ?? (1000 + array_search($b, $dashKeysInOrder, true));
     return $posA <=> $posB;
 });
 
@@ -327,12 +326,8 @@ if (switcherEl && navbarEl) {
 <div class="container">
   <div class="tabs-wrap">
   <div class="tabs" id="dash-tabs">
-    <a href="/dashboard_timeline.php" class="<?= $activeTab==='timeline'?'active':'' ?>">Feed</a>
     <?php foreach ($dashTabs as $t): ?>
     <a href="<?= e($t['url']) ?>" class="<?= $activeTab===$t['active']?'active':'' ?>"><?= e($t['label']) ?></a>
-    <?php if (!empty($t['extra'])): ?>
-    <a href="<?= e($t['extra']['url']) ?>" class="<?= $activeTab===$t['extra']['active']?'active':'' ?>"><?= e($t['extra']['label']) ?></a>
-    <?php endif; ?>
     <?php endforeach; ?>
   </div>
   </div>

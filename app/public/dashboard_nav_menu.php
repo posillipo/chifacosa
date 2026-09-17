@@ -30,6 +30,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         echo json_encode(['ok' => true]);
         exit;
+    } elseif ($action === 'reset_dash_tab_order') {
+        resetDashboardTabOrder((int) $profile['id']);
+        header('Location: /dashboard_nav_menu.php?reset_dash=1');
+        exit;
+    } elseif ($action === 'reorder_dash_tabs') {
+        // Stesso principio del blocco 'reorder' qui sopra, ma per la barra della dashboard
+        // (tabella separata, dashboard_tab_order — vedi getDashboardTabOrder() in functions.php).
+        header('Content-Type: application/json; charset=UTF-8');
+        saveDashboardTabOrder((int) $profile['id'], $_POST['order'] ?? []);
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     $items = getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']);
@@ -67,6 +78,16 @@ $visibleItems = array_values(array_filter($items, function ($it) use ($contentCh
     return true;
 }));
 
+// Ordine attuale dei tasti della dashboard, con fallback sull'ordine predefinito
+// (DASHBOARD_TAB_KEYS) per chi non ha ancora mai riordinato nulla.
+$dashTabOrder = getDashboardTabOrder((int) $profile['id']);
+$dashTabKeysInOrder = array_keys(DASHBOARD_TAB_KEYS);
+usort($dashTabKeysInOrder, function ($a, $b) use ($dashTabOrder, $dashTabKeysInOrder) {
+    $posA = $dashTabOrder[$a] ?? (1000 + array_search($a, $dashTabKeysInOrder, true));
+    $posB = $dashTabOrder[$b] ?? (1000 + array_search($b, $dashTabKeysInOrder, true));
+    return $posA <=> $posB;
+});
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <details class="help-box">
@@ -89,7 +110,8 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-  <?php if (!empty($_GET['reset'])): ?><div class="alert success">Ordine riportato a quello predefinito (uguale a quello della barra in cima alla dashboard).</div><?php endif; ?>
+  <?php if (!empty($_GET['reset'])): ?><div class="alert success">Ordine del menu pubblico riportato a quello predefinito.</div><?php endif; ?>
+  <?php if (!empty($_GET['reset_dash'])): ?><div class="alert success">Ordine dei tasti della dashboard riportato a quello predefinito.</div><?php endif; ?>
   <div id="nav-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
 
   <?php if ($missingContentNames): ?>
@@ -147,6 +169,71 @@ include __DIR__ . '/_dash_header.php';
         body.set('csrf', <?= json_encode(csrfToken()) ?>);
         body.set('action', 'reorder');
         ids.forEach(function (id) { body.append('order[]', id); });
+
+        fetch('/dashboard_nav_menu.php', { method: 'POST', body: body })
+          .then(function (r) { return r.json(); })
+          .then(function () {
+            msg.style.display = 'block';
+            clearTimeout(msgTimer);
+            msgTimer = setTimeout(function () { msg.style.display = 'none'; }, 2000);
+          })
+          .catch(function () {});
+      }
+    });
+  })();
+  </script>
+
+  <div class="section-title">Ordine dei tasti nella barra della dashboard</div>
+  <details class="help-box">
+    <summary>ℹ️ Come funziona</summary>
+    <p style="color:var(--text-muted)">
+      Riordina i tasti che vedi in cima a ogni pagina della dashboard (Feed, Timeline, Che Amo...)
+      — indipendente dall'ordine del menu pubblico qui sopra: alcuni di questi tasti (Feed, Primo
+      Piano, Richieste, Prenotazioni) sono strumenti solo di gestione e non hanno un equivalente
+      sulla pagina pubblica. Qui si può solo cambiarne l'ordine: se un tasto è nascosto (perché la
+      relativa sezione non è attiva, o per un account "fan" alcune non compaiono mai), lo resta
+      comunque — questa lista non decide la visibilità, solo la posizione.
+      Trascina una voce dall'icona <i class="fa-solid fa-grip-vertical"></i> per cambiarne
+      l'ordine: si salva subito, senza bisogno di premere "Salva".
+    </p>
+  </details>
+
+  <form method="post" style="margin-bottom:16px;" onsubmit="return confirm('Riportare l\'ordine dei tasti della dashboard a quello predefinito?');">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="reset_dash_tab_order">
+    <button type="submit" class="btn small secondary">Ripristina l'ordine predefinito</button>
+  </form>
+  <div id="dash-tab-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
+
+  <div class="card">
+    <div id="dash-tab-sortable-list">
+      <?php foreach ($dashTabKeysInOrder as $key): ?>
+        <div class="nav-sort-item" data-key="<?= e($key) ?>" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <i class="fa-solid fa-grip-vertical nav-drag-handle" style="cursor:grab;color:var(--text-muted);padding:4px;"></i>
+          <strong style="flex:1;"><?= e(DASHBOARD_TAB_KEYS[$key]) ?></strong>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var list = document.getElementById('dash-tab-sortable-list');
+    if (!list || typeof Sortable === 'undefined') return;
+    var msg = document.getElementById('dash-tab-reorder-msg');
+    var msgTimer = null;
+
+    Sortable.create(list, {
+      handle: '.nav-drag-handle',
+      animation: 150,
+      onEnd: function () {
+        var keys = Array.prototype.map.call(list.querySelectorAll('.nav-sort-item'), function (el) {
+          return el.getAttribute('data-key');
+        });
+        var body = new URLSearchParams();
+        body.set('csrf', <?= json_encode(csrfToken()) ?>);
+        body.set('action', 'reorder_dash_tabs');
+        keys.forEach(function (k) { body.append('order[]', k); });
 
         fetch('/dashboard_nav_menu.php', { method: 'POST', body: body })
           .then(function (r) { return r.json(); })

@@ -768,3 +768,18 @@ CREATE TABLE IF NOT EXISTS pinned_items (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_app_token_expires', '');
+
+-- Ordine personalizzato dei tasti nella barra della dashboard (Feed, Timeline, Che Amo, Primo
+-- Piano...), indipendente dall'ordine del menu pubblico (profile_navigation_menu/
+-- getNavItemOrder()): copre anche voci senza equivalente pubblico (Feed, Link, Primo Piano,
+-- Richieste, Prenotazioni) che nell'ordine del menu pubblico non potrebbero mai comparire.
+-- Riordinabile trascinando in dashboard_nav_menu.php — vedi getDashboardTabOrder() in
+-- functions.php.
+CREATE TABLE IF NOT EXISTS dashboard_tab_order (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tab_key VARCHAR(30) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uniq_user_tab (user_id, tab_key),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
