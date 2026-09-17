@@ -124,6 +124,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE links SET is_active = NOT is_active WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
+    } elseif ($action === 'sync_section_links') {
+        $result = syncSectionLinksForProfile($profile);
+        if ($result['ok']) {
+            header('Location: /dashboard_links.php?sync_ok=1&added=' . $result['added'] . '&updated=' . $result['updated'] . '&removed=' . $result['removed']);
+        } else {
+            header('Location: /dashboard_links.php?sync_error=' . rawurlencode($result['error']));
+        }
+        exit;
     } elseif ($action === 'move_up' || $action === 'move_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id, sort_order FROM links WHERE user_id=? ORDER BY sort_order ASC, id ASC');
@@ -242,11 +250,38 @@ include __DIR__ . '/_dash_header.php';
       vengono riconosciute automaticamente e mostrate in cima alla pagina pubblica come icone
       social invece che come pulsanti — usa le frecce per decidere l'ordine dei link rimanenti.
     </p>
+    <p style="color:var(--text-muted)">
+      Il <strong>Tasto Speciale</strong> qui sotto genera in automatico un pulsante per ogni
+      sezione del sito che hai già popolato con contenuti (Timeline, Che Amo, Blog, Eventi,
+      Offerte, ecc.), raggruppati dietro un separatore "Sezioni del sito". Puoi premerlo quando
+      vuoi: non duplica nulla, aggiorna i pulsanti già creati e rimuove quelli delle sezioni che
+      restano senza contenuti.
+    </p>
   </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['error'])): ?><div class="alert error">Inserisci un'etichetta e un URL valido.</div><?php endif; ?>
   <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città), oppure inserisci direttamente le coordinate.</div><?php endif; ?>
   <?php if (isset($_GET['map_input_error'])): ?><div class="alert error">Inserisci un indirizzo oppure delle coordinate (latitudine e longitudine).</div><?php endif; ?>
+  <?php if (isset($_GET['sync_ok'])): ?>
+    <div class="alert success">
+      Sincronizzazione completata: <?= (int) ($_GET['added'] ?? 0) ?> pulsanti aggiunti,
+      <?= (int) ($_GET['updated'] ?? 0) ?> aggiornati, <?= (int) ($_GET['removed'] ?? 0) ?> rimossi.
+    </div>
+  <?php endif; ?>
+  <?php if (isset($_GET['sync_error'])): ?><div class="alert error"><?= e($_GET['sync_error']) ?></div><?php endif; ?>
+
+  <div class="card">
+    <strong>🧩 Tasto Speciale — Link delle sezioni del sito</strong>
+    <p style="color:var(--text-muted);font-size:13px;margin:6px 0 12px;">
+      Crea/aggiorna automaticamente un pulsante per ogni sezione del tuo profilo che ha già
+      contenuti pubblicati, dietro un separatore dedicato.
+    </p>
+    <form method="post">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="sync_section_links">
+      <button type="submit" class="btn">Genera/aggiorna i link delle sezioni</button>
+    </form>
+  </div>
 
   <?php if ($editingLink && ($editingLink['link_type'] ?? 'link') === 'divider'): ?>
   <form method="post" class="card">

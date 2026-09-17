@@ -571,6 +571,130 @@ function splitSocialAndActionLinks(array $links): array {
     return [$socialLinks, $actionLinks];
 }
 
+// Elenco ordinato (stesso ordine e stesse condizioni di publicNav()) delle sezioni del sito che
+// QUESTO profilo ha davvero usato e popolato con contenuti — usato dal "Tasto Speciale" del
+// modulo Link per generare un pulsante per ciascuna, invece di un elenco statico di tutte le
+// funzioni esistenti sul sito. Esclude di proposito Home (è la pagina stessa), Segui (un'azione,
+// non una sezione con contenuti) e Contatti (pagina sempre disponibile, non "popolata" nel senso
+// di contenuti pubblicati) — e, a differenza di publicNav(), richiede contenuti anche per
+// Timeline, Blog ed Eventi (lì compaiono comunque, qui servono davvero popolati).
+function getPopulatedProfileSectionLinks(array $profile): array {
+    $userId = (int) $profile['id'];
+    $slug = $profile['slug'];
+    $isBandOrLabel = in_array($profile['account_type'] ?? 'band', ['band', 'label'], true);
+    $hiddenKeys = getHiddenNavKeys($userId);
+
+    $sections = [];
+    if (!in_array('timeline', $hiddenKeys, true) && hasVisibleTimelinePosts($userId)) {
+        $sections[] = ['ref' => 'timeline', 'label' => 'Timeline', 'url' => '/' . $slug . '/timeline'];
+    }
+    if (!in_array('cheamo', $hiddenKeys, true) && hasAnyVisibleCheAmo($userId, $hiddenKeys)) {
+        $sections[] = ['ref' => 'cheamo', 'label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo'];
+    }
+    if ($isBandOrLabel && !in_array('spotify', $hiddenKeys, true) && !empty($profile['spotify_artist_id'])) {
+        $sections[] = ['ref' => 'spotify', 'label' => 'Spotify', 'url' => '/' . $slug . '/spotify'];
+    }
+    if ($isBandOrLabel && !in_array('podcast', $hiddenKeys, true) && !empty($profile['spotify_show_id'])) {
+        $sections[] = ['ref' => 'podcast', 'label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
+    }
+    if ($isBandOrLabel && !in_array('video', $hiddenKeys, true) && !empty($profile['youtube_channel_id'])) {
+        $sections[] = ['ref' => 'video', 'label' => 'Video', 'url' => '/' . $slug . '/video'];
+    }
+    if (!in_array('blog', $hiddenKeys, true) && hasPublishedBlogPosts($userId)) {
+        $sections[] = ['ref' => 'blog', 'label' => 'Blog', 'url' => '/' . $slug . '/blog'];
+    }
+    if (!in_array('menu', $hiddenKeys, true) && menuHasItems($userId)) {
+        $sections[] = ['ref' => 'menu', 'label' => 'Menù', 'url' => '/' . $slug . '/menu'];
+    }
+    if (!in_array('offerte', $hiddenKeys, true) && hasActiveOffers($userId)) {
+        $sections[] = ['ref' => 'offerte', 'label' => 'Offerte', 'url' => '/' . $slug . '/offerte'];
+    }
+    if (!in_array('foto', $hiddenKeys, true) && hasPublicPhotoContent($userId)) {
+        $sections[] = ['ref' => 'foto', 'label' => 'Foto', 'url' => '/' . $slug . '/foto'];
+    }
+    if (!in_array('servizi', $hiddenKeys, true) && hasVisibleServices($userId)) {
+        $sections[] = ['ref' => 'servizi', 'label' => 'Servizi', 'url' => '/' . $slug . '/servizi'];
+    }
+    if ($isBandOrLabel && !in_array('eventi', $hiddenKeys, true) && hasAnyEvents($userId)) {
+        $sections[] = ['ref' => 'eventi', 'label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
+    }
+    return $sections;
+}
+
+// Sincronizza (aggiunge/aggiorna/rimuove — stesso principio di syncCinemaFilms()) i pulsanti Link
+// delle sezioni del sito davvero popolate, dietro un separatore fisso "Sezioni del sito" creato
+// una sola volta e mai più spostato, per non disturbare l'ordine scelto a mano dal profilo per
+// gli altri link. Ogni pulsante generato porta un external_ref (es. "section_blog"): permette di
+// ri-eseguire la sincronizzazione quante volte si vuole senza mai duplicare nulla, e fa sparire
+// da solo il pulsante di una sezione che torna senza contenuti (e il separatore stesso, se non
+// resta più nessuna sezione generata).
+function syncSectionLinksForProfile(array $profile): array {
+    $db = getDB();
+    $userId = (int) $profile['id'];
+    $sections = getPopulatedProfileSectionLinks($profile);
+
+    $stmt = $db->prepare('SELECT id, external_ref, label, url FROM links WHERE user_id=? AND external_ref IS NOT NULL');
+    $stmt->execute([$userId]);
+    $existing = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if (str_starts_with((string) $row['external_ref'], 'section_')) {
+            $existing[$row['external_ref']] = $row;
+        }
+    }
+
+    if (!$sections && !$existing) {
+        return ['ok' => false, 'error' => 'Nessuna sezione del sito ha ancora contenuti pubblicati da collegare.'];
+    }
+
+    if ($sections && !isset($existing['section_divider'])) {
+        $stmt = $db->prepare('SELECT COALESCE(MAX(sort_order),0) AS m FROM links WHERE user_id=?');
+        $stmt->execute([$userId]);
+        $dividerSort = (int) $stmt->fetch()['m'] + 1;
+        $stmt = $db->prepare("INSERT INTO links (user_id, label, url, link_type, sort_order, external_ref) VALUES (?, 'Sezioni del sito', '', 'divider', ?, 'section_divider')");
+        $stmt->execute([$userId, $dividerSort]);
+    }
+
+    $stmt = $db->prepare('SELECT COALESCE(MAX(sort_order),0) AS m FROM links WHERE user_id=?');
+    $stmt->execute([$userId]);
+    $nextSort = (int) $stmt->fetch()['m'] + 1;
+
+    $seenRefs = ['section_divider' => true];
+    $added = 0;
+    $updated = 0;
+    foreach ($sections as $section) {
+        $ref = 'section_' . $section['ref'];
+        $seenRefs[$ref] = true;
+        if (isset($existing[$ref])) {
+            $row = $existing[$ref];
+            if ($row['label'] !== $section['label'] || $row['url'] !== $section['url']) {
+                $db->prepare('UPDATE links SET label=?, url=? WHERE id=? AND user_id=?')
+                   ->execute([$section['label'], $section['url'], $row['id'], $userId]);
+                $updated++;
+            }
+        } else {
+            $db->prepare("INSERT INTO links (user_id, label, url, link_type, sort_order, external_ref) VALUES (?,?,?,'link',?,?)")
+               ->execute([$userId, $section['label'], $section['url'], $nextSort, $ref]);
+            $nextSort++;
+            $added++;
+        }
+    }
+
+    $removed = 0;
+    foreach ($existing as $ref => $row) {
+        if (isset($seenRefs[$ref])) {
+            continue;
+        }
+        $db->prepare('DELETE FROM links WHERE id=? AND user_id=?')->execute([$row['id'], $userId]);
+        $removed++;
+    }
+    // Nessuna sezione popolata rimasta: anche il separatore perde senso.
+    if (!$sections && isset($existing['section_divider'])) {
+        $db->prepare('DELETE FROM links WHERE id=? AND user_id=?')->execute([$existing['section_divider']['id'], $userId]);
+    }
+
+    return ['ok' => true, 'added' => $added, 'updated' => $updated, 'removed' => $removed, 'total' => count($sections)];
+}
+
 // Palette di colori pastello per i pulsanti "azione" nel tema colorato della pagina pubblica
 // Registro dei temi grafici disponibili per la pagina pubblica — aggiungerne uno nuovo in
 // futuro significa solo aggiungere una voce qui + le regole CSS corrispondenti (vedi
@@ -4492,6 +4616,28 @@ function hasActiveOffers(int $userId): bool {
         WHERE user_id = ? AND is_active = 1
           AND (valid_from IS NULL OR valid_from <= NOW())
           AND (valid_until IS NULL OR valid_until >= NOW())");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+// Le tre condizioni "popolate" che publicNav() non copre già con i suoi parametri hasMenu/
+// hasOffers/ecc. (Timeline, Blog ed Eventi compaiono lì sempre, indipendentemente dal
+// contenuto) — usate dal "Tasto Speciale" del modulo Link per capire quali sezioni del sito
+// generare davvero come pulsanti, non solo quali tab sarebbero visibili.
+function hasVisibleTimelinePosts(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM timeline_posts WHERE user_id = ? AND visibility = 'public' AND (publish_at IS NULL OR publish_at <= NOW())");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+function hasPublishedBlogPosts(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id = ? AND published_at <= NOW()');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
+function hasAnyEvents(int $userId): bool {
+    $stmt = getDB()->prepare('SELECT COUNT(*) c FROM events WHERE user_id = ?');
     $stmt->execute([$userId]);
     return (int) $stmt->fetch()['c'] > 0;
 }
