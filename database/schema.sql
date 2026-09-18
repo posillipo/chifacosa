@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     cinema_films_json_url VARCHAR(500) DEFAULT NULL,
     cinema_films_synced_at DATETIME DEFAULT NULL,
     cinema_ticket_price DECIMAL(6,2) DEFAULT NULL,
+    menu_preconto_enabled TINYINT(1) NOT NULL DEFAULT 0,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -296,6 +297,10 @@ CREATE TABLE IF NOT EXISTS followers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     email VARCHAR(190) NOT NULL,
+    first_name VARCHAR(100) DEFAULT NULL,
+    last_name VARCHAR(100) DEFAULT NULL,
+    phone VARCHAR(30) DEFAULT NULL,
+    postal_code VARCHAR(10) DEFAULT NULL,
     verified TINYINT(1) NOT NULL DEFAULT 0,
     token VARCHAR(64) NOT NULL,
     accepted_terms_at DATETIME DEFAULT NULL,

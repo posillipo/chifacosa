@@ -117,7 +117,7 @@ function currentUser(): ?array {
     if (empty($_SESSION['user_id'])) return null;
     static $cache = null;
     if ($cache !== null) return $cache;
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
                               FROM users u LEFT JOIN profiles p ON p.user_id = u.id
                               WHERE u.id = ?');
     $stmt->execute([$_SESSION['user_id']]);
@@ -307,7 +307,7 @@ function getActingProfile(array $loggedInUser): array {
         unset($_SESSION['acting_as_user_id']);
         return $loggedInUser;
     }
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
                               FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
     $stmt->execute([(int) $actingId]);
     $profile = $stmt->fetch();
@@ -3649,6 +3649,19 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
             if (parseMenuAllergens($it['allergens'] ?? null)) { $hasAllergens = true; break 2; }
         }
     }
+    $precontoItems = [];
+    if (!empty($artist['menu_preconto_enabled'])) {
+        foreach ($itemsByCategory as $items) {
+            foreach ($items as $it) {
+                if ($it['price'] !== null) {
+                    $precontoItems[] = ['id' => (int) $it['id'], 'name' => $it['name'], 'price' => (float) $it['price']];
+                }
+            }
+        }
+    }
+    $precontoMsg = $_GET['preconto_msg'] ?? '';
+    $precontoErr = !empty($_GET['preconto_err']);
+    $precontoFollowTerms = trim(getSiteSetting('follow_terms_content') ?: '');
     ob_start();
     ?>
 <!doctype html>
@@ -3727,6 +3740,67 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
                 </div>
               </div>
             <?php endif; ?>
+
+            <?php if ($precontoItems): ?>
+              <div class="card mt-3" id="preconto-card">
+                <div class="card-body">
+                  <?php if ($precontoMsg): ?>
+                    <div class="alert <?= $precontoErr ? 'alert-danger' : 'alert-success' ?>"><?= e($precontoMsg) ?></div>
+                  <?php endif; ?>
+                  <div id="preconto-locked">
+                    <button type="button" class="btn btn-primary" id="preconto-unlock-btn">🧮 Calcola il tuo preconto</button>
+                    <p class="text-secondary small mt-2 mb-0">
+                      Scegli i piatti e conosci subito il totale. Lascia i tuoi dati una volta
+                      sola: dopo la conferma via email potrai usarlo ogni volta che vuoi.
+                    </p>
+                  </div>
+                  <div id="preconto-unlocked" style="display:none;">
+                    <h3 class="h6">Il tuo preconto</h3>
+                    <div id="preconto-items"></div>
+                    <div class="preconto-total-bar d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                      <span>Totale: <strong id="preconto-total">€ 0,00</strong></span>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="preconto-reset-btn">Svuota</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="preconto-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1050;align-items:center;justify-content:center;padding:16px;">
+                <div id="preconto-modal" class="card" style="max-width:380px;width:100%;max-height:90vh;overflow-y:auto;">
+                  <div class="card-body">
+                    <h3 class="h6">Lascia i tuoi dati per attivare il preconto</h3>
+                    <form method="post" action="/menu_preconto.php">
+                      <?= csrfField() ?>
+                      <input type="hidden" name="slug" value="<?= e($slug) ?>">
+                      <div class="mb-2"><label class="form-label small mb-0">Nome</label><input type="text" name="first_name" class="form-control form-control-sm" required></div>
+                      <div class="mb-2"><label class="form-label small mb-0">Cognome</label><input type="text" name="last_name" class="form-control form-control-sm" required></div>
+                      <div class="mb-2"><label class="form-label small mb-0">Email</label><input type="email" name="email" class="form-control form-control-sm" required></div>
+                      <div class="mb-2"><label class="form-label small mb-0">Telefono</label><input type="tel" name="phone" class="form-control form-control-sm" required></div>
+                      <div class="mb-2"><label class="form-label small mb-0">CAP</label><input type="text" name="postal_code" class="form-control form-control-sm" required maxlength="10"></div>
+                      <?php if ($precontoFollowTerms !== ''): ?>
+                        <div class="form-check mt-2">
+                          <input type="checkbox" name="accept_terms" value="1" class="form-check-input" id="preconto-accept-terms" required>
+                          <label class="form-check-label small" for="preconto-accept-terms">Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></label>
+                        </div>
+                      <?php endif; ?>
+                      <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm">Conferma e attiva</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="preconto-modal-cancel">Annulla</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              <script id="preconto-items-data" type="application/json"><?= json_encode($precontoItems) ?></script>
+              <style>
+              .preconto-item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .preconto-item-name { flex: 1; }
+              .preconto-item-price { font-weight: 600; white-space: nowrap; }
+              .preconto-stepper { display: flex; align-items: center; gap: 8px; }
+              .preconto-stepper button { width: 28px; height: 28px; border-radius: 50%; border: none; background: #f0f0f0; cursor: pointer; font-size: 16px; line-height: 1; }
+              .preconto-qty { min-width: 20px; text-align: center; font-weight: 600; }
+              </style>
+            <?php endif; ?>
             </div>
             </div>
           </div>
@@ -3754,6 +3828,101 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
     });
   });
 })();
+<?php if ($precontoItems): ?>
+(function () {
+  var userId = <?= (int) $artist['id'] ?>;
+  var cookieName = 'preconto_ok_' + userId;
+  var storageKey = 'preconto_qty_' + userId;
+  var itemsDataEl = document.getElementById('preconto-items-data');
+  if (!itemsDataEl) return;
+  var items = JSON.parse(itemsDataEl.textContent || '[]');
+  var lockedBox = document.getElementById('preconto-locked');
+  var unlockedBox = document.getElementById('preconto-unlocked');
+  var itemsBox = document.getElementById('preconto-items');
+  var totalEl = document.getElementById('preconto-total');
+  var unlockBtn = document.getElementById('preconto-unlock-btn');
+  var resetBtn = document.getElementById('preconto-reset-btn');
+  var modalBackdrop = document.getElementById('preconto-modal-backdrop');
+  var modalCancel = document.getElementById('preconto-modal-cancel');
+
+  function getCookie(name) {
+    var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function loadQty() {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { return {}; }
+  }
+  function saveQty(qty) {
+    try { localStorage.setItem(storageKey, JSON.stringify(qty)); } catch (e) {}
+  }
+  function formatEuro(v) {
+    return '€ ' + v.toFixed(2).replace('.', ',');
+  }
+  function render() {
+    var qty = loadQty();
+    itemsBox.innerHTML = '';
+    var total = 0;
+    items.forEach(function (it) {
+      var q = qty[it.id] || 0;
+      total += q * it.price;
+      var row = document.createElement('div');
+      row.className = 'preconto-item-row';
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'preconto-item-name';
+      nameSpan.textContent = it.name;
+      var priceSpan = document.createElement('span');
+      priceSpan.className = 'preconto-item-price';
+      priceSpan.textContent = formatEuro(it.price);
+      var stepper = document.createElement('span');
+      stepper.className = 'preconto-stepper';
+      stepper.innerHTML = '<button type="button" data-id="' + it.id + '" data-delta="-1">−</button>' +
+        '<span class="preconto-qty">' + q + '</span>' +
+        '<button type="button" data-id="' + it.id + '" data-delta="1">+</button>';
+      row.appendChild(nameSpan);
+      row.appendChild(priceSpan);
+      row.appendChild(stepper);
+      itemsBox.appendChild(row);
+    });
+    totalEl.textContent = formatEuro(total);
+  }
+  itemsBox.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    var delta = parseInt(btn.getAttribute('data-delta'), 10);
+    var qty = loadQty();
+    qty[id] = Math.max(0, (qty[id] || 0) + delta);
+    saveQty(qty);
+    render();
+  });
+  resetBtn.addEventListener('click', function () {
+    saveQty({});
+    render();
+  });
+
+  function showUnlocked() {
+    lockedBox.style.display = 'none';
+    unlockedBox.style.display = 'block';
+    render();
+  }
+
+  if (getCookie(cookieName)) {
+    showUnlocked();
+  }
+
+  unlockBtn.addEventListener('click', function () {
+    modalBackdrop.style.display = 'flex';
+  });
+  modalCancel.addEventListener('click', function () {
+    modalBackdrop.style.display = 'none';
+  });
+
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('preconto_ok') === '1') {
+    showUnlocked();
+  }
+})();
+<?php endif; ?>
 </script>
 </body>
 </html>
@@ -6856,6 +7025,32 @@ function notifyFollowConfirmation(string $toEmail, string $artistName, string $t
           . "o annuncia un nuovo concerto.\n\n"
           . "Se non hai richiesto tu questa iscrizione, ignora pure questa email: non verrà\n"
           . "attivata alcuna iscrizione senza la tua conferma.";
+
+    return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toEmail, $subject, $body);
+}
+
+// Come notifyFollowConfirmation(), ma per chi verifica l'email per sbloccare il preconto sul
+// Menù pubblico (dashboard_menu.php -> profiles.menu_preconto_enabled): stesso meccanismo di
+// conferma (finisce comunque nella tabella followers, la persona diventa anche follower vero e
+// proprio — vedi menu_preconto.php), solo il testo dell'email cambia per riflettere perché ha
+// lasciato i suoi dati.
+function notifyPrecontoConfirmation(string $toEmail, string $artistName, string $token, string $confirmUrl): bool {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return false;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+
+    $subject = "Conferma la tua email per il preconto — {$artistName}";
+    $body = "Ciao,\n\n"
+          . "Hai chiesto di usare il preconto sul menù di {$artistName} su " . siteName() . ". Conferma la tua\n"
+          . "email cliccando questo link, poi torna sul menù per calcolare il totale:\n\n"
+          . "{$confirmUrl}\n\n"
+          . "Da questo momento segui anche {$artistName} su " . siteName() . ": riceverai un'email quando\n"
+          . "pubblica un nuovo articolo o annuncia un nuovo evento.\n\n"
+          . "Se non hai richiesto tu questa conferma, ignora pure questa email: non verrà attivato\n"
+          . "nulla senza il tuo click.";
 
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toEmail, $subject, $body);
 }

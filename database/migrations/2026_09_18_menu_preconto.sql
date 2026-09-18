@@ -1,0 +1,5 @@
+ALTER TABLE profiles ADD COLUMN menu_preconto_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER cinema_ticket_price;
+ALTER TABLE followers ADD COLUMN first_name VARCHAR(100) DEFAULT NULL AFTER email;
+ALTER TABLE followers ADD COLUMN last_name VARCHAR(100) DEFAULT NULL AFTER first_name;
+ALTER TABLE followers ADD COLUMN phone VARCHAR(30) DEFAULT NULL AFTER last_name;
+ALTER TABLE followers ADD COLUMN postal_code VARCHAR(10) DEFAULT NULL AFTER phone;

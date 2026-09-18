@@ -16,7 +16,7 @@ $stmt = getDB()->prepare("SELECT COUNT(*) c FROM followers WHERE user_id=? AND v
 $stmt->execute([$profile['id']]);
 $last30 = (int) $stmt->fetch()['c'];
 
-$stmt = getDB()->prepare('SELECT email, created_at FROM followers WHERE user_id=? AND verified=1 ORDER BY created_at DESC LIMIT 200');
+$stmt = getDB()->prepare('SELECT email, first_name, last_name, phone, postal_code, created_at FROM followers WHERE user_id=? AND verified=1 ORDER BY created_at DESC LIMIT 200');
 $stmt->execute([$profile['id']]);
 $followers = $stmt->fetchAll();
 
@@ -41,8 +41,12 @@ include __DIR__ . '/_dash_header.php';
     <div class="card">Nessun follower ancora. Il pulsante "Segui" è già visibile sulla tua pagina pubblica.</div>
   <?php endif; ?>
   <?php foreach ($followers as $f): ?>
+    <?php $fullName = trim(($f['first_name'] ?? '') . ' ' . ($f['last_name'] ?? '')); ?>
     <div class="link-item">
-      <span><?= e($f['email']) ?></span>
+      <span>
+        <?= e($f['email']) ?>
+        <?php if ($fullName !== ''): ?><br><small style="color:var(--text-muted)"><?= e($fullName) ?><?php if ($f['phone']): ?> · <?= e($f['phone']) ?><?php endif; ?><?php if ($f['postal_code']): ?> · CAP <?= e($f['postal_code']) ?><?php endif; ?></small><?php endif; ?>
+      </span>
       <small style="color:var(--text-muted)">dal <?= date('d/m/Y', strtotime($f['created_at'])) ?></small>
     </div>
   <?php endforeach; ?>

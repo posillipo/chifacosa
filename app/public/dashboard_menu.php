@@ -11,7 +11,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'add_category') {
+    if ($action === 'save_preconto') {
+        $enabled = !empty($_POST['menu_preconto_enabled']) ? 1 : 0;
+        $stmt = getDB()->prepare('UPDATE profiles SET menu_preconto_enabled=? WHERE user_id=?');
+        $stmt->execute([$enabled, $profile['id']]);
+        $user = currentUser();
+        $profile = getActingProfile($user);
+    } elseif ($action === 'add_category') {
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') {
             $stmt = getDB()->prepare('INSERT INTO menu_categories (user_id, name, sort_order) VALUES (?,?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM menu_categories WHERE user_id=?) t))');
@@ -155,6 +161,21 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="save_preconto">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+      <input type="checkbox" name="menu_preconto_enabled" value="1" style="width:auto;" <?= !empty($profile['menu_preconto_enabled']) ? 'checked' : '' ?>>
+      Attiva il preconto sul menù pubblico
+    </label>
+    <p style="color:var(--text-muted);font-size:13px;margin:4px 0 12px;">
+      Il cliente potrà scegliere i piatti e vedere il totale in tempo reale, ma solo dopo aver
+      lasciato nome, cognome, email, telefono e CAP e aver confermato l'email — diventando anche
+      follower.
+    </p>
+    <button type="submit" class="btn" style="width:auto;">Salva</button>
+  </form>
 
   <form method="post" class="card">
     <?= csrfField() ?>
