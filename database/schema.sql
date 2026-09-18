@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     privacy_tracking_settings TEXT DEFAULT NULL,
     cinema_films_json_url VARCHAR(500) DEFAULT NULL,
     cinema_films_synced_at DATETIME DEFAULT NULL,
+    cinema_ticket_price DECIMAL(6,2) DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

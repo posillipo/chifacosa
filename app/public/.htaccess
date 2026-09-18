@@ -35,6 +35,10 @@ RewriteRule ^([a-zA-Z0-9_-]+)/eventi/([0-9]+)/?$ evento.php?slug=$1&id=$2 [L,QSA
 # /nomeartista/feed -> feed RSS/XML (per Metricool e altri strumenti di pianificazione social)
 RewriteRule ^([a-zA-Z0-9_-]+)/feed/?$ feed.php?slug=$1 [L,QSA]
 
+# /nomeartista/cinema-feed.xml -> feed prodotti (film in programmazione) per Google Merchant
+# Center e Meta Commerce Manager, generato dal JSON già configurato in Dashboard -> Cinema
+RewriteRule ^([a-zA-Z0-9_-]+)/cinema-feed\.xml$ cinema_merchant_feed.php?slug=$1 [L,QSA]
+
 # /nomeartista/brani/ID/votazioni -> pagina dedicata al voto del brano
 RewriteRule ^([a-zA-Z0-9_-]+)/brani/([0-9]+)/votazioni/?$ track_review.php?slug=$1&id=$2 [L,QSA]
 
