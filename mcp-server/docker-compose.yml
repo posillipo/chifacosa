@@ -9,14 +9,24 @@ services:
       - "3000"
     environment:
       - MCP_ACCESS_TOKEN=${MCP_ACCESS_TOKEN}
-      - CHIFACOSA_API_TOKEN=${CHIFACOSA_API_TOKEN}
+      - CHIFACOSA_API_TOKEN=${CHIFACOSA_API_TOKEN:-}
       - CHIFACOSA_BASE_URL=${CHIFACOSA_BASE_URL:-https://www.chifacosa.it/api/v1/social-posts}
+    volumes:
+      - mcp_data:/data
     networks:
       - proxy-manager_default
 
+# mcp_data: dove il server salva profiles.json (nome->token per profilo, gestiti a caldo via
+# POST/DELETE /admin/profiles) — un volume Docker dedicato, non una cartella dentro il checkout
+# Git dello stack, altrimenti sparirebbe ad ogni "Pull and redeploy" (stesso principio già
+# applicato a uploads_data nello stack principale — vedi il commento lì).
+#
 # Non serve la rete myband2_myband_net: questo server non parla mai direttamente col database,
 # solo con l'API pubblica di CHIFACOSA via HTTPS (come qualunque altro client dell'API) — quindi
 # gli basta essere raggiungibile da Nginx Proxy Manager, non dal MySQL condiviso.
+volumes:
+  mcp_data:
+
 networks:
   proxy-manager_default:
     external: true

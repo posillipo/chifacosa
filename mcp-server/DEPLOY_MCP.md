@@ -6,19 +6,21 @@ più profili CHIFACOSA, riusando l'API pubblica `/api/v1/social-posts/*` già es
 l'HTTPS, nessun hosting nuovo da pagare.
 
 Se gestisci **più profili** sullo stesso account CHIFACOSA, un solo server/connector basta per
-tutti: ogni strumento (crea/elenca/modifica/elimina post) chiede quale profilo usare, a patto
-di aver configurato un token per ciascuno (vedi punto 1).
+tutti: ogni strumento (crea/elenca/modifica/elimina post) chiede quale profilo usare. I profili
+si registrano **dopo** il deploy, con una chiamata diretta (mai attraverso Claude — vedi punto
+5) — aggiungerne uno nuovo in futuro non richiede un altro deploy né toccare le variabili
+d'ambiente dello stack.
 
-## 1) Genera i token prima di iniziare
+## 1) Genera il token di accesso al server MCP prima di iniziare
 
-1. **Un token CHIFACOSA per ogni profilo che vuoi gestire da Claude**: su
-   `https://www.chifacosa.it` → login → passa al profilo che ti interessa (se ne gestisci più
-   d'uno) → Dashboard → API → crea un token → copialo e segnati anche a quale profilo si
-   riferisce. Ripeti per ogni profilo che vuoi poter usare (anche solo uno, se ti basta).
-2. **Token di accesso al server MCP**: un valore a scelta tua, lungo e casuale (es.
-   `openssl rand -hex 32` dal terminale) — è `MCP_ACCESS_TOKEN` più sotto, quello che incollerai
-   in claude.ai quando aggiungi il connector. Non è legato a CHIFACOSA, lo inventi tu, **uno
-   solo** anche se gestisci più profili (protegge il server, non un singolo profilo).
+Un valore a scelta tua, lungo e casuale (es. `openssl rand -hex 32` dal terminale) — è
+`MCP_ACCESS_TOKEN` più sotto: quello che incollerai in claude.ai quando aggiungi il connector,
+e lo stesso che userai da terminale per registrare i profili. Non è legato a CHIFACOSA, lo
+inventi tu, **uno solo** anche se gestirai più profili (protegge il server, non un profilo
+specifico).
+
+I token dei singoli profili CHIFACOSA (da Dashboard → API) li generi **dopo**, uno alla volta,
+solo quando registri ciascun profilo al punto 4 — non servono ancora adesso.
 
 ## 2) Creare lo Stack in Portainer
 
@@ -28,23 +30,12 @@ di aver configurato un token per ciascuno (vedi punto 1).
    - **Repository URL**: `https://github.com/posillipo/chifacosa.git`
    - **Repository ref**: `refs/heads/main`
    - **Compose path**: `mcp-server/docker-compose.yml`
-4. **Environment variables** — una riga `NAME`/`TOKEN` per ciascun profilo, numerate in ordine
-   a partire da 1 (il "nome" è solo un'etichetta comoda per te e per Claude, es. lo slug del
-   profilo — non deve corrispondere a nulla di tecnico):
+4. **Environment variables** — una sola, per questo e per sempre (i profili non ne aggiungono
+   altre):
 
 | Variabile | Valore |
 |---|---|
-| `MCP_ACCESS_TOKEN` | il token generato al punto 1.2 |
-| `CHIFACOSA_PROFILE_1_NAME` | es. `bandmarione` (nome a piacere del primo profilo) |
-| `CHIFACOSA_PROFILE_1_TOKEN` | il token CHIFACOSA di quel profilo (punto 1.1) |
-| `CHIFACOSA_PROFILE_2_NAME` | es. `pizzerialacaraffa` (secondo profilo, se ne hai un altro) |
-| `CHIFACOSA_PROFILE_2_TOKEN` | il token CHIFACOSA di quel secondo profilo |
-| ... | continua con `_3_`, `_4_`, ecc. per altri profili |
-| `CHIFACOSA_BASE_URL` | lascia vuoto per usare `https://www.chifacosa.it/api/v1/social-posts` (default) |
-
-Se gestisci **un solo profilo** e vuoi la configurazione più semplice, puoi anche usare solo
-`CHIFACOSA_API_TOKEN` (senza numerazione) invece della coppia `CHIFACOSA_PROFILE_1_NAME`/
-`_1_TOKEN` — il server lo riconosce comunque, chiamando quel profilo "principale".
+| `MCP_ACCESS_TOKEN` | il token generato al punto 1 |
 
 5. **Deploy the stack**
 
@@ -66,34 +57,68 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST https://mcp.chifacosa.it/mcp
 # deve rispondere: 401 (nessun token fornito — corretto)
 ```
 
-## 5) Aggiungere il connector su claude.ai
+## 5) Registrare un profilo (e aggiungerne altri quando vuoi, senza redeploy)
+
+Per ogni profilo che vuoi collegare: prima genera il suo token su
+`https://www.chifacosa.it` → login → passa a quel profilo → Dashboard → API → crea un token →
+copialo **dal riquadro verde**, subito dopo averlo creato (vedi nota in fondo). Poi, da un
+terminale qualsiasi (**mai chiedendo a Claude di farlo** — il token CHIFACOSA non deve mai
+passare per la chat):
+
+```bash
+curl -X POST https://mcp.chifacosa.it/admin/profiles \
+  -H "Authorization: Bearer IL_TUO_MCP_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bandmarione", "token": "IL_TOKEN_CHIFACOSA_DI_QUESTO_PROFILO"}'
+```
+
+`name` è un'etichetta a tua scelta (es. lo slug del profilo) — è quella che userai in chat
+("pubblica su bandmarione...") e quella che Claude vede tramite lo strumento
+`list_chifacosa_profiles`. Ripeti il comando (cambiando `name` e `token`) per ogni altro
+profilo — **nessun redeploy necessario**, il profilo è utilizzabile immediatamente.
+
+Altri comandi utili:
+```bash
+# Elenca i profili registrati (solo i nomi, mai i token)
+curl https://mcp.chifacosa.it/admin/profiles -H "Authorization: Bearer IL_TUO_MCP_ACCESS_TOKEN"
+
+# Rimuove un profilo
+curl -X DELETE https://mcp.chifacosa.it/admin/profiles/bandmarione -H "Authorization: Bearer IL_TUO_MCP_ACCESS_TOKEN"
+```
+
+## 6) Aggiungere il connector su claude.ai
 
 Impostazioni → Connectors → **Add custom connector**:
 - **URL**: `https://mcp.chifacosa.it/mcp`
-- **Autenticazione**: header personalizzato
+- **Autenticazione**: scegli **"Nessun accesso"** (server con chiave API, non OAuth), poi
+  aggiungi un header di richiesta:
   - Nome: `Authorization`
-  - Valore: `Bearer IL_TUO_MCP_ACCESS_TOKEN` (quello del punto 1.2)
+  - Valore: `Bearer IL_TUO_MCP_ACCESS_TOKEN` (quello del punto 1)
 
 Su Claude Desktop, invece, si aggiunge nel file di configurazione MCP con lo stesso URL e header.
 
 ## Aggiornamenti successivi
 
-Come per lo stack principale: Portainer → Stacks → chifacosa-mcp → **Pull and redeploy**. Il
-server non ha stato/database proprio (parla solo con l'API di CHIFACOSA), quindi un redeploy è
-sempre sicuro, nessun dato da perdere.
+Come per lo stack principale: Portainer → Stacks → chifacosa-mcp → **Pull and redeploy**. I
+profili registrati vivono su un volume Docker dedicato (`mcp_data`), separato dal checkout Git
+dello stack — un redeploy (anche per aggiornare il codice del server) non li tocca né li perde,
+esattamente come `uploads_data` per lo stack principale.
 
 ## Sicurezza
 
-- `MCP_ACCESS_TOKEN` protegge il server da chiunque altro su internet — senza, chiunque conosca
-  l'URL potrebbe pubblicare contenuti a tuo nome, su qualunque profilo configurato.
-- I token `CHIFACOSA_PROFILE_N_TOKEN` (o `CHIFACOSA_API_TOKEN`) non vengono mai comunicati a
-  claude.ai: restano solo nella configurazione di questo stack, esattamente come una password
-  di servizio. Ogni token resta comunque limitato al SUO profilo (stessa regola dell'API REST):
-  anche se il server ne gestisce più d'uno, un profilo non può mai toccare i dati di un altro.
-- Se sospetti che un token sia stato compromesso: rigeneralo (il token CHIFACOSA di quel
-  profilo da Dashboard → API → Revoca + Crea nuovo; il token MCP a piacere, invalida però
-  l'accesso per TUTTI i profili finché non aggiorni il connector) e aggiorna la variabile
-  d'ambiente corrispondente dello stack.
+- `MCP_ACCESS_TOKEN` protegge sia gli strumenti MCP sia gli endpoint `/admin/profiles` da
+  chiunque altro su internet — senza, chiunque conosca l'URL potrebbe registrare un profilo
+  proprio o pubblicare contenuti a tuo nome su uno di quelli già configurati.
+- I token CHIFACOSA dei singoli profili non vengono mai comunicati a claude.ai: restano solo
+  nel file `profiles.json` sul volume `mcp_data`, esattamente come una password di servizio.
+  Ogni token resta comunque limitato al SUO profilo (stessa regola dell'API REST): anche se il
+  server ne gestisce più d'uno, un profilo non può mai toccare i dati di un altro.
+- Se sospetti che `MCP_ACCESS_TOKEN` sia stato compromesso, ruotarlo invalida l'accesso a
+  *tutti* i profili finché non aggiorni sia lo stack sia il connector su claude.ai — è l'unico
+  segreto davvero "master" di questo server.
+- Se sospetti che il token CHIFACOSA di un singolo profilo sia stato compromesso: rigeneralo da
+  Dashboard → API (Revoca + Crea nuovo) e ri-registralo con lo stesso comando `POST
+  /admin/profiles` del punto 5 (sovrascrive quello vecchio).
 
 ## Nota sul token che vedi nell'elenco di Dashboard → API
 

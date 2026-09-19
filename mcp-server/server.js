@@ -5,18 +5,23 @@
 // questo lo fa per conto di Claude tramite gli strumenti MCP.
 //
 // Autenticazione a due livelli, volutamente diversi:
-// 1) MCP_ACCESS_TOKEN — protegge QUESTO server da chiunque altro su internet: è il token che
-//    l'utente incolla nella configurazione del connector su claude.ai/Claude Desktop.
-// 2) Un token CHIFACOSA per ciascun profilo (vedi parseProfiles() sotto) — usati QUI dentro per
-//    chiamare l'API per conto dell'utente. Non vengono mai comunicati a claude.ai.
-// Tenerli separati vuol dire che i token "veri" verso CHIFACOSA non devono mai transitare per la
-// configurazione del connector: se uno va ruotato, si cambia solo qui, non lato claude.ai.
+// 1) MCP_ACCESS_TOKEN — protegge sia gli strumenti MCP sia gli endpoint di amministrazione
+//    (/admin/profiles) da chiunque altro su internet. È il token che l'utente incolla nella
+//    configurazione del connector su claude.ai/Claude Desktop, e lo stesso che usa da terminale
+//    per registrare un nuovo profilo.
+// 2) Un token CHIFACOSA per ciascun profilo, salvato in un file su un volume Docker persistente
+//    (vedi PROFILES_FILE sotto), MAI nelle variabili d'ambiente del container e MAI comunicato
+//    a claude.ai — solo così aggiungere un nuovo profilo non richiede più un deploy: basta una
+//    chiamata a /admin/profiles fatta direttamente dall'utente (mai attraverso la chat/Claude,
+//    altrimenti il token vero finirebbe nella conversazione).
 //
-// Multi-profilo: chi gestisce più profili su CHIFACOSA può configurare un token per ciascuno
-// (uno stesso server MCP, un solo connector su claude.ai) e scegliere ogni volta su quale
-// profilo agire passando il parametro "profile" a ogni strumento — vedi parseProfiles().
+// Multi-profilo: chi gestisce più profili su CHIFACOSA registra un token per ciascuno (vedi
+// sezione admin più sotto) e sceglie ogni volta su quale agire passando il parametro "profile"
+// a ogni strumento.
 
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -25,23 +30,43 @@ import { z } from 'zod';
 const PORT = process.env.PORT || 3000;
 const MCP_ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
 const CHIFACOSA_BASE_URL = (process.env.CHIFACOSA_BASE_URL || 'https://www.chifacosa.it/api/v1/social-posts').replace(/\/$/, '');
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 
-// Legge i profili configurati dalle variabili d'ambiente CHIFACOSA_PROFILE_<N>_NAME /
-// CHIFACOSA_PROFILE_<N>_TOKEN (N = 1, 2, 3...) — un nome comodo scelto dall'utente (es. lo slug
-// del profilo) abbinato al token API generato per quel profilo da Dashboard -> API su CHIFACOSA.
-// Se non ce n'è nessuna, ricade sulla variabile singola CHIFACOSA_API_TOKEN (compatibilità con
-// l'installazione a un solo profilo, sotto il nome "principale").
-function parseProfiles() {
+if (!MCP_ACCESS_TOKEN) {
+    console.error('Manca la variabile d\'ambiente MCP_ACCESS_TOKEN — il server non parte senza.');
+    process.exit(1);
+}
+
+// Profili salvati su file (persistente sul volume Docker, sopravvive ai redeploy) — questa è
+// l'unica fonte di verità per i profili "nuovo stile", gestibili a caldo via /admin/profiles.
+function loadFileProfiles() {
+    try {
+        if (fs.existsSync(PROFILES_FILE)) {
+            return JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
+        }
+    } catch (err) {
+        console.error('Errore leggendo profiles.json, ignorato:', err.message);
+    }
+    return {};
+}
+
+function saveFileProfiles(profiles) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(PROFILES_FILE, JSON.stringify(profiles, null, 2));
+}
+
+// Compatibilità con la vecchia configurazione a variabili d'ambiente (CHIFACOSA_PROFILE_N_NAME/
+// _TOKEN o il singolo CHIFACOSA_API_TOKEN) — chi li aveva già impostati non li perde, ma da qui
+// in avanti il modo per AGGIUNGERE profili è /admin/profiles, non nuove variabili nel container.
+function loadEnvProfiles() {
     const profiles = {};
     for (const key of Object.keys(process.env)) {
         const m = key.match(/^CHIFACOSA_PROFILE_(\d+)_NAME$/);
         if (!m) continue;
-        const idx = m[1];
         const name = (process.env[key] || '').trim();
-        const token = (process.env[`CHIFACOSA_PROFILE_${idx}_TOKEN`] || '').trim();
-        if (name && token) {
-            profiles[name] = token;
-        }
+        const token = (process.env[`CHIFACOSA_PROFILE_${m[1]}_TOKEN`] || '').trim();
+        if (name && token) profiles[name] = token;
     }
     if (Object.keys(profiles).length === 0 && process.env.CHIFACOSA_API_TOKEN) {
         profiles['principale'] = process.env.CHIFACOSA_API_TOKEN.trim();
@@ -49,25 +74,33 @@ function parseProfiles() {
     return profiles;
 }
 
-const PROFILES = parseProfiles();
-const PROFILE_NAMES = Object.keys(PROFILES);
+// Letta ad ogni richiesta (non una volta sola all'avvio): un profilo registrato via
+// /admin/profiles deve essere utilizzabile subito, senza riavviare il container.
+function getProfiles() {
+    return { ...loadEnvProfiles(), ...loadFileProfiles() };
+}
 
-if (!MCP_ACCESS_TOKEN || PROFILE_NAMES.length === 0) {
-    console.error(
-        'Mancano le variabili d\'ambiente necessarie: serve MCP_ACCESS_TOKEN e almeno un profilo ' +
-        '(CHIFACOSA_PROFILE_1_NAME + CHIFACOSA_PROFILE_1_TOKEN, oppure CHIFACOSA_API_TOKEN per un singolo profilo) — il server non parte senza.'
-    );
-    process.exit(1);
+function requireAdminAuth(req, res) {
+    const raw = req.headers['authorization'] || '';
+    const m = raw.trim().match(/^Bearer\s*(.+)$/i);
+    const token = (m ? m[1] : raw).trim();
+    if (token !== MCP_ACCESS_TOKEN) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return false;
+    }
+    return true;
 }
 
 // Wrapper unico per tutte le chiamate all'API CHIFACOSA: stessa gestione errori/JSON/selezione
 // del token in base al profilo per ogni strumento, invece di ripeterla 5 volte.
 async function chifacosaApi(profileName, path, { method = 'GET', body } = {}) {
-    const token = PROFILES[profileName];
+    const profiles = getProfiles();
+    const profileNames = Object.keys(profiles);
+    const token = profiles[profileName];
     if (!token) {
         return {
             httpStatus: 400,
-            data: { success: false, error: `Profilo "${profileName}" non configurato su questo server. Profili disponibili: ${PROFILE_NAMES.join(', ')}.` },
+            data: { success: false, error: `Profilo "${profileName}" non configurato su questo server. Profili disponibili: ${profileNames.join(', ') || '(nessuno — registrane uno con POST /admin/profiles)'}.` },
         };
     }
     const res = await fetch(CHIFACOSA_BASE_URL + path, {
@@ -97,14 +130,6 @@ function toolResult(apiResult) {
     };
 }
 
-// Parametro "profile" aggiunto a ogni strumento: un enum dei nomi effettivamente configurati,
-// così Claude vede subito le opzioni valide invece di doverle indovinare o chiedertele a parte.
-// Se è configurato un solo profilo il campo resta comunque obbligatorio (per coerenza/chiarezza
-// dei log), ma con un solo valore possibile Claude lo compila da sé senza doverlo chiedere.
-const profileField = {
-    profile: z.enum(PROFILE_NAMES).describe(`Su quale profilo agire. Profili configurati: ${PROFILE_NAMES.join(', ')}`),
-};
-
 // Campi comuni a create/update — stessa forma esposta dall'API REST, vedi
 // app/src/api_helpers.php::apiValidateSocialPostPayload().
 const postFieldsSchema = {
@@ -118,14 +143,26 @@ const postFieldsSchema = {
 };
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.1.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.2.0' });
+
+    // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
+    // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
+    // comparire subito nell'enum, senza dover riavviare il container.
+    const profileNames = Object.keys(getProfiles());
+    // Se non c'è ancora nessun profilo registrato, z.enum([]) romperebbe la definizione dello
+    // schema (richiede almeno un valore) — in quel caso si accetta una stringa qualsiasi, tanto
+    // chifacosaApi() la rifiuta comunque con un errore chiaro che spiega come registrarne uno.
+    const profileSchema = profileNames.length > 0 ? z.enum(profileNames) : z.string();
+    const profileField = {
+        profile: profileSchema.describe(`Su quale profilo agire. Profili configurati: ${profileNames.join(', ') || '(nessuno ancora — vedi POST /admin/profiles)'}`),
+    };
 
     server.registerTool('list_chifacosa_profiles', {
         title: 'Elenca i profili CHIFACOSA disponibili',
         description: 'Elenca i nomi dei profili CHIFACOSA configurati su questo server MCP, da usare come valore del parametro "profile" negli altri strumenti.',
         inputSchema: {},
     }, async () => ({
-        content: [{ type: 'text', text: JSON.stringify({ success: true, profiles: PROFILE_NAMES }, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify({ success: true, profiles: profileNames }, null, 2) }],
         isError: false,
     }));
 
@@ -179,13 +216,46 @@ function buildMcpServer() {
 const app = express();
 app.use(express.json());
 
-// Log minimale di ogni richiesta in arrivo — mai il valore dell'header Authorization, solo se
-// è presente o no: serve a capire da fuori se una richiesta arriva davvero al container (utile
-// in fase di collegamento con claude.ai) senza esporre segreti nei log.
+// Log minimale di ogni richiesta in arrivo — mai il valore dell'header Authorization o del
+// body, solo se un Authorization è presente o no: serve a capire da fuori se una richiesta
+// arriva davvero al container, senza esporre segreti nei log.
 app.use((req, res, next) => {
     const hasAuth = req.headers['authorization'] ? 'con Authorization' : 'senza Authorization';
     console.log(`[req] ${req.method} ${req.path} — ${hasAuth} — User-Agent: ${req.headers['user-agent'] || '(nessuno)'}`);
     next();
+});
+
+// Gestione profili a caldo, senza redeploy: protetta dallo stesso MCP_ACCESS_TOKEN degli
+// strumenti — vanno chiamate direttamente da un terminale, MAI chiedendo a Claude di farlo,
+// altrimenti il token CHIFACOSA vero finirebbe scritto nella conversazione.
+app.get('/admin/profiles', (req, res) => {
+    if (!requireAdminAuth(req, res)) return;
+    res.json({ success: true, profiles: Object.keys(getProfiles()) });
+});
+
+app.post('/admin/profiles', (req, res) => {
+    if (!requireAdminAuth(req, res)) return;
+    const name = (req.body?.name || '').trim();
+    const token = (req.body?.token || '').trim();
+    if (!name || !token) {
+        res.status(400).json({ success: false, error: 'Servono sia "name" (nome a scelta per il profilo) sia "token" (il token CHIFACOSA di quel profilo, da Dashboard -> API).' });
+        return;
+    }
+    const profiles = loadFileProfiles();
+    profiles[name] = token;
+    saveFileProfiles(profiles);
+    console.log(`[admin] profilo "${name}" salvato (o aggiornato)`);
+    res.json({ success: true, profiles: Object.keys(getProfiles()) });
+});
+
+app.delete('/admin/profiles/:name', (req, res) => {
+    if (!requireAdminAuth(req, res)) return;
+    const profiles = loadFileProfiles();
+    const existed = req.params.name in profiles;
+    delete profiles[req.params.name];
+    saveFileProfiles(profiles);
+    console.log(`[admin] profilo "${req.params.name}" rimosso (${existed ? 'esisteva' : 'non esisteva nel file — nessun effetto'})`);
+    res.json({ success: true, profiles: Object.keys(getProfiles()) });
 });
 
 app.post('/mcp', async (req, res) => {
@@ -241,5 +311,6 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL} — profili configurati: ${PROFILE_NAMES.join(', ')}`);
+    const startupProfiles = Object.keys(getProfiles());
+    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL} — profili configurati: ${startupProfiles.join(', ') || '(nessuno ancora — registrali con POST /admin/profiles)'}`);
 });
