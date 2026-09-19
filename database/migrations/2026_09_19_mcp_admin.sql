@@ -1,0 +1,1 @@
+ALTER TABLE api_tokens ADD COLUMN mcp_name VARCHAR(100) DEFAULT NULL AFTER last_used_at;

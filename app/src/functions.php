@@ -7102,7 +7102,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
     'dashboard_che_amo','che_amo',
     'dashboard_fan_playlists','playlist_che_amo','dashboard_fan_albums','album_che_amo',
-    'dashboard_api_tokens','api'];
+    'dashboard_api_tokens','api','admin_mcp'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {

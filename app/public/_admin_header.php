@@ -21,6 +21,7 @@ $navItems = [
     'import_legacy' => ['url' => '/admin_import_legacy.php', 'icon' => 'fas fa-file-import', 'label' => 'Import legacy'],
     'reviews' => ['url' => '/admin_reviews.php', 'icon' => 'fas fa-star', 'label' => 'Recensioni'],
     'access_requests' => ['url' => '/admin_access_requests.php', 'icon' => 'fas fa-user-check', 'label' => 'Richieste di accesso'],
+    'mcp' => ['url' => '/admin_mcp.php', 'icon' => 'fas fa-robot', 'label' => 'Server MCP'],
 ];
 ?>
 <!doctype html>

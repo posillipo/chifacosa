@@ -596,6 +596,9 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     expires_at DATETIME DEFAULT NULL,
     last_used_at DATETIME DEFAULT NULL,
+    -- Nome con cui questo token è registrato sul server MCP (vedi admin_mcp.php) — NULL per i
+    -- token creati normalmente da Dashboard -> API, non legati a nessuna integrazione MCP.
+    mcp_name VARCHAR(100) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
