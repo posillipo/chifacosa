@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  mcp:
+    build: .
+    container_name: ${CONTAINER_NAME:-chifacosa_mcp}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - MCP_ACCESS_TOKEN=${MCP_ACCESS_TOKEN}
+      - CHIFACOSA_API_TOKEN=${CHIFACOSA_API_TOKEN}
+      - CHIFACOSA_BASE_URL=${CHIFACOSA_BASE_URL:-https://www.chifacosa.it/api/v1/social-posts}
+    networks:
+      - proxy-manager_default
+
+# Non serve la rete myband2_myband_net: questo server non parla mai direttamente col database,
+# solo con l'API pubblica di CHIFACOSA via HTTPS (come qualunque altro client dell'API) — quindi
+# gli basta essere raggiungibile da Nginx Proxy Manager, non dal MySQL condiviso.
+networks:
+  proxy-manager_default:
+    external: true
