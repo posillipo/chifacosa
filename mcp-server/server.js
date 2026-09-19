@@ -122,9 +122,19 @@ function buildMcpServer() {
 const app = express();
 app.use(express.json());
 
+// Log minimale di ogni richiesta in arrivo — mai il valore dell'header Authorization, solo se
+// è presente o no: serve a capire da fuori se una richiesta arriva davvero al container (utile
+// in fase di collegamento con claude.ai) senza esporre segreti nei log.
+app.use((req, res, next) => {
+    const hasAuth = req.headers['authorization'] ? 'con Authorization' : 'senza Authorization';
+    console.log(`[req] ${req.method} ${req.path} — ${hasAuth} — User-Agent: ${req.headers['user-agent'] || '(nessuno)'}`);
+    next();
+});
+
 app.post('/mcp', async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     if (authHeader !== `Bearer ${MCP_ACCESS_TOKEN}`) {
+        console.log('[mcp] token non valido o mancante — richiesta rifiutata (401)');
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
@@ -155,6 +165,15 @@ app.get('/mcp', (req, res) => res.status(405).json({ error: 'Method not allowed 
 app.delete('/mcp', (req, res) => res.status(405).json({ error: 'Method not allowed (stateless server, solo POST).' }));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+// Qualunque altro percorso (es. i "well-known" che alcuni client provano a scoprire da soli
+// prima di connettersi, come /.well-known/oauth-protected-resource) finisce qui: lo logghiamo
+// comunque, così se claude.ai prova un URL diverso da /mcp lo vediamo nei log invece di restare
+// al buio con un 404 muto.
+app.use((req, res) => {
+    console.log(`[404] nessuna rotta per ${req.method} ${req.path}`);
+    res.status(404).json({ error: 'Not found' });
+});
 
 app.listen(PORT, () => {
     console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL}`);
