@@ -132,9 +132,14 @@ app.use((req, res, next) => {
 });
 
 app.post('/mcp', async (req, res) => {
-    const authHeader = req.headers['authorization'] || '';
-    if (authHeader !== `Bearer ${MCP_ACCESS_TOKEN}`) {
-        console.log('[mcp] token non valido o mancante — richiesta rifiutata (401)');
+    // Tollerante sul formato: accetta sia "Bearer <token>" (maiuscole/minuscole indifferenti,
+    // spazi extra ignorati) sia il token nudo senza prefisso — alcuni client compilano l'header
+    // in modi leggermente diversi, meglio non dipendere da un confronto esatto sull'intera stringa.
+    const rawAuthHeader = req.headers['authorization'] || '';
+    const bearerMatch = rawAuthHeader.trim().match(/^Bearer\s+(.+)$/i);
+    const providedToken = (bearerMatch ? bearerMatch[1] : rawAuthHeader).trim();
+    if (providedToken !== MCP_ACCESS_TOKEN) {
+        console.log(`[mcp] token non valido — lunghezza ricevuta: ${providedToken.length} (attesa: ${MCP_ACCESS_TOKEN.length}), prefisso "Bearer" rilevato: ${!!bearerMatch} — richiesta rifiutata (401)`);
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
