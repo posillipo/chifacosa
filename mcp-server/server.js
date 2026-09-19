@@ -136,7 +136,10 @@ app.post('/mcp', async (req, res) => {
     // spazi extra ignorati) sia il token nudo senza prefisso — alcuni client compilano l'header
     // in modi leggermente diversi, meglio non dipendere da un confronto esatto sull'intera stringa.
     const rawAuthHeader = req.headers['authorization'] || '';
-    const bearerMatch = rawAuthHeader.trim().match(/^Bearer\s+(.+)$/i);
+    // \s* (non \s+): claude.ai a quanto pare compone l'header come "Bearer" + valore, SENZA
+    // spazio in mezzo — visto nei log come token ricevuto più lungo del previsto esattamente di
+    // 6 caratteri ("Bearer" letterale attaccato davanti).
+    const bearerMatch = rawAuthHeader.trim().match(/^Bearer\s*(.+)$/i);
     const providedToken = (bearerMatch ? bearerMatch[1] : rawAuthHeader).trim();
     if (providedToken !== MCP_ACCESS_TOKEN) {
         console.log(`[mcp] token non valido — lunghezza ricevuta: ${providedToken.length} (attesa: ${MCP_ACCESS_TOKEN.length}), prefisso "Bearer" rilevato: ${!!bearerMatch} — richiesta rifiutata (401)`);
