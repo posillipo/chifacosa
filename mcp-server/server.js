@@ -1,5 +1,5 @@
 // Server MCP remoto (Streamable HTTP, stateless) per collegare Claude (claude.ai/Claude Desktop)
-// al profilo CHIFACOSA configurato qui sotto, riusando l'API pubblica già esistente
+// a uno o più profili CHIFACOSA, riusando l'API pubblica già esistente
 // (/api/v1/social-posts/*, vedi app/src/api_helpers.php nel repo principale) invece di parlare
 // direttamente col database — stesso principio di qualunque altro client dell'API, solo che
 // questo lo fa per conto di Claude tramite gli strumenti MCP.
@@ -7,10 +7,14 @@
 // Autenticazione a due livelli, volutamente diversi:
 // 1) MCP_ACCESS_TOKEN — protegge QUESTO server da chiunque altro su internet: è il token che
 //    l'utente incolla nella configurazione del connector su claude.ai/Claude Desktop.
-// 2) CHIFACOSA_API_TOKEN — il token generato in Dashboard -> API su CHIFACOSA, usato QUI dentro
-//    per chiamare l'API per conto dell'utente. Non viene mai comunicato a claude.ai.
-// Tenerli separati vuol dire che il token "vero" verso CHIFACOSA non deve mai transitare per la
-// configurazione del connector: se un giorno va ruotato, si cambia solo qui, non lato claude.ai.
+// 2) Un token CHIFACOSA per ciascun profilo (vedi parseProfiles() sotto) — usati QUI dentro per
+//    chiamare l'API per conto dell'utente. Non vengono mai comunicati a claude.ai.
+// Tenerli separati vuol dire che i token "veri" verso CHIFACOSA non devono mai transitare per la
+// configurazione del connector: se uno va ruotato, si cambia solo qui, non lato claude.ai.
+//
+// Multi-profilo: chi gestisce più profili su CHIFACOSA può configurare un token per ciascuno
+// (uno stesso server MCP, un solo connector su claude.ai) e scegliere ogni volta su quale
+// profilo agire passando il parametro "profile" a ogni strumento — vedi parseProfiles().
 
 import express from 'express';
 import { randomUUID } from 'node:crypto';
@@ -20,21 +24,56 @@ import { z } from 'zod';
 
 const PORT = process.env.PORT || 3000;
 const MCP_ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
-const CHIFACOSA_API_TOKEN = process.env.CHIFACOSA_API_TOKEN;
 const CHIFACOSA_BASE_URL = (process.env.CHIFACOSA_BASE_URL || 'https://www.chifacosa.it/api/v1/social-posts').replace(/\/$/, '');
 
-if (!MCP_ACCESS_TOKEN || !CHIFACOSA_API_TOKEN) {
-    console.error('Mancano le variabili d\'ambiente MCP_ACCESS_TOKEN e/o CHIFACOSA_API_TOKEN — il server non parte senza.');
+// Legge i profili configurati dalle variabili d'ambiente CHIFACOSA_PROFILE_<N>_NAME /
+// CHIFACOSA_PROFILE_<N>_TOKEN (N = 1, 2, 3...) — un nome comodo scelto dall'utente (es. lo slug
+// del profilo) abbinato al token API generato per quel profilo da Dashboard -> API su CHIFACOSA.
+// Se non ce n'è nessuna, ricade sulla variabile singola CHIFACOSA_API_TOKEN (compatibilità con
+// l'installazione a un solo profilo, sotto il nome "principale").
+function parseProfiles() {
+    const profiles = {};
+    for (const key of Object.keys(process.env)) {
+        const m = key.match(/^CHIFACOSA_PROFILE_(\d+)_NAME$/);
+        if (!m) continue;
+        const idx = m[1];
+        const name = (process.env[key] || '').trim();
+        const token = (process.env[`CHIFACOSA_PROFILE_${idx}_TOKEN`] || '').trim();
+        if (name && token) {
+            profiles[name] = token;
+        }
+    }
+    if (Object.keys(profiles).length === 0 && process.env.CHIFACOSA_API_TOKEN) {
+        profiles['principale'] = process.env.CHIFACOSA_API_TOKEN.trim();
+    }
+    return profiles;
+}
+
+const PROFILES = parseProfiles();
+const PROFILE_NAMES = Object.keys(PROFILES);
+
+if (!MCP_ACCESS_TOKEN || PROFILE_NAMES.length === 0) {
+    console.error(
+        'Mancano le variabili d\'ambiente necessarie: serve MCP_ACCESS_TOKEN e almeno un profilo ' +
+        '(CHIFACOSA_PROFILE_1_NAME + CHIFACOSA_PROFILE_1_TOKEN, oppure CHIFACOSA_API_TOKEN per un singolo profilo) — il server non parte senza.'
+    );
     process.exit(1);
 }
 
-// Wrapper unico per tutte le chiamate all'API CHIFACOSA: stessa gestione errori/JSON per ogni
-// strumento, invece di ripeterla 5 volte.
-async function chifacosaApi(path, { method = 'GET', body } = {}) {
+// Wrapper unico per tutte le chiamate all'API CHIFACOSA: stessa gestione errori/JSON/selezione
+// del token in base al profilo per ogni strumento, invece di ripeterla 5 volte.
+async function chifacosaApi(profileName, path, { method = 'GET', body } = {}) {
+    const token = PROFILES[profileName];
+    if (!token) {
+        return {
+            httpStatus: 400,
+            data: { success: false, error: `Profilo "${profileName}" non configurato su questo server. Profili disponibili: ${PROFILE_NAMES.join(', ')}.` },
+        };
+    }
     const res = await fetch(CHIFACOSA_BASE_URL + path, {
         method,
         headers: {
-            Authorization: `Bearer ${CHIFACOSA_API_TOKEN}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -58,6 +97,14 @@ function toolResult(apiResult) {
     };
 }
 
+// Parametro "profile" aggiunto a ogni strumento: un enum dei nomi effettivamente configurati,
+// così Claude vede subito le opzioni valide invece di doverle indovinare o chiedertele a parte.
+// Se è configurato un solo profilo il campo resta comunque obbligatorio (per coerenza/chiarezza
+// dei log), ma con un solo valore possibile Claude lo compila da sé senza doverlo chiedere.
+const profileField = {
+    profile: z.enum(PROFILE_NAMES).describe(`Su quale profilo agire. Profili configurati: ${PROFILE_NAMES.join(', ')}`),
+};
+
 // Campi comuni a create/update — stessa forma esposta dall'API REST, vedi
 // app/src/api_helpers.php::apiValidateSocialPostPayload().
 const postFieldsSchema = {
@@ -71,50 +118,60 @@ const postFieldsSchema = {
 };
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.0.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.1.0' });
+
+    server.registerTool('list_chifacosa_profiles', {
+        title: 'Elenca i profili CHIFACOSA disponibili',
+        description: 'Elenca i nomi dei profili CHIFACOSA configurati su questo server MCP, da usare come valore del parametro "profile" negli altri strumenti.',
+        inputSchema: {},
+    }, async () => ({
+        content: [{ type: 'text', text: JSON.stringify({ success: true, profiles: PROFILE_NAMES }, null, 2) }],
+        isError: false,
+    }));
 
     server.registerTool('create_social_post', {
-        title: 'Crea un post sulla Timeline del profilo CHIFACOSA',
-        description: 'Crea un nuovo post (subito pubblicato, programmato per una data futura, o come bozza) sulla Timeline pubblica del profilo collegato a questo server.',
-        inputSchema: postFieldsSchema,
-    }, async (args) => toolResult(await chifacosaApi('/create', { method: 'POST', body: args })));
+        title: 'Crea un post sulla Timeline di un profilo CHIFACOSA',
+        description: 'Crea un nuovo post (subito pubblicato, programmato per una data futura, o come bozza) sulla Timeline pubblica del profilo CHIFACOSA scelto.',
+        inputSchema: { ...profileField, ...postFieldsSchema },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/create', { method: 'POST', body: fields })));
 
     server.registerTool('list_social_posts', {
-        title: 'Elenca i post del profilo',
-        description: 'Elenca i post del profilo, con filtri opzionali per status e intervallo di date, e paginazione.',
+        title: 'Elenca i post di un profilo',
+        description: 'Elenca i post del profilo scelto, con filtri opzionali per status e intervallo di date, e paginazione.',
         inputSchema: {
+            ...profileField,
             status: z.enum(['draft', 'scheduled', 'published']).optional(),
             from: z.string().optional().describe('Data minima (YYYY-MM-DD)'),
             to: z.string().optional().describe('Data massima (YYYY-MM-DD)'),
             page: z.number().int().min(1).optional(),
             per_page: z.number().int().min(1).max(100).optional(),
         },
-    }, async (args) => {
+    }, async ({ profile, ...args }) => {
         const params = new URLSearchParams();
         for (const [k, v] of Object.entries(args || {})) {
             if (v !== undefined && v !== null) params.set(k, String(v));
         }
         const qs = params.toString();
-        return toolResult(await chifacosaApi('/list' + (qs ? `?${qs}` : '')));
+        return toolResult(await chifacosaApi(profile, '/list' + (qs ? `?${qs}` : '')));
     });
 
     server.registerTool('get_social_post', {
         title: 'Dettaglio di un post',
-        description: 'Recupera i dettagli di un singolo post del profilo, dato il suo ID.',
-        inputSchema: { id: z.number().int().describe('ID del post') },
-    }, async ({ id }) => toolResult(await chifacosaApi(`/${id}`)));
+        description: 'Recupera i dettagli di un singolo post di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del post') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/${id}`)));
 
     server.registerTool('update_social_post', {
         title: 'Modifica un post',
-        description: 'Modifica un post esistente — funziona solo se il post è ancora "draft" o "scheduled" (non ancora pubblicato). Tutti i campi sono opzionali: solo quelli forniti vengono aggiornati.',
-        inputSchema: { id: z.number().int().describe('ID del post da modificare'), ...postFieldsSchema },
-    }, async ({ id, ...fields }) => toolResult(await chifacosaApi(`/${id}`, { method: 'PUT', body: fields })));
+        description: 'Modifica un post esistente di un profilo — funziona solo se il post è ancora "draft" o "scheduled" (non ancora pubblicato). Tutti i campi oltre a profile/id sono opzionali: solo quelli forniti vengono aggiornati.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del post da modificare'), ...postFieldsSchema },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/${id}`, { method: 'PUT', body: fields })));
 
     server.registerTool('delete_social_post', {
         title: 'Elimina un post',
-        description: 'Elimina definitivamente un post del profilo, dato il suo ID.',
-        inputSchema: { id: z.number().int().describe('ID del post da eliminare') },
-    }, async ({ id }) => toolResult(await chifacosaApi(`/${id}`, { method: 'DELETE' })));
+        description: 'Elimina definitivamente un post di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del post da eliminare') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/${id}`, { method: 'DELETE' })));
 
     return server;
 }
@@ -184,5 +241,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL}`);
+    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL} — profili configurati: ${PROFILE_NAMES.join(', ')}`);
 });
