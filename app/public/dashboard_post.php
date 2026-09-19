@@ -248,9 +248,15 @@ include __DIR__ . '/_dash_header.php';
           <?php if ($extraPhotoCount > 0): ?>
             <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
           <?php endif; ?>
+          <?php if (($p['source'] ?? 'dashboard') === 'api'): ?>
+            <span style="background:#20c997;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔌 Creato via API</span>
+          <?php endif; ?>
         </div>
         <small style="color:var(--text-muted)"><?= formatLocalDateTime($p['created_at'], $profile) ?></small>
+        <?php if (!empty($p['title'])): ?><p style="margin:4px 0;font-weight:700;"><?= e($p['title']) ?></p><?php endif; ?>
         <?php if ($p['testo']): ?><p style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
+        <?php if (!empty($p['hashtags'])): ?><p style="margin:4px 0;color:var(--accent);font-size:13px;"><?= e($p['hashtags']) ?></p><?php endif; ?>
+        <?php if (!empty($p['call_to_action'])): ?><p style="margin:4px 0;font-style:italic;font-size:13px;"><?= e($p['call_to_action']) ?></p><?php endif; ?>
         <?php if (!$isPrivate): ?>
           <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>
         <?php endif; ?>

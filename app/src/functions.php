@@ -6263,7 +6263,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT tp.id, tp.testo, tp.image_path, tp.image_thumb_path, tp.in_feed, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT tp.id, tp.title, tp.testo, tp.image_path, tp.image_thumb_path, tp.in_feed, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM timeline_posts tp JOIN users u ON u.id = tp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
         ORDER BY tp.created_at DESC LIMIT {$perTypeLimit}");
@@ -6289,7 +6289,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     foreach ($pensieroRows as $r) {
         $items[] = [
             'id' => (int) $r['id'],
-            'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : '📷 Foto', 'cover' => $r['image_path'],
+            'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : (!empty($r['title']) ? $r['title'] : ($r['image_path'] ? '📷 Foto' : '')), 'cover' => $r['image_path'],
             'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
             'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($pensieroPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
@@ -7101,7 +7101,8 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
     'dashboard_che_amo','che_amo',
-    'dashboard_fan_playlists','playlist_che_amo','dashboard_fan_albums','album_che_amo'];
+    'dashboard_fan_playlists','playlist_che_amo','dashboard_fan_albums','album_che_amo',
+    'dashboard_api_tokens','api'];
 
 // Genera uno slug univoco per un articolo di un dato utente (title -> slug, con suffisso -2, -3... se già esistente)
 function generateUniquePostSlug(int $userId, string $title, ?int $excludePostId = null): string {
@@ -7491,7 +7492,7 @@ const DASHBOARD_TAB_KEYS = [
     'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
     'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
-    'segui' => 'Follower', 'contatti' => 'Contatti',
+    'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API',
 ];
 
 // Ordine personalizzato (trascinamento in dashboard_nav_menu.php) della barra della dashboard di

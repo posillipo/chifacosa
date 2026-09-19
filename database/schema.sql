@@ -569,14 +569,51 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 CREATE TABLE IF NOT EXISTS timeline_posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    title VARCHAR(100) DEFAULT NULL,
     testo TEXT DEFAULT NULL,
     image_path VARCHAR(255) DEFAULT NULL,
     image_thumb_path VARCHAR(255) DEFAULT NULL,
+    hashtags VARCHAR(300) DEFAULT NULL,
+    call_to_action VARCHAR(200) DEFAULT NULL,
+    source VARCHAR(20) NOT NULL DEFAULT 'dashboard',
     visibility ENUM('public','private') NOT NULL DEFAULT 'public',
     in_feed TINYINT(1) NOT NULL DEFAULT 1,
     publish_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Token per l'API pubblica (POST /api/v1/social-posts/...): uno per profilo/automazione esterna.
+-- Solo l'hash SHA-256 è salvato (mai il token in chiaro) — stesso principio di remember_tokens.
+-- token_prefix è la parte iniziale del token (es. "sk_notaio_angelone_ab12") mostrata in dashboard
+-- per riconoscerlo senza poterlo mai ricostruire per intero.
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    label VARCHAR(100) NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    token_prefix VARCHAR(40) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    expires_at DATETIME DEFAULT NULL,
+    last_used_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Audit trail di ogni chiamata all'API pubblica (autenticata o no, riuscita o no) — usata sia per
+-- il rate limiting (100 richieste/ora per token, conteggiate su questa tabella) sia per la
+-- pagina admin di diagnostica.
+CREATE TABLE IF NOT EXISTS api_request_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    api_token_id INT DEFAULT NULL,
+    user_id INT DEFAULT NULL,
+    method VARCHAR(10) NOT NULL,
+    endpoint VARCHAR(200) NOT NULL,
+    status_code SMALLINT NOT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (api_token_id) REFERENCES api_tokens(id) ON DELETE SET NULL,
+    INDEX idx_token_time (api_token_id, created_at)
 ) ENGINE=InnoDB;
 
 -- Nuovo modulo "Brani": brani Spotify scelti dal profilo (di qualsiasi tipo), al posto del

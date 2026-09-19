@@ -67,7 +67,7 @@ $pageUrl = siteUrl('/' . $slug . '/timeline/' . $postId);
 // continua a mostrare le foto originali intatte, invariato.
 $ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
 $ogImage = $ogImagePath ? siteUrl($ogImagePath) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
-$anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiornamento su ' . siteName());
+$anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : (!empty($post['title']) ? $post['title'] : ('Nuovo aggiornamento su ' . siteName()));
 ?>
 <!doctype html>
 <html lang="it">
@@ -115,8 +115,17 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : ('Nuovo aggiorn
   <div class="card">
     <?= renderPhotoCarousel($photos, $postId) ?>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= e(formatLocalDateTime($post['created_at'], $artist)) ?></small>
+    <?php if (!empty($post['title'])): ?>
+      <p style="margin:8px 0 0;font-size:18px;font-weight:700;"><?= e($post['title']) ?></p>
+    <?php endif; ?>
     <?php if ($post['testo']): ?>
       <p style="margin-top:8px;font-size:16px;"><?= nl2br(e($post['testo'])) ?></p>
+    <?php endif; ?>
+    <?php if (!empty($post['hashtags'])): ?>
+      <p style="margin-top:8px;font-size:14px;color:var(--accent);"><?= e($post['hashtags']) ?></p>
+    <?php endif; ?>
+    <?php if (!empty($post['call_to_action'])): ?>
+      <p style="margin-top:8px;font-size:15px;font-style:italic;"><?= e($post['call_to_action']) ?></p>
     <?php endif; ?>
   </div>
 

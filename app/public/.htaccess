@@ -11,6 +11,13 @@ RewriteRule ^sitemap\.xml$ sitemap.php [L]
 # /robots.txt -> generato dinamicamente (usa siteUrl() per la riga Sitemap, invece di un dominio fisso)
 RewriteRule ^robots\.txt$ robots.php [L]
 
+# API pubblica /api/v1/social-posts/* (token Bearer, vedi app/src/api_helpers.php) — le rotte
+# fisse (create/list) devono stare PRIMA di quella generica /{id}, altrimenti quest'ultima le
+# intercetterebbe per prima interpretandole come un ID non numerico.
+RewriteRule ^api/v1/social-posts/create/?$ api_social_posts_create.php [L,QSA]
+RewriteRule ^api/v1/social-posts/list/?$ api_social_posts_list.php [L,QSA]
+RewriteRule ^api/v1/social-posts/([0-9]+)/?$ api_social_posts_item.php?id=$1 [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 

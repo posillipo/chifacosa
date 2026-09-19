@@ -91,6 +91,9 @@ $dashTabs['eventi'] = ['label' => 'Eventi', 'url' => '/dashboard_events.php', 'a
 $dashTabs['reservations'] = ['label' => 'Prenotazioni', 'url' => '/dashboard_reservations.php', 'active' => 'reservations', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
 $dashTabs['segui'] = ['label' => 'Follower', 'url' => '/dashboard_followers.php', 'active' => 'followers', 'visible' => $navVisibility['Segui'] ?? 1];
 $dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
+// Gestione token per l'API pubblica /api/v1/social-posts/*: strumento di gestione, non una
+// sezione del sito pubblico — sempre visibile, non legato al "Menu di Navigazione" come "Primo Piano".
+$dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'active' => 'api_tokens', 'visible' => true];
 
 $dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
 
