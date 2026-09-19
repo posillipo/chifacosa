@@ -115,18 +115,21 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
     }
 }
 
-.preconto-item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
-.preconto-item-name { flex: 1; }
-.preconto-item-price { color: var(--accent); font-weight: 600; white-space: nowrap; }
-.preconto-stepper { display: flex; align-items: center; gap: 8px; }
-.preconto-stepper button { width: 28px; height: 28px; border-radius: 50%; border: none; background: #f0f0f0; cursor: pointer; font-size: 16px; line-height: 1; }
-.preconto-qty { min-width: 20px; text-align: center; font-weight: 600; }
-.preconto-total-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 2px solid #eee; font-size: 16px; }
+.menu-item-price-wrap { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.preconto-stepper { display: flex; align-items: center; gap: 6px; }
+.preconto-stepper button { width: 24px; height: 24px; border-radius: 50%; border: none; background: #f0f0f0; color: #333; cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0; }
+.preconto-stepper button:hover { background: var(--accent); color: var(--accent-text); }
+.preconto-qty { min-width: 16px; text-align: center; font-weight: 600; }
+#preconto-bar { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 500; background: #fff; color: #222; box-shadow: 0 -2px 12px rgba(0,0,0,0.2); padding: 12px 16px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#preconto-bar-locked { display: flex; align-items: center; gap: 10px; background: none; border: none; color: var(--accent); font-weight: 700; font-size: 15px; cursor: pointer; padding: 0; }
+#preconto-bar-unlocked { display: none; align-items: center; gap: 14px; flex-wrap: wrap; }
+#preconto-total { color: var(--accent); }
 #preconto-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
 #preconto-modal { background: #fff; color: #222; border-radius: 12px; padding: 20px; max-width: 380px; width: 100%; max-height: 90vh; overflow-y: auto; }
 #preconto-modal h3 { color: #222; }
 #preconto-modal label { display: block; margin-top: 10px; font-size: 13px; font-weight: 600; color: #222; }
 #preconto-modal input[type="text"], #preconto-modal input[type="email"], #preconto-modal input[type="tel"] { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; color: #222; background: #fff; }
+body.menu-preconto-active { padding-bottom: 64px; }
 </style>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
@@ -166,7 +169,16 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
               <?php if ($it['description']): ?><div class="menu-item-desc"><?= e($it['description']) ?></div><?php endif; ?>
             </div>
             <?php if ($it['price'] !== null): ?>
-              <div class="menu-item-price">€ <?= e(number_format((float) $it['price'], 2, ',', '.')) ?></div>
+              <div class="menu-item-price-wrap">
+                <div class="menu-item-price">€ <?= e(number_format((float) $it['price'], 2, ',', '.')) ?></div>
+                <?php if (!empty($artist['menu_preconto_enabled'])): ?>
+                  <span class="preconto-stepper" data-id="<?= (int) $it['id'] ?>" data-price="<?= e((string) (float) $it['price']) ?>">
+                    <button type="button" data-delta="-1">−</button>
+                    <span class="preconto-qty">0</span>
+                    <button type="button" data-delta="1">+</button>
+                  </span>
+                <?php endif; ?>
+              </div>
             <?php endif; ?>
           </div>
         <?php endforeach; ?>
@@ -184,35 +196,21 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
     </p>
   <?php endif; ?>
 
-  <?php if (!empty($artist['menu_preconto_enabled']) && $allItems): ?>
+  <?php if (!empty($artist['menu_preconto_enabled']) && $allItems && array_filter($allItems, fn($it) => $it['price'] !== null)): ?>
     <?php
-      $precontoItems = array_values(array_filter(array_map(
-          fn($it) => $it['price'] !== null ? ['id' => (int) $it['id'], 'name' => $it['name'], 'price' => (float) $it['price']] : null,
-          $allItems
-      )));
       $precontoMsg = $_GET['preconto_msg'] ?? '';
       $precontoErr = !empty($_GET['preconto_err']);
       $precontoFollowTerms = trim(getSiteSetting('follow_terms_content') ?: '');
     ?>
-    <?php if ($precontoItems): ?>
-    <div class="card" id="preconto-card">
-      <?php if ($precontoMsg): ?>
-        <div class="alert <?= $precontoErr ? 'error' : 'success' ?>"><?= e($precontoMsg) ?></div>
-      <?php endif; ?>
-      <div id="preconto-locked">
-        <button type="button" class="btn" id="preconto-unlock-btn">🧮 Calcola il tuo preconto</button>
-        <p style="color:var(--text-muted);font-size:13px;margin-top:8px;">
-          Scegli i piatti e conosci subito il totale. Lascia i tuoi dati una volta sola: dopo la
-          conferma via email potrai usarlo ogni volta che vuoi.
-        </p>
-      </div>
-      <div id="preconto-unlocked" style="display:none;">
-        <h3 style="margin-top:0;">Il tuo preconto</h3>
-        <div id="preconto-items"></div>
-        <div class="preconto-total-bar">
-          <span>Totale: <strong id="preconto-total">€ 0,00</strong></span>
-          <button type="button" class="btn secondary" id="preconto-reset-btn" style="width:auto;">Svuota</button>
-        </div>
+    <?php if ($precontoMsg): ?>
+      <div class="alert <?= $precontoErr ? 'error' : 'success' ?>"><?= e($precontoMsg) ?></div>
+    <?php endif; ?>
+
+    <div id="preconto-bar">
+      <button type="button" id="preconto-bar-locked">🧮 Calcola il tuo preconto</button>
+      <div id="preconto-bar-unlocked">
+        <span>Totale: <strong id="preconto-total">€ 0,00</strong></span>
+        <button type="button" class="btn secondary" id="preconto-reset-btn" style="width:auto;">Svuota</button>
       </div>
     </div>
 
@@ -245,20 +243,19 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
         </form>
       </div>
     </div>
-    <script id="preconto-items-data" type="application/json"><?= json_encode($precontoItems) ?></script>
     <script>
     (function () {
       var userId = <?= (int) $artist['id'] ?>;
       var cookieName = 'preconto_ok_' + userId;
       var storageKey = 'preconto_qty_' + userId;
-      var itemsDataEl = document.getElementById('preconto-items-data');
-      if (!itemsDataEl) return;
-      var items = JSON.parse(itemsDataEl.textContent || '[]');
-      var lockedBox = document.getElementById('preconto-locked');
-      var unlockedBox = document.getElementById('preconto-unlocked');
-      var itemsBox = document.getElementById('preconto-items');
+      var steppers = document.querySelectorAll('.preconto-stepper');
+      if (!steppers.length) return;
+      document.body.classList.add('menu-preconto-active');
+
+      var bar = document.getElementById('preconto-bar');
+      var barLocked = document.getElementById('preconto-bar-locked');
+      var barUnlocked = document.getElementById('preconto-bar-unlocked');
       var totalEl = document.getElementById('preconto-total');
-      var unlockBtn = document.getElementById('preconto-unlock-btn');
       var resetBtn = document.getElementById('preconto-reset-btn');
       var modalBackdrop = document.getElementById('preconto-modal-backdrop');
       var modalCancel = document.getElementById('preconto-modal-cancel');
@@ -266,6 +263,9 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
       function getCookie(name) {
         var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
         return m ? decodeURIComponent(m[1]) : null;
+      }
+      function isUnlocked() {
+        return !!getCookie(cookieName);
       }
       function loadQty() {
         try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { return {}; }
@@ -277,71 +277,53 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
         return '€ ' + v.toFixed(2).replace('.', ',');
       }
       function render() {
+        var unlocked = isUnlocked();
+        bar.style.display = 'flex';
+        barLocked.style.display = unlocked ? 'none' : 'flex';
+        barUnlocked.style.display = unlocked ? 'flex' : 'none';
         var qty = loadQty();
-        itemsBox.innerHTML = '';
         var total = 0;
-        items.forEach(function (it) {
-          var q = qty[it.id] || 0;
-          total += q * it.price;
-          var row = document.createElement('div');
-          row.className = 'preconto-item-row';
-          var nameSpan = document.createElement('span');
-          nameSpan.className = 'preconto-item-name';
-          nameSpan.textContent = it.name;
-          var priceSpan = document.createElement('span');
-          priceSpan.className = 'preconto-item-price';
-          priceSpan.textContent = formatEuro(it.price);
-          var stepper = document.createElement('span');
-          stepper.className = 'preconto-stepper';
-          stepper.innerHTML = '<button type="button" data-id="' + it.id + '" data-delta="-1">−</button>' +
-            '<span class="preconto-qty">' + q + '</span>' +
-            '<button type="button" data-id="' + it.id + '" data-delta="1">+</button>';
-          row.appendChild(nameSpan);
-          row.appendChild(priceSpan);
-          row.appendChild(stepper);
-          itemsBox.appendChild(row);
+        steppers.forEach(function (stepper) {
+          var id = stepper.getAttribute('data-id');
+          var price = parseFloat(stepper.getAttribute('data-price'));
+          var q = unlocked ? (qty[id] || 0) : 0;
+          total += q * price;
+          stepper.querySelector('.preconto-qty').textContent = q;
         });
         totalEl.textContent = formatEuro(total);
       }
-      itemsBox.addEventListener('click', function (e) {
-        var btn = e.target.closest('button[data-id]');
-        if (!btn) return;
-        var id = btn.getAttribute('data-id');
-        var delta = parseInt(btn.getAttribute('data-delta'), 10);
-        var qty = loadQty();
-        qty[id] = Math.max(0, (qty[id] || 0) + delta);
-        saveQty(qty);
-        render();
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.preconto-stepper button');
+        if (btn) {
+          if (!isUnlocked()) {
+            modalBackdrop.style.display = 'flex';
+            return;
+          }
+          var stepper = btn.closest('.preconto-stepper');
+          var id = stepper.getAttribute('data-id');
+          var delta = parseInt(btn.getAttribute('data-delta'), 10);
+          var qty = loadQty();
+          qty[id] = Math.max(0, (qty[id] || 0) + delta);
+          saveQty(qty);
+          render();
+          return;
+        }
+        if (e.target.closest('#preconto-bar-locked')) {
+          modalBackdrop.style.display = 'flex';
+        }
       });
       resetBtn.addEventListener('click', function () {
         saveQty({});
         render();
       });
-
-      function showUnlocked() {
-        lockedBox.style.display = 'none';
-        unlockedBox.style.display = 'block';
-        render();
-      }
-
-      if (getCookie(cookieName)) {
-        showUnlocked();
-      }
-
-      unlockBtn.addEventListener('click', function () {
-        modalBackdrop.style.display = 'flex';
-      });
       modalCancel.addEventListener('click', function () {
         modalBackdrop.style.display = 'none';
       });
 
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('preconto_ok') === '1') {
-        showUnlocked();
-      }
+      render();
     })();
     </script>
-    <?php endif; ?>
   <?php endif; ?>
 </div>
 
