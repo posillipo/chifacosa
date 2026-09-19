@@ -124,8 +124,9 @@ $ogDescription = 'Il menù di ' . $artist['display_name'] . ' su ' . siteName();
 .preconto-total-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 2px solid #eee; font-size: 16px; }
 #preconto-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
 #preconto-modal { background: #fff; color: #222; border-radius: 12px; padding: 20px; max-width: 380px; width: 100%; max-height: 90vh; overflow-y: auto; }
-#preconto-modal label { display: block; margin-top: 10px; font-size: 13px; font-weight: 600; }
-#preconto-modal input[type="text"], #preconto-modal input[type="email"], #preconto-modal input[type="tel"] { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+#preconto-modal h3 { color: #222; }
+#preconto-modal label { display: block; margin-top: 10px; font-size: 13px; font-weight: 600; color: #222; }
+#preconto-modal input[type="text"], #preconto-modal input[type="email"], #preconto-modal input[type="tel"] { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; color: #222; background: #fff; }
 </style>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
