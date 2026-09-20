@@ -6,6 +6,7 @@ require_once __DIR__ . '/../src/tmdb.php';
 require_once __DIR__ . '/../src/googlebooks.php';
 require_once __DIR__ . '/../src/spoonacular.php';
 require_once __DIR__ . '/../src/thesportsdb.php';
+require_once __DIR__ . '/../src/crossref.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -132,6 +133,18 @@ const FAN_FAVORITE_KINDS = [
         'external_url' => 'https://www.thesportsdb.com/event/',
         'image_shape' => 'square',
     ],
+    'publication' => [
+        'table' => 'fan_favorite_publications',
+        'external_id_col' => 'crossref_doi',
+        'name_col' => 'publication_title',
+        'image_col' => 'publication_image',
+        'label' => 'Pubblicazioni che amo',
+        'nav_key' => 'pubblicazionicheamo',
+        'list_url_segment' => 'pubblicazioni-che-amo',
+        'external_label' => 'Apri pubblicazione (DOI)',
+        'external_url' => 'https://doi.org/',
+        'image_shape' => 'book',
+    ],
 ];
 
 $slug = $_GET['slug'] ?? '';
@@ -224,6 +237,8 @@ if ($kind === 'band') {
     $apiDetails = thesportsdbGetPlayerDetails($item[$cfg['external_id_col']]);
 } elseif ($kind === 'match') {
     $apiDetails = thesportsdbGetEventDetails($item[$cfg['external_id_col']]);
+} elseif ($kind === 'publication') {
+    $apiDetails = crossrefGetWorkDetails($item[$cfg['external_id_col']]);
 }
 
 // Le ricette non hanno una pagina Spoonacular canonica raggiungibile solo dall'id: il link
@@ -319,6 +334,7 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
       <?php if ($kind === 'footballer' && !empty($apiDetails['nationality'])): ?> · <?= e($apiDetails['nationality']) ?><?php endif; ?>
       <?php if ($kind === 'match' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
       <?php if ($kind === 'match' && !empty($apiDetails['venue'])): ?> · <?= e($apiDetails['venue']) ?><?php endif; ?>
+      <?php if ($kind === 'publication' && !empty($apiDetails['journal'])): ?> · <?= e($apiDetails['journal']) ?><?php endif; ?>
     </p>
     <small style="color:rgba(var(--text-rgb),0.6);"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
     <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?>

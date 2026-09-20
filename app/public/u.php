@@ -116,6 +116,7 @@ $cheAmoTableConfig = [
     'squadrecheamo' => ['table' => 'fan_favorite_teams', 'name' => 'team_name', 'image' => 'team_badge'],
     'calciatoricheamo' => ['table' => 'fan_favorite_players', 'name' => 'player_name', 'image' => 'player_photo'],
     'partitecheamo' => ['table' => 'fan_favorite_matches', 'name' => 'match_title', 'image' => 'match_image'],
+    'pubblicazionicheamo' => ['table' => 'fan_favorite_publications', 'name' => 'publication_title', 'image' => 'publication_image'],
 ];
 $cheAmoCarousel = [];
 // "cheamo" tra le chiavi nascoste (es. disattivato per tutta l'installazione da Area Admin →

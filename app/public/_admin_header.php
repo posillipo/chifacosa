@@ -16,6 +16,7 @@ $navItems = [
     'googlebooks' => ['url' => '/admin_googlebooks.php', 'icon' => 'fas fa-book', 'label' => 'Google Books (Libri)'],
     'spoonacular' => ['url' => '/admin_spoonacular.php', 'icon' => 'fas fa-bowl-food', 'label' => 'Spoonacular (Ricette)'],
     'thesportsdb' => ['url' => '/admin_thesportsdb.php', 'icon' => 'fas fa-futbol', 'label' => 'TheSportsDB (Squadre)'],
+    'crossref' => ['url' => '/admin_crossref.php', 'icon' => 'fas fa-microscope', 'label' => 'CrossRef (Pubblicazioni)'],
     'geoapify' => ['url' => '/admin_geoapify.php', 'icon' => 'fas fa-map-location-dot', 'label' => 'Geoapify (Viaggi)'],
     'google_login' => ['url' => '/admin_google_login.php', 'icon' => 'fa-brands fa-google', 'label' => 'Accedi con Google'],
     'import_legacy' => ['url' => '/admin_import_legacy.php', 'icon' => 'fas fa-file-import', 'label' => 'Import legacy'],

@@ -21,6 +21,7 @@ $moduleTables = [
     'squadrecheamo' => 'fan_favorite_teams',
     'calciatoricheamo' => 'fan_favorite_players',
     'partitecheamo' => 'fan_favorite_matches',
+    'pubblicazionicheamo' => 'fan_favorite_publications',
 ];
 $moduleUrls = [
     'bandcheamo' => '/dashboard_fan_bands.php',
@@ -35,6 +36,7 @@ $moduleUrls = [
     'squadrecheamo' => '/dashboard_fan_teams.php',
     'calciatoricheamo' => '/dashboard_fan_players.php',
     'partitecheamo' => '/dashboard_fan_matches.php',
+    'pubblicazionicheamo' => '/dashboard_fan_publications.php',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

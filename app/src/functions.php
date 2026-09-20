@@ -866,6 +866,7 @@ const ADMINLTE_CHE_AMO_ICONS = [
     'libricheamo' => 'bi-book', 'viaggi' => 'bi-airplane', 'brani' => 'bi-music-note-beamed',
     'playlistcheamo' => 'bi-music-note-list', 'albumcheamo' => 'bi-disc', 'ricettecheamo' => 'bi-egg-fried',
     'squadrecheamo' => 'bi-shield-fill', 'calciatoricheamo' => 'bi-person-badge-fill', 'partitecheamo' => 'bi-calendar-event-fill',
+    'pubblicazionicheamo' => 'bi-journal-medical',
 ];
 
 // Configurazione condivisa dei 6 moduli "che amo" con contenuto arricchito da un'API esterna
@@ -883,6 +884,7 @@ const ADMINLTE_FAN_FAVORITE_KINDS = [
     'team' => ['table' => 'fan_favorite_teams', 'external_id_col' => 'thesportsdb_team_id', 'name_col' => 'team_name', 'image_col' => 'team_badge', 'label' => 'Squadre che amo', 'nav_key' => 'squadrecheamo', 'list_url_segment' => 'squadre-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/team/', 'image_shape' => 'square'],
     'footballer' => ['table' => 'fan_favorite_players', 'external_id_col' => 'thesportsdb_player_id', 'name_col' => 'player_name', 'image_col' => 'player_photo', 'label' => 'Calciatori che amo', 'nav_key' => 'calciatoricheamo', 'list_url_segment' => 'calciatori-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/player/', 'image_shape' => 'circle'],
     'match' => ['table' => 'fan_favorite_matches', 'external_id_col' => 'thesportsdb_event_id', 'name_col' => 'match_title', 'image_col' => 'match_image', 'label' => 'Partite che amo', 'nav_key' => 'partitecheamo', 'list_url_segment' => 'partite-che-amo', 'external_label' => 'Vedi su TheSportsDB', 'external_url' => 'https://www.thesportsdb.com/event/', 'image_shape' => 'square'],
+    'publication' => ['table' => 'fan_favorite_publications', 'external_id_col' => 'crossref_doi', 'name_col' => 'publication_title', 'image_col' => 'publication_image', 'label' => 'Pubblicazioni che amo', 'nav_key' => 'pubblicazionicheamo', 'list_url_segment' => 'pubblicazioni-che-amo', 'external_label' => 'Apri pubblicazione (DOI)', 'external_url' => 'https://doi.org/', 'image_shape' => 'book'],
 ];
 
 // Helper condivisi per TUTTE le pagine pubbliche a tema AdminLTE oltre alla Home (Timeline, Blog,
@@ -1491,6 +1493,7 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success', 'label' => 'Squadra che amo'],
     'calciatore_favorito' => ['icon' => 'bi-person-badge-fill', 'color' => 'primary', 'label' => 'Calciatore che amo'],
     'partita_favorita' => ['icon' => 'bi-calendar-event-fill', 'color' => 'warning', 'label' => 'Partita che amo'],
+    'pubblicazione_favorita' => ['icon' => 'bi-journal-medical', 'color' => 'info', 'label' => 'Pubblicazione che amo'],
 ];
 
 // Righe della Timeline in stile "social" AdminLTE: ogni elemento è una .card a sé (componente
@@ -2714,6 +2717,7 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
                   <?php if ($kind === 'footballer' && !empty($apiDetails['nationality'])): ?> · <?= e($apiDetails['nationality']) ?><?php endif; ?>
                   <?php if ($kind === 'match' && !empty($apiDetails['league'])): ?> · <?= e($apiDetails['league']) ?><?php endif; ?>
                   <?php if ($kind === 'match' && !empty($apiDetails['venue'])): ?> · <?= e($apiDetails['venue']) ?><?php endif; ?>
+                  <?php if ($kind === 'publication' && !empty($apiDetails['journal'])): ?> · <?= e($apiDetails['journal']) ?><?php endif; ?>
                 </p>
                 <small class="text-secondary"><?= e(publishedAtLabel($item['publish_at'], $item['created_at'], $artist)) ?></small>
                 <?php if ($kind === 'album' && !empty($apiDetails['genres'])): ?><p class="mt-1 fst-italic"><?= e(implode(', ', $apiDetails['genres'])) ?></p><?php endif; ?>
@@ -4862,6 +4866,12 @@ function hasFanFavoriteMatches(int $userId): bool {
     return (int) $stmt->fetch()['c'] > 0;
 }
 
+function hasFanFavoritePublications(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT COUNT(*) c FROM fan_favorite_publications WHERE user_id = ? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetch()['c'] > 0;
+}
+
 // Elenco dei moduli "che amo" raccolti nella vetrina unica (che_amo.php / dashboard_che_amo.php)
 // — chiave interna (usata anche in profile_navigation_menu tramite PUBLIC_NAV_ITEM_KEYS) => nome
 // visualizzato, funzione che dice se il profilo ha contenuto, segmento URL pubblico. "Brani che
@@ -4880,6 +4890,7 @@ const CHE_AMO_MODULES = [
     'squadrecheamo' => ['label' => 'Squadre che amo', 'icon' => 'fas fa-futbol', 'check' => 'hasFanFavoriteTeams', 'segment' => 'squadre-che-amo', 'table' => 'fan_favorite_teams'],
     'calciatoricheamo' => ['label' => 'Calciatori che amo', 'icon' => 'fas fa-shirt', 'check' => 'hasFanFavoritePlayers', 'segment' => 'calciatori-che-amo', 'table' => 'fan_favorite_players'],
     'partitecheamo' => ['label' => 'Partite che amo', 'icon' => 'fas fa-calendar-check', 'check' => 'hasFanFavoriteMatches', 'segment' => 'partite-che-amo', 'table' => 'fan_favorite_matches'],
+    'pubblicazionicheamo' => ['label' => 'Pubblicazioni che amo', 'icon' => 'fas fa-microscope', 'check' => 'hasFanFavoritePublications', 'segment' => 'pubblicazioni-che-amo', 'table' => 'fan_favorite_publications'],
 ];
 
 // True se almeno un modulo "che amo" non nascosto ($hiddenKeys, da getHiddenNavKeys()) ha
@@ -6486,6 +6497,22 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    $stmt = $db->prepare("SELECT fp.id, fp.publication_title, fp.note, fp.image_path, fp.image_thumb_path, fp.in_feed, fp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+        FROM fan_favorite_publications fp JOIN users u ON u.id = fp.user_id JOIN profiles p ON p.user_id = u.id
+        WHERE fp.user_id IN ($placeholders) AND fp.is_public = 1 AND (fp.publish_at IS NULL OR fp.publish_at <= NOW()) ORDER BY fp.created_at DESC LIMIT {$perTypeLimit}");
+    $stmt->execute($userIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $fpTitolo = $r['publication_title'];
+        if (trim($r['note'] ?? '') !== '') {
+            $fpTitolo .= ': ' . textExcerpt($r['note'], 100);
+        }
+        $items[] = [
+            'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'pubblicazione_favorita', 'titolo' => $fpTitolo, 'cover' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
+            'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+            'url' => '/' . $r['user_slug'] . '/pubblicazioni-che-amo/' . $r['id'],
+        ];
+    }
+
     $stmt = $db->prepare("SELECT so.id, so.title, so.price_label, so.cover_path, so.in_feed, so.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM special_offers so JOIN users u ON u.id = so.user_id JOIN profiles p ON p.user_id = u.id
         WHERE so.user_id IN ($placeholders) AND so.is_active = 1
@@ -6569,6 +6596,7 @@ const PINNABLE_CONTENT_TYPES = [
     'squadra_favorita' => ['table' => 'fan_favorite_teams', 'title_col' => 'team_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'team_badge'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/squadre-che-amo/%d', 'label' => 'Squadra che amo'],
     'calciatore_favorito' => ['table' => 'fan_favorite_players', 'title_col' => 'player_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'player_photo'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/calciatori-che-amo/%d', 'label' => 'Calciatore che amo'],
     'partita_favorita' => ['table' => 'fan_favorite_matches', 'title_col' => 'match_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'match_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/partite-che-amo/%d', 'label' => 'Partita che amo'],
+    'pubblicazione_favorita' => ['table' => 'fan_favorite_publications', 'title_col' => 'publication_title', 'cover_cols' => ['image_thumb_path', 'image_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/pubblicazioni-che-amo/%d', 'label' => 'Pubblicazione che amo'],
     'offerta' => ['table' => 'special_offers', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'offerta', 'url_tpl' => '/%s/offerte/%d', 'label' => 'Offerta'],
     'album_foto' => ['table' => 'photo_albums', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/album/%d', 'label' => 'Album foto'],
     'servizio' => ['table' => 'services', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/servizi/%d', 'label' => 'Servizio'],
@@ -6925,7 +6953,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -6957,7 +6985,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -7097,6 +7125,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_actors','attori_che_amo','admin_gemini','dashboard_ai_caption','admin_tmdb',
     'dashboard_fan_movies','film_che_amo','fan_favorite_item',
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
+    'dashboard_fan_publications','pubblicazioni_che_amo','admin_crossref',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
@@ -7313,6 +7342,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Squadre che amo' => 'squadrecheamo',
     'Calciatori che amo' => 'calciatoricheamo',
     'Partite che amo' => 'partitecheamo',
+    'Pubblicazioni che amo' => 'pubblicazionicheamo',
     'Menù' => 'menu',
     'Offerte' => 'offerte',
     'Foto' => 'foto',
@@ -7361,6 +7391,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Squadre che amo', 'fas fa-futbol', '/' . $slug . '/squadre-che-amo', 25],
         ['Calciatori che amo', 'fas fa-shirt', '/' . $slug . '/calciatori-che-amo', 26],
         ['Partite che amo', 'fas fa-calendar-check', '/' . $slug . '/partite-che-amo', 27],
+        ['Pubblicazioni che amo', 'fas fa-microscope', '/' . $slug . '/pubblicazioni-che-amo', 28],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {

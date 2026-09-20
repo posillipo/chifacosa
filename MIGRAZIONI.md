@@ -1066,6 +1066,40 @@ Integrazione Meta Pixel/Conversions API: l'invio della richiesta di informazioni
 condiviso per la deduplicazione — stesso meccanismo già in uso per `Contact` nel modulo Contatti
 generico e `Schedule` per le prenotazioni tavolo).
 
+## 51. Nuovo modulo "Pubblicazioni che amo" (CrossRef API)
+```sql
+CREATE TABLE IF NOT EXISTS fan_favorite_publications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    crossref_doi VARCHAR(191) NOT NULL,
+    publication_title VARCHAR(500) NOT NULL,
+    note TEXT DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    image_thumb_path VARCHAR(500) DEFAULT NULL,
+    is_public TINYINT(1) NOT NULL DEFAULT 1,
+    in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_publication (user_id, crossref_doi),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+Nuovo modulo "che amo", stessa parità fin dall'inizio degli altri (Libri, Squadre...): ricerca
+live sul catalogo **CrossRef** (registro ufficiale dei DOI, oltre 150 milioni di pubblicazioni
+scientifiche/accademiche indicizzate — **nessuna chiave API richiesta**, servizio pubblico e
+gratuito; email di contatto facoltativa in ADMIN → CrossRef per il "polite pool", solo limiti di
+frequenza migliori, non autenticazione), pannello "✏️ Gestisci pubblicazione" completo (testo con
+✨ Genera con AI, foto opzionale, Pubblico/Solo io, programmazione, link personalizzato per il
+feed — come gli altri moduli che amo). A differenza degli altri moduli, CrossRef non fornisce mai
+una copertina: niente colonna immagine dall'API, solo l'eventuale foto personale caricata
+dall'utente. Pagina di dettaglio pubblica condivisibile su `fan_favorite_item.php?kind=publication`
+(copertina rettangolare come i libri), `/slug/pubblicazioni-che-amo/ID`, integrazione nel Feed,
+card nella vetrina "Che Amo" (mostrata solo se il profilo ha almeno una pubblicazione aggiunta),
+voce nel menu di navigazione personalizzabile (si aggiunge da sola ai profili esistenti). Elenco
+pubblico a mattonelle su `/slug/pubblicazioni-che-amo`.
+
 ---
 
 ## Come aggiungere una nuova voce
