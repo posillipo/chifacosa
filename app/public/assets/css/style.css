@@ -1748,9 +1748,8 @@ body.sartoria-page {
    un accento scelto a parte. Palette quindi grigio/argento invece di ambra/oro. */
 body.geolierstyle-page {
   color: #f0f0f0; --text-rgb: 240,240,240; --geolier-accent: #cfcfd4; --geolier-accent-bright: #ffffff; --geolier-panel: #2a2a2e;
-  background-color: #0a0a0b;
-  background-image: radial-gradient(ellipse 95% 70% at 50% 0%, rgba(255,255,255,0.65), transparent 80%), linear-gradient(180deg, #5c5c62 0%, #26262a 45%, #0a0a0b 100%);
-  background-attachment: fixed;
+  /* Colore piatto, uniforme in ogni angolo della pagina — niente più bagliore/sfumatura radiale. */
+  background-color: #48484d;
   min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
 }
 .geolierstyle-page .container { flex: 1 0 auto; max-width: 100%; }
@@ -1783,7 +1782,7 @@ body.geolierstyle-page {
 }
 .geolierstyle-page .avatar-wrap::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to top, #0a0a0b 0%, rgba(10,10,11,0.88) 24%, rgba(10,10,11,0.35) 55%, transparent 78%);
+  background: linear-gradient(to top, #48484d 0%, rgba(72,72,77,0.88) 24%, rgba(72,72,77,0.35) 55%, transparent 78%);
 }
 .geolierstyle-page .profile-header h1 {
   position: relative; margin: 0; margin-top: -126px; padding: 0 22px;
