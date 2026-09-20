@@ -243,6 +243,7 @@ $bandReviewers = $bandReviewers->fetchAll();
               <span>Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></span>
             </label>
           <?php endif; ?>
+          <?= renderTurnstileWidget() ?>
           <button type="submit" class="btn small" style="background:rgb(108,92,231);">Conferma</button>
         </form>
       </details>

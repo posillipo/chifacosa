@@ -58,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (int) $service['accepts_inquiries']
     $message = trim($_POST['message'] ?? '');
     if ($guestName === '' || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
         $formError = 'Compila nome ed email con un\'email valida.';
+    } elseif (!verifyTurnstileToken()) {
+        $formError = 'Verifica antispam non superata, riprova.';
     } else {
         $stmt = getDB()->prepare('INSERT INTO service_inquiries (user_id, service_id, guest_name, guest_email, guest_phone, message) VALUES (?,?,?,?,?,?)');
         $stmt->execute([$service['user_id'], $serviceId, $guestName, $guestEmail, $guestPhone !== '' ? $guestPhone : null, $message !== '' ? $message : null]);
@@ -158,6 +160,7 @@ $ogDescription = $service['description'] ? textExcerpt($service['description'], 
         <input type="tel" name="guest_phone">
         <label>Messaggio (opzionale)</label>
         <textarea name="message" rows="4"></textarea>
+        <?= renderTurnstileWidget() ?>
         <button type="submit" class="btn">Invia richiesta</button>
       </form>
     <?php endif; ?>

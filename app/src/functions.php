@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/turnstile.php';
 
 /**
  * Controlla se il sito è stato configurato.
@@ -1334,6 +1335,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
                           <span>Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></span>
                         </label>
                         <?php endif; ?>
+                        <?= renderTurnstileWidget() ?>
                         <button type="submit" class="btn btn-primary btn-sm">Conferma</button>
                       </form>
                     </div>
@@ -3785,6 +3787,7 @@ function renderAdminLteMenuPage(array $artist, string $slug, array $categories, 
                           <label class="form-check-label small" for="preconto-accept-terms">Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></label>
                         </div>
                       <?php endif; ?>
+                      <?= renderTurnstileWidget() ?>
                       <div class="d-flex gap-2 mt-3">
                         <button type="submit" class="btn btn-primary btn-sm">Conferma e attiva</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="preconto-modal-cancel">Annulla</button>
@@ -4428,6 +4431,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
                     <div class="mb-2"><label class="form-label">Email</label><input type="email" name="guest_email" class="form-control" required></div>
                     <div class="mb-2"><label class="form-label">Telefono (opzionale)</label><input type="tel" name="guest_phone" class="form-control"></div>
                     <div class="mb-3"><label class="form-label">Messaggio (opzionale)</label><textarea name="message" rows="4" class="form-control"></textarea></div>
+                    <?= renderTurnstileWidget() ?>
                     <button type="submit" class="btn btn-primary">Invia richiesta</button>
                   </form>
                 <?php endif; ?>
@@ -4618,6 +4622,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
                     <input type="checkbox" name="marketing_opt_in" value="1" class="form-check-input" id="mktOptIn">
                     <label class="form-check-label" for="mktOptIn">Voglio ricevere aggiornamenti su nuovi eventi e offerte da <?= e($event['display_name']) ?></label>
                   </div>
+                  <?= renderTurnstileWidget() ?>
                   <button type="submit" class="btn btn-primary">Prenota</button>
                 </form>
               </div>
@@ -4698,6 +4703,7 @@ function renderAdminLteContattiPage(array $artist, string $slug, bool $formSent,
                     <div class="mb-2"><label class="form-label">Nome</label><input type="text" name="sender_name" class="form-control" required></div>
                     <div class="mb-2"><label class="form-label">Email</label><input type="email" name="sender_email" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">Messaggio</label><textarea name="message" rows="4" class="form-control" required></textarea></div>
+                    <?= renderTurnstileWidget() ?>
                     <button type="submit" class="btn btn-primary">Invia messaggio</button>
                   </form>
                 </div>
@@ -7126,6 +7132,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_movies','film_che_amo','fan_favorite_item',
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_fan_publications','pubblicazioni_che_amo','admin_crossref',
+    'admin_turnstile',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',

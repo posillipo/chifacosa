@@ -28,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = trim($_POST['message'] ?? '');
     if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $message === '') {
         $formError = 'Compila tutti i campi con un\'email valida.';
+    } elseif (!verifyTurnstileToken()) {
+        $formError = 'Verifica antispam non superata, riprova.';
     } else {
         $stmt = getDB()->prepare('INSERT INTO contact_requests (user_id, sender_name, sender_email, message) VALUES (?,?,?,?)');
         $stmt->execute([$uid, $name, $email, $message]);
@@ -95,6 +97,7 @@ $pageUrl = siteUrl('/' . $userSlug . '/contatti');
       <input type="email" name="sender_email" required>
       <label>Messaggio</label>
       <textarea name="message" rows="4" required></textarea>
+      <?= renderTurnstileWidget() ?>
       <button type="submit" class="btn">Invia messaggio</button>
     </form>
   <?php endif; ?>

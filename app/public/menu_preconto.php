@@ -36,6 +36,9 @@ if ($firstName === '' || $lastName === '' || !filter_var($email, FILTER_VALIDATE
 } elseif ($followTermsContent !== '' && !$acceptedTerms) {
     $message = 'Devi accettare i Termini di Utilizzo per procedere.';
     $isError = true;
+} elseif (!verifyTurnstileToken()) {
+    $message = 'Verifica antispam non superata, riprova.';
+    $isError = true;
 } else {
     $stmt = getDB()->prepare('SELECT id, verified, token FROM followers WHERE user_id = ? AND email = ?');
     $stmt->execute([$artist['id'], $email]);

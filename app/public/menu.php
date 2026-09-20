@@ -236,6 +236,7 @@ body.menu-preconto-active { padding-bottom: 64px; }
               <span>Accetto i <a href="/termini_segui.php" target="_blank" rel="noopener">Termini di Utilizzo</a></span>
             </label>
           <?php endif; ?>
+          <?= renderTurnstileWidget() ?>
           <div style="display:flex;gap:8px;margin-top:14px;">
             <button type="submit" class="btn">Conferma e attiva</button>
             <button type="button" class="btn secondary" id="preconto-modal-cancel">Annulla</button>

@@ -144,6 +144,7 @@ $ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($ev
           <input type="checkbox" name="marketing_opt_in" value="1" style="width:auto;margin-bottom:0;">
           Voglio ricevere aggiornamenti su nuovi eventi e offerte da <?= e($event['display_name']) ?>
         </label>
+        <?= renderTurnstileWidget() ?>
         <button type="submit" class="btn">Prenota</button>
       </form>
     </div>

@@ -50,6 +50,9 @@ if ($guestName === '' || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
 } elseif ($partySize < 1 || $partySize > 50) {
     $message = 'Inserisci un numero di persone valido (1-50).';
     $isError = true;
+} elseif (!verifyTurnstileToken()) {
+    $message = 'Verifica antispam non superata, riprova.';
+    $isError = true;
 } else {
     $stmt = getDB()->prepare('INSERT INTO table_reservations
         (user_id, event_id, guest_name, guest_email, guest_phone, party_size, notes, marketing_opt_in)
