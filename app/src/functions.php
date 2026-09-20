@@ -6660,7 +6660,7 @@ function pinnableScheduleColumn(string $mode): ?string {
 // link "Modifica" di dashboard_schedule.php. '%d' viene sostituito con l'id della riga solo per i
 // tipi che lo prevedono (sprintf ignora l'argomento in più per gli altri URL, senza errori).
 const SCHEDULABLE_DASHBOARD_URLS = [
-    'pensiero' => '/dashboard_post.php',
+    'pensiero' => '/dashboard_post.php?edit=%d',
     'blog' => '/dashboard_blog_edit.php?id=%d',
     'brano' => '/dashboard_audio.php',
     'band_favorita' => '/dashboard_fan_bands.php',

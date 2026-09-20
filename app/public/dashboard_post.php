@@ -630,5 +630,23 @@ include __DIR__ . '/_dash_header.php';
         }
       });
     })();
+
+    // Arrivo diretto su un post da modificare (es. dal link "Modifica" di dashboard_schedule.php,
+    // /dashboard_post.php?edit=ID): scorre fino a quella card e apre subito il suo pannello, senza
+    // dover cercare il post a mano nell'elenco — stessa comodità di dashboard_blog_edit.php, che
+    // invece ha una pagina dedicata per singolo articolo.
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get('edit');
+      if (!editId) return;
+      const row = document.querySelector('[data-tl-post="' + CSS.escape(editId) + '"]');
+      if (!row) return;
+      const toggleBtn = row.querySelector('.tl-pub-toggle');
+      if (toggleBtn) toggleBtn.click();
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.style.transition = 'box-shadow 0.3s ease';
+      row.style.boxShadow = '0 0 0 3px var(--accent)';
+      setTimeout(function () { row.style.boxShadow = ''; }, 2000);
+    })();
   </script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
