@@ -87,11 +87,14 @@ function crossrefSearch(string $query): array {
             continue;
         }
         $authors = crossrefFormatAuthors($w['author'] ?? []);
+        $releaseDate = crossrefFormatDateParts($w['published']['date-parts'][0] ?? null);
+        $year = $releaseDate ? substr($releaseDate, 0, 4) : null;
         $results[] = [
             'id' => $doi,
-            'name' => $title . ($authors ? ' — ' . $authors : ''),
+            'name' => $title . ($authors ? ' — ' . $authors : '') . ($year ? ' (' . $year . ')' : ''),
             'title' => $title,
             'authors' => $authors,
+            'year' => $year,
             'image' => null,
         ];
         if (count($results) >= 10) {
