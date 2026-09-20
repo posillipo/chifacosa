@@ -341,7 +341,7 @@ include __DIR__ . '/_dash_header.php';
             <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
             <label>Programma la pubblicazione (opzionale)</label>
-            <input type="datetime-local" class="tl-pub-publish-at" value="<?= $p['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($p['publish_at']))) : '' ?>">
+            <input type="datetime-local" class="tl-pub-publish-at" value="<?= e(localDateTimeInputValue($p['publish_at'], $profile)) ?>">
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
 
             <p class="tl-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>

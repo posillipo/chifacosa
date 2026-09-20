@@ -6050,6 +6050,28 @@ function formatLocalDateTime(?string $datetime, ?array $profile, string $format 
     }
 }
 
+// Stessa conversione di formatLocalDateTime(), ma nel formato richiesto da un campo
+// <input type="datetime-local"> — da usare SEMPRE per precompilare un simile campo con un
+// publish_at/published_at già salvato (pannelli "✏️ Gestisci pubblicazione" di Timeline e di
+// ogni modulo Che Amo, Album, Servizi...). Prima questi pannelli usavano un date(strtotime(...))
+// diretto, che ristampa il valore salvato nel fuso orario del SERVER invece che in quello del
+// profilo — corretto solo per pura coincidenza se i due fusi coincidono, sbagliato altrimenti (un
+// post programmato per le 9:00 secondo il profilo poteva ricomparire in modifica come "7:00",
+// pur essendo lo stesso identico istante — bug segnalato da un utente confrontando questa pagina
+// con dashboard_schedule.php, che invece già usava la conversione corretta).
+function localDateTimeInputValue(?string $datetime, ?array $profile): string {
+    if (!$datetime) {
+        return '';
+    }
+    try {
+        $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+        return $dt->format('Y-m-d\TH:i');
+    } catch (Exception $e) {
+        return date('Y-m-d\TH:i', strtotime($datetime) ?: time());
+    }
+}
+
 // Nomi dei mesi in italiano: il sito non ha mai avuto bisogno finora di stampare un mese per
 // esteso (solo date numeriche, d/m/Y), quindi non c'è un formattatore locale già pronto — niente
 // setlocale()/intl (dipenderebbero da cosa ha installato il container), un semplice array basta.

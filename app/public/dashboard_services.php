@@ -313,7 +313,7 @@ include __DIR__ . '/_dash_header.php';
             </label>
             <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
             <label>Programma la pubblicazione (opzionale)</label>
-            <input type="datetime-local" name="publish_at" value="<?= $sv['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($sv['publish_at']))) : '' ?>">
+            <input type="datetime-local" name="publish_at" value="<?= e(localDateTimeInputValue($sv['publish_at'], $profile)) ?>">
             <button type="submit" class="btn small" style="margin-top:10px;">Salva modifiche</button>
           </form>
         </details>
