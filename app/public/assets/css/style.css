@@ -1742,10 +1742,14 @@ body.sartoria-page {
    ambrato caldo (come un faretto/lampadario) che sfuma nel nero dietro l'avatar, titolo
    maiuscolo grassetto molto marcato, pulsanti pieni a rettangolo scuro (non a pillola) con
    bordo sottile chiaro, icone social a cerchio solo contornato invece che riempito. ===== */
+/* Palette misurata a campione sull'originale (screenshot reale, non a occhio): i pulsanti sono
+   un grigio ardesia neutro (#32-49, R≈G≈B, niente tinta calda) e lo sfondo scorrendo oltre la
+   copertina resta neutro — il caldo che si vede in cima viene tutto dalla foto stessa, non da
+   un accento scelto a parte. Palette quindi grigio/argento invece di ambra/oro. */
 body.geolierstyle-page {
-  color: #f3ede4; --text-rgb: 243,237,228; --geolier-amber: #e3a24f; --geolier-amber-bright: #f3c07c; --geolier-panel: #1a1714;
-  background-color: #0a0908;
-  background-image: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(227,162,79,0.22), transparent 62%), linear-gradient(180deg, #171310 0%, #100e0c 55%, #0a0908 100%);
+  color: #f0f0f0; --text-rgb: 240,240,240; --geolier-accent: #cfcfd4; --geolier-accent-bright: #ffffff; --geolier-panel: #2a2a2e;
+  background-color: #0a0a0b;
+  background-image: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,255,255,0.08), transparent 62%), linear-gradient(180deg, #1c1c1f 0%, #131315 55%, #0a0a0b 100%);
   background-attachment: fixed;
   min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
 }
@@ -1779,7 +1783,7 @@ body.geolierstyle-page {
 }
 .geolierstyle-page .avatar-wrap::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to top, #0a0908 0%, rgba(10,9,8,0.88) 24%, rgba(10,9,8,0.35) 55%, transparent 78%);
+  background: linear-gradient(to top, #0a0a0b 0%, rgba(10,10,11,0.88) 24%, rgba(10,10,11,0.35) 55%, transparent 78%);
 }
 .geolierstyle-page .profile-header h1 {
   position: relative; margin: 0; margin-top: -126px; padding: 0 22px;
@@ -1816,22 +1820,22 @@ body.geolierstyle-page {
   transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 .geolierstyle-page .color-link-btn:hover {
-  background: #232019 !important; transform: translateY(-2px); border-color: var(--geolier-amber) !important;
+  background: #38383d !important; transform: translateY(-2px); border-color: rgba(255,255,255,0.4) !important;
 }
 .geolierstyle-page .card {
-  background: rgba(26,23,20,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(var(--text-rgb),0.95);
+  background: rgba(30,30,33,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(var(--text-rgb),0.95);
   backdrop-filter: blur(6px);
 }
-.geolierstyle-page .section-title { color: var(--geolier-amber); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+.geolierstyle-page .section-title { color: var(--geolier-accent); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
 .geolierstyle-page .event-item, .geolierstyle-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
-.geolierstyle-page a { color: var(--geolier-amber-bright); }
+.geolierstyle-page a { color: var(--geolier-accent-bright); }
 .geolierstyle-page form textarea, .geolierstyle-page form input {
   background: var(--geolier-panel); border: 1px solid rgba(255,255,255,0.16); color: rgba(var(--text-rgb),0.95); border-radius: 8px;
 }
 .geolierstyle-page form label { color: rgba(var(--text-rgb),0.6); }
 .geolierstyle-page .help-box { background: var(--geolier-panel); border-color: rgba(255,255,255,0.14); color: rgba(var(--text-rgb),0.95); }
-.geolierstyle-page .link-divider { color: var(--geolier-amber); }
-.geolierstyle-page .link-divider::before, .geolierstyle-page .link-divider::after { background: var(--geolier-amber); opacity: 0.5; }
+.geolierstyle-page .link-divider { color: var(--geolier-accent); }
+.geolierstyle-page .link-divider::before, .geolierstyle-page .link-divider::after { background: var(--geolier-accent); opacity: 0.5; }
 
 /* ===== Tema "Coniglietti": pastello rosa soffice, ombre morbide (sfocate, non nette come nei
    temi Cosplay) e due orecchie da coniglio disegnate in puro CSS (::before/::after su

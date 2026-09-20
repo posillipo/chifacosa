@@ -59,7 +59,7 @@ $themePickerBackgrounds = [
     'cinemapop' => 'linear-gradient(180deg, #14100a 0%, #3a2205 45%, #8a4a05 78%, #f5921f 100%)',
     'nightdrop' => 'linear-gradient(180deg, #0c1526 0%, #131d33 100%)',
     'sartoria' => 'repeating-linear-gradient(115deg, rgba(201,162,39,0.18) 0 1px, transparent 1px 26px), linear-gradient(160deg,#1c1914,#0f0d09)',
-    'geolierstyle' => 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(227,162,79,0.35), transparent 62%), linear-gradient(180deg, #171310 0%, #0a0908 100%)',
+    'geolierstyle' => 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,255,255,0.14), transparent 62%), linear-gradient(180deg, #1c1c1f 0%, #0a0a0b 100%)',
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'adminlte-profile' => 'linear-gradient(160deg, #f4f6f9 0%, #e9ecef 100%)',
@@ -288,9 +288,9 @@ include __DIR__ . '/_dash_header.php';
               </div>
             <?php elseif ($key === 'geolierstyle'): ?>
               <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:16px 10px;margin-bottom:10px;">
-                <div style="width:40px;height:40px;border-radius:50%;background:#1a1714;margin:0 auto 8px;border:2px solid #fff;"></div>
-                <div style="background:#1a1714;border:1px solid rgba(255,255,255,0.14);border-radius:6px;height:10px;margin-bottom:4px;"></div>
-                <div style="background:#1a1714;border:1px solid rgba(255,255,255,0.14);border-radius:6px;height:10px;"></div>
+                <div style="width:40px;height:40px;border-radius:50%;background:#2a2a2e;margin:0 auto 8px;border:2px solid #fff;"></div>
+                <div style="background:#2a2a2e;border:1px solid rgba(255,255,255,0.14);border-radius:6px;height:10px;margin-bottom:4px;"></div>
+                <div style="background:#2a2a2e;border:1px solid rgba(255,255,255,0.14);border-radius:6px;height:10px;"></div>
               </div>
             <?php elseif ($key === 'adminlte-profile'): ?>
               <div style="background:<?= e($themePickerBackgrounds[$key]) ?>;border-radius:6px;padding:10px;margin-bottom:10px;">
