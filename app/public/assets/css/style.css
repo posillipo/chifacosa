@@ -1760,10 +1760,17 @@ body.geolierstyle-page {
    left:50%/margin-left:-50vw, indipendente da eventuali padding dei contenitori sopra);
    h1/.profile-meta restano al loro posto nel flusso normale della pagina, tirati su con un
    margine negativo per sovrapporsi visivamente alla parte bassa della foto. */
-.geolierstyle-page .profile-header { margin-bottom: 20px; }
+/* Il "recupero" del padding superiore del contenitore va fatto qui, sul genitore, non sul
+   figlio (.avatar-wrap) — altrimenti il figlio "sporge" sopra il bordo del proprio genitore. Il
+   min-height ripete la stessa formula di dimensionamento della foto (aspect-ratio 4/5, tetto
+   560px): senza di esso, il margine negativo di h1 (usato per farlo sovrapporre alla foto)
+   "risucchia" l'altezza automatica di .profile-header al di sotto di quella reale della foto —
+   il contenuto successivo (icone social) partirebbe qualche pixel troppo presto, tagliando il
+   bordo superiore dei cerchi contro il fondo della foto/sfumatura invece di iniziare tutto sotto. */
+.geolierstyle-page .profile-header { margin-bottom: 20px; margin-top: -24px; min-height: min(125vw, 560px); }
 .geolierstyle-page .avatar-wrap {
   display: block; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
-  width: 100vw; margin-top: -24px;
+  width: 100vw;
   aspect-ratio: 4 / 5; max-height: 560px; overflow: hidden;
 }
 .geolierstyle-page .avatar {
