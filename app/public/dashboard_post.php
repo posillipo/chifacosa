@@ -95,6 +95,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'timeline', $anteprima, $timelineUrl);
             }
         }
+    } elseif ($action === 'edit') {
+        // Pannello "✏️ Gestisci pubblicazione" per un post già esistente — stessa logica di
+        // modifica già disponibile per i moduli Che Amo (dashboard_fan_*.php): fino ad oggi qui
+        // si poteva solo eliminare il post o le sue foto, non correggere testo/privacy/
+        // programmazione dopo la pubblicazione.
+        $id = (int) ($_POST['id'] ?? 0);
+        $title = trim($_POST['title'] ?? '');
+        $testo = trim($_POST['testo'] ?? '');
+        $hashtags = trim($_POST['hashtags'] ?? '');
+        $callToAction = trim($_POST['call_to_action'] ?? '');
+        $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
+        if ($publishAt && strtotime($publishAt) <= time()) {
+            $publishAt = null;
+        }
+
+        $isAjax = !empty($_POST['ajax']);
+        if ($title === '' && $testo === '') {
+            $error = 'Scrivi almeno un titolo o un testo.';
+        } else {
+            $stmt = getDB()->prepare('UPDATE timeline_posts SET title=?, testo=?, hashtags=?, call_to_action=?, visibility=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$title !== '' ? $title : null, $testo !== '' ? $testo : null, $hashtags !== '' ? $hashtags : null, $callToAction !== '' ? $callToAction : null, $visibility, $inFeed, $publishAt, $id, $profile['id']]);
+            logAdminAction((int) $profile['id'], (int) $user['id'], 'Aggiornamento Timeline modificato');
+        }
+
+        if ($isAjax) {
+            $stmt = getDB()->prepare('SELECT * FROM timeline_posts WHERE id=? AND user_id=?');
+            $stmt->execute([$id, $profile['id']]);
+            $row = $stmt->fetch();
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => empty($error) && (bool) $row, 'item' => $row, 'error' => $error]);
+            exit;
+        }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT image_path, image_thumb_path FROM timeline_posts WHERE id=? AND user_id=?');
@@ -221,6 +255,7 @@ include __DIR__ . '/_dash_header.php';
   </div>
 
   <div class="section-title">I tuoi aggiornamenti (<?= count($posts) ?>)</div>
+  <div id="tl-posts-list">
   <?php foreach ($posts as $p): ?>
     <?php
       $isScheduled = $p['publish_at'] && strtotime($p['publish_at']) > time();
@@ -229,21 +264,21 @@ include __DIR__ . '/_dash_header.php';
       $stmt->execute([$p['id']]);
       $extraPhotoCount = (int) $stmt->fetch()['c'];
     ?>
-    <div class="card" style="display:flex;gap:14px;align-items:flex-start;<?= $isScheduled ? 'border:1px solid #f0ad4e;' : '' ?>">
+    <div class="card" data-tl-post="<?= (int) $p['id'] ?>" style="display:flex;gap:14px;align-items:flex-start;<?= $isScheduled ? 'border:1px solid #f0ad4e;' : '' ?>">
       <?php if ($p['image_path']): ?>
         <img src="/<?= e($p['image_thumb_path'] ?: $p['image_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+        <div class="tl-badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
           <?php if ($isScheduled): ?>
-            <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">
+            <span class="tl-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">
               ⏰ Programmato per il <?= formatLocalDateTime($p['publish_at'], $profile) ?>
             </span>
           <?php endif; ?>
           <?php if ($isPrivate): ?>
-            <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>
+            <span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>
           <?php elseif (!(int) ($p['in_feed'] ?? 1)): ?>
-            <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
+            <span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
           <?php endif; ?>
           <?php if ($extraPhotoCount > 0): ?>
             <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
@@ -253,13 +288,70 @@ include __DIR__ . '/_dash_header.php';
           <?php endif; ?>
         </div>
         <small style="color:var(--text-muted)"><?= formatLocalDateTime($p['created_at'], $profile) ?></small>
-        <?php if (!empty($p['title'])): ?><p style="margin:4px 0;font-weight:700;"><?= e($p['title']) ?></p><?php endif; ?>
-        <?php if ($p['testo']): ?><p style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
-        <?php if (!empty($p['hashtags'])): ?><p style="margin:4px 0;color:var(--accent);font-size:13px;"><?= e($p['hashtags']) ?></p><?php endif; ?>
-        <?php if (!empty($p['call_to_action'])): ?><p style="margin:4px 0;font-style:italic;font-size:13px;"><?= e($p['call_to_action']) ?></p><?php endif; ?>
+        <div class="tl-text-block">
+          <?php if (!empty($p['title'])): ?><p class="tl-title" style="margin:4px 0;font-weight:700;"><?= e($p['title']) ?></p><?php endif; ?>
+          <?php if ($p['testo']): ?><p class="tl-testo" style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
+          <?php if (!empty($p['hashtags'])): ?><p class="tl-hashtags" style="margin:4px 0;color:var(--accent);font-size:13px;"><?= e($p['hashtags']) ?></p><?php endif; ?>
+          <?php if (!empty($p['call_to_action'])): ?><p class="tl-cta" style="margin:4px 0;font-style:italic;font-size:13px;"><?= e($p['call_to_action']) ?></p><?php endif; ?>
+        </div>
         <?php if (!$isPrivate): ?>
           <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>
         <?php endif; ?>
+
+        <div class="tl-pub-block" style="margin-top:8px;">
+          <button type="button" class="btn small secondary tl-pub-toggle">✏️ Gestisci pubblicazione</button>
+          <form class="tl-pub-editor" onsubmit="return false;" style="display:none;margin-top:8px;">
+            <label>Titolo (opzionale)</label>
+            <input type="text" class="tl-pub-title" value="<?= e($p['title'] ?? '') ?>">
+
+            <label>Testo</label>
+            <textarea class="tl-pub-textarea" rows="3"><?= e($p['testo'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 12px;">
+              <button type="button" class="btn small secondary tl-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="tl-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-4px 0 12px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="tl-ai-keywords" rows="2" placeholder="es. annuncio nuovo concerto sabato 14 a Milano"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small tl-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary tl-ai-cancel">Annulla</button>
+              </div>
+              <p class="tl-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
+
+            <label>Hashtag (opzionale)</label>
+            <input type="text" class="tl-pub-hashtags" value="<?= e($p['hashtags'] ?? '') ?>">
+
+            <label>Call to action (opzionale)</label>
+            <input type="text" class="tl-pub-cta" value="<?= e($p['call_to_action'] ?? '') ?>">
+
+            <label>Privacy</label>
+            <div style="display:flex;gap:16px;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" class="tl-pub-visibility" name="tl-visibility-<?= (int) $p['id'] ?>" value="public" <?= $isPrivate ? '' : 'checked' ?> style="width:auto;"> Pubblico
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" class="tl-pub-visibility" name="tl-visibility-<?= (int) $p['id'] ?>" value="private" <?= $isPrivate ? 'checked' : '' ?> style="width:auto;"> Solo io
+              </label>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+              <input type="checkbox" class="tl-pub-in-feed" <?= ($p['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+            </label>
+            <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
+
+            <label>Programma la pubblicazione (opzionale)</label>
+            <input type="datetime-local" class="tl-pub-publish-at" value="<?= $p['publish_at'] ? e(date('Y-m-d\TH:i', strtotime($p['publish_at']))) : '' ?>">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
+
+            <p class="tl-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button type="button" class="btn small tl-pub-save">Salva</button>
+              <button type="button" class="btn small secondary tl-pub-cancel">Annulla</button>
+            </div>
+          </form>
+        </div>
+
         <?php if ($p['image_path']):
           $tlExtraPhotos = getDB()->prepare('SELECT id, image_path FROM timeline_post_photos WHERE post_id=? ORDER BY sort_order ASC, id ASC');
           $tlExtraPhotos->execute([(int) $p['id']]);
@@ -304,6 +396,7 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+  </div>
 
   <script>
     // Genera nel browser una miniatura JPEG leggera (max 600px, qualità 0.82) dalla foto
@@ -384,6 +477,157 @@ include __DIR__ . '/_dash_header.php';
             generateBtn.disabled = false;
             statusEl.textContent = 'Errore di connessione. Riprova.';
           });
+      });
+    })();
+
+    // Pannello "✏️ Gestisci pubblicazione" per i post già pubblicati (delegato: funziona per
+    // tutte le card presenti al caricamento della pagina).
+    (function () {
+      const listBox = document.getElementById('tl-posts-list');
+      if (!listBox) return;
+      const csrfInput = document.querySelector('form input[name="csrf"]');
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      function post(formData) {
+        formData.set('csrf', csrfInput.value);
+        formData.set('ajax', '1');
+        return fetch('/dashboard_post.php', { method: 'POST', body: formData }).then(r => r.json());
+      }
+
+      listBox.addEventListener('click', function (e) {
+        const toggleBtn = e.target.closest('.tl-pub-toggle');
+        const cancelBtn = e.target.closest('.tl-pub-cancel');
+        const saveBtn = e.target.closest('.tl-pub-save');
+        const aiToggleBtn = e.target.closest('.tl-ai-toggle');
+        const aiCancelBtn = e.target.closest('.tl-ai-cancel');
+        const aiGenerateBtn = e.target.closest('.tl-ai-generate');
+
+        if (toggleBtn) {
+          const block = toggleBtn.closest('.tl-pub-block');
+          block.querySelector('.tl-pub-editor').style.display = 'block';
+          block.querySelector('.tl-pub-textarea').focus();
+          return;
+        }
+
+        if (cancelBtn) {
+          cancelBtn.closest('.tl-pub-editor').style.display = 'none';
+          return;
+        }
+
+        if (aiToggleBtn) {
+          const panel = aiToggleBtn.closest('.tl-pub-editor').querySelector('.tl-ai-panel');
+          panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+          if (panel.style.display === 'block') panel.querySelector('.tl-ai-keywords').focus();
+          return;
+        }
+
+        if (aiCancelBtn) {
+          const panel = aiCancelBtn.closest('.tl-ai-panel');
+          panel.style.display = 'none';
+          panel.querySelector('.tl-ai-status').textContent = '';
+          return;
+        }
+
+        if (aiGenerateBtn) {
+          const panel = aiGenerateBtn.closest('.tl-ai-panel');
+          const editor = aiGenerateBtn.closest('.tl-pub-editor');
+          const keywords = panel.querySelector('.tl-ai-keywords').value.trim();
+          const statusEl = panel.querySelector('.tl-ai-status');
+          if (!keywords) {
+            statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+            return;
+          }
+          aiGenerateBtn.disabled = true;
+          statusEl.textContent = 'Generazione in corso...';
+          const body = new URLSearchParams();
+          body.set('csrf', csrfInput.value);
+          body.set('keywords', keywords);
+          fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              aiGenerateBtn.disabled = false;
+              if (data.ok) {
+                editor.querySelector('.tl-pub-textarea').value = data.text;
+                statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+              } else {
+                statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+              }
+            })
+            .catch(function () {
+              aiGenerateBtn.disabled = false;
+              statusEl.textContent = 'Errore di connessione. Riprova.';
+            });
+          return;
+        }
+
+        if (saveBtn) {
+          const editor = saveBtn.closest('.tl-pub-editor');
+          const row = saveBtn.closest('[data-tl-post]');
+          const id = row.getAttribute('data-tl-post');
+          const title = editor.querySelector('.tl-pub-title').value;
+          const testo = editor.querySelector('.tl-pub-textarea').value;
+          const hashtags = editor.querySelector('.tl-pub-hashtags').value;
+          const callToAction = editor.querySelector('.tl-pub-cta').value;
+          const visibility = editor.querySelector('.tl-pub-visibility:checked').value;
+          const inFeed = editor.querySelector('.tl-pub-in-feed').checked;
+          const publishAt = editor.querySelector('.tl-pub-publish-at').value;
+          const statusEl = editor.querySelector('.tl-pub-status');
+
+          const formData = new FormData();
+          formData.set('action', 'edit');
+          formData.set('id', id);
+          formData.set('title', title);
+          formData.set('testo', testo);
+          formData.set('hashtags', hashtags);
+          formData.set('call_to_action', callToAction);
+          formData.set('visibility', visibility);
+          formData.set('in_feed', inFeed ? '1' : '');
+          formData.set('publish_at', publishAt);
+          formData.set('tz_offset_minutes', new Date().getTimezoneOffset());
+
+          saveBtn.disabled = true;
+          statusEl.textContent = 'Salvataggio...';
+          post(formData).then(function (data) {
+            saveBtn.disabled = false;
+            if (!data.ok) {
+              statusEl.textContent = data.error || 'Salvataggio non riuscito, riprova.';
+              return;
+            }
+            statusEl.textContent = '';
+            const textBlock = row.querySelector('.tl-text-block');
+            let html = '';
+            if (title.trim() !== '') html += '<p class="tl-title" style="margin:4px 0;font-weight:700;">' + escapeHtml(title) + '</p>';
+            if (testo.trim() !== '') html += '<p class="tl-testo" style="margin:4px 0;">' + escapeHtml(testo).replace(/\n/g, '<br>') + '</p>';
+            if (hashtags.trim() !== '') html += '<p class="tl-hashtags" style="margin:4px 0;color:var(--accent);font-size:13px;">' + escapeHtml(hashtags) + '</p>';
+            if (callToAction.trim() !== '') html += '<p class="tl-cta" style="margin:4px 0;font-style:italic;font-size:13px;">' + escapeHtml(callToAction) + '</p>';
+            textBlock.innerHTML = html;
+
+            const isScheduled = data.item.publish_at && new Date(data.item.publish_at.replace(' ', 'T')).getTime() > Date.now();
+            const isPrivate = data.item.visibility === 'private';
+            const badgesBox = row.querySelector('.tl-badges');
+            let badgesHtml = '';
+            if (isScheduled) badgesHtml += '<span class="tl-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">⏰ Programmato per il ' + escapeHtml(data.item.publish_at) + '</span>';
+            if (isPrivate) {
+              badgesHtml += '<span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>';
+            } else if (!parseInt(data.item.in_feed || 1, 10)) {
+              badgesHtml += '<span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>';
+            }
+            const existingBadges = Array.prototype.slice.call(badgesBox.children).filter(function (el) {
+              return !el.classList.contains('tl-badge-scheduled') && !el.classList.contains('tl-badge-private');
+            });
+            badgesBox.innerHTML = badgesHtml;
+            existingBadges.forEach(function (el) { badgesBox.appendChild(el); });
+
+            editor.style.display = 'none';
+          }).catch(function () {
+            saveBtn.disabled = false;
+            statusEl.textContent = 'Errore di connessione. Riprova.';
+          });
+          return;
+        }
       });
     })();
   </script>
