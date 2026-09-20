@@ -94,6 +94,9 @@ $dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.ph
 // Gestione token per l'API pubblica /api/v1/social-posts/*: strumento di gestione, non una
 // sezione del sito pubblico — sempre visibile, non legato al "Menu di Navigazione" come "Primo Piano".
 $dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'active' => 'api_tokens', 'visible' => true];
+// Come "Primo Piano"/"API": strumento di gestione trasversale a tutti i moduli, non una sezione
+// del sito pubblico — sempre visibile, non legato al "Menu di Navigazione".
+$dashTabs['schedule'] = ['label' => 'Programmati', 'url' => '/dashboard_schedule.php', 'active' => 'schedule', 'visible' => true];
 
 $dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
 

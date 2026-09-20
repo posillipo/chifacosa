@@ -6619,6 +6619,86 @@ function pinnableVisibilityClause(string $mode): string {
     };
 }
 
+// Colonna che rappresenta "quando" un elemento diventa visibile, per tipo — stessa mappa usata
+// da pinnableVisibilityClause() qui sopra, ma qui serve isolata: la pagina "Programmati"
+// (dashboard_schedule.php) deve interrogare solo QUELLA colonna con "> NOW()", non l'intera
+// clausola di visibilità (che per 'timeline' include anche il filtro public/private — qui invece
+// un post privato con data futura resta comunque "programmato" nello stesso senso in cui
+// dashboard_post.php mostra già il badge "⏰ Programmato", che infatti non guarda la privacy).
+function pinnableScheduleColumn(string $mode): ?string {
+    return match ($mode) {
+        'standard', 'timeline' => 'publish_at',
+        'blog' => 'published_at',
+        'offerta' => 'valid_from',
+        default => null, // 'none' (es. eventi): nessun concetto di programmazione
+    };
+}
+
+// Pagina dashboard dove gestire/modificare un elemento programmato di un certo tipo — usata dal
+// link "Modifica" di dashboard_schedule.php. '%d' viene sostituito con l'id della riga solo per i
+// tipi che lo prevedono (sprintf ignora l'argomento in più per gli altri URL, senza errori).
+const SCHEDULABLE_DASHBOARD_URLS = [
+    'pensiero' => '/dashboard_post.php',
+    'blog' => '/dashboard_blog_edit.php?id=%d',
+    'brano' => '/dashboard_audio.php',
+    'band_favorita' => '/dashboard_fan_bands.php',
+    'attore_favorito' => '/dashboard_fan_actors.php',
+    'film_favorito' => '/dashboard_fan_movies.php',
+    'libro_favorito' => '/dashboard_fan_books.php',
+    'viaggio_favorito' => '/dashboard_fan_trips.php',
+    'playlist_favorita' => '/dashboard_fan_playlists.php',
+    'album_favorito' => '/dashboard_fan_albums.php',
+    'ricetta_favorita' => '/dashboard_fan_recipes.php',
+    'squadra_favorita' => '/dashboard_fan_teams.php',
+    'calciatore_favorito' => '/dashboard_fan_players.php',
+    'partita_favorita' => '/dashboard_fan_matches.php',
+    'pubblicazione_favorita' => '/dashboard_fan_publications.php',
+    'offerta' => '/dashboard_offers.php',
+    'album_foto' => '/dashboard_albums.php',
+    'servizio' => '/dashboard_services.php',
+];
+
+// "Calendario pubblicazioni" (dashboard_schedule.php): tutti gli elementi con una data di
+// programmazione futura, di QUALUNQUE tipo (Timeline, Blog, tutti i moduli Che Amo, Offerte,
+// Album, Servizi), in un unico elenco — stesso principio/stessa fonte di PINNABLE_CONTENT_TYPES
+// già usata per "Primo Piano" e per il Feed aggregato, ma filtrato al contrario (solo il futuro,
+// non il già pubblicato). Gli eventi restano esclusi: non hanno un concetto di programmazione
+// proprio (vedi pinnableScheduleColumn()).
+function getScheduledContentForUser(int $userId): array {
+    $items = [];
+    foreach (PINNABLE_CONTENT_TYPES as $type => $cfg) {
+        $col = pinnableScheduleColumn($cfg['visibility']);
+        if ($col === null) {
+            continue;
+        }
+        $stmt = getDB()->prepare("SELECT * FROM {$cfg['table']} WHERE user_id = ? AND {$col} > NOW()");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll() as $row) {
+            $title = trim((string) ($row[$cfg['title_col']] ?? ''));
+            if ($title === '') {
+                $title = !empty($row['title']) ? $row['title'] : (!empty($row['image_path']) ? '📷 Foto' : '(senza titolo)');
+            }
+            $cover = null;
+            foreach ($cfg['cover_cols'] as $coverCol) {
+                if (!empty($row[$coverCol])) {
+                    $cover = $row[$coverCol];
+                    break;
+                }
+            }
+            $items[] = [
+                'type' => $type,
+                'label' => $cfg['label'],
+                'title' => $title,
+                'cover' => $cover,
+                'scheduled_for' => $row[$col],
+                'edit_url' => sprintf(SCHEDULABLE_DASHBOARD_URLS[$type] ?? '#', (int) $row['id']),
+            ];
+        }
+    }
+    usort($items, fn ($a, $b) => strtotime($a['scheduled_for']) <=> strtotime($b['scheduled_for']));
+    return $items;
+}
+
 // Elementi attualmente fissati in "Primo Piano" per un profilo, in ordine di visualizzazione
 // (sort_order). $respectVisibility=true filtra via quelli non ancora pubblici/programmati (per il
 // carosello sul sito pubblico); false li mostra comunque (per la gestione in dashboard, dove il
@@ -7132,7 +7212,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_movies','film_che_amo','fan_favorite_item',
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_fan_publications','pubblicazioni_che_amo','admin_crossref',
-    'admin_turnstile',
+    'admin_turnstile', 'dashboard_schedule',
     'dashboard_cinema','cron_cinema_sync','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
@@ -7530,7 +7610,7 @@ const DASHBOARD_TAB_KEYS = [
     'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
     'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
-    'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API',
+    'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API', 'schedule' => 'Programmati',
 ];
 
 // Ordine personalizzato (trascinamento in dashboard_nav_menu.php) della barra della dashboard di
