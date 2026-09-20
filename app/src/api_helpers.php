@@ -301,3 +301,123 @@ function apiValidateSocialPostPayload(array $data, bool $partial): array {
 
     return ['error' => null, 'values' => $values];
 }
+
+// Deriva lo status "logico" (scheduled/published) di un articolo blog dalla sola colonna
+// published_at — a differenza di timeline_posts, blog_posts non ha una colonna visibility: non
+// esiste un concetto di "draft" per il blog (stessa scelta già fatta in dashboard_blog_edit.php),
+// solo "pubblicato subito" o "programmato per il futuro".
+function apiDeriveBlogPostStatus(array $post): string {
+    if (!empty($post['published_at']) && strtotime($post['published_at']) > time()) {
+        return 'scheduled';
+    }
+    return 'published';
+}
+
+// Trasforma una riga di blog_posts nella forma esposta dall'API pubblica.
+function apiSerializeBlogPost(array $post, string $slug): array {
+    return [
+        'id' => (int) $post['id'],
+        'title' => $post['title'],
+        'content' => $post['content'],
+        'excerpt' => $post['excerpt'],
+        'tags' => $post['tags'],
+        'categories' => array_column(getBlogPostCategories((int) $post['id']), 'name'),
+        'cover_image_url' => $post['cover_path'] ? siteUrl('/' . $post['cover_path']) : null,
+        'status' => apiDeriveBlogPostStatus($post),
+        'publication_date' => apiFormatDateTimeRome($post['published_at'] ?? null),
+        'url' => siteUrl(blogPostUrl($slug, $post)),
+    ];
+}
+
+// Trova o crea (per nome, non case-sensitive sul confronto) le categorie di un profilo — un
+// chiamante API non può conoscere gli ID interni delle categorie, quindi accetta nomi liberi
+// esattamente come farebbe compilando le checkbox in dashboard_blog_new.php, con la differenza
+// che una categoria non ancora esistente viene creata al volo invece di essere ignorata.
+function apiResolveOrCreateBlogCategories(int $userId, array $names): array {
+    $ids = [];
+    foreach ($names as $name) {
+        $name = trim((string) $name);
+        if ($name === '') {
+            continue;
+        }
+        $stmt = getDB()->prepare('SELECT id FROM blog_categories WHERE user_id = ? AND name = ?');
+        $stmt->execute([$userId, $name]);
+        $row = $stmt->fetch();
+        if ($row) {
+            $ids[] = (int) $row['id'];
+            continue;
+        }
+        $catSlug = generateUniqueBlogCategorySlug($userId, $name);
+        $ins = getDB()->prepare('INSERT INTO blog_categories (user_id, name, slug) VALUES (?,?,?)');
+        $ins->execute([$userId, $name, $catSlug]);
+        $ids[] = (int) getDB()->lastInsertId();
+    }
+    return array_values(array_unique($ids));
+}
+
+// Valida e normalizza il payload JSON di create/update per un articolo blog. $partial=true per
+// PUT (tutti i campi opzionali, solo quelli presenti vengono validati/aggiornati) — stesso
+// principio di apiValidateSocialPostPayload(). 'categories' resta un elenco di nomi grezzi (non
+// ancora risolto in ID: lo fa apiResolveOrCreateBlogCategories(), che serve anche in update dove
+// va rifatto DOPO aver caricato l'articolo esistente).
+function apiValidateBlogPostPayload(array $data, bool $partial): array {
+    $values = [];
+
+    if (array_key_exists('title', $data)) {
+        $title = trim((string) $data['title']);
+        if (mb_strlen($title) > 200) {
+            return ['error' => 'Il campo "title" supera i 200 caratteri consentiti.', 'values' => []];
+        }
+        if (!$partial && $title === '') {
+            return ['error' => 'Il campo "title" è obbligatorio.', 'values' => []];
+        }
+        if ($partial && $title === '') {
+            return ['error' => 'Il campo "title" non può essere svuotato.', 'values' => []];
+        }
+        $values['title'] = $title;
+    }
+    if (array_key_exists('content', $data)) {
+        $content = trim((string) $data['content']);
+        if (!$partial && $content === '') {
+            return ['error' => 'Il campo "content" è obbligatorio.', 'values' => []];
+        }
+        if ($partial && $content === '') {
+            return ['error' => 'Il campo "content" non può essere svuotato.', 'values' => []];
+        }
+        $values['content'] = $content;
+    }
+    if (array_key_exists('tags', $data)) {
+        $tagsRaw = trim((string) $data['tags']);
+        if (mb_strlen($tagsRaw) > 300) {
+            return ['error' => 'Il campo "tags" supera i 300 caratteri consentiti.', 'values' => []];
+        }
+        $tags = $tagsRaw !== '' ? implode(', ', array_filter(array_map('trim', explode(',', $tagsRaw)), fn ($t) => $t !== '')) : null;
+        $values['tags'] = $tags ?: null;
+    }
+    if (array_key_exists('categories', $data)) {
+        if (!is_array($data['categories'])) {
+            return ['error' => 'Il campo "categories" deve essere un elenco di nomi.', 'values' => []];
+        }
+        $values['categories'] = $data['categories'];
+    }
+
+    if (array_key_exists('image_url', $data) && trim((string) $data['image_url']) !== '') {
+        $imageUrl = trim((string) $data['image_url']);
+        if (!filter_var($imageUrl, FILTER_VALIDATE_URL) || !isSafePublicUrl($imageUrl)) {
+            return ['error' => 'Il campo "image_url" non è un URL pubblico valido.', 'values' => []];
+        }
+        $values['image_url'] = $imageUrl;
+    }
+
+    if (array_key_exists('publication_date', $data) && trim((string) $data['publication_date']) !== '') {
+        try {
+            $dt = new DateTime((string) $data['publication_date']);
+            $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+            $values['published_at'] = $dt->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            return ['error' => 'Il campo "publication_date" non è una data valida (usa il formato ISO 8601, es. 2026-09-24T08:00:00+02:00).', 'values' => []];
+        }
+    }
+
+    return ['error' => null, 'values' => $values];
+}

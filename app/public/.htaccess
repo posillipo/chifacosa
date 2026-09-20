@@ -18,6 +18,12 @@ RewriteRule ^api/v1/social-posts/create/?$ api_social_posts_create.php [L,QSA]
 RewriteRule ^api/v1/social-posts/list/?$ api_social_posts_list.php [L,QSA]
 RewriteRule ^api/v1/social-posts/([0-9]+)/?$ api_social_posts_item.php?id=$1 [L,QSA]
 
+# API pubblica /api/v1/blog-posts/* — stesso token Bearer e stessa autenticazione di
+# social-posts (vedi app/src/api_helpers.php), endpoint separati per gestire gli articoli del Blog.
+RewriteRule ^api/v1/blog-posts/create/?$ api_blog_posts_create.php [L,QSA]
+RewriteRule ^api/v1/blog-posts/list/?$ api_blog_posts_list.php [L,QSA]
+RewriteRule ^api/v1/blog-posts/([0-9]+)/?$ api_blog_posts_item.php?id=$1 [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 

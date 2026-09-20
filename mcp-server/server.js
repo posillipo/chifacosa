@@ -30,6 +30,12 @@ import { z } from 'zod';
 const PORT = process.env.PORT || 3000;
 const MCP_ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
 const CHIFACOSA_BASE_URL = (process.env.CHIFACOSA_BASE_URL || 'https://www.chifacosa.it/api/v1/social-posts').replace(/\/$/, '');
+// Radice /api/v1, usata per costruire il percorso di QUALSIASI risorsa (social-posts, blog-posts,
+// future) — CHIFACOSA_BASE_URL storicamente puntava già a /api/v1/social-posts (da prima che
+// esistesse un secondo tipo di risorsa): togliendo solo quel suffisso otteniamo la radice giusta
+// senza dover rinominare la variabile d'ambiente né chiedere un aggiornamento su Portainer a chi
+// l'ha già configurata (con o senza override esplicito, il risultato è lo stesso).
+const CHIFACOSA_API_ROOT = CHIFACOSA_BASE_URL.replace(/\/social-posts$/, '');
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 
@@ -103,7 +109,7 @@ async function chifacosaApi(profileName, path, { method = 'GET', body } = {}) {
             data: { success: false, error: `Profilo "${profileName}" non configurato su questo server. Profili disponibili: ${profileNames.join(', ') || '(nessuno — registrane uno con POST /admin/profiles)'}.` },
         };
     }
-    const res = await fetch(CHIFACOSA_BASE_URL + path, {
+    const res = await fetch(CHIFACOSA_API_ROOT + path, {
         method,
         headers: {
             Authorization: `Bearer ${token}`,
@@ -142,8 +148,19 @@ const postFieldsSchema = {
     status: z.enum(['draft', 'scheduled', 'published']).optional().describe('draft = non pubblico, scheduled = richiede publication_date futura, published = subito visibile'),
 };
 
+// Campi comuni a create/update per un articolo blog — stessa forma esposta dall'API REST, vedi
+// app/src/api_helpers.php::apiValidateBlogPostPayload().
+const blogPostFieldsSchema = {
+    title: z.string().max(200).optional().describe('Titolo dell\'articolo (max 200 caratteri)'),
+    content: z.string().optional().describe('Contenuto/corpo dell\'articolo'),
+    tags: z.string().max(300).optional().describe('Tag separati da virgola, es. "concerti, novità, napoli"'),
+    categories: z.array(z.string()).optional().describe('Nomi delle categorie da assegnare — una categoria non ancora esistente viene creata automaticamente'),
+    image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e usare come copertina'),
+    publication_date: z.string().optional().describe('Data/ora di pubblicazione in ISO 8601 con fuso orario esplicito, es. 2026-09-24T08:00:00+02:00 — se futura l\'articolo resta programmato fino ad allora, se omessa si pubblica subito'),
+};
+
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.2.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.3.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -170,7 +187,7 @@ function buildMcpServer() {
         title: 'Crea un post sulla Timeline di un profilo CHIFACOSA',
         description: 'Crea un nuovo post (subito pubblicato, programmato per una data futura, o come bozza) sulla Timeline pubblica del profilo CHIFACOSA scelto.',
         inputSchema: { ...profileField, ...postFieldsSchema },
-    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/create', { method: 'POST', body: fields })));
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/social-posts/create', { method: 'POST', body: fields })));
 
     server.registerTool('list_social_posts', {
         title: 'Elenca i post di un profilo',
@@ -189,26 +206,70 @@ function buildMcpServer() {
             if (v !== undefined && v !== null) params.set(k, String(v));
         }
         const qs = params.toString();
-        return toolResult(await chifacosaApi(profile, '/list' + (qs ? `?${qs}` : '')));
+        return toolResult(await chifacosaApi(profile, '/social-posts/list' + (qs ? `?${qs}` : '')));
     });
 
     server.registerTool('get_social_post', {
         title: 'Dettaglio di un post',
         description: 'Recupera i dettagli di un singolo post di un profilo, dato il suo ID.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID del post') },
-    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/${id}`)));
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/social-posts/${id}`)));
 
     server.registerTool('update_social_post', {
         title: 'Modifica un post',
         description: 'Modifica un post esistente di un profilo — funziona solo se il post è ancora "draft" o "scheduled" (non ancora pubblicato). Tutti i campi oltre a profile/id sono opzionali: solo quelli forniti vengono aggiornati.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID del post da modificare'), ...postFieldsSchema },
-    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/${id}`, { method: 'PUT', body: fields })));
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/social-posts/${id}`, { method: 'PUT', body: fields })));
 
     server.registerTool('delete_social_post', {
         title: 'Elimina un post',
         description: 'Elimina definitivamente un post di un profilo, dato il suo ID.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID del post da eliminare') },
-    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/${id}`, { method: 'DELETE' })));
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/social-posts/${id}`, { method: 'DELETE' })));
+
+    server.registerTool('create_blog_post', {
+        title: 'Crea un articolo sul Blog di un profilo CHIFACOSA',
+        description: 'Crea un nuovo articolo (subito pubblicato, o programmato per una data futura) sul Blog del profilo CHIFACOSA scelto. Richiede title e content.',
+        inputSchema: { ...profileField, ...blogPostFieldsSchema },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/blog-posts/create', { method: 'POST', body: fields })));
+
+    server.registerTool('list_blog_posts', {
+        title: 'Elenca gli articoli del blog di un profilo',
+        description: 'Elenca gli articoli del Blog del profilo scelto, con filtri opzionali per status e intervallo di date, e paginazione.',
+        inputSchema: {
+            ...profileField,
+            status: z.enum(['scheduled', 'published']).optional(),
+            from: z.string().optional().describe('Data minima (YYYY-MM-DD)'),
+            to: z.string().optional().describe('Data massima (YYYY-MM-DD)'),
+            page: z.number().int().min(1).optional(),
+            per_page: z.number().int().min(1).max(100).optional(),
+        },
+    }, async ({ profile, ...args }) => {
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(args || {})) {
+            if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+        const qs = params.toString();
+        return toolResult(await chifacosaApi(profile, '/blog-posts/list' + (qs ? `?${qs}` : '')));
+    });
+
+    server.registerTool('get_blog_post', {
+        title: 'Dettaglio di un articolo del blog',
+        description: 'Recupera i dettagli di un singolo articolo del blog di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`)));
+
+    server.registerTool('update_blog_post', {
+        title: 'Modifica un articolo del blog',
+        description: 'Modifica un articolo del blog esistente di un profilo, anche già pubblicato. Tutti i campi oltre a profile/id sono opzionali: solo quelli forniti vengono aggiornati.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo da modificare'), ...blogPostFieldsSchema },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('delete_blog_post', {
+        title: 'Elimina un articolo del blog',
+        description: 'Elimina definitivamente un articolo del blog di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo da eliminare') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`, { method: 'DELETE' })));
 
     return server;
 }
@@ -312,5 +373,5 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
     const startupProfiles = Object.keys(getProfiles());
-    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_BASE_URL} — profili configurati: ${startupProfiles.join(', ') || '(nessuno ancora — registrali con POST /admin/profiles)'}`);
+    console.log(`chifacosa-mcp-server in ascolto sulla porta ${PORT} — target: ${CHIFACOSA_API_ROOT} — profili configurati: ${startupProfiles.join(', ') || '(nessuno ancora — registrali con POST /admin/profiles)'}`);
 });
