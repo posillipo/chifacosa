@@ -98,6 +98,24 @@ a { color: var(--accent); text-decoration: none; }
   padding: 16px 20px;
   border-bottom: 1px solid #26262f;
 }
+/* Solo la barra in alto della dashboard (non le altre pagine che riusano .navbar, es. login/
+   reset password): resta sempre visibile scorrendo, invece di sparire dopo il primo scroll —
+   utile soprattutto su liste lunghe (Timeline, Che Amo...) per riaccedere subito ad account,
+   notifiche e messaggi senza dover tornare su a mano.
+   "fixed" invece di "sticky": <html> ha overflow-x:hidden (vedi sopra, contro lo sbandamento
+   orizzontale su mobile) — su alcuni browser questo rompe position:sticky degli elementi
+   figli di <body>. "fixed" funziona sempre, a costo di dover riservare a mano lo spazio sotto
+   (vedi il JS accanto al markup della barra in _dash_header.php, che imposta il padding-top
+   del body pari all'altezza reale della barra — necessario perché su schermi stretti la barra
+   può andare su due righe, quindi l'altezza non è un valore fisso indovinabile qui in CSS). */
+.navbar.navbar-dash-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  background: var(--bg);
+}
 .navbar .brand { font-weight: 700; font-size: 20px; white-space: nowrap; }
 .navbar .brand span { color: var(--accent); }
 /* Logo della dashboard: "CHIFACOSA" tutto attaccato, con "FA" in risalto — carattere grassetto

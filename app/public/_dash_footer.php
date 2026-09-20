@@ -1,4 +1,21 @@
 </div>
+<button type="button" id="back-to-top-btn" class="floating-btn" title="Torna su" aria-label="Torna su">
+  <i class="fa-solid fa-arrow-up"></i>
+</button>
+<script>
+// Torna su: stesso pulsante/comportamento già usato nelle pagine pubbliche (renderFloatingButtons()
+// in functions.php) — compare solo scendendo abbastanza, per non stare sempre in mezzo ai piedi.
+(function () {
+  var btn = document.getElementById('back-to-top-btn');
+  if (!btn) return;
+  window.addEventListener('scroll', function () {
+    btn.style.display = window.scrollY > 400 ? 'flex' : 'none';
+  });
+  btn.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
 <script>
 // Riempie ogni campo nascosto "tz_offset_minutes" con l'offset di fuso orario reale del
 // dispositivo di chi sta compilando il form in questo momento — usato da parseLocalDateTime()

@@ -138,7 +138,7 @@ if ($actingAsId) {
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
 <body class="<?= e($dashTheme) ?>">
-<div class="navbar">
+<div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="account-menu-toggle" title="Account e impostazioni"
             style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:4px;">
@@ -228,6 +228,23 @@ if ($actingAsId) {
     <a href="/logout.php">Esci</a>
   </nav>
 </div>
+<script>
+// La barra è "fixed" (vedi CSS .navbar-dash-sticky), quindi esce dal flusso normale della
+// pagina: senza compensare, il contenuto sotto salterebbe su e ci finirebbe parzialmente
+// nascosto. Riserviamo lo spazio giusto con un padding-top sul body, ricalcolato ogni volta
+// che l'altezza della barra può cambiare (es. va su due righe ruotando lo schermo, o si
+// ridimensiona la finestra) — non un valore fisso, perché su schermi stretti la barra può
+// occupare una o due righe a seconda di quante icone/notifiche mostra.
+(function () {
+  var nav = document.querySelector('.navbar-dash-sticky');
+  if (!nav) return;
+  function applyOffset() {
+    document.body.style.paddingTop = nav.offsetHeight + 'px';
+  }
+  applyOffset();
+  window.addEventListener('resize', applyOffset);
+})();
+</script>
 <?php if ($managedProfiles): ?>
 <script>
 document.addEventListener('click', function (e) {
