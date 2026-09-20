@@ -1738,6 +1738,58 @@ body.sartoria-page {
 .sartoria-page .link-divider { color: var(--sartoria-gold); }
 .sartoria-page .link-divider::before, .sartoria-page .link-divider::after { background: var(--sartoria-gold); opacity: 0.5; }
 
+/* ===== Tema "GeolierStyle": atmosfera scura da grafica "link in bio" urban/trap — bagliore
+   ambrato caldo (come un faretto/lampadario) che sfuma nel nero dietro l'avatar, titolo
+   maiuscolo grassetto molto marcato, pulsanti pieni a rettangolo scuro (non a pillola) con
+   bordo sottile chiaro, icone social a cerchio solo contornato invece che riempito. ===== */
+body.geolierstyle-page {
+  color: #f3ede4; --text-rgb: 243,237,228; --geolier-amber: #e3a24f; --geolier-amber-bright: #f3c07c; --geolier-panel: #1a1714;
+  background-color: #0a0908;
+  background-image: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(227,162,79,0.22), transparent 62%), linear-gradient(180deg, #171310 0%, #100e0c 55%, #0a0908 100%);
+  background-attachment: fixed;
+  min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
+}
+.geolierstyle-page .container { flex: 1 0 auto; max-width: 100%; }
+@media (min-width: 761px) { .geolierstyle-page .container { max-width: 720px; } }
+.geolierstyle-page footer.site { color: rgba(var(--text-rgb),0.5); }
+.geolierstyle-page .avatar { border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 12px 30px rgba(0,0,0,0.6); }
+.geolierstyle-page .profile-header h1 {
+  color: #fff; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+  text-shadow: 0 2px 18px rgba(227,162,79,0.35);
+}
+.geolierstyle-page .profile-header p { color: rgba(var(--text-rgb),0.75); }
+.geolierstyle-page .profile-meta { color: rgba(var(--text-rgb),0.55); letter-spacing: 0.5px; }
+.geolierstyle-page .colorful-nav a {
+  background: rgba(255,255,255,0.06); color: rgba(var(--text-rgb),0.85); border: 1px solid rgba(255,255,255,0.12);
+}
+.geolierstyle-page .colorful-nav a:hover { background: rgba(255,255,255,0.12); }
+.geolierstyle-page .social-icon-btn {
+  background: transparent; border: 1.5px solid rgba(255,255,255,0.7); color: #fff;
+}
+.geolierstyle-page .color-link-btn {
+  background: var(--geolier-panel) !important; border: 1px solid rgba(255,255,255,0.14) !important; border-radius: 14px;
+  color: #fff !important; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.geolierstyle-page .color-link-btn:hover {
+  background: #232019 !important; transform: translateY(-2px); border-color: var(--geolier-amber) !important;
+}
+.geolierstyle-page .card {
+  background: rgba(26,23,20,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(var(--text-rgb),0.95);
+  backdrop-filter: blur(6px);
+}
+.geolierstyle-page .section-title { color: var(--geolier-amber); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+.geolierstyle-page .event-item, .geolierstyle-page .blog-item { border-bottom-color: rgba(255,255,255,0.1); }
+.geolierstyle-page a { color: var(--geolier-amber-bright); }
+.geolierstyle-page form textarea, .geolierstyle-page form input {
+  background: var(--geolier-panel); border: 1px solid rgba(255,255,255,0.16); color: rgba(var(--text-rgb),0.95); border-radius: 8px;
+}
+.geolierstyle-page form label { color: rgba(var(--text-rgb),0.6); }
+.geolierstyle-page .help-box { background: var(--geolier-panel); border-color: rgba(255,255,255,0.14); color: rgba(var(--text-rgb),0.95); }
+.geolierstyle-page .link-divider { color: var(--geolier-amber); }
+.geolierstyle-page .link-divider::before, .geolierstyle-page .link-divider::after { background: var(--geolier-amber); opacity: 0.5; }
+
 /* ===== Tema "Coniglietti": pastello rosa soffice, ombre morbide (sfocate, non nette come nei
    temi Cosplay) e due orecchie da coniglio disegnate in puro CSS (::before/::after su
    .avatar-wrap, già position:relative) che spuntano dietro l'avatar — nessuna immagine esterna.
