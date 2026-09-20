@@ -1749,7 +1749,7 @@ body.sartoria-page {
 body.geolierstyle-page {
   color: #f0f0f0; --text-rgb: 240,240,240; --geolier-accent: #cfcfd4; --geolier-accent-bright: #ffffff; --geolier-panel: #2a2a2e;
   background-color: #0a0a0b;
-  background-image: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,255,255,0.08), transparent 62%), linear-gradient(180deg, #1c1c1f 0%, #131315 55%, #0a0a0b 100%);
+  background-image: radial-gradient(ellipse 90% 65% at 50% 0%, rgba(255,255,255,0.5), transparent 75%), linear-gradient(180deg, #46464b 0%, #1c1c1f 45%, #0a0a0b 100%);
   background-attachment: fixed;
   min-height: 100vh; margin: 0; overflow-x: hidden; display: flex; flex-direction: column;
 }
