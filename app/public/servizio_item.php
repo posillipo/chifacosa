@@ -23,7 +23,8 @@ if (!$service) {
 
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $service['user_id'];
 $isScheduledFuture = $service['publish_at'] && strtotime($service['publish_at']) > time();
-if (!$isOwner && (!(int) $service['is_public'] || $isScheduledFuture)) {
+$isPreview = !$isOwner && previewTokenValid('servizio', (int) $service['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $service['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Servizio non trovato.');
 }
@@ -82,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (int) $service['accepts_inquiries']
 }
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteServizioDetailPage($artist, $slug, $service, $photos, $isOwner, $isScheduledFuture, $formSent, $formError, $conversionEventId);
+    echo renderAdminLteServizioDetailPage($artist, $slug, $service, $photos, $isOwner, $isScheduledFuture, $formSent, $formError, $conversionEventId, $isPreview);
     exit;
 }
 
@@ -131,8 +132,8 @@ $ogDescription = $service['description'] ? textExcerpt($service['description'], 
 <div class="container">
   <?= publicProfileHeader($artist, 'servizi') ?>
 
-  <?php if ($isOwner && (!(int) $service['is_public'] || $isScheduledFuture)): ?>
-    <div class="alert error">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $service['is_public'] || $isScheduledFuture)): ?>
+    <div class="alert error">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">

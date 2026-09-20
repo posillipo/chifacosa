@@ -6,7 +6,7 @@ $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'schedule';
 $pageTitle = 'Programmati';
 
-$items = getScheduledContentForUser((int) $profile['id']);
+$items = getScheduledContentForUser((int) $profile['id'], $profile['slug']);
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -18,6 +18,11 @@ include __DIR__ . '/_dash_header.php';
       più lontano. Da "Modifica" apri direttamente la pagina di gestione di quell'elemento per
       cambiare testo o data. Gli Eventi non compaiono: la loro data è quando si terranno, non
       una programmazione di pubblicazione.
+    </p>
+    <p style="color:var(--text-muted)">
+      Con "Copia link anteprima" ottieni un link riservato alla pagina pubblica di quel contenuto,
+      valido anche se non è ancora pubblico — utile per controllarlo prima della pubblicazione o
+      per incollarlo nel <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener">Tool di Meta per le Anteprime social (Sharing Debugger)</a>.
     </p>
   </details>
 
@@ -39,8 +44,27 @@ include __DIR__ . '/_dash_header.php';
           </div>
           <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
         </div>
-        <a href="<?= e($it['edit_url']) ?>" class="btn small secondary" style="flex-shrink:0;">Modifica</a>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <?php if ($it['preview_url']): ?>
+            <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia link anteprima</button>
+          <?php endif; ?>
+          <a href="<?= e($it['edit_url']) ?>" class="btn small secondary">Modifica</a>
+        </div>
       </div>
     <?php endforeach; ?>
   <?php endif; ?>
+<script>
+document.querySelectorAll('.schedule-preview-copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var url = btn.getAttribute('data-url');
+    navigator.clipboard.writeText(url).then(function () {
+      var original = btn.textContent;
+      btn.textContent = '✅ Copiato!';
+      setTimeout(function () { btn.textContent = original; }, 1800);
+    }).catch(function () {
+      window.prompt('Copia questo link:', url);
+    });
+  });
+});
+</script>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

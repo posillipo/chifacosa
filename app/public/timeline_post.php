@@ -23,7 +23,8 @@ if (!$post) {
 
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $post['user_id'];
 $isScheduledFuture = $post['publish_at'] && strtotime($post['publish_at']) > time();
-if (!$isOwner && ($post['visibility'] === 'private' || $isScheduledFuture)) {
+$isPreview = !$isOwner && previewTokenValid('pensiero', (int) $post['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && ($post['visibility'] === 'private' || $isScheduledFuture)) {
     http_response_code(404);
     exit('Contenuto non trovato.');
 }
@@ -55,7 +56,7 @@ $sameDayPosts = getSameDayTimelinePosts((int) $post['user_id'], $post['publish_a
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts, $isOwner, $isScheduledFuture);
+    echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 
@@ -108,8 +109,8 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : (!empty($post['
 <div class="container">
   <?= publicProfileHeader($artist, 'timeline') ?>
 
-  <?php if ($isOwner && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
-    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card">

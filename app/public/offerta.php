@@ -24,7 +24,8 @@ if (!$offer) {
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $offer['user_id'];
 $now = date('Y-m-d H:i:s');
 $isCurrentlyValid = (!$offer['valid_from'] || $offer['valid_from'] <= $now) && (!$offer['valid_until'] || $offer['valid_until'] >= $now);
-if (!$isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)) {
+$isPreview = !$isOwner && previewTokenValid('offerta', (int) $offer['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $offer['is_active'] || !$isCurrentlyValid)) {
     http_response_code(404);
     exit('Offerta non trovata.');
 }
@@ -45,7 +46,7 @@ $artist = [
 ];
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteOffertaDetailPage($artist, $slug, $offer, $isOwner, $isCurrentlyValid);
+    echo renderAdminLteOffertaDetailPage($artist, $slug, $offer, $isOwner, $isCurrentlyValid, $isPreview);
     exit;
 }
 
@@ -95,8 +96,8 @@ $ogDescription = $ogDescriptionParts ? implode(' — ', $ogDescriptionParts) : (
 <div class="container">
   <?= publicProfileHeader($artist, 'offerte') ?>
 
-  <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
-    <div class="alert error">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
+    <div class="alert error">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">

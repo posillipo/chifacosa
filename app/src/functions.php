@@ -2067,7 +2067,7 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 // forma usata dal tema Colorful): qui cambia solo il vestito, non le query. Il carosello foto
 // (renderPhotoCarousel(), classi .ig-carousel/.ig-lightbox) è un componente a sé, con il proprio
 // CSS/JS dedicato — funziona identico dentro la card AdminLTE.
-function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts, bool $isOwner = false, bool $isScheduledFuture = false): string {
+function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/timeline/' . (int) $post['id']);
     $avatarUrl = adminLteAvatarUrl($artist);
     $ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
@@ -2127,8 +2127,8 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
                 </div>
               </div>
               <div class="card-body">
-                <?php if ($isOwner && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
-                  <div class="alert alert-warning">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+                <?php if (($isOwner || $isPreview) && ($post['visibility'] === 'private' || $isScheduledFuture)): ?>
+                  <div class="alert alert-warning">Questo aggiornamento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
                 <?php endif; ?>
 
                 <div class="card mb-3">
@@ -2352,7 +2352,7 @@ function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $cate
 // $post contiene sia le colonne di blog_posts sia quelle di profiles/users già unite dalla query
 // di blog_post.php (stessa forma usata dal tema Colorful); $artist è l'array "adattatore" già
 // costruito lì per riusare le funzioni condivise (embedTrackingHead ecc.).
-function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): string {
+function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $permalink = siteUrl(blogPostUrl($slug, $post));
     $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
     $avatarUrl = adminLteAvatarUrl($artist);
@@ -2421,6 +2421,9 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug): s
                 </div>
               </div>
               <div class="card-body">
+                <?php if (($isOwner || $isPreview) && $isScheduledFuture): ?>
+                  <div class="alert alert-warning">Questo articolo non è ancora pubblico (programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
+                <?php endif; ?>
 
                 <article class="card mb-3">
                   <?php if ($post['cover_path']): ?>
@@ -2640,7 +2643,7 @@ function renderAdminLteFanFavoriteListPage(array $artist, string $slug, array $f
 // riusata dai 6 moduli con API esterna, guidata da ADMINLTE_FAN_FAVORITE_KINDS. $apiDetails arriva
 // già pronto dal chiamante (fan_favorite_item.php), che sa quale funzione dell'API chiamare per
 // ciascun $kind.
-function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string $kind, array $item, array $sameDayItems, ?array $apiDetails, bool $isOwner = false, bool $isScheduledFuture = false): string {
+function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string $kind, array $item, array $sameDayItems, ?array $apiDetails, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $cfg = ADMINLTE_FAN_FAVORITE_KINDS[$kind];
     $name = $item[$cfg['name_col']];
     $image = $item['image_path'] ?: ($item[$cfg['image_col']] ?? null);
@@ -2694,8 +2697,8 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <h3 class="mb-3"><?= e($cfg['label']) ?></h3>
-            <?php if ($isOwner && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
-              <div class="alert alert-warning">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
@@ -2887,7 +2890,7 @@ function renderAdminLteViaggiListPage(array $artist, string $slug, array $monthG
 
 // Dettaglio pubblico di un singolo viaggio a tema AdminLTE — carosello foto + mappa OpenStreetMap
 // (renderPhotoCarousel()/renderOsmEmbed() sono componenti a sé, invariati rispetto al Colorful).
-function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $trip, array $photos, array $sameDayItems, bool $isOwner = false, bool $isScheduledFuture = false): string {
+function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $trip, array $photos, array $sameDayItems, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $note = trim($trip['note'] ?? '');
     $image = (count($photos) > 1) ? getFeedShareImage($trip['image_path']) : ($trip['image_path'] ?: $trip['map_image_path']);
     $imageUrl = $image ? siteUrl($image) : null;
@@ -2934,8 +2937,8 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <h3 class="mb-3"><?= e('Viaggi') ?></h3>
-            <?php if ($isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
-              <div class="alert alert-warning">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
@@ -3070,7 +3073,7 @@ function renderAdminLteBraniListPage(array $artist, string $slug, array $tracks)
 }
 
 // Dettaglio pubblico ("scheda") di un singolo brano che amo a tema AdminLTE — favorite_track_item.php.
-function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, array $track, array $sameDayItems, bool $isOwner = false, bool $isScheduledFuture = false): string {
+function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, array $track, array $sameDayItems, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $note = trim($track['note'] ?? '');
     $image = $track['image_path'] ?: $track['track_image'];
     $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
@@ -3115,8 +3118,8 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <h3 class="mb-3"><?= e('Brani che amo') ?></h3>
-            <?php if ($isOwner && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
-              <div class="alert alert-warning">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
@@ -3991,7 +3994,7 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
 }
 
 // Dettaglio pubblico di una singola offerta speciale a tema AdminLTE — offerta.php.
-function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $offer, bool $isOwner, bool $isCurrentlyValid): string {
+function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $offer, bool $isOwner, bool $isCurrentlyValid, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/offerte/' . (int) $offer['id']);
     $ogImage = $offer['cover_path'] ? siteUrl($offer['cover_path']) : ($offer['avatar_path'] ? siteUrl($offer['avatar_path']) : null);
     $ogDescriptionParts = array_filter([$offer['price_label'], $offer['description'] ? textExcerpt($offer['description'], 160) : null]);
@@ -4045,8 +4048,8 @@ function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $off
                 </div>
               </div>
               <div class="card-body">
-            <?php if ($isOwner && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
-              <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — la vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $offer['is_active'] || !$isCurrentlyValid)): ?>
+              <div class="alert alert-warning">Questa offerta non è visibile al pubblico al momento (disattivata o fuori dal periodo di validità) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <?php if ($offer['cover_path']): ?><img src="/<?= e($offer['cover_path']) ?>" alt="<?= e($offer['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;"><?php endif; ?>
@@ -4191,7 +4194,7 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
 }
 
 // Dettaglio pubblico di un album fotografico a tema AdminLTE — album_item.php.
-function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album, array $photos, bool $isOwner, bool $isScheduledFuture): string {
+function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album, array $photos, bool $isOwner, bool $isScheduledFuture, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/album/' . (int) $album['id']);
     $ogImage = $album['cover_path']
         ? siteUrl(count($photos) > 1 ? getFeedShareImage($album['cover_path']) : $album['cover_path'])
@@ -4247,8 +4250,8 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
                 </div>
               </div>
               <div class="card-body">
-            <?php if ($isOwner && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
-              <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
@@ -4351,7 +4354,7 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
 
 // Dettaglio pubblico di un singolo servizio a tema AdminLTE — servizio_item.php (con eventuale
 // modulo "Richiedi informazioni", stessa logica di invio/notifica del Colorful, solo grafica diversa).
-function renderAdminLteServizioDetailPage(array $artist, string $slug, array $service, array $photos, bool $isOwner, bool $isScheduledFuture, bool $formSent, ?string $formError, ?string $conversionEventId): string {
+function renderAdminLteServizioDetailPage(array $artist, string $slug, array $service, array $photos, bool $isOwner, bool $isScheduledFuture, bool $formSent, ?string $formError, ?string $conversionEventId, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/servizi/' . (int) $service['id']);
     $ogImage = $service['cover_path'] ? siteUrl($service['cover_path']) : ($service['avatar_path'] ? siteUrl($service['avatar_path']) : null);
     $ogDescription = $service['description'] ? textExcerpt($service['description'], 160) : ($service['display_name'] . ' — scopri il servizio su ' . siteName());
@@ -4405,8 +4408,8 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
                 </div>
               </div>
               <div class="card-body">
-            <?php if ($isOwner && (!(int) $service['is_public'] || $isScheduledFuture)): ?>
-              <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+            <?php if (($isOwner || $isPreview) && (!(int) $service['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo servizio non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
@@ -6686,7 +6689,7 @@ const SCHEDULABLE_DASHBOARD_URLS = [
 // già usata per "Primo Piano" e per il Feed aggregato, ma filtrato al contrario (solo il futuro,
 // non il già pubblicato). Gli eventi restano esclusi: non hanno un concetto di programmazione
 // proprio (vedi pinnableScheduleColumn()).
-function getScheduledContentForUser(int $userId): array {
+function getScheduledContentForUser(int $userId, ?string $slug = null): array {
     $items = [];
     foreach (PINNABLE_CONTENT_TYPES as $type => $cfg) {
         $col = pinnableScheduleColumn($cfg['visibility']);
@@ -6707,6 +6710,15 @@ function getScheduledContentForUser(int $userId): array {
                     break;
                 }
             }
+            // Link di "anteprima riservata": la stessa pagina pubblica, con un token che ne
+            // bypassa il blocco 404 finché resta programmata — vedi previewToken() e il gate in
+            // ciascuna pagina di dettaglio (timeline_post.php, fan_favorite_item.php, ecc.). Il
+            // Blog non ha un url_tpl fisso (l'URL include la data), quindi usa blogPostUrl().
+            $previewUrl = null;
+            if ($slug !== null) {
+                $publicPath = ($type === 'blog') ? blogPostUrl($slug, $row) : sprintf($cfg['url_tpl'], $slug, (int) $row['id']);
+                $previewUrl = withPreviewToken(siteUrl($publicPath), $type, (int) $row['id']);
+            }
             $items[] = [
                 'type' => $type,
                 'label' => $cfg['label'],
@@ -6714,11 +6726,50 @@ function getScheduledContentForUser(int $userId): array {
                 'cover' => $cover,
                 'scheduled_for' => $row[$col],
                 'edit_url' => sprintf(SCHEDULABLE_DASHBOARD_URLS[$type] ?? '#', (int) $row['id']),
+                'preview_url' => $previewUrl,
             ];
         }
     }
     usort($items, fn ($a, $b) => strtotime($a['scheduled_for']) <=> strtotime($b['scheduled_for']));
     return $items;
+}
+
+// Token di "anteprima riservata": permette di aprire un contenuto non ancora pubblico (privato o
+// programmato nel futuro) senza essere autenticati — serve ad esempio al Tool di Meta per le
+// Anteprime (Sharing Debugger), che non ha una sessione, per poter leggere gli og:tag prima che il
+// contenuto diventi davvero pubblico. Stateless (HMAC su tipo+id, nessuna colonna DB da aggiungere
+// a tabelle diverse): resta valido finché il contenuto resta privato/programmato, senza bisogno di
+// una scadenza esplicita o di revoca — chi lo conosce può sempre vedere quello specifico elemento,
+// stesso principio di un link "non in elenco" pubblico.
+function previewTokenSecret(): string {
+    static $secret = null;
+    if ($secret === null) {
+        $secret = 'chifacosa-preview:' . (getenv('DB_PASS') ?: 'chifacosa-fallback-secret');
+    }
+    return $secret;
+}
+
+function previewToken(string $type, int $id): string {
+    return substr(hash_hmac('sha256', $type . ':' . $id, previewTokenSecret()), 0, 24);
+}
+
+function previewTokenValid(string $type, int $id, ?string $token): bool {
+    return $token !== null && $token !== '' && hash_equals(previewToken($type, $id), $token);
+}
+
+// Aggiunge (o completa) il parametro ?preview=... a un URL pubblico già pronto.
+function withPreviewToken(string $url, string $type, int $id): string {
+    $sep = str_contains($url, '?') ? '&' : '?';
+    return $url . $sep . 'preview=' . previewToken($type, $id);
+}
+
+// Frase finale del banner "non ancora pubblico" mostrato sulle pagine di dettaglio: il motivo
+// (privato/programmato/disattivato) resta specifico per tipo e scritto in ciascuna pagina, cambia
+// solo il "chi lo sta vedendo" a seconda che sia il proprietario o chi ha un link di anteprima.
+function previewNoticeSuffix(bool $isOwner): string {
+    return $isOwner
+        ? 'lo vedi solo tu, come proprietario del profilo.'
+        : "stai vedendo un'anteprima riservata tramite link — non è ancora visibile al pubblico.";
 }
 
 // Elementi attualmente fissati in "Primo Piano" per un profilo, in ordine di visualizzazione

@@ -18,11 +18,22 @@ $stmt = getDB()->prepare('SELECT u.slug AS user_slug, u.account_type, p.display_
                           FROM blog_posts b
                           JOIN users u ON u.id = b.user_id
                           JOIN profiles p ON p.user_id = u.id
-                          WHERE u.slug = ? AND b.slug = ? AND u.is_active = 1 AND b.published_at <= NOW()');
+                          WHERE u.slug = ? AND b.slug = ? AND u.is_active = 1');
 $stmt->execute([$userSlug, $postSlug]);
 $post = $stmt->fetch();
 
 if (!$post) {
+    http_response_code(404);
+    exit('Articolo non trovato.');
+}
+
+// Un articolo ancora programmato per il futuro non è raggiungibile da nessun altro, nemmeno con
+// il link diretto — stessa regola già in uso per Timeline/Che Amo/Album/Servizi/Offerte. Il
+// proprietario e chi ha un link di anteprima valido (vedi previewToken()) continuano a vederlo.
+$isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $post['user_id'];
+$isScheduledFuture = $post['published_at'] && strtotime($post['published_at']) > time();
+$isPreview = !$isOwner && previewTokenValid('blog', (int) $post['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && $isScheduledFuture) {
     http_response_code(404);
     exit('Articolo non trovato.');
 }
@@ -45,7 +56,7 @@ $artist = [
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteBlogPostPage($post, $artist, $userSlug);
+    echo renderAdminLteBlogPostPage($post, $artist, $userSlug, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 
@@ -103,6 +114,10 @@ if (!empty($post['album_id'])) {
 <?= embedTrackingBodyStart($artist) ?>
 <div class="container">
   <?= publicProfileHeader($artist, 'blog') ?>
+
+  <?php if (($isOwner || $isPreview) && $isScheduledFuture): ?>
+    <div class="alert error">Questo articolo non è ancora pubblico (programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
+  <?php endif; ?>
 
   <?php // .blog-item (pensata per le righe della lista, senza margini laterali) qui vince
         // su .card nel CSS e azzera il padding orizzontale: va ripristinato esplicitamente,

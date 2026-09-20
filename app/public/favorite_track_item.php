@@ -37,7 +37,8 @@ if (!$track) {
 // ancora programmato non è raggiungibile da nessun altro, nemmeno con il link diretto.
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $track['user_id'];
 $isScheduledFuture = $track['publish_at'] && strtotime($track['publish_at']) > time();
-if (!$isOwner && (!(int) $track['is_public'] || $isScheduledFuture)) {
+$isPreview = !$isOwner && previewTokenValid('brano', (int) $track['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $track['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Brano non trovato.');
 }
@@ -53,7 +54,7 @@ $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)
 $sameDayItems = getSameDayFavorites('favorite_tracks', $artist['id'], $track['publish_at'], $track['created_at'], $trackId);
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteFavoriteTrackDetailPage($artist, $slug, $track, $sameDayItems, $isOwner, $isScheduledFuture);
+    echo renderAdminLteFavoriteTrackDetailPage($artist, $slug, $track, $sameDayItems, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 
@@ -102,8 +103,8 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $t
 <div class="container">
   <?= publicProfileHeader($artist, 'brani') ?>
 
-  <?php if ($isOwner && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
-    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $track['is_public'] || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo brano non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">

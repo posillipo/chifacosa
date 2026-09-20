@@ -38,7 +38,8 @@ if (!$trip) {
 // ancora programmato non è raggiungibile da nessun altro, nemmeno con il link diretto.
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $trip['user_id'];
 $isScheduledFuture = $trip['publish_at'] && strtotime($trip['publish_at']) > time();
-if (!$isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)) {
+$isPreview = !$isOwner && previewTokenValid('viaggio_favorito', (int) $trip['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $trip['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Viaggio non trovato.');
 }
@@ -64,7 +65,7 @@ $imageUrl = $image ? siteUrl($image) : null;
 $sameDayItems = getSameDayFavorites('fan_favorite_trips', $artist['id'], $trip['publish_at'], $trip['created_at'], $tripId);
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteViaggioDetailPage($artist, $slug, $trip, $photos, $sameDayItems, $isOwner, $isScheduledFuture);
+    echo renderAdminLteViaggioDetailPage($artist, $slug, $trip, $photos, $sameDayItems, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 
@@ -113,8 +114,8 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
 <div class="container">
   <?= publicProfileHeader($artist, 'viaggi') ?>
 
-  <?php if ($isOwner && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
-    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $trip['is_public'] || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo viaggio non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">

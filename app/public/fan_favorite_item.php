@@ -183,7 +183,24 @@ if (!$item) {
 // prima che diventi davvero pubblico.
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $item['user_id'];
 $isScheduledFuture = $item['publish_at'] && strtotime($item['publish_at']) > time();
-if (!$isOwner && (!(int) $item['is_public'] || $isScheduledFuture)) {
+// Chiave usata da PINNABLE_CONTENT_TYPES (functions.php) per questo "kind" — serve al token di
+// anteprima, che è per-tipo, per restare coerente col link generato da dashboard_schedule.php.
+$previewType = match ($kind) {
+    'band' => 'band_favorita',
+    'actor' => 'attore_favorito',
+    'movie' => 'film_favorito',
+    'book' => 'libro_favorito',
+    'playlist' => 'playlist_favorita',
+    'album' => 'album_favorito',
+    'recipe' => 'ricetta_favorita',
+    'team' => 'squadra_favorita',
+    'footballer' => 'calciatore_favorito',
+    'match' => 'partita_favorita',
+    'publication' => 'pubblicazione_favorita',
+    default => $kind,
+};
+$isPreview = !$isOwner && previewTokenValid($previewType, (int) $item['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $item['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Elemento non trovato.');
 }
@@ -249,7 +266,7 @@ if ($kind === 'recipe' && !empty($apiDetails['source_url'])) {
 }
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteFanFavoriteDetailPage($artist, $slug, $kind, $item, $sameDayItems, $apiDetails, $isOwner, $isScheduledFuture);
+    echo renderAdminLteFanFavoriteDetailPage($artist, $slug, $kind, $item, $sameDayItems, $apiDetails, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 
@@ -298,8 +315,8 @@ $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails
 <div class="container">
   <?= publicProfileHeader($artist, $cfg['nav_key']) ?>
 
-  <?php if ($isOwner && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
-    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $item['is_public'] || $isScheduledFuture)): ?>
+    <div class="card" style="border:1px solid #dc3545;color:#dc3545;">Questo elemento non è visibile al pubblico al momento (Solo io, o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">

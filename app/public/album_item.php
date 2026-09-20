@@ -23,7 +23,8 @@ if (!$album) {
 
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $album['user_id'];
 $isScheduledFuture = $album['publish_at'] && strtotime($album['publish_at']) > time();
-if (!$isOwner && (!(int) $album['is_public'] || $isScheduledFuture)) {
+$isPreview = !$isOwner && previewTokenValid('album_foto', (int) $album['id'], $_GET['preview'] ?? null);
+if (!$isOwner && !$isPreview && (!(int) $album['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
     exit('Album non trovato.');
 }
@@ -58,7 +59,7 @@ $ogImage = $album['cover_path']
 $ogDescription = $album['description'] ? textExcerpt($album['description'], 160) : ($album['display_name'] . ' — scopri l\'album su ' . siteName());
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteAlbumDetailPage($artist, $slug, $album, $photos, $isOwner, $isScheduledFuture);
+    echo renderAdminLteAlbumDetailPage($artist, $slug, $album, $photos, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }
 ?>
@@ -103,8 +104,8 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 <div class="container">
   <?= publicProfileHeader($artist, 'foto') ?>
 
-  <?php if ($isOwner && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
-    <div class="alert error">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — lo vedi solo tu, come proprietario del profilo.</div>
+  <?php if (($isOwner || $isPreview) && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
+    <div class="alert error">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
   <?php endif; ?>
 
   <div class="card" style="text-align:center;">
