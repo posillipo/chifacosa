@@ -1776,8 +1776,14 @@ body.geolierstyle-page {
 }
 .geolierstyle-page .profile-header h1 {
   position: relative; margin: 0; margin-top: -126px; padding: 0 22px;
-  color: #fff; font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.15;
+  color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.15;
   text-shadow: 0 4px 22px rgba(0,0,0,0.7);
+  /* Sempre su una sola riga, come nel riferimento — il font-size scala con la larghezza dello
+     schermo (clamp) così un nome lungo si rimpicciolisce invece di andare a capo; se anche
+     questo non bastasse (nome davvero lunghissimo), i tre puntini di overflow evitano che sfori
+     dalla foto invece di spezzarsi su due righe. */
+  font-size: clamp(20px, 7vw, 30px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .geolierstyle-page .profile-header p { color: rgba(var(--text-rgb),0.75); }
 .geolierstyle-page .profile-meta {
