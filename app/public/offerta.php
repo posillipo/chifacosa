@@ -51,6 +51,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/offerte/' . $offerId);
+if (!(int) $offer['is_active'] || !$isCurrentlyValid) {
+    $pageUrl = withPreviewToken($pageUrl, 'offerta', $offerId);
+}
 $ogImage = $offer['cover_path'] ? siteUrl($offer['cover_path']) : ($offer['avatar_path'] ? siteUrl($offer['avatar_path']) : null);
 $ogDescriptionParts = array_filter([$offer['price_label'], $offer['description'] ? textExcerpt($offer['description'], 160) : null]);
 $ogDescription = $ogDescriptionParts ? implode(' — ', $ogDescriptionParts) : ($offer['display_name'] . ' — scopri l\'offerta su ' . siteName());

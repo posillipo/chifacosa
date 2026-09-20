@@ -59,6 +59,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/brani/' . $trackId . '/scheda');
+if (!(int) $track['is_public'] || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, 'brano', $trackId);
+}
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $track['track_name'] . '" — scoprilo su ' . siteName());
 ?>
 <!doctype html>

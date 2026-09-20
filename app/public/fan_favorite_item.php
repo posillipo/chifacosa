@@ -183,22 +183,7 @@ if (!$item) {
 // prima che diventi davvero pubblico.
 $isOwner = !empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === (int) $item['user_id'];
 $isScheduledFuture = $item['publish_at'] && strtotime($item['publish_at']) > time();
-// Chiave usata da PINNABLE_CONTENT_TYPES (functions.php) per questo "kind" — serve al token di
-// anteprima, che è per-tipo, per restare coerente col link generato da dashboard_schedule.php.
-$previewType = match ($kind) {
-    'band' => 'band_favorita',
-    'actor' => 'attore_favorito',
-    'movie' => 'film_favorito',
-    'book' => 'libro_favorito',
-    'playlist' => 'playlist_favorita',
-    'album' => 'album_favorito',
-    'recipe' => 'ricetta_favorita',
-    'team' => 'squadra_favorita',
-    'footballer' => 'calciatore_favorito',
-    'match' => 'partita_favorita',
-    'publication' => 'pubblicazione_favorita',
-    default => $kind,
-};
+$previewType = fanFavoritePreviewType($kind);
 $isPreview = !$isOwner && previewTokenValid($previewType, (int) $item['id'], $_GET['preview'] ?? null);
 if (!$isOwner && !$isPreview && (!(int) $item['is_public'] || $isScheduledFuture)) {
     http_response_code(404);
@@ -271,6 +256,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $itemId);
+if (!(int) $item['is_public'] || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, $previewType, $itemId);
+}
 $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
 ?>
 <!doctype html>

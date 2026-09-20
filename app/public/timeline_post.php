@@ -61,6 +61,13 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/timeline/' . $postId);
+// Se il contenuto non è ancora pubblico, l'og:url deve portare anche lui il token di anteprima:
+// altrimenti il crawler di Meta, dopo aver letto la pagina con successo, ri-verifica proprio
+// l'URL dichiarato in og:url — che senza token darebbe di nuovo 404, facendo fallire l'intera
+// anteprima social anche se la pagina originale era stata letta correttamente.
+if ($post['visibility'] === 'private' || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, 'pensiero', $postId);
+}
 // Con più di una foto, l'immagine esposta a og:image/Twitter (quella che finisce sui social
 // tramite Metricool & co. — vedi commento in feed.php) è una copia con "Link Album in Descrizione"
 // scritto in basso, non l'originale: sui social arriva sempre una sola immagine, mai il

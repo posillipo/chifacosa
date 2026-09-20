@@ -70,6 +70,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/viaggi/' . $tripId);
+if (!(int) $trip['is_public'] || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, 'viaggio_favorito', $tripId);
+}
 $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
 ?>
 <!doctype html>

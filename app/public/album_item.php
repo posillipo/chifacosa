@@ -49,6 +49,9 @@ $artist = [
 $photos = array_values(array_filter(array_merge([$album['cover_path']], getAlbumPhotos($albumId))));
 
 $pageUrl = siteUrl('/' . $slug . '/album/' . $albumId);
+if (!(int) $album['is_public'] || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, 'album_foto', $albumId);
+}
 // Con più di una foto, l'immagine condivisa sui social (og:image) è la versione con "Link Album
 // in Descrizione" scritta in basso — vedi getFeedShareImage() in functions.php: chi la vede sul
 // proprio feed social (es. Instagram via Metricool) sa che ce ne sono altre da vedere seguendo il

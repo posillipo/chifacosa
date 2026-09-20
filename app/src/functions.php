@@ -2069,6 +2069,9 @@ function renderAdminLteTimelinePage(array $artist, string $slug): string {
 // CSS/JS dedicato — funziona identico dentro la card AdminLTE.
 function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug, array $photos, array $sameDayPosts, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/timeline/' . (int) $post['id']);
+    if ($post['visibility'] === 'private' || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'pensiero', (int) $post['id']);
+    }
     $avatarUrl = adminLteAvatarUrl($artist);
     $ogImagePath = (count($photos) > 1 && $post['image_path']) ? getFeedShareImage($post['image_path']) : $post['image_path'];
     $ogImage = $ogImagePath ? siteUrl($ogImagePath) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
@@ -2354,6 +2357,9 @@ function renderAdminLteBlogCategoryPage(array $artist, string $slug, array $cate
 // costruito lì per riusare le funzioni condivise (embedTrackingHead ecc.).
 function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bool $isOwner = false, bool $isScheduledFuture = false, bool $isPreview = false): string {
     $permalink = siteUrl(blogPostUrl($slug, $post));
+    if ($isScheduledFuture) {
+        $permalink = withPreviewToken($permalink, 'blog', (int) $post['id']);
+    }
     $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
     $avatarUrl = adminLteAvatarUrl($artist);
     $postCategories = getBlogPostCategories((int) $post['id']);
@@ -2657,6 +2663,9 @@ function renderAdminLteFanFavoriteDetailPage(array $artist, string $slug, string
         : $cfg['external_url'] . $item[$cfg['external_id_col']];
     $shapeStyle = ['circle' => 'width:160px;height:160px;border-radius:50%;', 'book' => 'width:140px;height:190px;border-radius:8px;', 'square' => 'width:170px;height:170px;border-radius:14px;'][$cfg['image_shape']];
     $pageUrl = siteUrl('/' . $slug . '/' . $cfg['list_url_segment'] . '/' . (int) $item['id']);
+    if (!(int) $item['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, fanFavoritePreviewType($kind), (int) $item['id']);
+    }
     $ogDescription = $note !== '' ? $note : ($apiDetails['biography'] ?? $apiDetails['overview'] ?? ($artist['display_name'] . ' ama ' . $name . ' — scoprilo su ' . siteName()));
     ob_start();
     ?>
@@ -2895,6 +2904,9 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
     $image = (count($photos) > 1) ? getFeedShareImage($trip['image_path']) : ($trip['image_path'] ?: $trip['map_image_path']);
     $imageUrl = $image ? siteUrl($image) : null;
     $pageUrl = siteUrl('/' . $slug . '/viaggi/' . (int) $trip['id']);
+    if (!(int) $trip['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'viaggio_favorito', (int) $trip['id']);
+    }
     $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
     $anyMultiPhoto = count($photos) > 1;
     ob_start();
@@ -3078,6 +3090,9 @@ function renderAdminLteFavoriteTrackDetailPage(array $artist, string $slug, arra
     $image = $track['image_path'] ?: $track['track_image'];
     $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : siteUrl($image)) : null;
     $pageUrl = siteUrl('/' . $slug . '/brani/' . (int) $track['id'] . '/scheda');
+    if (!(int) $track['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'brano', (int) $track['id']);
+    }
     $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' ama "' . $track['track_name'] . '" — scoprilo su ' . siteName());
     ob_start();
     ?>
@@ -3996,6 +4011,9 @@ function renderAdminLteOfferteListPage(array $artist, string $slug, array $offer
 // Dettaglio pubblico di una singola offerta speciale a tema AdminLTE — offerta.php.
 function renderAdminLteOffertaDetailPage(array $artist, string $slug, array $offer, bool $isOwner, bool $isCurrentlyValid, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/offerte/' . (int) $offer['id']);
+    if (!(int) $offer['is_active'] || !$isCurrentlyValid) {
+        $pageUrl = withPreviewToken($pageUrl, 'offerta', (int) $offer['id']);
+    }
     $ogImage = $offer['cover_path'] ? siteUrl($offer['cover_path']) : ($offer['avatar_path'] ? siteUrl($offer['avatar_path']) : null);
     $ogDescriptionParts = array_filter([$offer['price_label'], $offer['description'] ? textExcerpt($offer['description'], 160) : null]);
     $ogDescription = $ogDescriptionParts ? implode(' — ', $ogDescriptionParts) : ($offer['display_name'] . ' — scopri l\'offerta su ' . siteName());
@@ -4196,6 +4214,9 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
 // Dettaglio pubblico di un album fotografico a tema AdminLTE — album_item.php.
 function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album, array $photos, bool $isOwner, bool $isScheduledFuture, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/album/' . (int) $album['id']);
+    if (!(int) $album['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'album_foto', (int) $album['id']);
+    }
     $ogImage = $album['cover_path']
         ? siteUrl(count($photos) > 1 ? getFeedShareImage($album['cover_path']) : $album['cover_path'])
         : ($album['avatar_path'] ? siteUrl($album['avatar_path']) : null);
@@ -4356,6 +4377,9 @@ function renderAdminLteServiziListPage(array $artist, string $slug, array $servi
 // modulo "Richiedi informazioni", stessa logica di invio/notifica del Colorful, solo grafica diversa).
 function renderAdminLteServizioDetailPage(array $artist, string $slug, array $service, array $photos, bool $isOwner, bool $isScheduledFuture, bool $formSent, ?string $formError, ?string $conversionEventId, bool $isPreview = false): string {
     $pageUrl = siteUrl('/' . $slug . '/servizi/' . (int) $service['id']);
+    if (!(int) $service['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'servizio', (int) $service['id']);
+    }
     $ogImage = $service['cover_path'] ? siteUrl($service['cover_path']) : ($service['avatar_path'] ? siteUrl($service['avatar_path']) : null);
     $ogDescription = $service['description'] ? textExcerpt($service['description'], 160) : ($service['display_name'] . ' — scopri il servizio su ' . siteName());
     ob_start();
@@ -6770,6 +6794,26 @@ function previewNoticeSuffix(bool $isOwner): string {
     return $isOwner
         ? 'lo vedi solo tu, come proprietario del profilo.'
         : "stai vedendo un'anteprima riservata tramite link — non è ancora visibile al pubblico.";
+}
+
+// Chiave usata da PINNABLE_CONTENT_TYPES per un "kind" dei moduli Che Amo (fan_favorite_item.php)
+// — serve al token di anteprima, che è per-tipo, per restare coerente col link generato da
+// dashboard_schedule.php indipendentemente da quale delle due pagine (colorful o AdminLTE) lo usa.
+function fanFavoritePreviewType(string $kind): string {
+    return match ($kind) {
+        'band' => 'band_favorita',
+        'actor' => 'attore_favorito',
+        'movie' => 'film_favorito',
+        'book' => 'libro_favorito',
+        'playlist' => 'playlist_favorita',
+        'album' => 'album_favorito',
+        'recipe' => 'ricetta_favorita',
+        'team' => 'squadra_favorita',
+        'footballer' => 'calciatore_favorito',
+        'match' => 'partita_favorita',
+        'publication' => 'pubblicazione_favorita',
+        default => $kind,
+    };
 }
 
 // Elementi attualmente fissati in "Primo Piano" per un profilo, in ordine di visualizzazione

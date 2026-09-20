@@ -88,6 +88,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $pageUrl = siteUrl('/' . $slug . '/servizi/' . $serviceId);
+if (!(int) $service['is_public'] || $isScheduledFuture) {
+    $pageUrl = withPreviewToken($pageUrl, 'servizio', $serviceId);
+}
 $ogImage = $service['cover_path'] ? siteUrl($service['cover_path']) : ($service['avatar_path'] ? siteUrl($service['avatar_path']) : null);
 $ogDescription = $service['description'] ? textExcerpt($service['description'], 160) : ($service['display_name'] . ' — scopri il servizio su ' . siteName());
 ?>

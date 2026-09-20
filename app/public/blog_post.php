@@ -61,6 +61,9 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 }
 
 $permalink = siteUrl(blogPostUrl($userSlug, $post));
+if ($isScheduledFuture) {
+    $permalink = withPreviewToken($permalink, 'blog', (int) $post['id']);
+}
 $ogImage = $post['cover_path'] ? siteUrl($post['cover_path']) : ($post['avatar_path'] ? siteUrl($post['avatar_path']) : null);
 $postCategories = getBlogPostCategories((int) $post['id']);
 $linkedAlbum = null;
