@@ -1100,6 +1100,33 @@ card nella vetrina "Che Amo" (mostrata solo se il profilo ha almeno una pubblica
 voce nel menu di navigazione personalizzabile (si aggiunge da sola ai profili esistenti). Elenco
 pubblico a mattonelle su `/slug/pubblicazioni-che-amo`.
 
+## 52. Data di aggiunta per i Link (`links.created_at`)
+```sql
+ALTER TABLE links ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+```
+Colonna additiva su una tabella già esistente e molto usata (Link in Bio, inclusi i film del
+modulo Cinema, `link_type='film'`) — necessaria per la nuova API `/api/v1/cinema-films/list`
+(vedi sotto), che deve poter dire "quali film sono stati aggiunti di recente". I link già
+esistenti ricevono automaticamente la data odierna come `created_at` (comportamento di default
+per le righe già presenti quando si aggiunge una colonna con `DEFAULT CURRENT_TIMESTAMP`), non
+la vera data in cui sono stati creati — accettabile: serve solo per i film aggiunti DA ORA IN
+POI dal sync Cinema.
+
+## 53. API di sola lettura per i film Cinema + tool MCP
+
+Nessuna nuova tabella oltre alla colonna della voce 52. Nuovo endpoint `GET
+/api/v1/cinema-films/list` (stesso token Bearer di `/social-posts` e `/blog-posts`, vedi
+`app/src/api_helpers.php`): elenca i film sincronizzati dal feed JSON Cinema del profilo
+(`links` con `link_type='film'`), con `added_at` per capire quali sono nuovi dall'ultimo
+controllo (parametro opzionale `since=YYYY-MM-DD`). Parametro opzionale `sync=1` forza una
+sincronizzazione col feed esterno prima di leggere (riusa `syncCinemaFilms()`), utile se non è
+già configurato `cron_cinema_sync.php`.
+
+Nuovo tool MCP `list_cinema_films` (server `mcp-server/`): richiesto per poter chiedere a
+Claude, in chat, di controllare le nuove uscite cinema e creare un post (`create_social_post` /
+`create_blog_post`) per ciascuna — flusso manuale/a richiesta, non un'automazione periodica
+autonoma.
+
 ---
 
 ## Come aggiungere una nuova voce

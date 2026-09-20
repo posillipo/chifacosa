@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS links (
     map_lat DECIMAL(10,7) DEFAULT NULL,
     map_lng DECIMAL(10,7) DEFAULT NULL,
     external_ref VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_user_external_ref (user_id, external_ref)
 ) ENGINE=InnoDB;

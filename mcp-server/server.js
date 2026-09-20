@@ -265,6 +265,23 @@ function buildMcpServer() {
         inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo da modificare'), ...blogPostFieldsSchema },
     }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`, { method: 'PUT', body: fields })));
 
+    server.registerTool('list_cinema_films', {
+        title: 'Elenca i film Cinema di un profilo',
+        description: 'Elenca i film sincronizzati dal feed JSON Cinema del profilo scelto (Dashboard -> Cinema), con la data in cui sono stati aggiunti — utile per individuare le nuove uscite e creare un post (create_social_post / create_blog_post) per ciascuna.',
+        inputSchema: {
+            ...profileField,
+            since: z.string().optional().describe('Mostra solo i film aggiunti da questa data in poi (YYYY-MM-DD) — utile per trovare solo le nuove uscite dall\'ultimo controllo'),
+            sync: z.boolean().optional().describe('Se true, forza una sincronizzazione col feed JSON esterno prima di leggere (utile se sul server non è già configurato un cron periodico)'),
+        },
+    }, async ({ profile, ...args }) => {
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(args || {})) {
+            if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+        const qs = params.toString();
+        return toolResult(await chifacosaApi(profile, '/cinema-films/list' + (qs ? `?${qs}` : '')));
+    });
+
     server.registerTool('delete_blog_post', {
         title: 'Elimina un articolo del blog',
         description: 'Elimina definitivamente un articolo del blog di un profilo, dato il suo ID.',

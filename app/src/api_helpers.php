@@ -421,3 +421,16 @@ function apiValidateBlogPostPayload(array $data, bool $partial): array {
 
     return ['error' => null, 'values' => $values];
 }
+
+// Trasforma una riga di links (link_type='film', vedi syncCinemaFilms()) nella forma esposta
+// dall'API pubblica di sola lettura /api/v1/cinema-films/list — usata per capire quali film sono
+// stati aggiunti di recente (added_at) e creare un post Timeline/Blog per ciascuno.
+function apiSerializeCinemaFilm(array $link): array {
+    return [
+        'id' => $link['external_ref'],
+        'title' => $link['label'],
+        'film_url' => $link['url'],
+        'cover_image_url' => $link['cover_path'] ? siteUrl('/' . $link['cover_path']) : null,
+        'added_at' => apiFormatDateTimeRome($link['created_at'] ?? null),
+    ];
+}

@@ -24,6 +24,11 @@ RewriteRule ^api/v1/blog-posts/create/?$ api_blog_posts_create.php [L,QSA]
 RewriteRule ^api/v1/blog-posts/list/?$ api_blog_posts_list.php [L,QSA]
 RewriteRule ^api/v1/blog-posts/([0-9]+)/?$ api_blog_posts_item.php?id=$1 [L,QSA]
 
+# API pubblica di sola lettura /api/v1/cinema-films/list — stesso token Bearer, elenco dei film
+# sincronizzati dal JSON Cinema del profilo (vedi syncCinemaFilms()), per creare post quando
+# escono nuovi film.
+RewriteRule ^api/v1/cinema-films/list/?$ api_cinema_films_list.php [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 
