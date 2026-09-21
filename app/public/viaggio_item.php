@@ -140,7 +140,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
     <div style="margin-top:16px;"><?= renderOsmEmbed((float) $trip['lat'], (float) $trip['lng']) ?></div>
   </div>
 
-  <?php $anyMultiPhoto = count($photos) > 1; ?>
+  <?php $anyMultiPhoto = (bool) $photos; ?>
   <?php if ($sameDayItems): ?>
     <div class="section-title" style="text-align:center;color:rgba(var(--text-rgb),0.6);margin:22px 0 10px;">
       Altri di questa giornata (<?= count($sameDayItems) ?>)
@@ -150,7 +150,7 @@ $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a 
         // Stessa grafica del post principale sopra (foto/carosello, titolo, racconto, mappa).
         $sNote = trim($s['note'] ?? '');
         $sPhotos = $s['image_path'] ? array_values(array_filter(array_merge([$s['image_path']], getTripPhotos((int) $s['id'])))) : [];
-        if (count($sPhotos) > 1) { $anyMultiPhoto = true; }
+        if ($sPhotos) { $anyMultiPhoto = true; }
       ?>
       <div class="card" style="text-align:center;">
         <?= renderPhotoCarousel($sPhotos, (int) $s['id']) ?>

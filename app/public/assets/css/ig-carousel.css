@@ -34,6 +34,25 @@
 }
 .ig-expand-btn:hover { background:rgba(0,0,0,0.65); }
 
+/* Variante a foto singola: l'intero pulsante COPRE l'immagine (non solo l'angolino), così basta
+   cliccare ovunque sulla foto per aprirla a tutto schermo — l'iconcina in basso a destra resta
+   solo come indizio visivo. */
+.ig-expand-btn-cover {
+  position:relative; display:block; width:100%;
+  padding:0; border:none; background:none; cursor:pointer; text-align:left;
+}
+.ig-carousel-single-img {
+  width:100%; display:block; border-radius:14px; object-fit:cover;
+  box-shadow:0 8px 24px rgba(0,0,0,0.15);
+}
+.ig-expand-btn-cover .ig-expand-icon {
+  position:absolute; top:8px; right:8px; z-index:6;
+  width:32px; height:32px; border-radius:50%;
+  background:rgba(0,0,0,0.45); color:#fff; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+}
+.ig-expand-btn-cover:hover .ig-expand-icon { background:rgba(0,0,0,0.65); }
+
 /* position:fixed richiede che NESSUN antenato abbia transform/filter/opacity<1 (altrimenti
    quell'antenato diventa il "contenitore" invece della finestra, e inset:0 copre solo lui) —
    per non doverlo garantire su tutta la pagina (temi, sfondi animati, ecc.), ig-carousel.js

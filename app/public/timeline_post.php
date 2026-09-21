@@ -162,7 +162,7 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : (!empty($post['
 <?= renderFloatingButtons() ?>
 <?= renderSiteFooterBar($artist) ?>
 
-<?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
+<?php if ($photos || $sameDayPosts): ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
 <script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
 <?php endif; ?>

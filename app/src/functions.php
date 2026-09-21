@@ -2117,7 +2117,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <?= adminLteAssetLinks() ?>
-<?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
+<?php if ($photos || $sameDayPosts): ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
 <?php endif; ?>
 <?= embedPrivacyScript($artist) ?>
@@ -2192,7 +2192,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
-<?php if ($photos && (count($photos) > 1 || $sameDayPosts)): ?>
+<?php if ($photos || $sameDayPosts): ?>
 <script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
 <?php endif; ?>
 </body>
@@ -2925,7 +2925,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
         $pageUrl = withPreviewToken($pageUrl, 'viaggio_favorito', (int) $trip['id']);
     }
     $ogDescription = $note !== '' ? $note : ($artist['display_name'] . ' è stato a ' . $trip['place_name'] . ' — scoprilo su ' . siteName());
-    $anyMultiPhoto = count($photos) > 1;
+    $anyMultiPhoto = (bool) $photos;
     ob_start();
     ?>
 <!doctype html>
@@ -2992,7 +2992,7 @@ function renderAdminLteViaggioDetailPage(array $artist, string $slug, array $tri
               <?php foreach ($sameDayItems as $s):
                 $sNote = trim($s['note'] ?? '');
                 $sPhotos = $s['image_path'] ? array_values(array_filter(array_merge([$s['image_path']], getTripPhotos((int) $s['id'])))) : [];
-                if (count($sPhotos) > 1) { $anyMultiPhoto = true; }
+                if ($sPhotos) { $anyMultiPhoto = true; }
               ?>
               <div class="card mb-3">
                 <div class="card-body text-center">
@@ -4260,7 +4260,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <?= adminLteAssetLinks() ?>
-<?php if (count($photos) > 1): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?php if ($photos): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
@@ -4311,7 +4311,7 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
-<?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+<?php if ($photos): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
     <?php
@@ -4421,7 +4421,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <?= adminLteAssetLinks() ?>
-<?php if (count($photos) > 1): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
+<?php if ($photos): ?><link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>"><?php endif; ?>
 <?= embedPrivacyScript($artist) ?>
 <?= embedTrackingHead($artist) ?>
 <?= embedGoogleAnalytics($artist) ?>
@@ -4495,7 +4495,7 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
-<?php if (count($photos) > 1): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
+<?php if ($photos): ?><script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script><?php endif; ?>
 </body>
 </html>
     <?php
@@ -6253,8 +6253,23 @@ function renderPhotoCarousel(array $photos, int $itemId): string {
         return '';
     }
     if (count($photos) === 1) {
-        return '<img src="/' . e($photos[0]) . '" alt=""'
-             . ' style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">';
+        // Una sola foto: niente frecce/puntini (non ci sarebbe nulla tra cui scorrere) — l'intera
+        // immagine è il pulsante che apre la stessa lightbox a tutto schermo delle gallerie con
+        // più foto, riusando ig-carousel.js/css senza bisogno di codice JS dedicato. Il pulsante
+        // .ig-expand-btn deve restare un DISCENDENTE di .ig-carousel (non lo stesso elemento):
+        // ig-carousel.js lo cerca con carousel.querySelector(), che non trova mai l'elemento di
+        // partenza stesso.
+        $html = '<div class="ig-carousel ig-carousel-single" data-post="' . $itemId . '">'
+              . '<button type="button" class="ig-expand-btn ig-expand-btn-cover" aria-label="Vedi a tutto schermo">'
+              . '<img src="/' . e($photos[0]) . '" alt="" class="ig-carousel-single-img">'
+              . '<span class="ig-expand-icon"><i class="fa-solid fa-expand"></i></span>'
+              . '</button>'
+              . '</div>';
+        $html .= '<div class="ig-lightbox" data-post="' . $itemId . '">'
+              . '<button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>'
+              . '<div class="ig-lightbox-track"><img src="/' . e($photos[0]) . '" alt="" loading="lazy"></div>'
+              . '</div>';
+        return $html;
     }
 
     $slides = '';

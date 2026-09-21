@@ -152,7 +152,7 @@ include __DIR__ . '/_dash_header.php';
     <div class="section-title" style="margin-top:0;">Foto</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <div style="position:relative;width:84px;">
-        <img src="/<?= e($post['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;">
+        <img src="/<?= e($post['image_path']) ?>" class="tl-photo-thumb" data-src="/<?= e($post['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;cursor:pointer;">
         <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
         <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');" style="display:contents;">
           <?= csrfField() ?>
@@ -164,7 +164,7 @@ include __DIR__ . '/_dash_header.php';
       </div>
       <?php foreach ($extraPhotos as $ph): ?>
         <div style="position:relative;width:84px;">
-          <img src="/<?= e($ph['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;">
+          <img src="/<?= e($ph['image_path']) ?>" class="tl-photo-thumb" data-src="/<?= e($ph['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;cursor:pointer;">
           <form method="post" onsubmit="return confirm('Eliminare questa foto?');" style="display:contents;">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="delete_photo">
@@ -175,7 +175,11 @@ include __DIR__ . '/_dash_header.php';
         </div>
       <?php endforeach; ?>
     </div>
-    <p style="color:var(--text-muted);font-size:12px;margin:10px 0 0;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
+    <p style="color:var(--text-muted);font-size:12px;margin:10px 0 0;">Clicca su una foto per vederla a tutto schermo, sulla × per eliminarla singolarmente senza toccare le altre.</p>
+  </div>
+  <div id="tl-photo-lightbox" style="display:none;position:fixed;inset:0;width:100vw;height:100vh;background:rgba(0,0,0,0.92);z-index:2000;">
+    <button type="button" id="tl-photo-lightbox-close" aria-label="Chiudi" style="position:fixed;top:16px;right:16px;z-index:2010;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:18px;cursor:pointer;">✕</button>
+    <img id="tl-photo-lightbox-img" src="" alt="" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:94vw;max-height:94vh;object-fit:contain;">
   </div>
   <?php endif; ?>
 
@@ -241,6 +245,35 @@ include __DIR__ . '/_dash_header.php';
             generateBtn.disabled = false;
             statusEl.textContent = 'Errore di connessione. Riprova.';
           });
+      });
+    })();
+
+    (function () {
+      const lightbox = document.getElementById('tl-photo-lightbox');
+      if (!lightbox) return;
+      const lightboxImg = document.getElementById('tl-photo-lightbox-img');
+      const closeBtn = document.getElementById('tl-photo-lightbox-close');
+
+      function open(src) {
+        lightboxImg.src = src;
+        lightbox.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+      }
+      function close() {
+        lightbox.style.display = 'none';
+        lightboxImg.src = '';
+        document.body.style.overflow = '';
+      }
+
+      document.querySelectorAll('.tl-photo-thumb').forEach(function (img) {
+        img.addEventListener('click', function () { open(img.dataset.src); });
+      });
+      closeBtn.addEventListener('click', close);
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) close();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && lightbox.style.display === 'block') close();
       });
     })();
   </script>

@@ -175,7 +175,7 @@ $ogDescription = $service['description'] ? textExcerpt($service['description'], 
 <?= renderFloatingButtons() ?>
 <?= renderSiteFooterBar($artist) ?>
 
-<?php if (count($photos) > 1): ?>
+<?php if ($photos): ?>
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/ig-carousel.css') ?>">
 <script src="<?= assetUrl('/assets/js/ig-carousel.js') ?>"></script>
 <?php endif; ?>
