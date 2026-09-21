@@ -105,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $testo = trim($_POST['testo'] ?? '');
         $hashtags = trim($_POST['hashtags'] ?? '');
         $callToAction = trim($_POST['call_to_action'] ?? '');
+        // A differenza del "Link personalizzato per il feed" (impostazione del profilo, con
+        // soglia temporale, vedi il blocco "add" più sopra), questo è fisso e vale solo per
+        // QUESTO post, per sempre — vedi emitPostRedirectLink() in functions.php.
+        $redirectLink = trim($_POST['redirect_link'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
@@ -113,11 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $isAjax = !empty($_POST['ajax']);
-        if ($title === '' && $testo === '') {
+        if ($redirectLink !== '' && !filter_var($redirectLink, FILTER_VALIDATE_URL)) {
+            $error = 'Il link di reindirizzamento per questo post non è un URL valido.';
+        } elseif ($title === '' && $testo === '') {
             $error = 'Scrivi almeno un titolo o un testo.';
         } else {
-            $stmt = getDB()->prepare('UPDATE timeline_posts SET title=?, testo=?, hashtags=?, call_to_action=?, visibility=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-            $stmt->execute([$title !== '' ? $title : null, $testo !== '' ? $testo : null, $hashtags !== '' ? $hashtags : null, $callToAction !== '' ? $callToAction : null, $visibility, $inFeed, $publishAt, $id, $profile['id']]);
+            $stmt = getDB()->prepare('UPDATE timeline_posts SET title=?, testo=?, hashtags=?, call_to_action=?, redirect_link=?, visibility=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+            $stmt->execute([$title !== '' ? $title : null, $testo !== '' ? $testo : null, $hashtags !== '' ? $hashtags : null, $callToAction !== '' ? $callToAction : null, $redirectLink !== '' ? $redirectLink : null, $visibility, $inFeed, $publishAt, $id, $profile['id']]);
             logAdminAction((int) $profile['id'], (int) $user['id'], 'Aggiornamento Timeline modificato');
         }
 
@@ -293,6 +299,7 @@ include __DIR__ . '/_dash_header.php';
           <?php if ($p['testo']): ?><p class="tl-testo" style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
           <?php if (!empty($p['hashtags'])): ?><p class="tl-hashtags" style="margin:4px 0;color:var(--accent);font-size:13px;"><?= e($p['hashtags']) ?></p><?php endif; ?>
           <?php if (!empty($p['call_to_action'])): ?><p class="tl-cta" style="margin:4px 0;font-style:italic;font-size:13px;"><?= e($p['call_to_action']) ?></p><?php endif; ?>
+          <?php if (!empty($p['redirect_link'])): ?><p class="tl-redirect" style="margin:4px 0;font-size:12.5px;color:var(--text-muted);">🔗 Reindirizza sempre a: <?= e($p['redirect_link']) ?></p><?php endif; ?>
         </div>
         <?php if (!$isPrivate): ?>
           <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>
@@ -324,6 +331,14 @@ include __DIR__ . '/_dash_header.php';
 
             <label>Call to action (opzionale)</label>
             <input type="text" class="tl-pub-cta" value="<?= e($p['call_to_action'] ?? '') ?>">
+
+            <label>Link di reindirizzamento per questo post (opzionale)</label>
+            <input type="url" class="tl-pub-redirect" value="<?= e($p['redirect_link'] ?? '') ?>" placeholder="https://...">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+              Diverso dal "Link personalizzato per il feed" qui sopra: questo vale solo per <strong>questo
+              post</strong>, per sempre — chi apre questa pagina viene reindirizzato subito lì, indipendentemente
+              da altri post o dalle impostazioni del profilo. Lascia vuoto per usare la pagina normale.
+            </p>
 
             <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
@@ -571,6 +586,7 @@ include __DIR__ . '/_dash_header.php';
           const testo = editor.querySelector('.tl-pub-textarea').value;
           const hashtags = editor.querySelector('.tl-pub-hashtags').value;
           const callToAction = editor.querySelector('.tl-pub-cta').value;
+          const redirectLink = editor.querySelector('.tl-pub-redirect').value;
           const visibility = editor.querySelector('.tl-pub-visibility:checked').value;
           const inFeed = editor.querySelector('.tl-pub-in-feed').checked;
           const publishAt = editor.querySelector('.tl-pub-publish-at').value;
@@ -583,6 +599,7 @@ include __DIR__ . '/_dash_header.php';
           formData.set('testo', testo);
           formData.set('hashtags', hashtags);
           formData.set('call_to_action', callToAction);
+          formData.set('redirect_link', redirectLink);
           formData.set('visibility', visibility);
           formData.set('in_feed', inFeed ? '1' : '');
           formData.set('publish_at', publishAt);
@@ -603,6 +620,7 @@ include __DIR__ . '/_dash_header.php';
             if (testo.trim() !== '') html += '<p class="tl-testo" style="margin:4px 0;">' + escapeHtml(testo).replace(/\n/g, '<br>') + '</p>';
             if (hashtags.trim() !== '') html += '<p class="tl-hashtags" style="margin:4px 0;color:var(--accent);font-size:13px;">' + escapeHtml(hashtags) + '</p>';
             if (callToAction.trim() !== '') html += '<p class="tl-cta" style="margin:4px 0;font-style:italic;font-size:13px;">' + escapeHtml(callToAction) + '</p>';
+            if (redirectLink.trim() !== '') html += '<p class="tl-redirect" style="margin:4px 0;font-size:12.5px;color:var(--text-muted);">🔗 Reindirizza sempre a: ' + escapeHtml(redirectLink) + '</p>';
             textBlock.innerHTML = html;
 
             const isScheduled = data.item.publish_at && new Date(data.item.publish_at.replace(' ', 'T')).getTime() > Date.now();

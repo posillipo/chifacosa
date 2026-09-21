@@ -145,6 +145,7 @@ const postFieldsSchema = {
     publication_date: z.string().optional().describe('Data/ora di pubblicazione in ISO 8601 con fuso orario esplicito, es. 2026-09-24T08:00:00+02:00'),
     hashtags: z.string().max(300).optional().describe('Hashtag da includere nel post'),
     call_to_action: z.string().max(200).optional().describe('Call to action, es. "Contattaci: link in bio"'),
+    redirect_link: z.string().url().optional().describe('Link di reindirizzamento fisso per QUESTO post soltanto: chi apre la pagina del post viene mandato subito a questo URL, per sempre, indipendentemente da altri post o impostazioni del profilo — a differenza del "Link personalizzato per il feed" del profilo (non gestito da questo strumento), che è invece un interruttore globale con soglia temporale, valido per tutti i contenuti pubblicati da quando viene attivato'),
     status: z.enum(['draft', 'scheduled', 'published']).optional().describe('draft = non pubblico, scheduled = richiede publication_date futura, published = subito visibile'),
 };
 
@@ -160,7 +161,7 @@ const blogPostFieldsSchema = {
 };
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.3.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.4.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve

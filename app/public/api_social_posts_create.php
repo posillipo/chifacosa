@@ -31,8 +31,8 @@ if (!empty($v['image_url'])) {
 $visibility = $v['visibility'] ?? 'public';
 $publishAt = $v['publish_at'] ?? null;
 
-$stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, title, testo, image_path, image_thumb_path, hashtags, call_to_action, source, visibility, in_feed, publish_at)
-                          VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+$stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, title, testo, image_path, image_thumb_path, hashtags, call_to_action, redirect_link, source, visibility, in_feed, publish_at)
+                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
 $stmt->execute([
     $auth['user_id'],
     $v['title'] ?? null,
@@ -41,6 +41,7 @@ $stmt->execute([
     $imageThumbPath,
     $v['hashtags'] ?? null,
     $v['call_to_action'] ?? null,
+    $v['redirect_link'] ?? null,
     'api',
     $visibility,
     1,

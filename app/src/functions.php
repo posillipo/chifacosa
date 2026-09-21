@@ -388,6 +388,18 @@ function emitCustomFeedLinkRedirect(?string $customFeedLink, ?string $customFeed
     echo '<script>location.replace(' . json_encode($customFeedLink) . ');</script>' . "\n";
 }
 
+// Reindirizzamento fisso per UN SOLO post della Timeline (timeline_posts.redirect_link) —
+// a differenza di emitCustomFeedLinkRedirect() (impostazione del profilo, con soglia temporale,
+// valida per tutti i contenuti pubblicati da un certo momento in poi), questo vale sempre e solo
+// per il post a cui è stato assegnato, indipendentemente da quando viene aperto o da cos'altro è
+// stato pubblicato nel frattempo. Va richiamata nell'<head>, il prima possibile.
+function emitPostRedirectLink(?string $redirectLink): void {
+    if (!$redirectLink) {
+        return;
+    }
+    echo '<script>location.replace(' . json_encode($redirectLink) . ');</script>' . "\n";
+}
+
 // Decodifica le impostazioni Privacy/Cookie e Tracking personalizzate di UN profilo (Dashboard
 // → Privacy e Tracking) — salvate come un unico campo JSON invece di tante colonne separate,
 // per non dover aggiungere una colonna a ogni nuovo parametro futuro. Vuoto/non impostato se il
@@ -2084,7 +2096,11 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']); ?>
+<?php if (!empty($post['redirect_link'])) {
+    emitPostRedirectLink($post['redirect_link']);
+} else {
+    emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']);
+} ?>
 <title><?= e($post['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($anteprima) ?>">
 <meta property="og:type" content="website">

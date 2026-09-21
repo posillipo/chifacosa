@@ -47,7 +47,7 @@ if ($method === 'PUT') {
         unset($v['image_url']);
     }
 
-    $columnMap = ['title', 'testo', 'hashtags', 'call_to_action', 'visibility', 'publish_at', 'image_path', 'image_thumb_path'];
+    $columnMap = ['title', 'testo', 'hashtags', 'call_to_action', 'redirect_link', 'visibility', 'publish_at', 'image_path', 'image_thumb_path'];
     $sets = [];
     $params = [];
     foreach ($columnMap as $col) {

@@ -82,7 +82,11 @@ $anteprima = $post['testo'] ? textExcerpt($post['testo'], 150) : (!empty($post['
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']); ?>
+<?php if (!empty($post['redirect_link'])) {
+    emitPostRedirectLink($post['redirect_link']);
+} else {
+    emitCustomFeedLinkRedirect($post['custom_feed_guid'], $post['custom_feed_guid_since'], $post['created_at']);
+} ?>
 <title><?= e($post['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta name="description" content="<?= e($anteprima) ?>">
 <meta property="og:type" content="website">

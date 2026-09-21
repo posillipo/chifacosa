@@ -597,6 +597,7 @@ CREATE TABLE IF NOT EXISTS timeline_posts (
     image_thumb_path VARCHAR(255) DEFAULT NULL,
     hashtags VARCHAR(300) DEFAULT NULL,
     call_to_action VARCHAR(200) DEFAULT NULL,
+    redirect_link VARCHAR(500) DEFAULT NULL,
     source VARCHAR(20) NOT NULL DEFAULT 'dashboard',
     visibility ENUM('public','private') NOT NULL DEFAULT 'public',
     in_feed TINYINT(1) NOT NULL DEFAULT 1,

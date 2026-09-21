@@ -1127,6 +1127,18 @@ Claude, in chat, di controllare le nuove uscite cinema e creare un post (`create
 `create_blog_post`) per ciascuna — flusso manuale/a richiesta, non un'automazione periodica
 autonoma.
 
+## 54. Link di reindirizzamento fisso per singolo post Timeline (`timeline_posts.redirect_link`)
+```sql
+ALTER TABLE timeline_posts ADD COLUMN redirect_link VARCHAR(500) DEFAULT NULL AFTER call_to_action;
+```
+Diverso dal "Link personalizzato per il feed" (`profiles.custom_feed_guid`/`custom_feed_guid_since`,
+voce del profilo con soglia temporale, vale per tutti i contenuti pubblicati da un certo momento
+in poi): questo è fisso e vale solo per il singolo post a cui è assegnato, per sempre, a
+prescindere da cos'altro viene pubblicato dopo. Se impostato, ha sempre la precedenza sul link di
+profilo per quel post specifico. Gestibile da Dashboard → Timeline (pannello "Gestisci
+pubblicazione" di un post) e via API/MCP (`redirect_link` in `create_social_post`/
+`update_social_post`, endpoint `POST /api/v1/social-posts/create` e `PUT /api/v1/social-posts/{id}`).
+
 ---
 
 ## Come aggiungere una nuova voce

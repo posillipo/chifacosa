@@ -208,6 +208,7 @@ function apiSerializePost(array $post, string $slug): array {
         'image_url' => $post['image_path'] ? siteUrl('/' . $post['image_path']) : null,
         'hashtags' => $post['hashtags'] ?? null,
         'call_to_action' => $post['call_to_action'] ?? null,
+        'redirect_link' => $post['redirect_link'] ?? null,
         'status' => apiDerivePostStatus($post),
         'publication_date' => apiFormatDateTimeRome($post['publish_at'] ?? null),
         'source' => $post['source'] ?? 'dashboard',
@@ -246,6 +247,13 @@ function apiValidateSocialPostPayload(array $data, bool $partial): array {
             return ['error' => 'Il campo "call_to_action" supera i 200 caratteri consentiti.', 'values' => []];
         }
         $values['call_to_action'] = $cta !== '' ? $cta : null;
+    }
+    if (array_key_exists('redirect_link', $data)) {
+        $redirectLink = trim((string) $data['redirect_link']);
+        if ($redirectLink !== '' && !filter_var($redirectLink, FILTER_VALIDATE_URL)) {
+            return ['error' => 'Il campo "redirect_link" non è un URL valido.', 'values' => []];
+        }
+        $values['redirect_link'] = $redirectLink !== '' ? $redirectLink : null;
     }
 
     if (array_key_exists('image_url', $data) && trim((string) $data['image_url']) !== '') {
