@@ -1812,14 +1812,20 @@ body.geolierstyle-page {
 .geolierstyle-page .social-icon-btn {
   background: transparent; border: 1.5px solid rgba(255,255,255,0.7); color: #fff;
 }
+/* Effetto lucido: una sfumatura chiara sulla metà superiore del pulsante (come un riflesso di
+   vetro) sopra il colore pieno del pannello — due sfondi sovrapposti, il primo (il riflesso)
+   vince sul secondo (il colore vero) dove non è trasparente. Il bordo superiore un filo più
+   chiaro del resto rinforza la sensazione di luce che colpisce dall'alto. */
 .geolierstyle-page .color-link-btn {
-  background: var(--geolier-panel) !important; border: 1px solid rgba(255,255,255,0.14) !important; border-radius: 14px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 55%), var(--geolier-panel) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important; border-top-color: rgba(255,255,255,0.3) !important; border-radius: 14px;
   color: #fff !important; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-size: 14px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
   transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 .geolierstyle-page .color-link-btn:hover {
-  background: #38383d !important; transform: translateY(-2px); border-color: rgba(255,255,255,0.4) !important;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0) 55%), #38383d !important;
+  transform: translateY(-2px); border-color: rgba(255,255,255,0.4) !important;
 }
 .geolierstyle-page .card {
   background: rgba(30,30,33,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(var(--text-rgb),0.95);
