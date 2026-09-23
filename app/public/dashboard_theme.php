@@ -63,6 +63,7 @@ $themePickerBackgrounds = [
     'startrek' => 'radial-gradient(ellipse 60% 40% at 20% 15%, rgba(153,102,204,0.35), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 75%, rgba(60,140,220,0.28), transparent 60%), linear-gradient(180deg, #05061a 0%, #0a0e2e 100%)',
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'adminlte-profile' => 'linear-gradient(160deg, #f4f6f9 0%, #e9ecef 100%)',
+    'backstage' => 'linear-gradient(160deg, #fdf7ea 0%, #f0e2c4 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -303,6 +304,16 @@ include __DIR__ . '/_dash_header.php';
                     <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
                     <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
                   </div>
+                </div>
+              </div>
+            <?php elseif ($key === 'backstage'): ?>
+              <div style="background:#f6f0e2;border-radius:6px;padding:16px 10px;margin-bottom:10px;position:relative;overflow:hidden;">
+                <div style="width:40px;height:40px;border-radius:8px;background:#fffbf2;border:2px solid #d98a2b;margin:0 auto 8px;box-shadow:0 3px 8px rgba(42,33,24,0.15);"></div>
+                <div style="background:#fffdf7;border:1px solid rgba(42,33,24,0.12);border-radius:6px;height:10px;margin-bottom:4px;position:relative;">
+                  <div style="position:absolute;top:-1px;right:4px;background:#d98a2b;border-radius:0 0 3px 3px;width:10px;height:5px;"></div>
+                </div>
+                <div style="background:#fffdf7;border:1px solid rgba(42,33,24,0.12);border-radius:6px;height:10px;position:relative;">
+                  <div style="position:absolute;top:-1px;right:4px;background:#d98a2b;border-radius:0 0 3px 3px;width:10px;height:5px;"></div>
                 </div>
               </div>
             <?php endif; ?>

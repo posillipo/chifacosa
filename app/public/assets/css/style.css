@@ -2929,3 +2929,192 @@ body.nightdrop-page {
 @media (min-width: 761px) {
   body[class$="-page"] .container { max-width: 860px !important; }
 }
+
+/* ============================================================
+   Tema "Backstage Pass" — pensato per i profili di musicisti: il
+   profilo si presenta come un vero pass da backstage laminato (vedi
+   il markup .backstage-pass aggiunto da publicProfileHeader() solo
+   per questo tema), i link principali come una scaletta di concerto
+   numerata. Sfondo chiaro color carta con lavati di luce di scena
+   che respirano lentamente — solo CSS, nessuna dipendenza esterna.
+   Il colore d'accento resta quello scelto dal profilo (var(--accent),
+   già impostato per-pagina da ogni template pubblico), non è fisso.
+   ============================================================ */
+body.backstage-page {
+  background: #f6f0e2;
+  color: #2a2118;
+  position: relative;
+  counter-reset: bp-track;
+}
+body.backstage-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 380px 640px at 15% -8%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 72%),
+    radial-gradient(ellipse 380px 640px at 55% -4%, rgba(199,57,143,.20), transparent 72%),
+    radial-gradient(ellipse 380px 640px at 90% -8%, rgba(28,154,146,.18), transparent 72%);
+  background-repeat: no-repeat;
+  mix-blend-mode: multiply;
+  filter: blur(4px);
+  animation: bp-sway 24s ease-in-out infinite;
+}
+@keyframes bp-sway {
+  0%, 100% { background-position: -24px 0, 30px 0, -18px 0; }
+  50%      { background-position: 30px 0, -26px 0, 22px 0; }
+}
+.backstage-page .container { position: relative; z-index: 1; }
+.backstage-page footer.site { color: rgba(42,33,24,.55); }
+
+/* ---------- Il "pass" (avatar + nome + @slug) ---------- */
+.backstage-page .backstage-pass {
+  position: relative;
+  background: linear-gradient(160deg, #fffbf2, #efe4cd 85%);
+  border: 1px solid rgba(42,33,24,.12);
+  border-radius: 18px;
+  padding: 22px 20px 18px;
+  margin: 20px auto 18px;
+  max-width: 280px;
+  text-align: center;
+  overflow: hidden;
+  box-shadow:
+    0 18px 38px -16px rgba(42,33,24,.35),
+    0 0 0 1px rgba(255,255,255,.4) inset;
+  animation: bp-idle-sway 7s ease-in-out infinite;
+  transform-origin: 50% 0%;
+}
+@keyframes bp-idle-sway {
+  0%, 100% { transform: rotate(-1.4deg); }
+  50%      { transform: rotate(1.4deg); }
+}
+.backstage-page .backstage-pass::before {
+  /* laccetto (foro stilizzato) da cui il pass "pende" */
+  content: "";
+  position: absolute;
+  top: -26px; left: 50%;
+  width: 3px; height: 26px;
+  background: repeating-linear-gradient(45deg, #a89a7c, #a89a7c 3px, transparent 3px, transparent 6px);
+  transform: translateX(-50%);
+}
+.backstage-page .backstage-pass::after {
+  content: "ALL ACCESS";
+  position: absolute;
+  top: 13px; right: -30px;
+  background: var(--accent);
+  color: var(--accent-text, #201502);
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  padding: 3px 36px;
+  transform: rotate(38deg);
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.backstage-page .avatar {
+  border-radius: 12px;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgba(42,33,24,.14), 0 8px 16px -6px rgba(42,33,24,.4);
+}
+.backstage-page .profile-header h1 {
+  font-family: "Arial Black", Arial, sans-serif;
+  letter-spacing: .01em;
+  color: #2a2118;
+}
+.backstage-page .profile-header p { color: #2a2118; }
+.backstage-page .profile-meta {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: rgba(42,33,24,.65) !important;
+  border-top: 1px dashed rgba(42,33,24,.18);
+  padding-top: 8px;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+/* ---------- Pillole categoria: stile "biglietto strappato" ---------- */
+.backstage-page .colorful-nav a {
+  background: rgba(42,33,24,.045);
+  color: #4b4230;
+  border: 1px dashed rgba(42,33,24,.28);
+}
+.backstage-page .colorful-nav a:hover { background: rgba(42,33,24,.09); }
+.backstage-page .colorful-nav a.nav-active-tab,
+.backstage-page .colorful-nav a.nav-segui-tab {
+  background: var(--accent);
+  color: var(--accent-text, #201502);
+  border-color: var(--accent);
+  font-weight: 800;
+  animation: bp-pill-glow 2.6s ease-in-out infinite;
+}
+@keyframes bp-pill-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 14px 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+}
+
+/* ---------- Link principali: card "scaletta" numerate ---------- */
+.backstage-page .color-link-btn {
+  background: linear-gradient(180deg, #fffdf7, #fbf4e5) !important;
+  border: 1px solid rgba(42,33,24,.10);
+  color: #2a2118;
+  overflow: hidden;
+  counter-increment: bp-track;
+}
+.backstage-page .color-link-btn::before {
+  /* "flag" numerata stile ticket stub, appesa all'angolo — non collide mai con la copertina
+     eventuale (ancorata a sinistra) né con il testo (centrato) */
+  content: counter(bp-track, decimal-leading-zero);
+  position: absolute;
+  top: -1px; right: 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--accent-text, #201502);
+  background: var(--accent);
+  padding: 2px 7px 3px;
+  border-radius: 0 0 6px 6px;
+  animation: bp-num-pulse 3.2s ease-in-out infinite;
+}
+.backstage-page .color-link-btn:nth-of-type(2n)::before { animation-delay: .6s; }
+.backstage-page .color-link-btn:nth-of-type(3n)::before { animation-delay: 1.2s; }
+@keyframes bp-num-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 8px 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+}
+.backstage-page .color-link-btn::after {
+  /* sweep di luce al passaggio del mouse/tocco */
+  content: "";
+  position: absolute;
+  top: 0; left: -60%;
+  width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent);
+  transform: skewX(-18deg);
+  transition: left .6s ease;
+  pointer-events: none;
+}
+.backstage-page .color-link-btn:hover::after { left: 130%; }
+.backstage-page .color-link-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px -12px rgba(42,33,24,.4);
+}
+
+/* ---------- Altri elementi comuni, per coerenza su tutte le pagine pubbliche ---------- */
+.backstage-page .social-icon-btn { background: #fffdf7; color: #4b4230; border: 1px solid rgba(42,33,24,.1); }
+.backstage-page .card { background: #fffdf7; border: 1px solid rgba(42,33,24,.1); color: #2a2118; }
+.backstage-page .section-title { color: rgba(42,33,24,.55); }
+.backstage-page .event-item, .backstage-page .blog-item { border-bottom-color: rgba(42,33,24,.12); }
+.backstage-page a { color: var(--accent); }
+.backstage-page form textarea, .backstage-page form input, .backstage-page form select {
+  background: #fffdf7; border: 1px solid rgba(42,33,24,.18); color: #2a2118;
+}
+.backstage-page form label { color: rgba(42,33,24,.6); }
+.backstage-page .help-box { background: #fffdf7; border-color: rgba(42,33,24,.1); color: #2a2118; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.backstage-page::before,
+  .backstage-page .backstage-pass,
+  .backstage-page .colorful-nav a.nav-active-tab,
+  .backstage-page .color-link-btn::before {
+    animation: none !important;
+  }
+}
