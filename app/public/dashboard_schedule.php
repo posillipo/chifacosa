@@ -20,8 +20,9 @@ include __DIR__ . '/_dash_header.php';
       una programmazione di pubblicazione.
     </p>
     <p style="color:var(--text-muted)">
-      Con "Copia link anteprima" ottieni un link riservato alla pagina pubblica di quel contenuto,
-      valido anche se non è ancora pubblico — utile per controllarlo prima della pubblicazione o
+      "Copia" e "Anteprima" usano lo stesso link riservato alla pagina pubblica di quel contenuto,
+      valido anche se non è ancora pubblico: "Anteprima" la apre subito in una nuova scheda,
+      "Copia" mette il link negli appunti — utile per controllarlo prima della pubblicazione o
       per incollarlo nel <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener">Tool di Meta per le Anteprime social (Sharing Debugger)</a>.
     </p>
   </details>
@@ -35,7 +36,7 @@ include __DIR__ . '/_dash_header.php';
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
         <?php endif; ?>
-        <div style="flex:1;min-width:0;">
+        <div style="flex:1;min-width:180px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
             <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;">
               ⏰ <?= e(formatLocalDateTime($it['scheduled_for'], $profile)) ?>
@@ -46,7 +47,8 @@ include __DIR__ . '/_dash_header.php';
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;">
           <?php if ($it['preview_url']): ?>
-            <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia link anteprima</button>
+            <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
+            <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
           <?php endif; ?>
           <a href="<?= e($it['edit_url']) ?>" class="btn small secondary">Modifica</a>
         </div>
