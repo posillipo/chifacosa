@@ -1,0 +1,136 @@
+name: Sync core app code to myband
+
+# myband (posillipo/myband) condivide lo stesso core applicativo di questo repo (app/public,
+# app/src, app/import, Dockerfile, entrypoint) con solo 8 file di branding diversi ("myband"
+# invece di "CHI FA COSA"). Questo workflow tiene myband allineato automaticamente ad ogni push
+# su main, applicando le modifiche a livello di singola porzione di codice (non file intero):
+# le porzioni che toccano righe di branding falliscono l'applicazione automatica e vengono
+# segnalate con un'issue su myband, senza bloccare il resto dell'aggiornamento.
+#
+# NOTA: questo sincronizza solo il CODICE su GitHub. La produzione di myband.it non cambia da
+# sola: resta sempre necessario "Pull and redeploy" su Portainer per lo stack myband2.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/public/**'
+      - 'app/src/**'
+      - 'app/import/**'
+      - 'app/Dockerfile'
+      - 'app/docker-entrypoint-wrapper.sh'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout chifacosa
+        uses: actions/checkout@v4
+        with:
+          path: chifacosa
+          fetch-depth: 0
+
+      - name: Checkout myband
+        uses: actions/checkout@v4
+        with:
+          repository: posillipo/myband
+          ref: main
+          token: ${{ secrets.MYBAND_SYNC_TOKEN }}
+          path: myband
+          fetch-depth: 0
+
+      - name: Setup PHP (per la verifica di sintassi)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Determina l'ultimo commit già sincronizzato
+        id: lastsync
+        run: |
+          if [ -f myband/.chifacosa-sync-commit ]; then
+            echo "sha=$(cat myband/.chifacosa-sync-commit)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Genera la patch delle modifiche al core applicativo
+        id: diff
+        run: |
+          cd chifacosa
+          git diff ${{ steps.lastsync.outputs.sha }}..${{ github.sha }} -- app/public app/src app/import app/Dockerfile app/docker-entrypoint-wrapper.sh > ../sync.patch
+          echo "size=$(wc -l < ../sync.patch | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: Applica la patch a myband (salta solo le porzioni in conflitto col branding)
+        id: apply
+        run: |
+          cd myband
+          git config user.name "chifacosa-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if [ "${{ steps.diff.outputs.size }}" = "0" ]; then
+            echo "nothing=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git apply --reject --whitespace=fix ../sync.patch || true
+          REJECTS=$(find . -name "*.rej" | sed 's/^\.\///; s/\.rej$//')
+          find . -name "*.rej" -o -name "*.orig" | xargs -r rm
+          if [ -n "$REJECTS" ]; then
+            {
+              echo "rejects<<SYNCEOF"
+              echo "$REJECTS"
+              echo "SYNCEOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verifica sintassi PHP dei file toccati
+        if: steps.apply.outputs.nothing != 'true'
+        run: |
+          cd myband
+          git diff --name-only --diff-filter=ACM -- '*.php' | xargs -r -n1 php -l
+
+      - name: Aggiorna il marcatore dell'ultimo commit sincronizzato
+        if: steps.apply.outputs.nothing != 'true'
+        run: echo "${{ github.sha }}" > myband/.chifacosa-sync-commit
+
+      - name: Commit e push su myband main
+        if: steps.apply.outputs.nothing != 'true'
+        run: |
+          cd myband
+          git add -A
+          {
+            echo "Sync automatico da chifacosa (fino al commit ${{ github.sha }})"
+            echo ""
+            cd ../chifacosa
+            git log ${{ steps.lastsync.outputs.sha }}..${{ github.sha }} --oneline
+          } > ../commit-msg.txt
+          cd ../myband
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica netta da committare (probabilmente tutte le porzioni erano in conflitto col branding)."
+          else
+            git commit -F ../commit-msg.txt
+            git push origin main
+          fi
+
+      - name: Apri una issue su myband se qualcosa va rivisto a mano
+        if: steps.apply.outputs.rejects != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MYBAND_SYNC_TOKEN }}
+          script: |
+            const rejects = `${{ steps.apply.outputs.rejects }}`;
+            await github.rest.issues.create({
+              owner: 'posillipo',
+              repo: 'myband',
+              title: `Sync da chifacosa (${context.sha.substring(0,7)}): intervento manuale necessario`,
+              body: [
+                `Il push di chifacosa \`${context.sha}\` conteneva modifiche che non si sono applicate`,
+                `automaticamente su myband, probabilmente perché toccano righe già personalizzate`,
+                `col branding "myband" (o un'altra differenza tra i due repository).`,
+                '',
+                'File/porzioni da rivedere a mano:',
+                '```',
+                rejects,
+                '```',
+                '',
+                'Il resto delle modifiche di questo push è stato comunque applicato e pushato su main.',
+              ].join('\n'),
+            });
