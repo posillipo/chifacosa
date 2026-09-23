@@ -21,27 +21,32 @@ services:
       - SMTP_FROM=${SMTP_FROM:-}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
     volumes:
-      - uploads_data:/var/www/html/uploads
+      - ${UPLOADS_PATH:-/mnt/storagebox/chifacosa-uploads-default}:/var/www/html/uploads
       - app_config:/var/www/config
     networks:
       - myband2_myband_net
       - proxy-manager_default
 
-# uploads_data: file caricati (avatar, copertine eventi, audio...), NON una cartella dentro il
-# checkout Git dello stack: un "pull and redeploy" (o qualunque comando che tocchi la working
-# directory del repository, come git reset/clean) non lo tocca in alcun modo, a differenza del
-# precedente bind mount su ./app/public/uploads che ha causato la perdita delle immagini già
-# caricate.
+# uploads_data: file caricati (avatar, copertine eventi, audio...) sono ora su un bind mount
+# verso la Hetzner Storage Box esterna (montata sull'host in /mnt/storagebox), non più su un
+# volume Docker locale — per liberare spazio sul disco dell'host. Il percorso è parametrizzato
+# tramite UPLOADS_PATH proprio perché questo stesso docker-compose.yml è condiviso da PIÙ stack
+# Portainer (chifacosa.it e pizzerialacaraffa.it, quest'ultimo un clone di chifacosa): ogni stack
+# imposta UPLOADS_PATH a una sottocartella diversa della Storage Box tramite le proprie variabili
+# d'ambiente, così i due siti non finiscono a scrivere nella stessa cartella. Un "pull and
+# redeploy" (o qualunque comando che tocchi la working directory del repository, come git
+# reset/clean) non tocca in alcun modo questi file, dato che vivono fuori dal checkout Git — a
+# differenza del vecchio bind mount su ./app/public/uploads che ha causato la perdita delle
+# immagini già caricate.
 # app_config: dove il wizard di installazione (install.php) scrive le credenziali del database
 # quando NON vengono fornite come variabili d'ambiente del container — per chi preferisce
 # configurare tutto dal browser al primo avvio invece di compilare DB_HOST/DB_NAME/DB_USER/
 # DB_PASS prima ancora di partire. Le installazioni che già passano queste variabili via
 # ambiente (come questo stesso file fa qui sotto) non scrivono mai nulla qui: il volume resta
-# vuoto e inutilizzato per loro.
-# Compose crea entrambi con nome prefissato dal nome dello stack (es. "chifacosa_uploads_data"),
-# quindi restano automaticamente separati tra chifacosa_app e cfc_new_app.
+# vuoto e inutilizzato per loro. Resta un volume Docker locale (è minuscolo, non ha bisogno di
+# spazio esterno) con nome prefissato dal nome dello stack, quindi già separato automaticamente
+# tra i vari stack che condividono questo file.
 volumes:
-  uploads_data:
   app_config:
 
 networks:
