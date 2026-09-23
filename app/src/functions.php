@@ -7968,4 +7968,3 @@ function syncCinemaFilms(array $profile): array {
     return ['ok' => true, 'added' => $added, 'updated' => $updated, 'removed' => $removed, 'total' => count($seenRefs)];
 }
 
-// Riga di test per verificare la sincronizzazione automatica verso myband (rimuovibile).
