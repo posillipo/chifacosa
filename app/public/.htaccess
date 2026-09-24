@@ -1,3 +1,26 @@
+# Header di sicurezza HTTP di base — mod_headers è già abilitato nel Dockerfile (a2enmod headers).
+# Niente Content-Security-Policy qui: il sito usa in tantissimi punti script/stile inline e più
+# domini esterni (Google Fonts, jsdelivr, Cloudflare Turnstile, Google Analytics/Maps, embed
+# Spotify/YouTube...) — una CSP scritta senza controllare uno per uno tutti questi punti rischia
+# di rompere qualcosa in silenzio, un danno peggiore di non averla. Questi quattro invece sono
+# sicuri per qualunque sito, senza bisogno di conoscere gli embed esatti in uso.
+<IfModule mod_headers.c>
+  # Impedisce che chifacosa.it venga caricato in un <iframe> su un altro sito (clickjacking: un
+  # sito ostile potrebbe sovrapporre pulsanti invisibili alle nostre pagine per rubare i click).
+  Header always set X-Frame-Options "SAMEORIGIN"
+  # Impedisce al browser di "indovinare" il tipo di un file diverso da quello dichiarato
+  # nell'header Content-Type (es. un file caricato come immagine ma eseguito come script).
+  Header always set X-Content-Type-Options "nosniff"
+  # Non manda mai l'URL completo di provenienza ad altri siti quando si clicca un link in uscita
+  # (solo lo schema+dominio) — le nostre URL non contengono di per sé dati sensibili, ma è comunque
+  # la scelta più prudente di default.
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # Il sito è sempre in HTTPS (Force SSL su Nginx Proxy Manager): dice al browser di ricordarselo
+  # per un anno e di rifiutare in automatico qualunque futuro tentativo in HTTP puro, anche se
+  # qualcuno digitasse l'indirizzo senza "https://".
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
 RewriteEngine On
 
 # Non toccare file/cartelle esistenti (assets, uploads, script .php reali)

@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     otp_code VARCHAR(10) DEFAULT NULL,
     otp_expires_at DATETIME DEFAULT NULL,
     otp_attempts INT NOT NULL DEFAULT 0,
+    login_attempts INT NOT NULL DEFAULT 0,
+    login_locked_until DATETIME DEFAULT NULL,
     legacy_gestore_id INT DEFAULT NULL,
     legacy_band_id INT DEFAULT NULL,
     legacy_stato VARCHAR(20) DEFAULT NULL,

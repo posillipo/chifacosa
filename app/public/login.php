@@ -29,13 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $u = $stmt->fetch();
 
-    if (!$u || !password_verify($password, $u['password_hash'])) {
+    // Blocco temporaneo dopo troppe password sbagliate di fila — stesso principio già usato per
+    // il codice OTP (login_otp_verify.php), qui con un timeout invece che un codice monouso da
+    // richiedere di nuovo, visto che la password non cambia da sola. Senza questo, un account
+    // reale sarebbe attaccabile a forza bruta provando password senza alcun limite.
+    if ($u && $u['login_locked_until'] && strtotime($u['login_locked_until']) > time()) {
+        $error = 'Troppi tentativi non riusciti. Riprova tra qualche minuto.';
+    } elseif (!$u || !password_verify($password, $u['password_hash'])) {
+        if ($u) {
+            $attempts = (int) $u['login_attempts'] + 1;
+            if ($attempts >= 5) {
+                getDB()->prepare('UPDATE users SET login_attempts = 0, login_locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?')->execute([$u['id']]);
+            } else {
+                getDB()->prepare('UPDATE users SET login_attempts = ? WHERE id = ?')->execute([$attempts, $u['id']]);
+            }
+        }
         $error = 'Email o password non corretti.';
     } elseif (!$u['is_active']) {
         $error = 'Account disattivato.';
     } elseif (!$u['email_verified']) {
         $unverified = true;
     } else {
+        getDB()->prepare('UPDATE users SET login_attempts = 0, login_locked_until = NULL WHERE id = ?')->execute([$u['id']]);
         // Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session
         // fixation" (un ID di sessione impostato dall'esterno prima del login, che altrimenti
         // resterebbe valido anche dopo).

@@ -1139,6 +1139,18 @@ profilo per quel post specifico. Gestibile da Dashboard → Timeline (pannello "
 pubblicazione" di un post) e via API/MCP (`redirect_link` in `create_social_post`/
 `update_social_post`, endpoint `POST /api/v1/social-posts/create` e `PUT /api/v1/social-posts/{id}`).
 
+## 55. Blocco temporaneo dopo troppi tentativi di login falliti (`users.login_attempts`/`login_locked_until`)
+```sql
+ALTER TABLE users
+  ADD COLUMN login_attempts INT NOT NULL DEFAULT 0 AFTER otp_attempts,
+  ADD COLUMN login_locked_until DATETIME DEFAULT NULL AFTER login_attempts;
+```
+Stesso principio già in uso per il codice OTP (`otp_attempts`), qui applicato al login classico
+email+password (`login.php`), che prima non aveva alcun limite di tentativi. Dopo 5 password
+sbagliate di fila l'account resta bloccato 15 minuti (anche inserendo la password corretta),
+poi si sblocca da solo. Un login riuscito azzera sempre il contatore. Riguarda solo il login con
+password: OTP via email e login con Google restano un percorso separato, non bloccato da questo.
+
 ---
 
 ## Come aggiungere una nuova voce
