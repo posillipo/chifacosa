@@ -20,6 +20,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $clientId = getSiteSetting('google_oauth_client_id') ?: '';
 $hasSecret = (getSiteSetting('google_oauth_client_secret') ?: '') !== '';
 $redirectUri = googleOAuthRedirectUri();
+// L'URI sopra riflette l'host da cui STAI navigando ORA questa pagina (con o senza "www."): se
+// il sito è raggiungibile anche dall'altra variante, va registrata anche quella, altrimenti chi
+// vi arriva vede il login con Google fallire in modo intermittente (vedi il commento su
+// googleOAuthRedirectUri() in google_oauth.php per il perché).
+$redirectUriAltHost = null;
+if (preg_match('#^(https?://)(?:www\.)?(.+)$#i', $redirectUri, $m)) {
+    $redirectUriAltHost = str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'www.')
+        ? $m[1] . $m[2]
+        : $m[1] . 'www.' . $m[2];
+}
 
 include __DIR__ . '/_admin_header.php';
 ?>
@@ -38,9 +48,12 @@ include __DIR__ . '/_admin_header.php';
       Per ottenere le credenziali: vai su <a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com/apis/credentials</a>,
       crea un progetto gratuito (se non ne hai già uno), poi "Crea credenziali" → "ID client
       OAuth" → tipo applicazione "Applicazione web". In "URI di reindirizzamento autorizzati"
-      incolla esattamente:
+      aggiungi <strong>entrambe</strong> queste righe (una per riga, "Aggiungi URI" per la
+      seconda) — il sito potrebbe essere raggiungibile sia con che senza "www.", ed entrambe le
+      varianti vanno registrate perché il login con Google non fallisca in modo intermittente a
+      seconda di quale usa chi accede:
     </p>
-    <p><code><?= e($redirectUri) ?></code></p>
+    <p><code><?= e($redirectUri) ?></code><?php if ($redirectUriAltHost): ?><br><code><?= e($redirectUriAltHost) ?></code><?php endif; ?></p>
     <p style="color:var(--text-muted)">
       Copia poi qui sotto il Client ID e il Client Secret mostrati da Google.
     </p>
