@@ -18,11 +18,23 @@ function getGoogleOAuthClientSecret(): ?string {
     return $v !== '' && $v !== null ? $v : null;
 }
 
-// URI di reindirizzamento da registrare pari pari nel progetto Google Cloud Console ("URI di
-// reindirizzamento autorizzati") — sempre la stessa pagina, calcolata qui per non doverla
-// scrivere due volte con il rischio che diverga.
+// URI di reindirizzamento da registrare nel progetto Google Cloud Console ("URI di
+// reindirizzamento autorizzati") — DELIBERATAMENTE basato sull'host della richiesta corrente
+// (come siteUrl() quando SITE_URL non è impostato), non su SITE_URL: il cookie di sessione PHP
+// resta legato all'host esatto che l'ha impostato (nessun cookie_domain esplicito in
+// session-security.ini). Se questo URI fosse fisso su un solo host (es. sempre senza "www."),
+// un visitatore arrivato su "www.<dominio>" avrebbe il cookie di sessione legato a "www.", ma al
+// ritorno da Google (reindirizzato sul dominio fisso senza "www.") il browser non lo manderebbe
+// più — sessione e "state" OAuth risulterebbero vuoti e il login fallirebbe in modo
+// intermittente, proprio a seconda di quale variante del dominio l'utente stava usando quando
+// ha cliccato "Accedi con Google" (bug reale riscontrato su myband.it, login a volte fallito, al
+// tentativo successivo riuscito). Usando sempre l'host della richiesta corrente, il redirect_uri
+// coincide sempre con l'host su cui il cookie è stato impostato — ma questo significa che in
+// Google Cloud Console vanno registrate TUTTE le varianti di dominio realmente raggiungibili
+// (con e senza "www."), non solo quella "ufficiale" di SITE_URL — vedi le istruzioni mostrate in
+// admin_google_login.php.
 function googleOAuthRedirectUri(): string {
-    return siteUrl('/auth_google_callback.php');
+    return requestScheme() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/auth_google_callback.php';
 }
 
 // Costruisce l'URL della schermata di consenso Google a cui reindirizzare il browser. $state è

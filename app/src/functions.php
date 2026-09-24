@@ -733,6 +733,7 @@ const PAGE_THEMES = [
     'horror-blood' => ['label' => 'Horror Sangue', 'description' => 'Sfondo scuro con vignettatura, angoli netti e bordi rosso sangue', 'body_class' => 'horror-blood-page'],
     'horror-fog' => ['label' => 'Horror Nebbia', 'description' => 'Stessa atmosfera inquietante, tono verde-grigio nebbioso al posto del rosso', 'body_class' => 'horror-fog-page'],
     'thriller-noir' => ['label' => 'Thriller Noir', 'description' => 'Bianco e nero da spionaggio, vignettatura a faretto, accento rosso', 'body_class' => 'thriller-noir-page'],
+    'backstage' => ['label' => 'Backstage Pass', 'description' => 'Il profilo come un pass da concerto laminato, i link come una scaletta numerata, su carta chiara con luci di scena che respirano piano', 'body_class' => 'backstage-page'],
     'thriller-shadow' => ['label' => 'Thriller Ombra', 'description' => 'Stessa tensione da thriller, tono blu-grigio freddo al posto del rosso', 'body_class' => 'thriller-shadow-page'],
     'agent-gold' => ['label' => '007 Oro', 'description' => 'Nero elegante con dettagli oro, stile titoli di apertura da film di spionaggio', 'body_class' => 'agent-gold-page'],
     'agent-silver' => ['label' => '007 Argento', 'description' => 'Stessa eleganza da agente segreto, argento al posto dell\'oro', 'body_class' => 'agent-silver-page'],
@@ -5099,6 +5100,11 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $isElectric = ($artist['page_theme'] ?? 'colorful') === 'electric';
     $electricClass = $isElectric ? ' electric-border' : '';
     $electricStyle = $isElectric ? ' style="--electric-border-color:' . e($artist['theme_color'] ?: '#6C5CE7') . ';"' : '';
+    // "Backstage Pass": avatar+nome+slug si presentano come un pass da concerto laminato — serve
+    // un contenitore proprio (vedi .backstage-pass in style.css) per il laccetto/foro sopra e la
+    // striscia "ALL ACCESS" in diagonale, senza che il dondolio del pass coinvolga anche il menu
+    // sotto. Stesso approccio minimale/isolato già usato qui sopra per il tema "electric".
+    $isBackstage = ($artist['page_theme'] ?? 'colorful') === 'backstage';
     $ownerId = isset($artist['id']) ? (int) $artist['id'] : null;
     // Il "+" accanto al nome utente è una scorciatoia al pulsante "Segui" del menu — stesso link
     // (l'ancora #segui-widget della Home, come già fa la voce "Segui" del menu pubblico), nessuna
@@ -5106,6 +5112,9 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
     $viewerIdForFollow = $_SESSION['user_id'] ?? null;
     $canShowFollowPlus = $ownerId && (!$viewerIdForFollow || (int) $viewerIdForFollow !== $ownerId);
     $html = '<div class="profile-header' . $electricClass . '"' . $electricStyle . '>';
+    if ($isBackstage) {
+        $html .= '<div class="backstage-pass">';
+    }
     if (!empty($artist['avatar_path'])) {
         $html .= '<div class="avatar-wrap">';
         $html .= '<img class="avatar" src="/' . e($artist['avatar_path']) . '" alt="' . e($artist['display_name']) . '">';
@@ -5126,6 +5135,9 @@ function publicProfileHeader(array $artist, string $active, bool $showBio = fals
         $html .= '<span> · </span>' . e($artist['genere']);
     }
     $html .= '</p>';
+    if ($isBackstage) {
+        $html .= '</div>';
+    }
     $hasMenu = $ownerId ? menuHasItems($ownerId) : false;
     $hasOffers = $ownerId ? hasActiveOffers($ownerId) : false;
     $hasPhotos = $ownerId ? hasPublicPhotoContent($ownerId) : false;
@@ -7967,3 +7979,4 @@ function syncCinemaFilms(array $profile): array {
 
     return ['ok' => true, 'added' => $added, 'updated' => $updated, 'removed' => $removed, 'total' => count($seenRefs)];
 }
+
