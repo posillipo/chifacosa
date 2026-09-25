@@ -430,6 +430,105 @@ function apiValidateBlogPostPayload(array $data, bool $partial): array {
     return ['error' => null, 'values' => $values];
 }
 
+// Trasforma una riga di events nella forma esposta dall'API pubblica.
+function apiSerializeEvent(array $event, string $slug): array {
+    return [
+        'id' => (int) $event['id'],
+        'title' => $event['title'],
+        'venue' => $event['venue'],
+        'city' => $event['city'],
+        'event_date' => apiFormatDateTimeRome($event['event_date'] ?? null),
+        'ticket_url' => $event['ticket_url'],
+        'description' => $event['description'],
+        'is_perpetual' => (bool) $event['is_perpetual'],
+        'recurrence' => $event['recurrence'],
+        'accepts_reservations' => (bool) $event['accepts_reservations'],
+        'cover_image_url' => $event['cover_path'] ? siteUrl('/' . $event['cover_path']) : null,
+        'url' => siteUrl('/' . $slug . '/eventi/' . (int) $event['id']),
+    ];
+}
+
+// Valida e normalizza il payload JSON di create/update per un evento. $partial=true per PUT
+// (tutti i campi opzionali, solo quelli presenti vengono validati/aggiornati) — stesso principio
+// di apiValidateBlogPostPayload(). A differenza di Timeline/Blog un evento non ha un concetto di
+// programmazione/bozza (vedi dashboard_events.php): è sempre visibile subito, "event_date" è solo
+// quando si terrà, non quando pubblicarlo.
+function apiValidateEventPayload(array $data, bool $partial): array {
+    $values = [];
+
+    if (array_key_exists('title', $data)) {
+        $title = trim((string) $data['title']);
+        if (mb_strlen($title) > 150) {
+            return ['error' => 'Il campo "title" supera i 150 caratteri consentiti.', 'values' => []];
+        }
+        if (!$partial && $title === '') {
+            return ['error' => 'Il campo "title" è obbligatorio.', 'values' => []];
+        }
+        if ($partial && $title === '') {
+            return ['error' => 'Il campo "title" non può essere svuotato.', 'values' => []];
+        }
+        $values['title'] = $title;
+    }
+    if (array_key_exists('venue', $data)) {
+        $venue = trim((string) $data['venue']);
+        if (mb_strlen($venue) > 150) {
+            return ['error' => 'Il campo "venue" supera i 150 caratteri consentiti.', 'values' => []];
+        }
+        $values['venue'] = $venue !== '' ? $venue : null;
+    }
+    if (array_key_exists('city', $data)) {
+        $city = trim((string) $data['city']);
+        if (mb_strlen($city) > 100) {
+            return ['error' => 'Il campo "city" supera i 100 caratteri consentiti.', 'values' => []];
+        }
+        $values['city'] = $city !== '' ? $city : null;
+    }
+    if (array_key_exists('ticket_url', $data)) {
+        $ticketUrl = trim((string) $data['ticket_url']);
+        if ($ticketUrl !== '' && !filter_var($ticketUrl, FILTER_VALIDATE_URL)) {
+            return ['error' => 'Il campo "ticket_url" non è un URL valido.', 'values' => []];
+        }
+        $values['ticket_url'] = $ticketUrl !== '' ? $ticketUrl : null;
+    }
+    if (array_key_exists('description', $data)) {
+        $values['description'] = trim((string) $data['description']) ?: null;
+    }
+    if (array_key_exists('is_perpetual', $data)) {
+        $values['is_perpetual'] = !empty($data['is_perpetual']) ? 1 : 0;
+    }
+    if (array_key_exists('recurrence', $data)) {
+        $recurrence = (string) $data['recurrence'];
+        if (!in_array($recurrence, ['none', 'weekdays', 'weekend'], true)) {
+            return ['error' => 'Il campo "recurrence" deve essere uno tra none, weekdays, weekend.', 'values' => []];
+        }
+        $values['recurrence'] = $recurrence;
+    }
+    if (array_key_exists('accepts_reservations', $data)) {
+        $values['accepts_reservations'] = !empty($data['accepts_reservations']) ? 1 : 0;
+    }
+    if (array_key_exists('image_url', $data) && trim((string) $data['image_url']) !== '') {
+        $imageUrl = trim((string) $data['image_url']);
+        if (!filter_var($imageUrl, FILTER_VALIDATE_URL) || !isSafePublicUrl($imageUrl)) {
+            return ['error' => 'Il campo "image_url" non è un URL pubblico valido.', 'values' => []];
+        }
+        $values['image_url'] = $imageUrl;
+    }
+
+    if (array_key_exists('event_date', $data) && trim((string) $data['event_date']) !== '') {
+        try {
+            $dt = new DateTime((string) $data['event_date']);
+            $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+            $values['event_date'] = $dt->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            return ['error' => 'Il campo "event_date" non è una data valida (usa il formato ISO 8601, es. 2026-09-24T21:00:00+02:00).', 'values' => []];
+        }
+    } elseif ($partial && array_key_exists('event_date', $data)) {
+        return ['error' => 'Il campo "event_date" non può essere svuotato.', 'values' => []];
+    }
+
+    return ['error' => null, 'values' => $values];
+}
+
 // Trasforma una riga di links (link_type='film', vedi syncCinemaFilms()) nella forma esposta
 // dall'API pubblica di sola lettura /api/v1/cinema-films/list — usata per capire quali film sono
 // stati aggiunti di recente (added_at) e creare un post Timeline/Blog per ciascuno.

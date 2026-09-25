@@ -160,8 +160,25 @@ const blogPostFieldsSchema = {
     publication_date: z.string().optional().describe('Data/ora di pubblicazione in ISO 8601 con fuso orario esplicito, es. 2026-09-24T08:00:00+02:00 — se futura l\'articolo resta programmato fino ad allora, se omessa si pubblica subito'),
 };
 
+// Campi comuni a create/update per un evento — stessa forma esposta dall'API REST, vedi
+// app/src/api_helpers.php::apiValidateEventPayload(). A differenza di Timeline/Blog un evento non
+// ha un concetto di programmazione/bozza: è sempre visibile subito, event_date è solo quando si
+// terrà, non quando pubblicarlo.
+const eventFieldsSchema = {
+    title: z.string().max(150).optional().describe('Nome dell\'evento (max 150 caratteri)'),
+    venue: z.string().max(150).optional().describe('Nome del locale/luogo (opzionale)'),
+    city: z.string().max(100).optional().describe('Città (opzionale)'),
+    event_date: z.string().optional().describe('Data/ora dell\'evento in ISO 8601 con fuso orario esplicito, es. 2026-09-24T21:00:00+02:00'),
+    ticket_url: z.string().url().optional().describe('Link biglietti (opzionale)'),
+    description: z.string().optional().describe('Descrizione dell\'evento (opzionale)'),
+    is_perpetual: z.boolean().optional().describe('true = evento perpetuo, nessuna data di fine, resta sempre visibile in "Prossimi eventi"'),
+    recurrence: z.enum(['none', 'weekdays', 'weekend']).optional().describe('none = data singola, weekdays = dal lunedì al venerdì, weekend = solo weekend'),
+    accepts_reservations: z.boolean().optional().describe('true = accetta prenotazioni per questo evento'),
+    image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e usare come copertina'),
+};
+
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.4.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.5.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -288,6 +305,49 @@ function buildMcpServer() {
         description: 'Elimina definitivamente un articolo del blog di un profilo, dato il suo ID.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo da eliminare') },
     }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`, { method: 'DELETE' })));
+
+    server.registerTool('create_event', {
+        title: 'Crea un evento su un profilo CHIFACOSA',
+        description: 'Crea un nuovo evento (sempre visibile subito, nessun concetto di bozza/programmazione) sul profilo CHIFACOSA scelto. Richiede title e event_date.',
+        inputSchema: { ...profileField, ...eventFieldsSchema },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/events/create', { method: 'POST', body: fields })));
+
+    server.registerTool('list_events', {
+        title: 'Elenca gli eventi di un profilo',
+        description: 'Elenca gli eventi del profilo scelto, con filtro opzionale per intervallo di date (su event_date, quando si terranno) e paginazione.',
+        inputSchema: {
+            ...profileField,
+            from: z.string().optional().describe('Data minima (YYYY-MM-DD)'),
+            to: z.string().optional().describe('Data massima (YYYY-MM-DD)'),
+            page: z.number().int().min(1).optional(),
+            per_page: z.number().int().min(1).max(100).optional(),
+        },
+    }, async ({ profile, ...args }) => {
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(args || {})) {
+            if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+        const qs = params.toString();
+        return toolResult(await chifacosaApi(profile, '/events/list' + (qs ? `?${qs}` : '')));
+    });
+
+    server.registerTool('get_event', {
+        title: 'Dettaglio di un evento',
+        description: 'Recupera i dettagli di un singolo evento di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'evento') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/events/${id}`)));
+
+    server.registerTool('update_event', {
+        title: 'Modifica un evento',
+        description: 'Modifica un evento esistente di un profilo. Tutti i campi oltre a profile/id sono opzionali: solo quelli forniti vengono aggiornati.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'evento da modificare'), ...eventFieldsSchema },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/events/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('delete_event', {
+        title: 'Elimina un evento',
+        description: 'Elimina definitivamente un evento di un profilo, dato il suo ID.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'evento da eliminare') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/events/${id}`, { method: 'DELETE' })));
 
     return server;
 }
