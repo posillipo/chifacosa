@@ -2450,17 +2450,8 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                 <?php endif; ?>
 
                 <article class="card mb-3">
-                  <?php if ($post['cover_path']):
-                    // Una copertina verticale (es. 4:5 da smartphone) forzata a piena larghezza
-                    // con object-fit:cover verrebbe tagliata via per gran parte — qui invece la
-                    // mostriamo intera, centrata, larga solo quanto serve (vedi isPortraitCoverImage()).
-                    $coverIsPortrait = isPortraitCoverImage($post['cover_path']);
-                  ?>
-                    <?php if ($coverIsPortrait): ?>
-                      <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="width:auto;max-width:100%;max-height:480px;display:block;margin:0 auto;">
-                    <?php else: ?>
-                      <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
-                    <?php endif; ?>
+                  <?php if ($post['cover_path']): ?>
+                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
                   <?php endif; ?>
                   <div class="card-body">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -5753,20 +5744,6 @@ function getFeedShareImage(string $imagePath): string {
     }
 
     return $ok ? $shareRelPath : $imagePath;
-}
-
-// Vero solo se l'immagine è più alta che larga (es. una foto verticale 4:5 scattata con lo
-// smartphone) — usato dalle pagine di dettaglio (es. renderAdminLteBlogPostPage()) per capire
-// quando NON forzarla a piena larghezza con object-fit:cover: su un formato verticale quel
-// trattamento taglia via gran parte della foto (spesso proprio la parte con il testo/soggetto
-// principale). getimagesize() legge solo l'intestazione del file, non l'immagine intera — costo
-// trascurabile anche chiamata ad ogni rendering della pagina.
-function isPortraitCoverImage(?string $relativePath): bool {
-    if (!$relativePath) {
-        return false;
-    }
-    $info = @getimagesize('/var/www/html/' . $relativePath);
-    return $info && $info[1] > $info[0];
 }
 
 // Stato di getFeedShareImage(), leggibile dall'Area Admin senza bisogno di accesso alla shell del
