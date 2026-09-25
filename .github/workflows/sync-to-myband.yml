@@ -2,13 +2,17 @@ name: Sync core app code to myband
 
 # myband (posillipo/myband) condivide lo stesso core applicativo di questo repo (app/public,
 # app/src, app/import, Dockerfile, entrypoint) con solo 8 file di branding diversi ("myband"
-# invece di "CHI FA COSA"). Questo workflow tiene myband allineato automaticamente ad ogni push
-# su main, applicando le modifiche a livello di singola porzione di codice (non file intero):
-# le porzioni che toccano righe di branding falliscono l'applicazione automatica e vengono
-# segnalate con un'issue su myband, senza bloccare il resto dell'aggiornamento.
+# invece di "CHI FA COSA"), e lo stesso server MCP (mcp-server/), interamente "rebrandizzato"
+# riga per riga (CHIFACOSA->MYBAND, chifacosaApi->mybandApi, ecc. — molte più righe diverse degli
+# 8 file di app/). Questo workflow tiene myband allineato automaticamente ad ogni push su main,
+# applicando le modifiche a livello di singola porzione di codice (non file intero): le porzioni
+# che toccano righe di branding falliscono l'applicazione automatica e vengono segnalate con
+# un'issue su myband, senza bloccare il resto dell'aggiornamento — per mcp-server/server.js
+# aspettati quasi sempre una issue, dato quanto è esteso il rebranding lì.
 #
 # NOTA: questo sincronizza solo il CODICE su GitHub. La produzione di myband.it non cambia da
-# sola: resta sempre necessario "Pull and redeploy" su Portainer per lo stack myband2.
+# sola: resta sempre necessario "Pull and redeploy" su Portainer per lo stack myband2 (app) e per
+# lo stack MCP di myband (mcp-server/) separatamente.
 
 on:
   push:
@@ -19,6 +23,7 @@ on:
       - 'app/import/**'
       - 'app/Dockerfile'
       - 'app/docker-entrypoint-wrapper.sh'
+      - 'mcp-server/**'
 
 jobs:
   sync:
@@ -44,6 +49,11 @@ jobs:
         with:
           php-version: '8.2'
 
+      - name: Setup Node (per la verifica di sintassi di mcp-server/)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Determina l'ultimo commit già sincronizzato
         id: lastsync
         run: |
@@ -57,7 +67,7 @@ jobs:
         id: diff
         run: |
           cd chifacosa
-          git diff ${{ steps.lastsync.outputs.sha }}..${{ github.sha }} -- app/public app/src app/import app/Dockerfile app/docker-entrypoint-wrapper.sh > ../sync.patch
+          git diff ${{ steps.lastsync.outputs.sha }}..${{ github.sha }} -- app/public app/src app/import app/Dockerfile app/docker-entrypoint-wrapper.sh mcp-server > ../sync.patch
           echo "size=$(wc -l < ../sync.patch | tr -d ' ')" >> "$GITHUB_OUTPUT"
 
       - name: Applica la patch a myband (salta solo le porzioni in conflitto col branding)
@@ -86,6 +96,12 @@ jobs:
         run: |
           cd myband
           git diff --name-only --diff-filter=ACM -- '*.php' | xargs -r -n1 php -l
+
+      - name: Verifica sintassi JS dei file toccati (mcp-server/)
+        if: steps.apply.outputs.nothing != 'true'
+        run: |
+          cd myband
+          git diff --name-only --diff-filter=ACM -- '*.js' | xargs -r -n1 node --check
 
       - name: Aggiorna il marcatore dell'ultimo commit sincronizzato
         if: steps.apply.outputs.nothing != 'true'
