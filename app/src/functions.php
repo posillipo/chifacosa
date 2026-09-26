@@ -6987,12 +6987,16 @@ function getPinnedItemsForUser(int $userId, bool $respectVisibility = true): arr
         $visClause = $respectVisibility ? pinnableVisibilityClause($cfg['visibility']) : '';
 
         if ($type === 'blog') {
-            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, {$cfg['date_col']} AS data, slug AS post_slug
+            // slug e published_at SENZA alias: blogPostUrl() li legge con questi nomi esatti
+            // (leggerli come "post_slug"/"data" produceva un link col solo prefisso di data e
+            // niente slug, es. "/slug/blog/1970.01.01." — troncato e non corrispondente a
+            // nessun articolo reale).
+            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, published_at, slug
                 FROM {$cfg['table']} WHERE id IN ($ph) AND user_id = ? {$visClause}");
             $stmt->execute(array_merge($ids, [$userId]));
             foreach ($stmt->fetchAll() as $r) {
                 $itemsByKey[$type . ':' . $r['id']] = [
-                    'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $r['titolo'], 'cover' => $r['cover'], 'data' => $r['data'],
+                    'tipo' => $type, 'id' => (int) $r['id'], 'titolo' => $r['titolo'], 'cover' => $r['cover'], 'data' => $r['published_at'],
                     'url' => blogPostUrl($slug, $r),
                 ];
             }
@@ -7053,7 +7057,8 @@ function searchPinnableContent(int $userId, string $query, int $limitPerType = 5
     $results = [];
     foreach (PINNABLE_CONTENT_TYPES as $type => $cfg) {
         if ($type === 'blog') {
-            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, slug AS post_slug
+            // slug e published_at SENZA alias, stesso motivo di getPinnedItemsForUser() qui sopra.
+            $stmt = $db->prepare("SELECT id, {$cfg['title_col']} AS titolo, {$cfg['cover_cols'][0]} AS cover, published_at, slug
                 FROM {$cfg['table']} WHERE user_id = ? AND {$cfg['title_col']} LIKE ? ESCAPE '\\\\'
                 ORDER BY {$cfg['date_col']} DESC LIMIT {$limitPerType}");
             $stmt->execute([$userId, $likeTerm]);
