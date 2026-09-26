@@ -4733,6 +4733,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
                 <?php if ($scheduleLabel && !$event['cover_path']): ?><p><span class="badge text-bg-primary"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span></p><?php endif; ?>
                 <?php if (!empty($event['description'])): ?><p class="text-start mt-2"><?= nl2br(e($event['description'])) ?></p><?php endif; ?>
                 <?php if ($event['ticket_url']): ?><a class="btn btn-primary mt-2" href="<?= e($event['ticket_url']) ?>" target="_blank" rel="noopener">Biglietti →</a><?php endif; ?>
+                <?= renderAddToCalendarLinks($event, $slug, $artist, 'btn btn-outline-secondary mt-2 ms-1') ?>
               </div>
             </div>
 
@@ -7281,6 +7282,49 @@ function eventScheduleLabel(string $recurrence, bool $isPerpetual): ?string {
         return 'Sempre attivo';
     }
     return null;
+}
+
+// Converte event_date (salvato nel fuso del server, vedi formatLocalDateTime()) in un timestamp
+// UTC nel formato richiesto sia dai link Google Calendar sia dal file .ics (YYYYMMDDTHHMMSSZ).
+// $addHours sposta l'orario, usato per calcolare l'orario di fine (nessuna colonna "durata" in
+// events, si assume una durata fissa di default — vedi EVENT_CALENDAR_DEFAULT_DURATION_HOURS).
+const EVENT_CALENDAR_DEFAULT_DURATION_HOURS = 2;
+
+function eventCalendarUtcTimestamp(string $datetime, ?array $profile, int $addHours = 0): string {
+    $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+    $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+    if ($addHours !== 0) {
+        $dt->modify($addHours . ' hours');
+    }
+    $dt->setTimezone(new DateTimeZone('UTC'));
+    return $dt->format('Ymd\THis\Z');
+}
+
+// Link/markup "Aggiungi al calendario" per la pagina pubblica di un evento (Colorful + AdminLTE).
+// Esclusi gli eventi perpetui/ricorrenti (is_perpetual, recurrence != none): non hanno una data
+// di fine, "aggiungerli al calendario" non avrebbe un significato univoco. $btnClass permette di
+// riusare lo stesso markup con le classi dei pulsanti dei due temi.
+function renderAddToCalendarLinks(array $event, string $slug, array $profile, string $btnClass): string {
+    if (!empty($event['is_perpetual']) || ($event['recurrence'] ?? 'none') !== 'none') {
+        return '';
+    }
+    $start = eventCalendarUtcTimestamp($event['event_date'], $profile);
+    $end = eventCalendarUtcTimestamp($event['event_date'], $profile, EVENT_CALENDAR_DEFAULT_DURATION_HOURS);
+    $location = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));
+    $googleUrl = 'https://www.google.com/calendar/render?' . http_build_query([
+        'action' => 'TEMPLATE',
+        'text' => $event['title'],
+        'dates' => $start . '/' . $end,
+        'details' => $event['description'] ?? '',
+        'location' => $location,
+    ]);
+    $icsUrl = '/event_ics.php?' . http_build_query(['slug' => $slug, 'id' => (int) $event['id']]);
+    ob_start();
+    ?>
+    <a class="<?= e($btnClass) ?>" href="<?= e($googleUrl) ?>" target="_blank" rel="noopener">📅 Google Calendar</a>
+    <a class="<?= e($btnClass) ?>" href="<?= e($icsUrl) ?>">📅 Apple/Outlook (.ics)</a>
+    <?php
+    return ob_get_clean();
 }
 
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): string {

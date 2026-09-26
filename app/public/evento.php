@@ -117,6 +117,7 @@ $ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($ev
     <?php if ($event['ticket_url']): ?>
       <a class="btn" href="<?= e($event['ticket_url']) ?>" target="_blank" rel="noopener">Biglietti →</a>
     <?php endif; ?>
+    <?= renderAddToCalendarLinks($event, $slug, $artist, 'btn secondary') ?>
   </div>
 
   <?php if ($resMsg): ?>
