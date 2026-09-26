@@ -168,6 +168,7 @@ const eventFieldsSchema = {
     title: z.string().max(150).optional().describe('Nome dell\'evento (max 150 caratteri)'),
     venue: z.string().max(150).optional().describe('Nome del locale/luogo (opzionale)'),
     city: z.string().max(100).optional().describe('Città (opzionale)'),
+    provincia: z.string().max(100).optional().describe('Provincia (opzionale) — usata per raggruppare gli eventi del profilo per provincia'),
     event_date: z.string().optional().describe('Data/ora dell\'evento in ISO 8601 con fuso orario esplicito, es. 2026-09-24T21:00:00+02:00'),
     ticket_url: z.string().url().optional().describe('Link biglietti (opzionale)'),
     description: z.string().optional().describe('Descrizione dell\'evento (opzionale)'),
@@ -178,7 +179,7 @@ const eventFieldsSchema = {
 };
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.5.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.5.1' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve

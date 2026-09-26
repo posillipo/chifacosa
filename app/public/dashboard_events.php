@@ -16,20 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $venue = trim($_POST['venue'] ?? '');
         $city = trim($_POST['city'] ?? '');
+        $provincia = trim($_POST['provincia'] ?? '');
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
         $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile, browserTzOffsetFromRequest()) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
-        $recurrence = in_array($_POST['recurrence'] ?? 'none', ['none', 'weekdays', 'weekend'], true) ? $_POST['recurrence'] : 'none';
+        $recurrenceRaw = $_POST['recurrence'] ?? 'none';
+        $recurrence = in_array($recurrenceRaw, ['none', 'weekdays', 'weekend'], true) ? $recurrenceRaw : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
             $coverPath = handleCoverUpload($profile['slug']);
-            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations]);
+            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations]);
             $newEventId = (int) getDB()->lastInsertId();
 
             $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
@@ -40,13 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $venue = trim($_POST['venue'] ?? '');
         $city = trim($_POST['city'] ?? '');
+        $provincia = trim($_POST['provincia'] ?? '');
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
         $date = parseLocalDateTime($_POST['event_date'] ?? '', $profile, browserTzOffsetFromRequest()) ?? '';
         $ticketUrl = trim($_POST['ticket_url'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $isPerpetual = isset($_POST['is_perpetual']) ? 1 : 0;
-        $recurrence = in_array($_POST['recurrence'] ?? 'none', ['none', 'weekdays', 'weekend'], true) ? $_POST['recurrence'] : 'none';
+        $recurrenceRaw = $_POST['recurrence'] ?? 'none';
+        $recurrence = in_array($recurrenceRaw, ['none', 'weekdays', 'weekend'], true) ? $recurrenceRaw : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
@@ -60,11 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($old = $stmt->fetch()) {
                     deleteCoverFile($old['cover_path']);
                 }
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, cover_path=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $newCoverPath, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, cover_path=?, accepts_reservations=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $newCoverPath, $acceptsReservations, $id, $profile['id']]);
             } else {
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $id, $profile['id']]);
             }
         }
     } elseif ($action === 'delete') {
@@ -105,6 +109,9 @@ include __DIR__ . '/_dash_header.php';
     <input type="text" name="venue">
     <label>Città</label>
     <input type="text" name="city">
+    <label>Provincia (opzionale)</label>
+    <input type="text" name="provincia" placeholder="es. Napoli">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Usata per raggruppare i tuoi eventi nel riquadro "Eventi per provincia".</p>
     <label>Data e ora</label>
     <input type="datetime-local" name="event_date" required>
     <label>Link biglietti (opzionale)</label>
@@ -196,6 +203,8 @@ include __DIR__ . '/_dash_header.php';
             <input type="text" name="venue" value="<?= e($ev['venue'] ?? '') ?>">
             <label>Città</label>
             <input type="text" name="city" value="<?= e($ev['city'] ?? '') ?>">
+            <label>Provincia (opzionale)</label>
+            <input type="text" name="provincia" value="<?= e($ev['provincia'] ?? '') ?>" placeholder="es. Napoli">
             <label>Data e ora</label>
             <input type="datetime-local" name="event_date" value="<?= e(date('Y-m-d\TH:i', strtotime($ev['event_date']))) ?>" required>
             <label>Link biglietti (opzionale)</label>

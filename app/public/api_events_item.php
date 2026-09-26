@@ -40,7 +40,7 @@ if ($method === 'PUT') {
         unset($v['image_url']);
     }
 
-    $columnMap = ['title', 'venue', 'city', 'event_date', 'ticket_url', 'description', 'is_perpetual', 'recurrence', 'accepts_reservations', 'cover_path'];
+    $columnMap = ['title', 'venue', 'city', 'provincia', 'event_date', 'ticket_url', 'description', 'is_perpetual', 'recurrence', 'accepts_reservations', 'cover_path'];
     $sets = [];
     $params = [];
     foreach ($columnMap as $col) {

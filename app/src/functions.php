@@ -1400,6 +1400,12 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
     $uid = (int) $artist['id'];
     $db = getDB();
 
+    // Due card sempre calcolate qui (non passate da chi chiama, a differenza di $extraCardsHtml):
+    // vanno mostrate su OGNI pagina AdminLTE, non solo su alcune — vedi le rispettive funzioni per
+    // i dettagli. Sono vuote ('') e quindi invisibili quando non c'è nulla da mostrare.
+    $provinciaCardHtml = renderAdminLteEventiByProvinciaCard($uid, $slug);
+    $pinnedCardHtml = renderAdminLtePinnedSidebarCard(getPinnedItemsForUser($uid));
+
     // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
     // e con contenuto effettivo): il widget qui sotto elenca esattamente le stesse voci che
     // compaiono sulla vetrina "Che Amo" dietro al tab omonimo, mai svuotato dalla barra
@@ -1421,18 +1427,19 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
         }
     }
 
-    if (!$cheAmoItems && $extraCardsHtml === '') {
+    if (!$cheAmoItems && $extraCardsHtml === '' && $provinciaCardHtml === '' && $pinnedCardHtml === '') {
         return '';
     }
 
-    ob_start();
-    ?>
-          <div class="col-md-3 order-3 order-md-3">
-            <?php if ($extraCardsHtml !== ''): ?>
-            <?= $extraCardsHtml ?>
-            <?php endif; ?>
-            <?php if ($cheAmoItems): ?>
-            <div class="card<?= $extraCardsHtml !== '' ? ' mt-3' : '' ?>">
+    // "Che Amo" costruita a parte perché ha un markup più elaborato (loop con icone/colori), le
+    // altre tre arrivano già come HTML di una .card completa — tutte e quattro finiscono in questo
+    // stesso array ordinato, così il margine tra una e l'altra si applica in un unico posto invece
+    // che ripetuto in ognuna (mai un buco vuoto in cima né un doppio margine in mezzo).
+    $cheAmoHtml = '';
+    if ($cheAmoItems) {
+        ob_start();
+        ?>
+            <div class="card">
               <div class="card-header"><h3 class="card-title">Che Amo</h3></div>
               <div class="card-body">
                 <?php $cheAmoColors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary']; $i = 0; ?>
@@ -1449,8 +1456,81 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
                 <?php $i++; endforeach; ?>
               </div>
             </div>
-            <?php endif; ?>
+        <?php
+        $cheAmoHtml = ob_get_clean();
+    }
+
+    $blocks = array_values(array_filter([$provinciaCardHtml, $pinnedCardHtml, $extraCardsHtml, $cheAmoHtml], fn ($h) => $h !== ''));
+
+    ob_start();
+    ?>
+          <div class="col-md-3 order-3 order-md-3">
+            <?php foreach ($blocks as $i => $block): ?>
+            <div class="<?= $i > 0 ? 'mt-3' : '' ?>"><?= $block ?></div>
+            <?php endforeach; ?>
           </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Card "Eventi per provincia" (colonna destra, sempre in cima) — prossimi eventi del profilo
+// raggruppati per provincia (colonna events.provincia, opzionale in dashboard_events.php),
+// ordinati alfabeticamente, con il conteggio sulla stessa riga. Il click porta alla pagina
+// Eventi filtrata per quella provincia (eventi.php?provincia=...). Nessuna card se il profilo non
+// ha eventi con provincia compilata (né se non ha proprio eventi).
+function renderAdminLteEventiByProvinciaCard(int $userId, string $slug): string {
+    $stmt = getDB()->prepare("SELECT provincia, COUNT(*) c FROM events
+        WHERE user_id=? AND provincia IS NOT NULL AND provincia <> '' AND (event_date >= NOW() OR is_perpetual = 1)
+        GROUP BY provincia ORDER BY provincia ASC");
+    $stmt->execute([$userId]);
+    $rows = $stmt->fetchAll();
+    if (!$rows) {
+        return '';
+    }
+    ob_start();
+    ?>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Eventi per provincia</h3></div>
+              <div class="list-group list-group-flush">
+                <?php foreach ($rows as $r): ?>
+                <a href="/<?= e($slug) ?>/eventi?provincia=<?= urlencode($r['provincia']) ?>" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
+                  <span><i class="bi bi-geo-alt text-secondary me-1" aria-hidden="true"></i><?= e($r['provincia']) ?></span>
+                  <span class="badge text-bg-primary rounded-pill"><?= (int) $r['c'] ?></span>
+                </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Card "In Primo Piano" permanente (colonna destra, su OGNI pagina AdminLTE) — stessi elementi di
+// renderAdminLtePinnedCarousel() (Dashboard -> Primo Piano), ma come semplice elenco invece che
+// carosello: funziona anche con un solo elemento fissato (il carosello invece richiede almeno 2
+// slide per avere senso, vedi lì). Nessuna card se il profilo non ha ancora fissato nulla.
+function renderAdminLtePinnedSidebarCard(array $pinnedItems): string {
+    if (!$pinnedItems) {
+        return '';
+    }
+    ob_start();
+    ?>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title"><i class="bi bi-pin-angle-fill me-1"></i>In Primo Piano</h3></div>
+              <div class="list-group list-group-flush">
+                <?php foreach ($pinnedItems as $it): ?>
+                <a href="<?= e($it['url']) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                  <?php if ($it['cover']): ?>
+                    <img src="/<?= e($it['cover']) ?>" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;" alt="">
+                  <?php else: ?>
+                    <span class="d-flex align-items-center justify-content-center bg-body-secondary rounded flex-shrink-0" style="width:36px;height:36px;">
+                      <i class="bi <?= e(ADMINLTE_TIMELINE_TYPE_META[$it['tipo']]['icon'] ?? 'bi-star') ?> text-secondary" aria-hidden="true"></i>
+                    </span>
+                  <?php endif; ?>
+                  <span class="text-truncate small"><?= e(textExcerpt((string) $it['titolo'], 60)) ?></span>
+                </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
     <?php
     return ob_get_clean();
 }
@@ -1742,7 +1822,7 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
 // #adminlte-list-loading, #adminlte-list-end. Viaggi (raggruppato per mese) e Foto (griglia con
 // lightbox che indicizza tutte le immagini insieme) restano elenchi completi, non paginati: la
 // paginazione ne romperebbe rispettivamente il raggruppamento e l'indice della lightbox.
-function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCount, int $pageSize, bool $finished): string {
+function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCount, int $pageSize, bool $finished, string $extraQuery = ''): string {
     ob_start();
     ?>
                 <script>
@@ -1751,6 +1831,7 @@ function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCo
                   var slug = <?= json_encode($slug) ?>;
                   var offset = <?= (int) $initialCount ?>;
                   var pageSize = <?= (int) $pageSize ?>;
+                  var extraQuery = <?= json_encode($extraQuery) ?>;
                   var loading = false;
                   var finished = <?= $finished ? 'true' : 'false' ?>;
                   var feedEl = document.getElementById('adminlte-list-feed');
@@ -1762,7 +1843,7 @@ function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCo
                     if (loading || finished || !feedEl) return;
                     loading = true;
                     if (loadingEl) loadingEl.style.display = 'block';
-                    fetch('/adminlte_list_more.php?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(slug) + '&offset=' + offset)
+                    fetch('/adminlte_list_more.php?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(slug) + '&offset=' + offset + extraQuery)
                       .then(function (r) { return r.json(); })
                       .then(function (data) {
                         if (loadingEl) loadingEl.style.display = 'none';
@@ -4503,11 +4584,15 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
     return ob_get_clean();
 }
 
-// Elenco pubblico "Eventi" a tema AdminLTE — eventi.php.
-function renderAdminLteEventiListPage(array $artist, string $slug, array $events): string {
+// Elenco pubblico "Eventi" a tema AdminLTE — eventi.php. $provinciaFilter (opzionale, da
+// eventi.php?provincia=...) è lo stesso filtro cliccabile dal widget "Eventi per provincia" della
+// colonna destra (renderAdminLteEventiByProvinciaCard()) — qui mostra un'intestazione con quale
+// provincia è filtrata e un link per toglierla, e lo propaga allo scroll infinito.
+function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null): string {
     $pageUrl = siteUrl('/' . $slug . '/eventi');
     $pageSize = 20;
     $finished = count($events) < $pageSize;
+    $extraQuery = $provinciaFilter !== null && $provinciaFilter !== '' ? '&provincia=' . urlencode($provinciaFilter) : '';
     ob_start();
     ?>
 <!doctype html>
@@ -4539,8 +4624,11 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title"><?= e('Eventi') ?></h3>
+                <h3 class="card-title"><?= e('Eventi') ?><?php if ($extraQuery !== ''): ?> <span class="fw-normal text-secondary">— provincia di <?= e($provinciaFilter) ?></span><?php endif; ?></h3>
                 <div class="card-tools">
+                  <?php if ($extraQuery !== ''): ?>
+                  <a href="/<?= e($slug) ?>/eventi" class="btn btn-tool" title="Togli il filtro"><i class="bi bi-x-lg"></i></a>
+                  <?php endif; ?>
                   <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
                     <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
                     <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
@@ -4549,13 +4637,13 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
               </div>
               <div class="card-body">
             <?php if (!$events): ?>
-              <div class="card"><div class="card-body text-secondary">Nessun evento in programma al momento.</div></div>
+              <div class="card"><div class="card-body text-secondary"><?= $extraQuery !== '' ? 'Nessun evento in questa provincia.' : 'Nessun evento in programma al momento.' ?></div></div>
             <?php else: ?>
               <div id="adminlte-list-feed"><?= renderAdminLteEventiRows($events, $slug, $artist) ?></div>
               <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
               <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
-              <?= adminLteInfiniteScrollScript('eventi', $slug, count($events), $pageSize, $finished) ?>
+              <?= adminLteInfiniteScrollScript('eventi', $slug, count($events), $pageSize, $finished, $extraQuery) ?>
             <?php endif; ?>
             </div>
             </div>

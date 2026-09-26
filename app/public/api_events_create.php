@@ -30,12 +30,13 @@ if (!empty($v['image_url'])) {
     }
 }
 
-$stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+$stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
 $stmt->execute([
     $auth['user_id'],
     $v['title'],
     $v['venue'] ?? null,
     $v['city'] ?? null,
+    $v['provincia'] ?? null,
     $v['event_date'],
     $v['ticket_url'] ?? null,
     $v['description'] ?? null,

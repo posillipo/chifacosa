@@ -20,12 +20,25 @@ if (!$artist) {
 // Un evento "perpetuo" (nessuna data di fine, es. ricorrente ogni settimana) resta sempre tra i
 // prossimi eventi, indipendentemente da event_date — vedi eventScheduleLabel() in functions.php.
 $isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
-$events = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC' . ($isAdminLte ? ' LIMIT 20' : ''));
-$events->execute([$artist['id']]);
+
+// provincia (opzionale): filtro cliccabile dal widget "Eventi per provincia" della colonna destra
+// (renderAdminLteEventiByProvinciaCard()) — stesso valore esatto salvato in dashboard_events.php,
+// confronto diretto (non LIKE), niente normalizzazione maiuscole/minuscole.
+$provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
+
+$sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1)';
+$params = [$artist['id']];
+if ($provinciaFilter !== '') {
+    $sql .= ' AND provincia = ?';
+    $params[] = $provinciaFilter;
+}
+$sql .= ' ORDER BY is_perpetual DESC, event_date ASC' . ($isAdminLte ? ' LIMIT 20' : '');
+$events = getDB()->prepare($sql);
+$events->execute($params);
 $events = $events->fetchAll();
 
 if ($isAdminLte) {
-    echo renderAdminLteEventiListPage($artist, $slug, $events);
+    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null);
     exit;
 }
 

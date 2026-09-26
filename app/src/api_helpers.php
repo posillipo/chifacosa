@@ -437,6 +437,7 @@ function apiSerializeEvent(array $event, string $slug): array {
         'title' => $event['title'],
         'venue' => $event['venue'],
         'city' => $event['city'],
+        'provincia' => $event['provincia'] ?? null,
         'event_date' => apiFormatDateTimeRome($event['event_date'] ?? null),
         'ticket_url' => $event['ticket_url'],
         'description' => $event['description'],
@@ -482,6 +483,13 @@ function apiValidateEventPayload(array $data, bool $partial): array {
             return ['error' => 'Il campo "city" supera i 100 caratteri consentiti.', 'values' => []];
         }
         $values['city'] = $city !== '' ? $city : null;
+    }
+    if (array_key_exists('provincia', $data)) {
+        $provincia = trim((string) $data['provincia']);
+        if (mb_strlen($provincia) > 100) {
+            return ['error' => 'Il campo "provincia" supera i 100 caratteri consentiti.', 'values' => []];
+        }
+        $values['provincia'] = $provincia !== '' ? $provincia : null;
     }
     if (array_key_exists('ticket_url', $data)) {
         $ticketUrl = trim((string) $data['ticket_url']);

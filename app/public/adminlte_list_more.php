@@ -82,10 +82,23 @@ if ($type === 'blog') {
     $html = renderAdminLteServiziRows($rows, $slug);
     $count = count($rows);
 } elseif ($type === 'eventi') {
-    $stmt = $db->prepare('SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC LIMIT ? OFFSET ?');
-    $stmt->bindValue(1, $uid, PDO::PARAM_INT);
-    $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+    // provincia (opzionale): stesso filtro di eventi.php?provincia=... (widget "Eventi per
+    // provincia" della colonna destra) — lo scroll infinito deve rispettarlo, non ricadere
+    // sull'elenco completo dalla seconda pagina in poi.
+    $provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
+    $sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1)';
+    if ($provinciaFilter !== '') {
+        $sql .= ' AND provincia = ?';
+    }
+    $sql .= ' ORDER BY is_perpetual DESC, event_date ASC LIMIT ? OFFSET ?';
+    $stmt = $db->prepare($sql);
+    $i = 1;
+    $stmt->bindValue($i++, $uid, PDO::PARAM_INT);
+    if ($provinciaFilter !== '') {
+        $stmt->bindValue($i++, $provinciaFilter, PDO::PARAM_STR);
+    }
+    $stmt->bindValue($i++, $pageSize, PDO::PARAM_INT);
+    $stmt->bindValue($i++, $offset, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll();
     $html = renderAdminLteEventiRows($rows, $slug, $artist);
