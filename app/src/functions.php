@@ -1273,23 +1273,37 @@ function renderAdminLteHomeFeatureTiles(array $artist, string $slug): string {
     $colors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary'];
     ob_start();
     ?>
-      <div class="row g-3 mb-3">
-        <?php $i = 0; foreach ($tiles as $key => $t): ?>
-        <div class="col-6 col-lg-3">
-          <a href="<?= e($t['url']) ?>" class="small-box text-bg-<?= e($colors[$i % count($colors)]) ?> text-decoration-none d-block h-100">
+      <style>
+        /* Tutti i tasti sulla stessa riga (mai a capo): si restringono in proporzione per stare
+           nello spazio disponibile, fino a una larghezza minima oltre la quale la riga scorre
+           in orizzontale invece di rompere l'impaginazione (contenitore .adminlte-home-tiles-
+           scroll) — così il numero di sezioni attive (2 come 11) non cambia il layout, solo
+           quanto si restringe ogni tasto.
+        */
+        .adminlte-home-tiles-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+        .adminlte-home-tiles{display:flex;flex-wrap:nowrap;gap:.5rem;}
+        .adminlte-home-tiles .small-box{flex:1 1 0;min-width:88px;margin-bottom:0;padding:10px 8px;}
+        .adminlte-home-tiles .small-box .inner{padding:0;}
+        .adminlte-home-tiles .small-box h3{font-size:1.2rem!important;margin:0 0 2px;white-space:normal;}
+        .adminlte-home-tiles .small-box p{font-size:.72rem!important;margin:0;white-space:normal;line-height:1.15;}
+        .adminlte-home-tiles .small-box-icon{font-size:28px;top:6px;right:6px;height:auto;}
+      </style>
+      <div class="adminlte-home-tiles-scroll mb-3">
+        <div class="adminlte-home-tiles">
+          <?php $i = 0; foreach ($tiles as $key => $t): ?>
+          <a href="<?= e($t['url']) ?>" class="small-box text-bg-<?= e($colors[$i % count($colors)]) ?> text-decoration-none">
             <div class="inner">
               <?php if ($t['count'] !== null): ?>
                 <h3><?= (int) $t['count'] ?></h3>
                 <p><?= e($t['label']) ?></p>
               <?php else: ?>
-                <h3 class="h4"><?= e($t['label']) ?></h3>
+                <p class="fw-semibold"><?= e($t['label']) ?></p>
               <?php endif; ?>
             </div>
             <i class="bi <?= e(ADMINLTE_HOME_TILE_ICONS[$key] ?? 'bi-star') ?> small-box-icon" aria-hidden="true"></i>
-            <span class="small-box-footer">Vai <i class="bi bi-arrow-right-circle" aria-hidden="true"></i></span>
           </a>
+          <?php $i++; endforeach; ?>
         </div>
-        <?php $i++; endforeach; ?>
       </div>
     <?php
     return ob_get_clean();
