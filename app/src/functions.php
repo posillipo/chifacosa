@@ -754,6 +754,10 @@ const PAGE_THEMES = [
     // questo fallback prenderebbero una classe CSS che non esiste da nessuna parte, cioè nessuno
     // stile, non "Colorful in prestito".
     'adminlte-profile' => ['label' => 'AdminLTE', 'description' => 'Layout a card in stile pannello gestionale (basato su AdminLTE 4): card "About" con follower e recensioni, i tuoi link, e le sezioni del sito raccolte in tab — Timeline, Che Amo, Podcast, Blog e le altre che hai attive. Vale solo per la Home: le altre pagine restano nel tema Colorful.', 'body_class' => 'colorful-page'],
+    // body_class = 'colorful-page' per lo stesso motivo di adminlte-profile qui sopra: per ora
+    // solo la Home ha la veste "PA Italia" (bootstrap-italia, il design system open source della
+    // Pubblica Amministrazione italiana), le altre pagine pubbliche restano nel tema Colorful.
+    'pa-italia' => ['label' => 'PA Italia', 'description' => 'Ispirato al design system ufficiale della Pubblica Amministrazione italiana (bootstrap-italia): intestazione con logo/nome, tipografia Titillium Web, card istituzionali per Timeline e Chi sono. Vale solo per la Home: le altre pagine restano nel tema Colorful.', 'body_class' => 'colorful-page'],
 ];
 
 // Parametri della griglia 3D per ciascuna variante Wave — stesso script (wave-bg.js), letto
@@ -964,6 +968,212 @@ function adminLteAssetLinks(): string {
          . '.admlte-pinned-card{border:2px solid #f0ad4e;}'
          . '.admlte-pinned-card>.card-header{background:#fff8ec;}'
          . '</style>';
+}
+
+// Helper condiviso per il tema pubblico "PA Italia" (renderPaItaliaProfileTheme()) — vendorizzato
+// da bootstrap-italia (github.com/italia/bootstrap-italia, licenza BSD-3-Clause, vedi
+// assets/themes/pa-italia/LICENSE-bootstrap-italia.txt), il design system open source della
+// Pubblica Amministrazione italiana. Solo CSS/JS/icone sono vendorizzati qui: il font Titillium
+// Web (il font di base dichiarato dal CSS) non è incluso nel pacchetto npm, va caricato da Google
+// Fonts come già fatto altrove in questo file per altri font esterni.
+function paItaliaAssetLinks(): string {
+    return '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n"
+         . '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,400;0,600;0,700;1,400&display=swap">' . "\n"
+         . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/pa-italia/css/bootstrap-italia.min.css') . '">' . "\n"
+         . '<script src="' . assetUrl('/assets/themes/pa-italia/js/bootstrap-italia.bundle.min.js') . '" defer></script>';
+}
+
+// Riga di una card Bootstrap Italia ("card-wrapper card-space" + "card-bg") per un elemento della
+// Timeline — versione semplificata di renderAdminLteTimelineRows(): stessa fonte dati
+// (getTimelineFeedForUsers()), stessi campi (tipo/titolo/cover/data/url), ma senza per ora il
+// raggruppamento "stesso giorno" con mini-carosello, rimandato a un secondo incremento come tutte
+// le altre pagine interne di questo tema (solo la Home è vestita "PA Italia" per adesso, il resto
+// resta nel tema Colorful — stessa scelta fatta all'inizio per il tema AdminLTE).
+function renderPaItaliaTimelineCards(array $items, array $artist): string {
+    if (!$items) {
+        return '<p class="text-muted">Nessun aggiornamento ancora.</p>';
+    }
+    $avatarUrl = adminLteAvatarUrl($artist);
+    $displayName = $artist['display_name'] ?? '';
+    ob_start();
+    foreach ($items as $it):
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
+        ?>
+        <a href="<?= e($it['url']) ?>" class="card card-bg mb-3 text-decoration-none d-block">
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <img src="<?= e($avatarUrl) ?>" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+              <span class="fw-semibold text-dark small"><?= e($displayName) ?></span>
+              <span class="badge bg-primary"><?= e($meta['label']) ?></span>
+            </div>
+            <?php if (!empty($it['cover'])): ?>
+              <img src="/<?= e($it['cover']) ?>" alt="" class="img-fluid rounded mb-2" style="max-height:280px;width:100%;object-fit:cover;">
+            <?php endif; ?>
+            <h5 class="card-title text-dark"><?= e(textExcerpt((string) $it['titolo'], 140)) ?></h5>
+            <p class="card-text mb-0"><small class="text-muted"><?= e(formatLocalDateTime($it['data'], $artist)) ?></small></p>
+          </div>
+        </a>
+        <?php
+    endforeach;
+    return ob_get_clean();
+}
+
+// Home a tema "PA Italia" — stesso principio "a scena" della Home AdminLTE
+// (renderAdminLteProfileTheme()): sostituisce solo /slug, tutte le altre pagine pubbliche restano
+// nel tema Colorful finché non vengono costruite anche loro (vedi commento in
+// renderPaItaliaTimelineCards()).
+function renderPaItaliaProfileTheme(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+    $pageUrl = siteUrl('/' . $slug);
+    $ogDescription = !empty($artist['bio']) ? textExcerpt($artist['bio'], 160) : ($artist['display_name'] . ' su ' . siteName());
+    $avatarUrl = adminLteAvatarUrl($artist);
+    $feed = getTimelineFeedForUsers([$uid], 10, 0);
+    $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: '');
+
+    // Stessa selezione voci/condizioni di adminLteTopNav(), semplificata: qui basta l'elenco già
+    // filtrato per costruire il menu, non serve replicare l'intera struttura di quella funzione.
+    $hiddenKeys = getHiddenNavKeys($uid);
+    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+    $navItems = ['timeline' => ['label' => 'Home', 'url' => '/' . $slug]];
+    if (!in_array('cheamo', $hiddenKeys, true) && hasAnyVisibleCheAmo($uid, $hiddenKeys)) {
+        $navItems['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo'];
+    }
+    $navItems['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
+    if ($isBandOrLabel && !in_array('eventi', $hiddenKeys, true)) {
+        $navItems['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
+    }
+    $navItems['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
+
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="<?= e($artist['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<?php if (!empty($artist['avatar_path'])): ?><meta property="og:image" content="<?= e(siteUrl('/' . $artist['avatar_path'])) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= paItaliaAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+<style>
+  body{font-family:"Titillium Web",Geneva,Tahoma,sans-serif;}
+  /* Il CSS di bootstrap-italia applica lo sfondo blu della testata solo in combinazione con
+     classi di stato gestite dal proprio JS (l'header "sticky" completo, con più varianti che
+     qui non servono) — per una testata sempre semplice e sempre blu, indipendente da quello
+     stato, il colore è forzato qui invece di dipendere da quelle classi. */
+  .it-header-wrapper,.it-header-center-wrapper,.it-header-navbar-wrapper{background:#0059b3!important;}
+  .it-header-navbar-wrapper .nav-link{color:#fff!important;}
+  .it-header-navbar-wrapper .nav-link:hover{color:#cfe4ff!important;}
+  .it-brand-title,.it-brand-tagline{color:#fff;}
+</style>
+</head>
+<body>
+<?= embedTrackingBodyStart($artist) ?>
+<div class="it-header-wrapper">
+  <div class="it-header-center-wrapper">
+    <div class="container">
+      <div class="it-header-center-content-wrapper">
+        <div class="it-brand-wrapper">
+          <a href="/<?= e($slug) ?>">
+            <img src="<?= e($avatarUrl) ?>" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
+            <div class="it-brand-text">
+              <div class="it-brand-title"><?= e($artist['display_name']) ?></div>
+              <?php if (!empty($artist['bio'])): ?>
+                <div class="it-brand-tagline"><?= e(textExcerpt($artist['bio'], 80)) ?></div>
+              <?php endif; ?>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="it-header-navbar-wrapper">
+    <div class="container">
+      <nav class="navbar navbar-expand-lg" aria-label="Navigazione principale">
+        <button class="custom-navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#pa-italia-nav" aria-controls="pa-italia-nav" aria-expanded="false" aria-label="Apri il menu" style="width:32px;height:24px;position:relative;">
+          <span style="position:absolute;left:0;right:0;top:0;height:3px;background:#fff;border-radius:2px;"></span>
+          <span style="position:absolute;left:0;right:0;top:10px;height:3px;background:#fff;border-radius:2px;"></span>
+          <span style="position:absolute;left:0;right:0;top:20px;height:3px;background:#fff;border-radius:2px;"></span>
+        </button>
+        <div class="navbar-collapse collapse" id="pa-italia-nav">
+          <div class="menu-wrapper">
+            <ul class="navbar-nav">
+              <?php foreach ($navItems as $key => $n): ?>
+              <li class="nav-item">
+                <a class="nav-link" href="<?= e($n['url']) ?>"><?= e($n['label']) ?></a>
+              </li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </div>
+</div>
+<main class="container my-4">
+  <div class="row">
+    <div class="col-lg-8">
+      <?php if (!empty($artist['bio'])): ?>
+      <div class="card card-bg mb-4">
+        <div class="card-body">
+          <h5 class="card-title text-dark">Chi sono</h5>
+          <p class="card-text"><?= nl2br(e($artist['bio'])) ?></p>
+        </div>
+      </div>
+      <?php endif; ?>
+      <h3 class="mb-3">Timeline</h3>
+      <?= renderPaItaliaTimelineCards($feed, $artist) ?>
+      <p class="text-center"><a href="/<?= e($slug) ?>/timeline">Vedi tutta la Timeline →</a></p>
+    </div>
+    <div class="col-lg-4">
+      <div class="card card-bg mb-4">
+        <div class="card-body">
+          <h5 class="card-title text-dark">Segui <?= e($artist['display_name']) ?></h5>
+          <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary btn-full-width">Segui</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="it-footer">
+  <div class="it-footer-main">
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <div class="it-brand-wrapper">
+            <a href="/">
+              <span class="it-brand-text">
+                <span class="it-brand-title"><?= e(siteName()) ?></span>
+              </span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="it-footer-small-prints clearfix">
+    <div class="container">
+      <ul class="it-footer-small-prints-list list-inline mb-0 d-flex flex-column flex-md-row">
+        <li class="list-inline-item"><a class="text-white" href="/"><?= e(siteName()) ?></a></li>
+        <li class="list-inline-item"><a class="text-white" href="<?= $footerPrivacyUrl !== '' ? e($footerPrivacyUrl) : '/' ?>"<?= $footerPrivacyUrl !== '' ? ' target="_blank" rel="noopener"' : '' ?>>Privacy</a></li>
+        <li class="list-inline-item"><a class="text-white" href="/credits.php">Crediti</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
 }
 
 // Blocco breadcrumb + titolo H1 dell'app-content-header. $trail sono le tappe intermedie tra

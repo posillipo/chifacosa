@@ -64,6 +64,7 @@ $themePickerBackgrounds = [
     'galactic' => 'radial-gradient(circle at 20% 20%, rgba(123,60,255,0.45), transparent 45%), radial-gradient(circle at 80% 30%, rgba(41,245,255,0.35), transparent 50%), radial-gradient(circle at 50% 85%, rgba(80,40,180,0.4), transparent 55%), linear-gradient(180deg, #05040f 0%, #0a0820 100%)',
     'adminlte-profile' => 'linear-gradient(160deg, #f4f6f9 0%, #e9ecef 100%)',
     'backstage' => 'linear-gradient(160deg, #fdf7ea 0%, #f0e2c4 100%)',
+    'pa-italia' => 'linear-gradient(160deg, #0059b3 0%, #0066cc 100%)',
 ];
 
 include __DIR__ . '/_dash_header.php';
@@ -304,6 +305,17 @@ include __DIR__ . '/_dash_header.php';
                     <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
                     <div style="background:#f1f3f5;border-radius:3px 3px 0 0;height:8px;flex:1;"></div>
                   </div>
+                </div>
+              </div>
+            <?php elseif ($key === 'pa-italia'): ?>
+              <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:0;margin-bottom:10px;overflow:hidden;">
+                <div style="background:#0059b3;padding:8px;display:flex;align-items:center;gap:6px;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:#fff;flex-shrink:0;"></div>
+                  <div style="background:rgba(255,255,255,0.85);border-radius:3px;height:6px;width:60%;"></div>
+                </div>
+                <div style="padding:10px 8px;">
+                  <div style="background:#e9ecef;border-radius:4px;height:6px;width:80%;margin-bottom:4px;"></div>
+                  <div style="background:#e9ecef;border-radius:4px;height:6px;width:55%;"></div>
                 </div>
               </div>
             <?php elseif ($key === 'backstage'): ?>

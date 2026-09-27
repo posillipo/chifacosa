@@ -62,6 +62,12 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
     exit;
 }
 
+// Tema "PA Italia": stesso principio "a scena" del tema AdminLTE qui sopra, solo per la Home.
+if (($artist['page_theme'] ?? 'colorful') === 'pa-italia') {
+    echo renderPaItaliaProfileTheme($artist, $slug);
+    exit;
+}
+
 $hiddenNavKeys = getHiddenNavKeys((int) $uid);
 
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');
