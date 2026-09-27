@@ -1181,6 +1181,120 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     return ob_get_clean();
 }
 
+// Icona (Bootstrap Icons) per ogni sezione principale del profilo, usata dai "macro tasti"
+// colorati della Home a tema AdminLTE (renderAdminLteHomeFeatureTiles()) — stile "small-box" di
+// AdminLTE, richiesto esplicitamente da un utente mostrando lo screenshot di una dashboard
+// AdminLTE di esempio (box colorati con icona + numero + link "More info").
+const ADMINLTE_HOME_TILE_ICONS = [
+    'cheamo' => 'bi-heart-fill',
+    'spotify' => 'bi-spotify',
+    'podcast' => 'bi-mic-fill',
+    'video' => 'bi-youtube',
+    'blog' => 'bi-newspaper',
+    'menu' => 'bi-cup-hot-fill',
+    'offerte' => 'bi-tag-fill',
+    'foto' => 'bi-images',
+    'servizi' => 'bi-briefcase-fill',
+    'eventi' => 'bi-calendar-event-fill',
+    'contatti' => 'bi-envelope-fill',
+];
+
+// Riga di "macro tasti" colorati in cima alla Home a tema AdminLTE, uno per ogni sezione
+// attiva del profilo (stesse condizioni di visibilità di adminLteTopNav(), qui replicate per
+// costruire anche l'icona e — dove disponibile a basso costo — un conteggio, invece del solo
+// link testuale del menu). Un conteggio c'è solo per Che Amo/Blog/Eventi: per le altre sezioni
+// (Spotify, Podcast, Video, Menù, Offerte, Foto, Servizi, Contatti) il tasto mostra comunque
+// icona + nome, che resta l'informazione richiesta ("associare immagine e funzione").
+function renderAdminLteHomeFeatureTiles(array $artist, string $slug): string {
+    $uid = (int) $artist['id'];
+    $db = getDB();
+    $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
+    $hiddenKeys = getHiddenNavKeys($uid);
+
+    $tiles = [];
+
+    if (hasAnyVisibleCheAmo($uid, $hiddenKeys)) {
+        $cheAmoCount = 0;
+        foreach (CHE_AMO_MODULES as $key => $m) {
+            if (in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+            if ($m['check'] === null || $m['check']($uid)) {
+                $stmt = $db->prepare("SELECT COUNT(*) c FROM {$m['table']} WHERE user_id=? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
+                $stmt->execute([$uid]);
+                $cheAmoCount += (int) $stmt->fetch()['c'];
+            }
+        }
+        $tiles['cheamo'] = ['label' => 'Che Amo', 'url' => '/' . $slug . '/che-amo', 'count' => $cheAmoCount];
+    }
+    if ($isBandOrLabel && !empty($artist['spotify_artist_id']) && !in_array('spotify', $hiddenKeys, true)) {
+        $tiles['spotify'] = ['label' => 'Spotify', 'url' => '/' . $slug . '/spotify', 'count' => null];
+    }
+    if ($isBandOrLabel && !empty($artist['spotify_show_id']) && !in_array('podcast', $hiddenKeys, true)) {
+        $tiles['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast', 'count' => null];
+    }
+    if ($isBandOrLabel && !empty($artist['youtube_channel_id']) && !in_array('video', $hiddenKeys, true)) {
+        $tiles['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'count' => null];
+    }
+    if (!in_array('blog', $hiddenKeys, true)) {
+        $stmt = $db->prepare('SELECT COUNT(*) c FROM blog_posts WHERE user_id=? AND published_at <= NOW()');
+        $stmt->execute([$uid]);
+        $blogCount = (int) $stmt->fetch()['c'];
+        if ($blogCount > 0) {
+            $tiles['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'count' => $blogCount];
+        }
+    }
+    if (!in_array('menu', $hiddenKeys, true) && menuHasItems($uid)) {
+        $tiles['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu', 'count' => null];
+    }
+    if (!in_array('offerte', $hiddenKeys, true) && hasActiveOffers($uid)) {
+        $tiles['offerte'] = ['label' => 'Offerte', 'url' => '/' . $slug . '/offerte', 'count' => null];
+    }
+    if (!in_array('foto', $hiddenKeys, true) && hasPublicPhotoContent($uid)) {
+        $tiles['foto'] = ['label' => 'Foto', 'url' => '/' . $slug . '/foto', 'count' => null];
+    }
+    if (!in_array('servizi', $hiddenKeys, true) && hasVisibleServices($uid)) {
+        $tiles['servizi'] = ['label' => 'Servizi', 'url' => '/' . $slug . '/servizi', 'count' => null];
+    }
+    if ($isBandOrLabel && !in_array('eventi', $hiddenKeys, true)) {
+        $stmt = $db->prepare('SELECT COUNT(*) c FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1)');
+        $stmt->execute([$uid]);
+        $eventiCount = (int) $stmt->fetch()['c'];
+        if ($eventiCount > 0) {
+            $tiles['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi', 'count' => $eventiCount];
+        }
+    }
+    $tiles['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti', 'count' => null];
+
+    if (!$tiles) {
+        return '';
+    }
+
+    $colors = ['primary', 'success', 'warning', 'danger', 'info', 'secondary'];
+    ob_start();
+    ?>
+      <div class="row g-3 mb-3">
+        <?php $i = 0; foreach ($tiles as $key => $t): ?>
+        <div class="col-6 col-lg-3">
+          <a href="<?= e($t['url']) ?>" class="small-box text-bg-<?= e($colors[$i % count($colors)]) ?> text-decoration-none d-block h-100">
+            <div class="inner">
+              <?php if ($t['count'] !== null): ?>
+                <h3><?= (int) $t['count'] ?></h3>
+                <p><?= e($t['label']) ?></p>
+              <?php else: ?>
+                <h3 class="h4"><?= e($t['label']) ?></h3>
+              <?php endif; ?>
+            </div>
+            <i class="bi <?= e(ADMINLTE_HOME_TILE_ICONS[$key] ?? 'bi-star') ?> small-box-icon" aria-hidden="true"></i>
+            <span class="small-box-footer">Vai <i class="bi bi-arrow-right-circle" aria-hidden="true"></i></span>
+          </a>
+        </div>
+        <?php $i++; endforeach; ?>
+      </div>
+    <?php
+    return ob_get_clean();
+}
+
 // Colonna sinistra del profilo (avatar/follower/recensioni) — era solo nella Home, ora condivisa
 // da OGNI pagina pubblica a tema AdminLTE (Timeline, Che Amo, Spotify...), così chi naviga dentro
 // il profilo la vede sempre, non solo in Home. Self-contained: calcola da sola i dati che le
@@ -2081,6 +2195,7 @@ function renderAdminLteProfileTheme(array $artist, string $slug): string {
     <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $artist['display_name']) ?>
     <div class="app-content">
       <div class="container-fluid">
+        <?= renderAdminLteHomeFeatureTiles($artist, $slug) ?>
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug, true) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
