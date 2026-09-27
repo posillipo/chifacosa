@@ -65,10 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $excerpt = textExcerpt($content, 200);
         $coverPath = handleCoverUpload($profile['slug']);
-        if (!$coverPath) {
-            $coverPath = $post['cover_path'];
-        } else {
+        if ($coverPath) {
             deleteCoverFile($post['cover_path']);
+        } elseif (isset($_POST['remove_cover'])) {
+            deleteCoverFile($post['cover_path']);
+            $coverPath = null;
+        } else {
+            $coverPath = $post['cover_path'];
         }
 
         // Lo slug (e quindi la parte finale del permalink) non cambia mai in modifica, anche se
@@ -106,6 +109,10 @@ include __DIR__ . '/_dash_header.php';
     <?php if ($post['cover_path']): ?>
       <label>Copertina attuale</label>
       <img src="/<?= e($post['cover_path']) ?>" style="width:120px;height:120px;border-radius:8px;object-fit:cover;display:block;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:14px;">
+        <input type="checkbox" name="remove_cover" value="1" style="width:auto;">
+        Rimuovi la copertina attuale (senza sostituirla)
+      </label>
     <?php endif; ?>
     <label>Nuova copertina (opzionale — lascia vuoto per non cambiarla)</label>
     <input type="file" name="cover" accept="image/*">
@@ -136,7 +143,7 @@ include __DIR__ . '/_dash_header.php';
     <?php endif; ?>
 
     <label>Data di pubblicazione</label>
-    <input type="datetime-local" name="published_at" value="<?= e(date('Y-m-d\TH:i', strtotime($post['published_at']))) ?>">
+    <input type="datetime-local" name="published_at" value="<?= e(localDateTimeInputValue($post['published_at'], $profile)) ?>">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Impostala nel futuro per (ri)programmare l'articolo.</p>
 
     <button type="submit" class="btn">Salva modifiche</button>
