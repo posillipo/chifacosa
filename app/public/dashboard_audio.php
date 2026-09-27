@@ -87,10 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
         // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        // Niente più azzeramento se la data è già passata: equivale a NULL per la visibilità
+        // pubblica, azzerarla qui cancellava la programmazione originale ad ogni salvataggio di
+        // un elemento già pubblicato (stesso bug corretto in dashboard_timeline_edit.php).
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
-        if ($publishAt && strtotime($publishAt) <= time()) {
-            $publishAt = null;
-        }
 
         $imagePath = handleCoverUpload($profile['slug'], 'image');
         $imageThumbPath = null;

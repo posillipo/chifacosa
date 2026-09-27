@@ -22,10 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isPublic = $visibility === 'public' ? 1 : 0;
         $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
         $acceptsInquiries = isset($_POST['accepts_inquiries']) ? 1 : 0;
+        // Niente più azzeramento se la data è già passata: equivale a NULL per la visibilità
+        // pubblica, azzerarla qui cancellava la programmazione originale ad ogni salvataggio di
+        // un elemento già pubblicato (stesso bug corretto in dashboard_timeline_edit.php).
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
-        if ($publishAt && strtotime($publishAt) <= time()) {
-            $publishAt = null;
-        }
 
         if ($title === '') {
             $error = 'Il titolo è obbligatorio.';

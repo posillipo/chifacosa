@@ -24,10 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
         // Interpretato nel fuso orario reale di chi sta scrivendo in questo momento (offset del
         // browser), con il fuso del profilo solo come ripiego — vedi parseLocalDateTime().
+        // Niente più azzeramento se la data è già passata: equivale a NULL per la visibilità
+        // pubblica, azzerarla qui cancellava la programmazione originale ad ogni salvataggio di
+        // un elemento già pubblicato (stesso bug corretto in dashboard_timeline_edit.php).
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
-        if ($publishAt && strtotime($publishAt) <= time()) {
-            $publishAt = null;
-        }
 
         if ($title === '') {
             $error = 'Il titolo è obbligatorio.';

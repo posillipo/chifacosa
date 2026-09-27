@@ -54,10 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $redirectLink = trim($_POST['redirect_link'] ?? '');
         $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
         $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
+        // Niente più azzeramento automatico se la data è nel passato: per la visibilità pubblica
+        // una publish_at passata equivale già a NULL (vedi "publish_at IS NULL OR publish_at <=
+        // NOW()" usato ovunque), quindi non serve svuotarla — e farlo qui cancellava la data
+        // originale di programmazione ad OGNI salvataggio di un post già pubblicato (quasi tutti,
+        // una volta passato l'orario), anche senza che l'utente toccasse quel campo.
         $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
-        if ($publishAt && strtotime($publishAt) <= time()) {
-            $publishAt = null;
-        }
 
         if ($redirectLink !== '' && !filter_var($redirectLink, FILTER_VALIDATE_URL)) {
             $error = 'Il link di reindirizzamento per questo post non è un URL valido.';
