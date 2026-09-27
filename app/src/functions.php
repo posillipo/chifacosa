@@ -1278,29 +1278,31 @@ function renderAdminLteHomeFeatureTiles(array $artist, string $slug): string {
            nello spazio disponibile, fino a una larghezza minima oltre la quale la riga scorre
            in orizzontale invece di rompere l'impaginazione (contenitore .adminlte-home-tiles-
            scroll) — così il numero di sezioni attive (2 come 11) non cambia il layout, solo
-           quanto si restringe ogni tasto.
+           quanto si restringe ogni tasto. Componente "Info Box" di AdminLTE (icona quadrata +
+           testo accanto), non "Small Box" (il box a tinta unita con numero enorme) — stesso
+           stile già usato per il widget Che Amo della colonna destra.
         */
         .adminlte-home-tiles-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
         .adminlte-home-tiles{display:flex;flex-wrap:nowrap;gap:.5rem;}
-        .adminlte-home-tiles .small-box{flex:1 1 0;min-width:88px;margin-bottom:0;padding:10px 8px;}
-        .adminlte-home-tiles .small-box .inner{padding:0;}
-        .adminlte-home-tiles .small-box h3{font-size:1.2rem!important;margin:0 0 2px;white-space:normal;}
-        .adminlte-home-tiles .small-box p{font-size:.72rem!important;margin:0;white-space:normal;line-height:1.15;}
-        .adminlte-home-tiles .small-box-icon{font-size:28px;top:6px;right:6px;height:auto;}
+        .adminlte-home-tiles .info-box{flex:1 1 0;min-width:150px;margin-bottom:0;min-height:64px;padding:.4rem;}
+        .adminlte-home-tiles .info-box-icon{width:44px;font-size:1.2rem;flex-shrink:0;}
+        .adminlte-home-tiles .info-box-content{padding:0 8px;line-height:1.3;min-width:0;}
+        .adminlte-home-tiles .info-box-text{font-size:.78rem;white-space:normal;}
+        .adminlte-home-tiles .info-box-number{font-size:1rem;margin-top:1px;}
       </style>
       <div class="adminlte-home-tiles-scroll mb-3">
         <div class="adminlte-home-tiles">
           <?php $i = 0; foreach ($tiles as $key => $t): ?>
-          <a href="<?= e($t['url']) ?>" class="small-box text-bg-<?= e($colors[$i % count($colors)]) ?> text-decoration-none">
-            <div class="inner">
+          <a href="<?= e($t['url']) ?>" class="info-box text-decoration-none text-body shadow-sm">
+            <span class="info-box-icon text-bg-<?= e($colors[$i % count($colors)]) ?>">
+              <i class="bi <?= e(ADMINLTE_HOME_TILE_ICONS[$key] ?? 'bi-star') ?>" aria-hidden="true"></i>
+            </span>
+            <div class="info-box-content">
+              <span class="info-box-text"><?= e($t['label']) ?></span>
               <?php if ($t['count'] !== null): ?>
-                <h3><?= (int) $t['count'] ?></h3>
-                <p><?= e($t['label']) ?></p>
-              <?php else: ?>
-                <p class="fw-semibold"><?= e($t['label']) ?></p>
+                <span class="info-box-number"><?= (int) $t['count'] ?></span>
               <?php endif; ?>
             </div>
-            <i class="bi <?= e(ADMINLTE_HOME_TILE_ICONS[$key] ?? 'bi-star') ?> small-box-icon" aria-hidden="true"></i>
           </a>
           <?php $i++; endforeach; ?>
         </div>
