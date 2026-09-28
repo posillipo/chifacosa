@@ -1907,6 +1907,42 @@ function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug, ?int $ac
     return ob_get_clean();
 }
 
+// Card "Ultimi articoli" per la colonna laterale destra della pagina di un singolo articolo
+// (renderAdminLteBlogPostPage()) — stesso stile di renderAdminLtePinnedSidebarCard(), esclude
+// l'articolo che si sta già leggendo.
+function renderAdminLteBlogLatestPostsCard(int $userId, string $slug, int $excludePostId, int $limit = 3): string {
+    $stmt = getDB()->prepare('SELECT id, title, slug, cover_path, published_at FROM blog_posts WHERE user_id=? AND id<>? AND published_at <= NOW() ORDER BY published_at DESC LIMIT ?');
+    $stmt->bindValue(1, $userId, PDO::PARAM_INT);
+    $stmt->bindValue(2, $excludePostId, PDO::PARAM_INT);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $posts = $stmt->fetchAll();
+    if (!$posts) {
+        return '';
+    }
+    ob_start();
+    ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title">Ultimi articoli</h3></div>
+              <div class="list-group list-group-flush">
+                <?php foreach ($posts as $p): ?>
+                <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                  <?php if ($p['cover_path']): ?>
+                    <img src="/<?= e($p['cover_path']) ?>" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;" alt="">
+                  <?php else: ?>
+                    <span class="d-flex align-items-center justify-content-center bg-body-secondary rounded flex-shrink-0" style="width:36px;height:36px;">
+                      <i class="bi bi-newspaper text-secondary" aria-hidden="true"></i>
+                    </span>
+                  <?php endif; ?>
+                  <span class="text-truncate small"><?= e(textExcerpt((string) $p['title'], 60)) ?></span>
+                </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+    <?php
+    return ob_get_clean();
+}
+
 // Icona/colore per ogni "tipo" prodotto da getTimelineFeedForUsers() — usati dal widget .timeline
 // reale di AdminLTE (UI/timeline.html), condiviso fra il tab Timeline della Home a tema AdminLTE e
 // la pagina Timeline standalone dello stesso tema (vedi renderAdminLteTimelineRows()).
@@ -2826,6 +2862,12 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
         $blogCoverSidebarHtml = ob_get_clean();
     }
 
+    // Ultimi articoli sopra la copertina, riferimento alla categoria (evidenziata nell'elenco
+    // esistente) subito sotto — ordine richiesto esplicitamente da un utente per la colonna
+    // laterale destra di questa pagina.
+    $blogLatestPostsHtml = renderAdminLteBlogLatestPostsCard((int) $post['user_id'], $slug, (int) $post['id']);
+    $activeCategoryId = $postCategories ? (int) $postCategories[0]['id'] : null;
+
     ob_start();
     ?>
 <!doctype html>
@@ -2871,7 +2913,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug, $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug)) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $blogLatestPostsHtml . $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug, $activeCategoryId)) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
