@@ -1736,7 +1736,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
 // fissato via CSS (order-*), non dalla posizione nel markup: così può essere richiamata subito
 // dopo la sidebar in ogni pagina, invece di dover trovare il punto esatto di chiusura della
 // colonna centrale in ciascuna delle funzioni che la usano.
-function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = ''): string {
+function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = '', bool $extraCardsFirst = false): string {
     $uid = (int) $artist['id'];
     $db = getDB();
 
@@ -1800,7 +1800,14 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
         $cheAmoHtml = ob_get_clean();
     }
 
-    $blocks = array_values(array_filter([$provinciaCardHtml, $pinnedCardHtml, $extraCardsHtml, $cheAmoHtml], fn ($h) => $h !== ''));
+    // Normalmente "Eventi per provincia" e "In Primo Piano" restano sempre in cima, su ogni
+    // pagina AdminLTE (era il punto esplicito della richiesta che le ha introdotte) — $extraCardsFirst
+    // inverte l'ordine per chi ne ha bisogno (la pagina di un articolo del blog: lì l'utente vuole
+    // prima il contesto dell'articolo — Ultimi articoli/copertina/categoria — e solo dopo i widget
+    // generici del profilo).
+    $blocks = $extraCardsFirst
+        ? array_values(array_filter([$extraCardsHtml, $provinciaCardHtml, $pinnedCardHtml, $cheAmoHtml], fn ($h) => $h !== ''))
+        : array_values(array_filter([$provinciaCardHtml, $pinnedCardHtml, $extraCardsHtml, $cheAmoHtml], fn ($h) => $h !== ''));
 
     ob_start();
     ?>
@@ -2913,7 +2920,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug, $blogLatestPostsHtml . $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug, $activeCategoryId)) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $blogLatestPostsHtml . $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug, $activeCategoryId), true) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
