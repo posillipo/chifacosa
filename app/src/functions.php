@@ -915,11 +915,14 @@ function adminLteAssetLinks(): string {
          . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">' . "\n"
          . '<link rel="stylesheet" href="' . assetUrl('/assets/themes/adminlte-profile/css/adminlte.min.css') . '">' . "\n"
          // La miniatura degli articoli del blog (renderAdminLteBlogRows()) è pensata per stare
-         // accanto al titolo: a 140px fissi, su schermi stretti mangia più di un terzo della
-         // larghezza e schiaccia il titolo in una colonna strettissima che va a capo parola per
-         // parola. Qui sotto 576px si riduce.
-         . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;}'
-         . '@media (max-width:575.98px){.adminlte-blog-thumb{width:88px;height:88px;}}'
+         // accanto al titolo. Sotto 576px, se il titolo è lungo va su tante righe mentre la
+         // miniatura resta piccola e fissa in alto: siccome ".d-flex" allinea le due colonne alla
+         // stessa altezza (default align-items:stretch) ma l'immagine ha una sua altezza fissa,
+         // sotto l'immagine resta uno spazio vuoto per tutta l'altezza del testo — card sbilanciata.
+         // Qui sotto 576px si passa a un impaginato impilato (immagine sopra a piena larghezza,
+         // testo sotto), come nei classici elenchi di articoli mobile.
+         . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;border-radius:.375rem 0 0 .375rem;}'
+         . '@media (max-width:575.98px){.adminlte-blog-row{flex-direction:column;}.adminlte-blog-thumb{width:100%;height:180px;border-radius:.375rem .375rem 0 0;}}'
          // Nome del profilo nel brand della barra di navigazione (adminLteTopNav()): troncato per
          // non spingere fuori schermo le voci di menu quando il nome è lungo.
          . '.topnav-brand-name{max-width:180px;display:inline-block;}'
@@ -2266,11 +2269,11 @@ function renderAdminLteBlogRows(array $posts, string $slug, array $artist): stri
         ob_start();
         ?>
               <a href="<?= e(blogPostUrl($slug, $p)) ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="d-flex">
+                <div class="d-flex adminlte-blog-row">
                   <?php if ($p['cover_path']): ?>
-                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="rounded-start adminlte-blog-thumb">
+                    <img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy" class="adminlte-blog-thumb">
                   <?php else: ?>
-                    <div class="bg-body-tertiary rounded-start d-flex align-items-center justify-content-center adminlte-blog-thumb">
+                    <div class="bg-body-tertiary d-flex align-items-center justify-content-center adminlte-blog-thumb">
                       <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
                     </div>
                   <?php endif; ?>
