@@ -47,6 +47,12 @@ RewriteRule ^api/v1/blog-posts/create/?$ api_blog_posts_create.php [L,QSA]
 RewriteRule ^api/v1/blog-posts/list/?$ api_blog_posts_list.php [L,QSA]
 RewriteRule ^api/v1/blog-posts/([0-9]+)/?$ api_blog_posts_item.php?id=$1 [L,QSA]
 
+# API pubblica /api/v1/blog-categories/* — stesso token Bearer, sola lettura/eliminazione: le
+# categorie si creano solo implicitamente (assegnandole a un articolo via blog-posts), qui serve
+# solo elencarle (con conteggio articoli, per individuare quelle orfane) ed eliminarle.
+RewriteRule ^api/v1/blog-categories/list/?$ api_blog_categories_list.php [L,QSA]
+RewriteRule ^api/v1/blog-categories/([0-9]+)/?$ api_blog_categories_item.php?id=$1 [L,QSA]
+
 # API pubblica /api/v1/events/* — stesso token Bearer e stessa autenticazione di social-posts/
 # blog-posts (vedi app/src/api_helpers.php), endpoint separati per gestire gli Eventi.
 RewriteRule ^api/v1/events/create/?$ api_events_create.php [L,QSA]

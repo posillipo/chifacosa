@@ -179,7 +179,7 @@ const eventFieldsSchema = {
 };
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.5.1' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.6.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -306,6 +306,18 @@ function buildMcpServer() {
         description: 'Elimina definitivamente un articolo del blog di un profilo, dato il suo ID.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'articolo da eliminare') },
     }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-posts/${id}`, { method: 'DELETE' })));
+
+    server.registerTool('list_blog_categories', {
+        title: 'Elenca le categorie del blog di un profilo',
+        description: 'Elenca le categorie del Blog del profilo scelto, con il numero di articoli assegnati a ciascuna (post_count) — le categorie con post_count a 0 sono orfane (create in automatico assegnandole a un articolo per nome, poi rimaste senza nessuno se quell\'articolo è stato modificato o eliminato) e possono essere ripulite con delete_blog_category.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/blog-categories/list')));
+
+    server.registerTool('delete_blog_category', {
+        title: 'Elimina una categoria del blog',
+        description: 'Elimina definitivamente una categoria del blog di un profilo, dato il suo ID (vedi list_blog_categories). Gli articoli eventualmente assegnati a quella categoria restano, perdono solo l\'assegnazione.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID della categoria da eliminare') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-categories/${id}`, { method: 'DELETE' })));
 
     server.registerTool('create_event', {
         title: 'Crea un evento su un profilo CHIFACOSA',
