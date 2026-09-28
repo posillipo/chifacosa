@@ -2809,6 +2809,23 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
         $albStmt->execute([$post['album_id'], $post['user_id']]);
         $linkedAlbum = $albStmt->fetch() ?: null;
     }
+
+    // Da desktop la copertina si sposta nella colonna laterale destra, a piena altezza (niente
+    // max-height/object-fit:cover che la ritagliava) — pensata apposta per le foto verticali
+    // (4:5), che nella card centrale larga perdevano testa o piedi. Su mobile resta invece dov'era
+    // sempre stata, dentro la card dell'articolo: le due colonne laterali lì sono impilate sotto
+    // il contenuto, quindi spostarla lì avrebbe solo allungato la pagina senza risolvere nulla.
+    $blogCoverSidebarHtml = '';
+    if ($post['cover_path']) {
+        ob_start();
+        ?>
+        <div class="card mb-3 d-none d-md-block">
+          <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="width:100%;height:auto;display:block;">
+        </div>
+        <?php
+        $blogCoverSidebarHtml = ob_get_clean();
+    }
+
     ob_start();
     ?>
 <!doctype html>
@@ -2854,7 +2871,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug, renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug)) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug)) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -2873,7 +2890,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
 
                 <article class="card mb-3">
                   <?php if ($post['cover_path']): ?>
-                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="max-height:360px;object-fit:cover;">
+                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top d-md-none" style="max-height:360px;object-fit:cover;">
                   <?php endif; ?>
                   <div class="card-body">
                     <div class="d-flex align-items-center gap-2 mb-2">
