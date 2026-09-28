@@ -923,6 +923,12 @@ function adminLteAssetLinks(): string {
          // testo sotto), come nei classici elenchi di articoli mobile.
          . '<style>.adminlte-blog-thumb{width:140px;height:140px;object-fit:cover;flex-shrink:0;border-radius:.375rem 0 0 .375rem;}'
          . '@media (max-width:575.98px){.adminlte-blog-row{flex-direction:column;}.adminlte-blog-thumb{width:100%;height:180px;border-radius:.375rem .375rem 0 0;}}'
+         // Stessa logica di impaginazione della miniatura del blog qui sopra, applicata alla
+         // miniatura degli eventi (renderAdminLteEventiRows()): sotto 576px si passa da "immagine
+         // fissa a fianco del testo" a "immagine sopra a piena larghezza, testo sotto".
+         . '.adminlte-eventi-row{align-items:center;}'
+         . '.adminlte-eventi-thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;}'
+         . '@media (max-width:575.98px){.adminlte-eventi-row{flex-direction:column;align-items:stretch;}.adminlte-eventi-thumb{width:100%;height:180px;}}'
          // Nome del profilo nel brand della barra di navigazione (adminLteTopNav()): troncato per
          // non spingere fuori schermo le voci di menu quando il nome è lungo.
          . '.topnav-brand-name{max-width:180px;display:inline-block;}'
@@ -2266,8 +2272,8 @@ function renderAdminLteEventiRows(array $events, string $slug, array $artist): s
         ob_start();
         ?>
               <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body">
-                <div class="card-body d-flex align-items-center gap-3">
-                  <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;"><?php endif; ?>
+                <div class="card-body d-flex gap-3 adminlte-eventi-row">
+                  <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" class="adminlte-eventi-thumb"><?php endif; ?>
                   <div class="flex-grow-1" style="min-width:0;">
                     <small class="text-secondary d-block"><?= e(formatLocalDateTime($ev['event_date'], $artist)) ?></small>
                     <strong><?= e($ev['title']) ?></strong>
