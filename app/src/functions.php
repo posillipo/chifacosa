@@ -1619,9 +1619,10 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
     $uid = (int) $artist['id'];
     $db = getDB();
 
-    // Due card sempre calcolate qui (non passate da chi chiama, a differenza di $extraCardsHtml):
+    // Tre card sempre calcolate qui (non passate da chi chiama, a differenza di $extraCardsHtml):
     // vanno mostrate su OGNI pagina AdminLTE, non solo su alcune — vedi le rispettive funzioni per
     // i dettagli. Sono vuote ('') e quindi invisibili quando non c'è nulla da mostrare.
+    $platformStatsHtml = renderAdminLtePlatformStatsCard();
     $provinciaCardHtml = renderAdminLteEventiByProvinciaCard($uid, $slug, $activeProvincia);
     $pinnedCardHtml = renderAdminLtePinnedSidebarCard(getPinnedItemsForUser($uid));
 
@@ -1646,7 +1647,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
         }
     }
 
-    if (!$cheAmoItems && $extraCardsHtml === '' && $provinciaCardHtml === '' && $pinnedCardHtml === '') {
+    if (!$cheAmoItems && $extraCardsHtml === '' && $platformStatsHtml === '' && $provinciaCardHtml === '' && $pinnedCardHtml === '') {
         return '';
     }
 
@@ -1679,14 +1680,17 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
         $cheAmoHtml = ob_get_clean();
     }
 
-    // Normalmente "Eventi per provincia" e "In Primo Piano" restano sempre in cima, su ogni
+    // "Statistiche della piattaforma" resta sempre il primo blocco in assoluto, prima anche di
+    // "Eventi per provincia"/"In Primo Piano" — è una vetrina della piattaforma nel suo insieme,
+    // non un widget del profilo che si sta visitando, quindi non partecipa a $extraCardsFirst.
+    // Normalmente "Eventi per provincia" e "In Primo Piano" restano sempre subito dopo, su ogni
     // pagina AdminLTE (era il punto esplicito della richiesta che le ha introdotte) — $extraCardsFirst
     // inverte l'ordine per chi ne ha bisogno (la pagina di un articolo del blog: lì l'utente vuole
     // prima il contesto dell'articolo — Ultimi articoli/copertina/categoria — e solo dopo i widget
     // generici del profilo).
     $blocks = $extraCardsFirst
-        ? array_values(array_filter([$extraCardsHtml, $provinciaCardHtml, $pinnedCardHtml, $cheAmoHtml], fn ($h) => $h !== ''))
-        : array_values(array_filter([$provinciaCardHtml, $pinnedCardHtml, $extraCardsHtml, $cheAmoHtml], fn ($h) => $h !== ''));
+        ? array_values(array_filter([$platformStatsHtml, $extraCardsHtml, $provinciaCardHtml, $pinnedCardHtml, $cheAmoHtml], fn ($h) => $h !== ''))
+        : array_values(array_filter([$platformStatsHtml, $provinciaCardHtml, $pinnedCardHtml, $extraCardsHtml, $cheAmoHtml], fn ($h) => $h !== ''));
 
     ob_start();
     ?>
@@ -1695,6 +1699,40 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
             <div class="<?= $i > 0 ? 'mt-3' : '' ?>"><?= $block ?></div>
             <?php endforeach; ?>
           </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Tre "Small Box" AdminLTE (blocco a tinta unita con numero grande) con conteggi GLOBALI
+// dell'intera piattaforma, non del profilo che si sta visitando: quante band sono iscritte,
+// quanti articoli di blog pubblicati, quanti eventi in programma — in questo ordine esplicito
+// (band iscritte per prima). Vetrina della piattaforma nel suo insieme, uguale su ogni pagina
+// AdminLTE, mai vuota (ci sono sempre almeno gli account di prova).
+function renderAdminLtePlatformStatsCard(): string {
+    $db = getDB();
+    $bandCount = (int) $db->query("SELECT COUNT(*) c FROM users WHERE account_type = 'band' AND is_active = 1")->fetch()['c'];
+    $blogCount = (int) $db->query("SELECT COUNT(*) c FROM blog_posts bp JOIN users u ON u.id = bp.user_id WHERE u.is_active = 1 AND bp.published_at <= NOW()")->fetch()['c'];
+    $eventiCount = (int) $db->query("SELECT COUNT(*) c FROM events ev JOIN users u ON u.id = ev.user_id WHERE u.is_active = 1 AND (ev.event_date >= NOW() OR ev.is_perpetual = 1)")->fetch()['c'];
+
+    $stats = [
+        ['count' => $bandCount, 'label' => 'Band iscritte', 'icon' => 'bi-people-fill', 'color' => 'primary'],
+        ['count' => $blogCount, 'label' => 'Articoli nel blog', 'icon' => 'bi-newspaper', 'color' => 'success'],
+        ['count' => $eventiCount, 'label' => 'Eventi in programma', 'icon' => 'bi-calendar-event-fill', 'color' => 'warning'],
+    ];
+
+    ob_start();
+    ?>
+    <?php foreach ($stats as $i => $s): ?>
+    <div class="small-box text-bg-<?= e($s['color']) ?><?= $i > 0 ? ' mt-3' : '' ?>">
+      <div class="inner">
+        <h3><?= (int) $s['count'] ?></h3>
+        <p><?= e($s['label']) ?></p>
+      </div>
+      <div class="icon">
+        <i class="bi <?= e($s['icon']) ?>" aria-hidden="true"></i>
+      </div>
+    </div>
+    <?php endforeach; ?>
     <?php
     return ob_get_clean();
 }
