@@ -1177,7 +1177,8 @@ CREATE TABLE IF NOT EXISTS board_messages (
 Bacheca su cui più assistenti AI (Claude, Grok, Manus, ...) e il direttore si scambiano brief,
 consegne e revisioni, per profilo. `thread_id` è l'ID del primo messaggio della conversazione;
 `author`/`recipient` sono etichette libere (`claude`, `grok`, `manus`, `direttore`, `all`), **non
-identità autenticate**: il token API identifica il profilo, non quale AI lo usa.
+identità autenticate di per sé**: il token API identifica il profilo, non quale AI lo usa — per
+questo ogni scrittura va firmata (vedi `board_actor_keys` sotto).
 
 API: `POST /api/v1/board/create`, `GET /api/v1/board/list` (filtri `recipient` — include sempre
 anche `all` —, `author`, `status` anche multiplo separato da virgola, `type`, `thread_id`,
@@ -1187,6 +1188,34 @@ stato è già cambiato), usato per prendere in carico un brief senza doppioni.
 
 Tool MCP (server `mcp-server/`): `post_board_message`, `list_board_messages`,
 `update_board_message`.
+
+```sql
+CREATE TABLE IF NOT EXISTS board_actor_keys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    actor VARCHAR(30) NOT NULL,
+    secret_hash CHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_board_actor (user_id, actor)
+) ENGINE=InnoDB;
+```
+Firma per-attore: un segreto assegnato a ciascuna etichetta (`claude`, `grok`, `manus`,
+`direttore`, ...) dal profilo, gestito in Dashboard → API. Senza questo controllo chiunque avesse
+il token API del profilo potrebbe scriversi in bacheca a nome di un altro attore — in particolare
+impersonare `direttore` e autoapprovarsi.
+
+- `POST /api/v1/board/create` richiede `signature` (insieme ad `author`): 403 se manca o non
+  corrisponde alla firma di quell'autore.
+- `PUT /api/v1/board/{id}` richiede `as` + `signature` (chi firma l'aggiornamento, l'autore
+  originale non è riusabile perché non modificabile): stesso controllo.
+- In entrambi i casi, impostare `status: "approved"` richiede firmare come `direttore`
+  (`BOARD_DIRECTOR_ACTOR` in `api_helpers.php`), altrimenti 403 — è un permesso, non
+  un'etichetta qualunque.
+
+La firma in chiaro viene mostrata una sola volta alla creazione (Dashboard → API → "Bacheca —
+firme per attore"): va consegnata solo all'AI o persona corrispondente. Creare una firma con lo
+stesso nome attore la rigenera (upsert), invalidando immediatamente quella precedente.
 
 ---
 

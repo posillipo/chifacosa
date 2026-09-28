@@ -668,6 +668,20 @@ CREATE TABLE IF NOT EXISTS board_messages (
     INDEX idx_board_thread (thread_id)
 ) ENGINE=InnoDB;
 
+-- Firma per-attore della bacheca: un segreto assegnato a ciascuna etichetta (claude, grok, manus,
+-- direttore, ...) da chi gestisce il profilo (dashboard_api_tokens.php). Impedisce che chi ha solo
+-- il token API del profilo possa scrivere in bacheca a nome di un altro attore — in particolare
+-- che si autoapprovi impersonando "direttore". Vedi apiVerifyBoardSignature() in api_helpers.php.
+CREATE TABLE IF NOT EXISTS board_actor_keys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    actor VARCHAR(30) NOT NULL,
+    secret_hash CHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_board_actor (user_id, actor)
+) ENGINE=InnoDB;
+
 -- Nuovo modulo "Brani": brani Spotify scelti dal profilo (di qualsiasi tipo), al posto del
 -- vecchio upload di file mp3. Stesso pattern di fan_favorite_bands, ma per singoli brani.
 CREATE TABLE IF NOT EXISTS favorite_tracks (

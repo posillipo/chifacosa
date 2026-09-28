@@ -8,6 +8,8 @@ $activeTab = 'api_tokens';
 $pageTitle = 'API';
 $error = null;
 $newToken = null;
+$boardSignError = null;
+$newBoardSignature = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
@@ -32,6 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         getDB()->prepare('DELETE FROM api_tokens WHERE id = ? AND user_id = ?')->execute([$id, $profile['id']]);
+    } elseif ($action === 'board_sign_create') {
+        $actor = apiNormalizeBoardActor((string) ($_POST['actor'] ?? ''));
+        if ($actor === null) {
+            $boardSignError = 'Nome non valido: 2-30 caratteri tra lettere minuscole, numeri, "-" e "_" (es. claude, grok, manus, direttore).';
+        } else {
+            // Chiave già esistente per questo attore: la sostituisce (rigenerazione), la vecchia
+            // firma smette immediatamente di funzionare — stesso principio di "revoca e ricrea".
+            $generated = generateBoardActorSignature();
+            $stmt = getDB()->prepare('INSERT INTO board_actor_keys (user_id, actor, secret_hash) VALUES (?,?,?)
+                ON DUPLICATE KEY UPDATE secret_hash = VALUES(secret_hash), created_at = CURRENT_TIMESTAMP');
+            $stmt->execute([$profile['id'], $actor, $generated['hash']]);
+            $newBoardSignature = ['actor' => $actor, 'signature' => $generated['signature']];
+        }
+    } elseif ($action === 'board_sign_delete') {
+        $id = (int) ($_POST['id'] ?? 0);
+        getDB()->prepare('DELETE FROM board_actor_keys WHERE id = ? AND user_id = ?')->execute([$id, $profile['id']]);
     }
 }
 
@@ -39,11 +57,16 @@ $stmt = getDB()->prepare('SELECT * FROM api_tokens WHERE user_id = ? ORDER BY cr
 $stmt->execute([$profile['id']]);
 $tokens = $stmt->fetchAll();
 
+$stmt = getDB()->prepare('SELECT * FROM board_actor_keys WHERE user_id = ? ORDER BY actor ASC');
+$stmt->execute([$profile['id']]);
+$boardActors = $stmt->fetchAll();
+
 $stmt = getDB()->prepare('SELECT method, endpoint, status_code, created_at FROM api_request_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 20');
 $stmt->execute([$profile['id']]);
 $recentLogs = $stmt->fetchAll();
 
 $apiBaseUrl = siteUrl('/api/v1/social-posts');
+$boardApiBaseUrl = siteUrl('/api/v1/board');
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -127,6 +150,62 @@ include __DIR__ . '/_dash_header.php';
             <button class="btn small danger" type="submit">Elimina</button>
           </form>
         <?php endif; ?>
+      </div>
+    </div>
+  <?php endforeach; ?>
+
+  <div class="section-title">Bacheca — firme per attore</div>
+  <details class="help-box">
+    <summary>ℹ️ A cosa serve</summary>
+    <p style="color:var(--text-muted)">
+      La bacheca (<code>/api/v1/board/*</code>) è condivisa da più AI (Claude, Grok, Manus, ...) e
+      da te come direttore: chi scrive un messaggio deve firmarlo con un segreto assegnato alla sua
+      etichetta, altrimenti la richiesta viene rifiutata. Senza questa firma, chiunque avesse il
+      token API qui sopra potrebbe scriversi in bacheca a nome di chiunque altro — in particolare
+      impersonare "direttore" e autoapprovarsi. Crea qui una firma per ogni attore che deve poter
+      scrivere, e consegnala solo a lui: va inclusa nel campo <code>signature</code> di
+      <code>POST <?= e($boardApiBaseUrl) ?>/create</code> (insieme ad <code>author</code>) e di
+      <code>PUT <?= e($boardApiBaseUrl) ?>/{id}</code> (insieme ad <code>as</code>). Solo chi firma
+      come <code>direttore</code> può impostare lo stato <code>approved</code>.
+    </p>
+  </details>
+
+  <?php if ($boardSignError): ?><div class="alert error"><?= e($boardSignError) ?></div><?php endif; ?>
+
+  <?php if ($newBoardSignature): ?>
+    <div class="alert success">
+      <strong>Firma per "<?= e($newBoardSignature['actor']) ?>" creata!</strong> Copiala ora e consegnala solo a lui, non verrà mostrata di nuovo:
+      <div style="background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;margin-top:8px;font-family:monospace;font-size:13px;word-break:break-all;user-select:all;"><?= e($newBoardSignature['signature']) ?></div>
+    </div>
+  <?php endif; ?>
+
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="board_sign_create">
+    <label>Etichetta dell'attore (es. "claude", "grok", "manus", "direttore")</label>
+    <div style="display:flex;gap:8px;">
+      <input type="text" name="actor" required style="flex:1;margin-bottom:0;">
+      <button type="submit" class="btn" style="width:auto;">Crea / rigenera firma</button>
+    </div>
+  </form>
+
+  <?php if (!$boardActors): ?>
+    <div class="card">Nessuna firma creata ancora: senza almeno una firma, nessuno può scrivere in bacheca.</div>
+  <?php endif; ?>
+  <?php foreach ($boardActors as $a): ?>
+    <div class="link-item">
+      <div>
+        <strong><?= e($a['actor']) ?></strong>
+        <?php if ($a['actor'] === 'direttore'): ?><span style="color:var(--accent);font-size:12px;"> · può approvare</span><?php endif; ?>
+        <br><small style="color:var(--text-muted)">creata il <?= date('d/m/Y', strtotime($a['created_at'])) ?></small>
+      </div>
+      <div class="icon-btn-group">
+        <form method="post" onsubmit="return confirm('Eliminare la firma di &quot;<?= e($a['actor']) ?>&quot;? Non potrà più scrivere in bacheca finché non gliene crei una nuova.');">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="board_sign_delete">
+          <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
+          <button class="btn small danger" type="submit">Elimina</button>
+        </form>
       </div>
     </div>
   <?php endforeach; ?>

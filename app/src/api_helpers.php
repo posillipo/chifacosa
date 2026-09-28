@@ -672,3 +672,30 @@ function apiBoardRefExists(int $userId, string $refType, int $refId): bool {
     $stmt->execute([$refId, $userId]);
     return (bool) $stmt->fetchColumn();
 }
+
+// Etichetta riservata al direttore: solo chi firma con questa identità può approvare un messaggio
+// (status "approved") — vedi apiVerifyBoardSignature() e i controlli in api_board_create.php /
+// api_board_item.php.
+const BOARD_DIRECTOR_ACTOR = 'direttore';
+
+// Verifica la firma di un attore della bacheca (author su POST, "as" su PUT) contro il segreto
+// assegnato a quell'etichetta in board_actor_keys (dashboard_api_tokens.php). Senza questo
+// controllo, chiunque avesse il token API del profilo potrebbe scriversi "author": "direttore" e
+// autoapprovarsi: il token identifica solo il profilo, non quale AI o persona lo sta usando in
+// quel momento — la firma è il secondo fattore che lega il messaggio a un'identità specifica.
+function apiVerifyBoardSignature(int $userId, string $actor, string $signature): bool {
+    if ($signature === '') {
+        return false;
+    }
+    $stmt = getDB()->prepare('SELECT secret_hash FROM board_actor_keys WHERE user_id = ? AND actor = ?');
+    $stmt->execute([$userId, $actor]);
+    $hash = $stmt->fetchColumn();
+    return $hash !== false && hash_equals($hash, hash('sha256', $signature));
+}
+
+// Genera una nuova firma in chiaro per un attore della bacheca (mostrata una sola volta a chi la
+// crea) insieme al suo hash da salvare — stesso pattern di generateApiToken().
+function generateBoardActorSignature(): array {
+    $signature = bin2hex(random_bytes(20)); // 40 caratteri esadecimali
+    return ['signature' => $signature, 'hash' => hash('sha256', $signature)];
+}

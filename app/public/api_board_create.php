@@ -15,6 +15,20 @@ if ($validated['error'] !== null) {
 }
 $v = $validated['values'];
 
+// Ogni messaggio va firmato da chi lo scrive (author): il token API identifica solo il profilo,
+// non quale AI o persona lo sta usando in quel momento — vedi apiVerifyBoardSignature().
+$signature = (string) ($data['signature'] ?? '');
+if (!apiVerifyBoardSignature($auth['user_id'], $v['author'], $signature)) {
+    apiError(403, 'Firma mancante o non valida per l\'autore "' . $v['author'] . '". Ogni messaggio in bacheca va firmato con il segreto assegnato a chi lo scrive (Dashboard → API).', $auth['token_id'], $auth['user_id']);
+}
+
+// Lo stato "approved" è un permesso, non una semplice etichetta: solo chi firma come direttore
+// può assegnarlo, altrimenti l'approvazione si aggirerebbe scrivendosi da soli "approved" in fase
+// di creazione del messaggio.
+if (($v['status'] ?? 'open') === 'approved' && $v['author'] !== BOARD_DIRECTOR_ACTOR) {
+    apiError(403, 'Solo "' . BOARD_DIRECTOR_ACTOR . '" può impostare lo stato "approved".', $auth['token_id'], $auth['user_id']);
+}
+
 // Un messaggio-risposta eredita il thread del messaggio a cui risponde (che deve esistere ed
 // essere di questo profilo); un messaggio nuovo apre un thread proprio, dopo l'INSERT.
 $threadId = null;

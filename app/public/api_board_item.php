@@ -26,6 +26,19 @@ if ($method === 'GET') {
 if ($method === 'PUT') {
     $data = apiReadJsonBody();
 
+    // Ogni aggiornamento va firmato da chi lo fa ("as"): non c'è un "author" da riusare qui (non è
+    // modificabile, vedi apiValidateBoardPayload($data, true)), quindi chi chiama deve dichiarare
+    // esplicitamente la propria identità e firmarla — stesso motivo di api_board_create.php.
+    $as = apiNormalizeBoardActor((string) ($data['as'] ?? ''));
+    if ($as === null) {
+        apiError(422, 'Il campo "as" è obbligatorio: indica chi firma questo aggiornamento (es. "claude", "grok", "manus", "direttore").', $auth['token_id'], $auth['user_id']);
+    }
+    $signature = (string) ($data['signature'] ?? '');
+    if (!apiVerifyBoardSignature($auth['user_id'], $as, $signature)) {
+        apiError(403, 'Firma mancante o non valida per "' . $as . '". Ogni aggiornamento in bacheca va firmato con il segreto assegnato a chi lo fa (Dashboard → API).', $auth['token_id'], $auth['user_id']);
+    }
+    unset($data['as'], $data['signature']);
+
     // if_status: aggiornamento condizionato ("compare-and-set"). Serve a prendere in carico un
     // brief senza pestarsi i piedi: se due AI provano a passare da "open" a "in_progress" nello
     // stesso momento, una sola ci riesce e l'altra riceve 409.
@@ -43,6 +56,12 @@ if ($method === 'PUT') {
         apiError(422, $validated['error'], $auth['token_id'], $auth['user_id']);
     }
     $v = $validated['values'];
+
+    // Stesso motivo del blocco in api_board_create.php: "approved" è un permesso, non
+    // un'etichetta qualunque.
+    if (isset($v['status']) && $v['status'] === 'approved' && $as !== BOARD_DIRECTOR_ACTOR) {
+        apiError(403, 'Solo "' . BOARD_DIRECTOR_ACTOR . '" può impostare lo stato "approved".', $auth['token_id'], $auth['user_id']);
+    }
 
     if (isset($v['ref_type']) && !apiBoardRefExists($auth['user_id'], $v['ref_type'], $v['ref_id'])) {
         apiError(422, 'Il contenuto indicato in "ref_type"/"ref_id" non esiste in questo profilo.', $auth['token_id'], $auth['user_id']);
