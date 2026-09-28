@@ -4964,6 +4964,24 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
     $ogImage = $event['cover_path'] ? siteUrl($event['cover_path']) : ($event['avatar_path'] ? siteUrl($event['avatar_path']) : null);
     $locationLine = trim(($event['venue'] ?: '') . ($event['venue'] && $event['city'] ? ', ' : '') . ($event['city'] ?: ''));
     $ogDescription = trim($event['display_name'] . ' — ' . formatLocalDateTime($event['event_date'], $artist) . ($locationLine ? ' · ' . $locationLine : ''));
+
+    // Da desktop la copertina si sposta nella colonna laterale destra, a piena altezza — stessa
+    // logica già applicata alla pagina di un articolo del blog (renderAdminLteBlogPostPage()). Su
+    // mobile resta invece dov'era sempre stata, dentro la card dell'evento.
+    $eventCoverSidebarHtml = '';
+    if ($event['cover_path']) {
+        ob_start();
+        ?>
+        <div class="card mb-3 d-none d-md-block">
+          <div class="position-relative">
+            <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>" class="card-img-top" style="width:100%;height:auto;display:block;">
+            <?php if ($scheduleLabel): ?><span class="badge text-bg-primary position-absolute top-0 start-0 m-2"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span><?php endif; ?>
+          </div>
+        </div>
+        <?php
+        $eventCoverSidebarHtml = ob_get_clean();
+    }
+
     ob_start();
     ?>
 <!doctype html>
@@ -5000,7 +5018,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $eventCoverSidebarHtml, true) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -5015,7 +5033,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
               <div class="card-body">
             <div class="card mb-3">
               <?php if ($event['cover_path']): ?>
-                <div class="position-relative">
+                <div class="position-relative d-md-none">
                   <img src="/<?= e($event['cover_path']) ?>" alt="<?= e($event['title']) ?>" class="card-img-top" style="max-height:400px;object-fit:cover;">
                   <?php if ($scheduleLabel): ?><span class="badge text-bg-primary position-absolute top-0 start-0 m-2"><i class="bi bi-arrow-repeat me-1"></i><?= e($scheduleLabel) ?></span><?php endif; ?>
                 </div>
