@@ -4994,8 +4994,12 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 // Elenco pubblico "Eventi" a tema AdminLTE — eventi.php. $provinciaFilter (opzionale, da
 // eventi.php?provincia=...) è lo stesso filtro cliccabile dal widget "Eventi per provincia" della
 // colonna destra (renderAdminLteEventiByProvinciaCard()) — qui mostra un'intestazione con quale
-// provincia è filtrata e un link per toglierla, e lo propaga allo scroll infinito.
-function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null): string {
+// provincia è filtrata e un link per toglierla, e lo propaga allo scroll infinito. $expiredEvents
+// (solo quando $provinciaFilter è impostato) sono gli eventi già passati della stessa provincia:
+// spariscono dall'elenco principale (e dal conteggio del widget laterale) appena scaduti, ma qui
+// restano visibili sotto un separatore così chi consulta la pagina di una provincia può comunque
+// trovarli.
+function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null, array $expiredEvents = []): string {
     $pageUrl = siteUrl('/' . $slug . '/eventi');
     $pageSize = 20;
     $finished = count($events) < $pageSize;
@@ -5051,6 +5055,11 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
               <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
               <div id="adminlte-list-sentinel" style="height:1px;"></div>
               <?= adminLteInfiniteScrollScript('eventi', $slug, count($events), $pageSize, $finished, $extraQuery) ?>
+            <?php endif; ?>
+            <?php if ($extraQuery !== '' && $expiredEvents): ?>
+              <hr class="my-4">
+              <h3 class="fs-6 text-secondary mb-3"><i class="bi bi-clock-history me-1"></i>Eventi scaduti</h3>
+              <div style="opacity:.65;"><?= renderAdminLteEventiRows($expiredEvents, $slug, $artist) ?></div>
             <?php endif; ?>
             </div>
             </div>

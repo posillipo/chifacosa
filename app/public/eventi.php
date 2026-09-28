@@ -37,8 +37,17 @@ $events = getDB()->prepare($sql);
 $events->execute($params);
 $events = $events->fetchAll();
 
+// Eventi già passati della stessa provincia: spariscono dall'elenco principale appena scaduti,
+// ma restano consultabili sotto un separatore solo quando si sta filtrando per provincia.
+$expiredEvents = [];
+if ($isAdminLte && $provinciaFilter !== '') {
+    $expiredStmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND event_date < NOW() AND is_perpetual = 0 ORDER BY event_date DESC LIMIT 20');
+    $expiredStmt->execute([$artist['id'], $provinciaFilter]);
+    $expiredEvents = $expiredStmt->fetchAll();
+}
+
 if ($isAdminLte) {
-    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null);
+    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null, $expiredEvents);
     exit;
 }
 
