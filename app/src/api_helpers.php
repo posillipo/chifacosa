@@ -5,7 +5,7 @@
 // browser, quindi non è soggetto a CSRF come i form con sessione — vedi dashboard_ai_caption.php
 // per il pattern opposto, usato invece nella pagina admin di gestione token).
 
-const API_RATE_LIMIT_PER_HOUR = 100;
+const API_RATE_LIMIT_PER_HOUR = 500;
 
 // IP del chiamante reale: dietro il reverse proxy (Nginx Proxy Manager) REMOTE_ADDR è sempre
 // l'IP interno del proxy, va letto X-Forwarded-For — stesso principio già applicato a
