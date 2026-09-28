@@ -64,6 +64,13 @@ RewriteRule ^api/v1/events/([0-9]+)/?$ api_events_item.php?id=$1 [L,QSA]
 # escono nuovi film.
 RewriteRule ^api/v1/cinema-films/list/?$ api_cinema_films_list.php [L,QSA]
 
+# API pubblica /api/v1/board/* — bacheca condivisa tra AI e direttore (messaggi, brief, consegne).
+# Stesso token Bearer delle altre risorse (vedi app/src/api_helpers.php). Nessuna rotta DELETE:
+# la bacheca è un registro, i messaggi si chiudono (status "closed"), non si cancellano.
+RewriteRule ^api/v1/board/create/?$ api_board_create.php [L,QSA]
+RewriteRule ^api/v1/board/list/?$ api_board_list.php [L,QSA]
+RewriteRule ^api/v1/board/([0-9]+)/?$ api_board_item.php?id=$1 [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 

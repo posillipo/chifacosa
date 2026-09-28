@@ -549,3 +549,126 @@ function apiSerializeCinemaFilm(array $link): array {
         'added_at' => apiFormatDateTimeRome($link['created_at'] ?? null),
     ];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Bacheca condivisa tra AI e direttore (/api/v1/board/*): messaggi, brief e consegne scambiati tra
+// più assistenti (Claude, Grok, Manus, ...) e la persona che dirige il lavoro. Vive nello stesso
+// profilo/token delle altre risorse. "author" e "recipient" sono etichette libere (slug), NON
+// identità autenticate: un token API identifica il profilo, non quale AI lo sta usando.
+// ---------------------------------------------------------------------------------------------
+
+const BOARD_MESSAGE_TYPES = ['brief', 'delivery', 'review', 'note'];
+const BOARD_STATUSES = ['open', 'in_progress', 'delivered', 'awaiting_approval', 'approved', 'rework', 'closed'];
+const BOARD_REF_TYPES = ['blog_post', 'social_post', 'event'];
+const BOARD_BODY_MAX_CHARS = 20000;
+
+function apiSerializeBoardMessage(array $m): array {
+    return [
+        'id' => (int) $m['id'],
+        'thread_id' => $m['thread_id'] !== null ? (int) $m['thread_id'] : null,
+        'reply_to_id' => $m['reply_to_id'] !== null ? (int) $m['reply_to_id'] : null,
+        'author' => $m['author'],
+        'recipient' => $m['recipient'],
+        'type' => $m['message_type'],
+        'status' => $m['status'],
+        'body' => $m['body'],
+        'ref_type' => $m['ref_type'],
+        'ref_id' => $m['ref_id'] !== null ? (int) $m['ref_id'] : null,
+        'created_at' => apiFormatDateTimeRome($m['created_at'] ?? null),
+        'updated_at' => apiFormatDateTimeRome($m['updated_at'] ?? null),
+    ];
+}
+
+// Etichetta di un autore/destinatario: slug minuscolo (es. "claude", "grok", "manus", "direttore"),
+// oppure "all" come destinatario per un messaggio rivolto a tutti.
+function apiNormalizeBoardActor(string $value): ?string {
+    $v = strtolower(trim($value));
+    return preg_match('/^[a-z0-9_-]{2,30}$/', $v) ? $v : null;
+}
+
+// Valida e normalizza il payload di create/update di un messaggio. $partial=true per PUT: solo
+// status, recipient, body e il riferimento al contenuto sono modificabili — autore, tipo e
+// thread restano quelli originali (la bacheca è un registro, non si riscrive la storia).
+function apiValidateBoardPayload(array $data, bool $partial): array {
+    $values = [];
+
+    if (!$partial) {
+        $author = apiNormalizeBoardActor((string) ($data['author'] ?? ''));
+        if ($author === null) {
+            return ['error' => 'Il campo "author" è obbligatorio: 2-30 caratteri tra lettere minuscole, numeri, "-" e "_" (es. claude, grok, manus, direttore).', 'values' => []];
+        }
+        $values['author'] = $author;
+
+        $type = (string) ($data['type'] ?? 'note');
+        if (!in_array($type, BOARD_MESSAGE_TYPES, true)) {
+            return ['error' => 'Il campo "type" deve essere uno tra ' . implode(', ', BOARD_MESSAGE_TYPES) . '.', 'values' => []];
+        }
+        $values['message_type'] = $type;
+
+        if (array_key_exists('reply_to_id', $data) && $data['reply_to_id'] !== null) {
+            if (!is_int($data['reply_to_id']) || $data['reply_to_id'] <= 0) {
+                return ['error' => 'Il campo "reply_to_id" deve essere l\'ID numerico di un messaggio esistente.', 'values' => []];
+            }
+            $values['reply_to_id'] = $data['reply_to_id'];
+        }
+    }
+
+    if (array_key_exists('recipient', $data)) {
+        $recipient = apiNormalizeBoardActor((string) $data['recipient']);
+        if ($recipient === null) {
+            return ['error' => 'Il campo "recipient" non è valido: usa un\'etichetta come "claude", "grok", "manus", "direttore" oppure "all".', 'values' => []];
+        }
+        $values['recipient'] = $recipient;
+    }
+
+    if (array_key_exists('status', $data)) {
+        $status = (string) $data['status'];
+        if (!in_array($status, BOARD_STATUSES, true)) {
+            return ['error' => 'Il campo "status" deve essere uno tra ' . implode(', ', BOARD_STATUSES) . '.', 'values' => []];
+        }
+        $values['status'] = $status;
+    }
+
+    if (array_key_exists('body', $data)) {
+        $body = trim((string) $data['body']);
+        if ($body === '') {
+            return ['error' => 'Il campo "body" non può essere vuoto.', 'values' => []];
+        }
+        if (mb_strlen($body) > BOARD_BODY_MAX_CHARS) {
+            return ['error' => 'Il campo "body" supera i ' . BOARD_BODY_MAX_CHARS . ' caratteri consentiti.', 'values' => []];
+        }
+        $values['body'] = $body;
+    } elseif (!$partial) {
+        return ['error' => 'Il campo "body" è obbligatorio.', 'values' => []];
+    }
+
+    $hasRefType = array_key_exists('ref_type', $data) && $data['ref_type'] !== null;
+    $hasRefId = array_key_exists('ref_id', $data) && $data['ref_id'] !== null;
+    if ($hasRefType || $hasRefId) {
+        if (!$hasRefType || !$hasRefId) {
+            return ['error' => '"ref_type" e "ref_id" vanno indicati insieme.', 'values' => []];
+        }
+        if (!in_array($data['ref_type'], BOARD_REF_TYPES, true)) {
+            return ['error' => 'Il campo "ref_type" deve essere uno tra ' . implode(', ', BOARD_REF_TYPES) . '.', 'values' => []];
+        }
+        if (!is_int($data['ref_id']) || $data['ref_id'] <= 0) {
+            return ['error' => 'Il campo "ref_id" deve essere l\'ID numerico del contenuto collegato.', 'values' => []];
+        }
+        $values['ref_type'] = $data['ref_type'];
+        $values['ref_id'] = $data['ref_id'];
+    }
+
+    return ['error' => null, 'values' => $values];
+}
+
+// Verifica che il contenuto collegato a un messaggio (ref_type/ref_id) esista e appartenga al
+// profilo: la tabella viene scelta da una mappa fissa, mai dal valore ricevuto.
+function apiBoardRefExists(int $userId, string $refType, int $refId): bool {
+    $tables = ['blog_post' => 'blog_posts', 'social_post' => 'timeline_posts', 'event' => 'events'];
+    if (!isset($tables[$refType])) {
+        return false;
+    }
+    $stmt = getDB()->prepare('SELECT 1 FROM ' . $tables[$refType] . ' WHERE id = ? AND user_id = ?');
+    $stmt->execute([$refId, $userId]);
+    return (bool) $stmt->fetchColumn();
+}

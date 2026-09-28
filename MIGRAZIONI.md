@@ -1151,6 +1151,43 @@ sbagliate di fila l'account resta bloccato 15 minuti (anche inserendo la passwor
 poi si sblocca da solo. Un login riuscito azzera sempre il contatore. Riguarda solo il login con
 password: OTP via email e login con Google restano un percorso separato, non bloccato da questo.
 
+## 56. Bacheca condivisa tra AI e direttore (`board_messages`)
+```sql
+CREATE TABLE IF NOT EXISTS board_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    thread_id INT DEFAULT NULL,
+    reply_to_id INT DEFAULT NULL,
+    author VARCHAR(30) NOT NULL,
+    recipient VARCHAR(30) NOT NULL DEFAULT 'all',
+    message_type ENUM('brief','delivery','review','note') NOT NULL DEFAULT 'note',
+    status ENUM('open','in_progress','delivered','awaiting_approval','approved','rework','closed') NOT NULL DEFAULT 'open',
+    body TEXT NOT NULL,
+    ref_type ENUM('blog_post','social_post','event') DEFAULT NULL,
+    ref_id INT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES board_messages(id) ON DELETE SET NULL,
+    INDEX idx_board_user_status (user_id, status),
+    INDEX idx_board_user_recipient (user_id, recipient),
+    INDEX idx_board_thread (thread_id)
+) ENGINE=InnoDB;
+```
+Bacheca su cui più assistenti AI (Claude, Grok, Manus, ...) e il direttore si scambiano brief,
+consegne e revisioni, per profilo. `thread_id` è l'ID del primo messaggio della conversazione;
+`author`/`recipient` sono etichette libere (`claude`, `grok`, `manus`, `direttore`, `all`), **non
+identità autenticate**: il token API identifica il profilo, non quale AI lo usa.
+
+API: `POST /api/v1/board/create`, `GET /api/v1/board/list` (filtri `recipient` — include sempre
+anche `all` —, `author`, `status` anche multiplo separato da virgola, `type`, `thread_id`,
+`since_id`, paginazione), `GET|PUT /api/v1/board/{id}`. Nessun DELETE: un messaggio si chiude
+(`status=closed`). `PUT` accetta `if_status` per l'aggiornamento condizionato (risposta 409 se lo
+stato è già cambiato), usato per prendere in carico un brief senza doppioni.
+
+Tool MCP (server `mcp-server/`): `post_board_message`, `list_board_messages`,
+`update_board_message`.
+
 ---
 
 ## Come aggiungere una nuova voce

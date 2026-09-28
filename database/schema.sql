@@ -645,6 +645,29 @@ CREATE TABLE IF NOT EXISTS api_request_logs (
     INDEX idx_token_time (api_token_id, created_at)
 ) ENGINE=InnoDB;
 
+-- Bacheca condivisa tra AI e direttore (Claude, Grok, Manus, ...): messaggi/brief/consegne per
+-- profilo, raggruppati in thread (thread_id = id del primo messaggio). Vedi api_board_*.php.
+CREATE TABLE IF NOT EXISTS board_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    thread_id INT DEFAULT NULL,
+    reply_to_id INT DEFAULT NULL,
+    author VARCHAR(30) NOT NULL,
+    recipient VARCHAR(30) NOT NULL DEFAULT 'all',
+    message_type ENUM('brief','delivery','review','note') NOT NULL DEFAULT 'note',
+    status ENUM('open','in_progress','delivered','awaiting_approval','approved','rework','closed') NOT NULL DEFAULT 'open',
+    body TEXT NOT NULL,
+    ref_type ENUM('blog_post','social_post','event') DEFAULT NULL,
+    ref_id INT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES board_messages(id) ON DELETE SET NULL,
+    INDEX idx_board_user_status (user_id, status),
+    INDEX idx_board_user_recipient (user_id, recipient),
+    INDEX idx_board_thread (thread_id)
+) ENGINE=InnoDB;
+
 -- Nuovo modulo "Brani": brani Spotify scelti dal profilo (di qualsiasi tipo), al posto del
 -- vecchio upload di file mp3. Stesso pattern di fan_favorite_bands, ma per singoli brani.
 CREATE TABLE IF NOT EXISTS favorite_tracks (

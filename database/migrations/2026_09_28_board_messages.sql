@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS board_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    thread_id INT DEFAULT NULL,
+    reply_to_id INT DEFAULT NULL,
+    author VARCHAR(30) NOT NULL,
+    recipient VARCHAR(30) NOT NULL DEFAULT 'all',
+    message_type ENUM('brief','delivery','review','note') NOT NULL DEFAULT 'note',
+    status ENUM('open','in_progress','delivered','awaiting_approval','approved','rework','closed') NOT NULL DEFAULT 'open',
+    body TEXT NOT NULL,
+    ref_type ENUM('blog_post','social_post','event') DEFAULT NULL,
+    ref_id INT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES board_messages(id) ON DELETE SET NULL,
+    INDEX idx_board_user_status (user_id, status),
+    INDEX idx_board_user_recipient (user_id, recipient),
+    INDEX idx_board_thread (thread_id)
+) ENGINE=InnoDB;
