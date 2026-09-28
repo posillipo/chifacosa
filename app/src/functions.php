@@ -1615,14 +1615,14 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
 // fissato via CSS (order-*), non dalla posizione nel markup: così può essere richiamata subito
 // dopo la sidebar in ogni pagina, invece di dover trovare il punto esatto di chiusura della
 // colonna centrale in ciascuna delle funzioni che la usano.
-function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = '', bool $extraCardsFirst = false): string {
+function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = '', bool $extraCardsFirst = false, ?string $activeProvincia = null): string {
     $uid = (int) $artist['id'];
     $db = getDB();
 
     // Due card sempre calcolate qui (non passate da chi chiama, a differenza di $extraCardsHtml):
     // vanno mostrate su OGNI pagina AdminLTE, non solo su alcune — vedi le rispettive funzioni per
     // i dettagli. Sono vuote ('') e quindi invisibili quando non c'è nulla da mostrare.
-    $provinciaCardHtml = renderAdminLteEventiByProvinciaCard($uid, $slug);
+    $provinciaCardHtml = renderAdminLteEventiByProvinciaCard($uid, $slug, $activeProvincia);
     $pinnedCardHtml = renderAdminLtePinnedSidebarCard(getPinnedItemsForUser($uid));
 
     // Stessa regola di visibilità di che_amo.php (moduli non nascosti da "Menu di Navigazione"
@@ -1703,8 +1703,10 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
 // raggruppati per provincia (colonna events.provincia, opzionale in dashboard_events.php),
 // ordinati alfabeticamente, con il conteggio sulla stessa riga. Il click porta alla pagina
 // Eventi filtrata per quella provincia (eventi.php?provincia=...). Nessuna card se il profilo non
-// ha eventi con provincia compilata (né se non ha proprio eventi).
-function renderAdminLteEventiByProvinciaCard(int $userId, string $slug): string {
+// ha eventi con provincia compilata (né se non ha proprio eventi). $activeProvincia evidenzia la
+// provincia dell'evento corrente quando la card compare sulla pagina di un evento (dettaglio),
+// invece di lasciarla indistinguibile dalle altre.
+function renderAdminLteEventiByProvinciaCard(int $userId, string $slug, ?string $activeProvincia = null): string {
     $stmt = getDB()->prepare("SELECT provincia, COUNT(*) c FROM events
         WHERE user_id=? AND provincia IS NOT NULL AND provincia <> '' AND (event_date >= NOW() OR is_perpetual = 1)
         GROUP BY provincia ORDER BY provincia ASC");
@@ -1719,9 +1721,10 @@ function renderAdminLteEventiByProvinciaCard(int $userId, string $slug): string 
               <div class="card-header"><h3 class="card-title">Eventi per provincia</h3></div>
               <div class="list-group list-group-flush">
                 <?php foreach ($rows as $r): ?>
-                <a href="/<?= e($slug) ?>/eventi?provincia=<?= urlencode($r['provincia']) ?>" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-                  <span><i class="bi bi-geo-alt text-secondary me-1" aria-hidden="true"></i><?= e($r['provincia']) ?></span>
-                  <span class="badge text-bg-primary rounded-pill"><?= (int) $r['c'] ?></span>
+                <?php $isActive = $activeProvincia !== null && $activeProvincia === $r['provincia']; ?>
+                <a href="/<?= e($slug) ?>/eventi?provincia=<?= urlencode($r['provincia']) ?>" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between<?= $isActive ? ' active' : '' ?>" <?= $isActive ? 'aria-current="page"' : '' ?>>
+                  <span><i class="bi bi-geo-alt<?= $isActive ? '' : ' text-secondary' ?> me-1" aria-hidden="true"></i><?= e($r['provincia']) ?></span>
+                  <span class="badge <?= $isActive ? 'text-bg-light' : 'text-bg-primary' ?> rounded-pill"><?= (int) $r['c'] ?></span>
                 </a>
                 <?php endforeach; ?>
               </div>
@@ -4982,6 +4985,28 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
         $eventCoverSidebarHtml = ob_get_clean();
     }
 
+    // Altri eventi della stessa provincia (stessa query della pagina Eventi filtrata per
+    // provincia, esclude solo l'evento corrente), sotto al modulo di prenotazione nella colonna
+    // centrale — così chi guarda un evento scopre subito cos'altro c'è nella stessa zona.
+    $otherProvinciaEventsHtml = '';
+    if (!empty($event['provincia'])) {
+        $stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND id <> ? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC LIMIT 20');
+        $stmt->execute([$event['user_id'], $event['provincia'], $event['id']]);
+        $otherProvinciaEvents = $stmt->fetchAll();
+        if ($otherProvinciaEvents) {
+            ob_start();
+            ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title">Altri eventi a <?= e($event['provincia']) ?></h3></div>
+              <div class="card-body">
+                <?= renderAdminLteEventiRows($otherProvinciaEvents, $slug, $artist) ?>
+              </div>
+            </div>
+            <?php
+            $otherProvinciaEventsHtml = ob_get_clean();
+        }
+    }
+
     ob_start();
     ?>
 <!doctype html>
@@ -5018,7 +5043,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug, $eventCoverSidebarHtml, true) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $eventCoverSidebarHtml, true, $event['provincia'] ?? null) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
@@ -5074,6 +5099,8 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
               </div>
             </div>
             <?php endif; ?>
+
+            <?= $otherProvinciaEventsHtml ?>
 
             </div>
             </div>
