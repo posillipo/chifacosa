@@ -1968,9 +1968,14 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
                 <?= e(formatLocalDateTime($it['data'], ['dashboard_theme' => $it['owner_tz'] ?? null], 'd/m/Y · H:i')) ?>
               </span>
             </div>
+            <div class="card-tools">
+              <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+              </button>
+            </div>
           </div>
           <div class="card-body">
-            <p class="mb-2"><a href="<?= e($it['url']) ?>" class="link-body-emphasis fw-semibold text-decoration-none"><?= e($it['titolo']) ?></a></p>
             <?php
               $photos = [];
               if (!empty($it['cover'])) {
@@ -1983,12 +1988,12 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
             <?php if (count($photos) === 1):
               $soloUrl = str_starts_with($photos[0], 'http') ? $photos[0] : '/' . $photos[0];
             ?>
-            <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:420px;width:100%;object-fit:cover;"></a>
+            <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded mb-3"></a>
             <?php elseif (count($photos) > 1):
               $shown = array_slice($photos, 0, 4);
               $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
             ?>
-            <div class="row g-2">
+            <div class="row g-2 mb-3">
               <?php foreach ($shown as $k => $ph):
                 $phUrl = str_starts_with($ph, 'http') ? $ph : '/' . $ph;
                 $isLastTile = $k === 3 && count($photos) > 4;
@@ -2004,9 +2009,8 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
               <?php endforeach; ?>
             </div>
             <?php endif; ?>
-          </div>
-          <div class="card-footer">
-            <a href="<?= e($it['url']) ?>" class="link-body-emphasis text-decoration-none small"><i class="bi bi-box-arrow-up-right me-1"></i>Apri</a>
+            <p class="mb-2"><a href="<?= e($it['url']) ?>" class="link-body-emphasis fw-semibold text-decoration-none"><?= e($it['titolo']) ?></a></p>
+            <a href="<?= e($it['url']) ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>Apri</a>
           </div>
         </div>
         <?php endif;
