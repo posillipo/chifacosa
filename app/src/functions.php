@@ -973,13 +973,23 @@ function adminLteAssetLinks(): string {
          . '.admlte-carousel-nav.admlte-carousel-next{right:8px;}'
          // Variante "3 card per volta" dello stesso mini-carosello (renderAdminLteMiniCarousel()
          // con $perView=3), usata dal carosello "Primo Piano": sotto/uguale a 3 elementi le card si
-         // dividono lo spazio in proporzione (.admlte-carousel-fit, niente scroll, niente
-         // freccette — non ha senso "scorrere" quando ci stanno già tutte); sopra i 3 restano a
-         // larghezza fissa (un terzo della riga, con un pavimento minimo) e il track scorre
-         // in orizzontale mostrandone sempre 3 alla volta.
+         // dividono lo spazio in proporzione (.admlte-carousel-fit, niente scroll — non ha senso
+         // "scorrere" quando ci stanno già tutte); sopra i 3 restano a larghezza fissa (un terzo
+         // della riga, con un pavimento minimo) e il track scorre in orizzontale mostrandone
+         // sempre 3 alla volta. Sotto i 576px .admlte-carousel-fit viene disattivata apposta: su
+         // schermi stretti "dividersi lo spazio in proporzione" vuol dire schiacciare 3 card in
+         // ~130px l'una, illeggibili — meglio una riga tipo "Stato" di WhatsApp, card a
+         // dimensione fissa leggibile che scorre in orizzontale col dito, come sopra i 3 elementi.
          . '.admlte-carousel-wrap-3 .admlte-carousel-track{gap:.75rem;}'
          . '.admlte-carousel-wrap-3 .admlte-carousel-slide{flex:0 0 calc((100% - 1.5rem)/3);min-width:160px;}'
          . '.admlte-carousel-wrap-3.admlte-carousel-fit .admlte-carousel-slide{flex:1 1 0;min-width:0;}'
+         . '@media (max-width:575.98px){.admlte-carousel-wrap-3.admlte-carousel-fit .admlte-carousel-slide{flex:0 0 150px;min-width:150px;}}'
+         // Riquadro della copertina nello stile "ribbon" (In Primo Piano): altezza proporzionale
+         // alla larghezza reale della card (aspect-ratio) invece di un'altezza fissa in pixel —
+         // con un'altezza fissa, una card stretta su mobile lascerebbe un grande spazio bianco
+         // sopra/sotto un'immagine ridotta (object-fit:contain, vedi renderAdminLteMiniCarousel())
+         // proporzionalmente più piccola della larghezza disponibile.
+         . '.admlte-pinned-cover{aspect-ratio:4/5;overflow:hidden;}'
          . '</style>';
 }
 
@@ -7517,7 +7527,7 @@ function renderAdminLteMiniCarousel(array $slides, int $perView = 1, bool $ribbo
                    riquadro. Sfondo bianco con bordo (non bg-body-tertiary): qui sopra non c'è più
                    una card bianca a fare da sfondo — vedi renderAdminLtePinnedCarousel(), senza
                    contenitore — quindi un grigio chiaro su grigio chiaro sparirebbe. -->
-              <div class="position-relative bg-white border rounded" style="height:320px;overflow:hidden;">
+              <div class="position-relative bg-white border rounded admlte-pinned-cover">
                 <?php if (!empty($s['cover'])):
                   $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
                 ?>
