@@ -971,6 +971,15 @@ function adminLteAssetLinks(): string {
          . '.admlte-carousel-nav:hover{background:rgba(0,0,0,.65);}'
          . '.admlte-carousel-nav.admlte-carousel-prev{left:8px;}'
          . '.admlte-carousel-nav.admlte-carousel-next{right:8px;}'
+         // Variante "3 card per volta" dello stesso mini-carosello (renderAdminLteMiniCarousel()
+         // con $perView=3), usata dal carosello "Primo Piano": sotto/uguale a 3 elementi le card si
+         // dividono lo spazio in proporzione (.admlte-carousel-fit, niente scroll, niente
+         // freccette — non ha senso "scorrere" quando ci stanno già tutte); sopra i 3 restano a
+         // larghezza fissa (un terzo della riga, con un pavimento minimo) e il track scorre
+         // in orizzontale mostrandone sempre 3 alla volta.
+         . '.admlte-carousel-wrap-3 .admlte-carousel-track{gap:.75rem;}'
+         . '.admlte-carousel-wrap-3 .admlte-carousel-slide{flex:0 0 calc((100% - 1.5rem)/3);min-width:160px;}'
+         . '.admlte-carousel-wrap-3.admlte-carousel-fit .admlte-carousel-slide{flex:1 1 0;min-width:0;}'
          // Card "Primo Piano" (renderAdminLtePinnedCarousel()): stesso impianto delle altre card
          // della Timeline, con un accento cromatico dedicato per distinguerla a colpo d'occhio dal
          // resto del feed cronologico.
@@ -7478,15 +7487,26 @@ function movePinnedItem(int $userId, int $pinId, string $direction): void {
 // Mini-carosello generico a schede: una slide a piena larghezza per volta (foto+titolo, cliccabile
 // per intero), swipe/scroll orizzontale nativo — vedi il CSS in adminLteAssetLinks() e il JS
 // delegato in adminLteFooterBlock(). Usato sia per raggruppare elementi omogenei dello stesso
-// giorno (renderAdminLteTimelineRows()) sia per il carosello "Primo Piano" qui sotto. Ogni slide:
-// ['url','titolo','cover'] + opzionale ['badge_label','badge_color','badge_icon'].
-function renderAdminLteMiniCarousel(array $slides): string {
+// giorno (renderAdminLteTimelineRows(), $perView=1 implicito) sia per il carosello "Primo Piano"
+// (renderAdminLtePinnedCarousel(), $perView=3). Ogni slide: ['url','titolo','cover'] + opzionale
+// ['badge_label','badge_color','badge_icon']. Con $perView>1: se gli slide sono meno o uguali a
+// $perView si dividono lo spazio in proporzione (niente scroll, niente freccette, vedi
+// .admlte-carousel-fit nel CSS) — altrimenti restano a larghezza fissa e se ne vedono sempre al
+// massimo $perView per volta, scorrendo in orizzontale per il resto.
+function renderAdminLteMiniCarousel(array $slides, int $perView = 1): string {
     if (!$slides) {
         return '';
     }
+    $wrapClass = 'admlte-carousel-wrap position-relative';
+    if ($perView > 1) {
+        $wrapClass .= ' admlte-carousel-wrap-' . $perView;
+        if (count($slides) <= $perView) {
+            $wrapClass .= ' admlte-carousel-fit';
+        }
+    }
     ob_start();
     ?>
-    <div class="admlte-carousel-wrap position-relative">
+    <div class="<?= e($wrapClass) ?>">
       <div class="admlte-carousel-track">
         <?php foreach ($slides as $s): ?>
         <div class="admlte-carousel-slide">
@@ -7504,7 +7524,7 @@ function renderAdminLteMiniCarousel(array $slides): string {
         </div>
         <?php endforeach; ?>
       </div>
-      <?php if (count($slides) > 1): ?>
+      <?php if (count($slides) > $perView): ?>
       <button type="button" class="admlte-carousel-nav admlte-carousel-prev" aria-label="Precedente"><i class="bi bi-chevron-left"></i></button>
       <button type="button" class="admlte-carousel-nav admlte-carousel-next" aria-label="Successivo"><i class="bi bi-chevron-right"></i></button>
       <?php endif; ?>
@@ -7513,14 +7533,16 @@ function renderAdminLteMiniCarousel(array $slides): string {
     return ob_get_clean();
 }
 
-// Carosello "Primo Piano": mostrato SOLO con almeno 2 pin attivi e visibili (con uno solo non ha
-// senso parlare di carosello — vedi renderAdminLteTimelineFeedBlock(), che decide quando chiamare
-// questa funzione). Card con lo stesso impianto delle altre della Timeline ma un accento
-// cromatico dedicato (.admlte-pinned-card), per distinguerla a colpo d'occhio dal feed
-// cronologico sotto — gli elementi fissati vi restano comunque anche nella loro posizione
-// cronologica normale, non ne vengono rimossi.
+// Card "Primo Piano" prima della Timeline, mostrata appena c'è almeno un pin attivo e visibile —
+// vedi renderAdminLteTimelineFeedBlock(), che decide quando chiamare questa funzione. Fino a 3
+// elementi si vedono tutti insieme, senza scorrimento; da 4 in su diventa un vero carosello che ne
+// mostra comunque sempre 3 alla volta (renderAdminLteMiniCarousel() con $perView=3). Card con lo
+// stesso impianto delle altre della Timeline ma un accento cromatico dedicato
+// (.admlte-pinned-card), per distinguerla a colpo d'occhio dal feed cronologico sotto — gli
+// elementi fissati vi restano comunque anche nella loro posizione cronologica normale, non ne
+// vengono rimossi.
 function renderAdminLtePinnedCarousel(array $pinnedItems): string {
-    if (count($pinnedItems) < 2) {
+    if (!$pinnedItems) {
         return '';
     }
     $slides = [];
@@ -7538,7 +7560,7 @@ function renderAdminLtePinnedCarousel(array $pinnedItems): string {
         <h3 class="card-title h6 mb-0"><i class="bi bi-pin-angle-fill me-1"></i>In Primo Piano</h3>
       </div>
       <div class="card-body">
-        <?= renderAdminLteMiniCarousel($slides) ?>
+        <?= renderAdminLteMiniCarousel($slides, 3) ?>
       </div>
     </div>
     <?php
