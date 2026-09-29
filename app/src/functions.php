@@ -995,6 +995,12 @@ function adminLteAssetLinks(): string {
          // sopra/sotto un'immagine ridotta (object-fit:contain, vedi renderAdminLteMiniCarousel())
          // proporzionalmente più piccola della larghezza disponibile.
          . '.admlte-pinned-cover{aspect-ratio:4/5;overflow:hidden;}'
+         // Sfondo sfocato della stessa immagine (invece del semplice sfondo bianco) per riempire lo
+         // spazio vuoto lasciato da object-fit:contain: essendo la foto stessa, ingrandita e
+         // sfocata, il colore "combacia" sempre — stesso trucco di Spotify/Apple Music per le
+         // copertine non quadrate. Scale(1.15) evita che la sfocatura mostri i bordi netti
+         // dell'immagine originale ai margini del riquadro.
+         . '.admlte-pinned-cover-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.9);transform:scale(1.15);}'
          . '</style>';
 }
 
@@ -7544,7 +7550,8 @@ function renderAdminLteMiniCarousel(array $slides, int $perView = 1, bool $ribbo
                 <?php if (!empty($s['cover'])):
                   $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
                 ?>
-                <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
+                <div class="admlte-pinned-cover-bg" style="background-image:url('<?= e($coverUrl) ?>');"></div>
+                <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;position:relative;">
                 <?php else: ?>
                 <!-- Niente copertina (es. articolo del blog senza immagine): il titolo, tolto
                      altrove in questo stile, resta l'unico modo per capire di cosa si tratta. -->
