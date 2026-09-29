@@ -40,12 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tags = $tagsRaw !== '' ? implode(', ', array_filter(array_map('trim', explode(',', $tagsRaw)), fn ($t) => $t !== '')) : null;
     $tags = $tags !== '' ? $tags : null;
     $categoryIds = $selectedCategoryIds;
+    $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
     $publishedAt = parseLocalDateTime($_POST['published_at'] ?? '', $profile, browserTzOffsetFromRequest()) ?: $post['published_at'];
 
     if ($title === '' || $content === '') {
         $error = 'Titolo e contenuto sono obbligatori.';
         // Ridisegna il form con quanto appena scritto invece dei vecchi valori del database.
-        $post = array_merge($post, ['title' => $title, 'content' => $content, 'album_id' => $albumId, 'tags' => $tags, 'published_at' => $publishedAt]);
+        $post = array_merge($post, ['title' => $title, 'content' => $content, 'album_id' => $albumId, 'tags' => $tags, 'published_at' => $publishedAt, 'in_feed' => $inFeed]);
     } else {
         // Verifica che album e categorie appartengano davvero a questo utente, per evitare che un
         // ID arbitrario nel form li associ a roba di qualcun altro (stesso controllo di dashboard_blog.php).
@@ -76,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Lo slug (e quindi la parte finale del permalink) non cambia mai in modifica, anche se
         // il titolo cambia: un link già condiviso deve continuare a funzionare.
-        $stmt = getDB()->prepare('UPDATE blog_posts SET title=?, excerpt=?, content=?, cover_path=?, album_id=?, tags=?, published_at=? WHERE id=? AND user_id=?');
-        $stmt->execute([$title, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $id, $profile['id']]);
+        $stmt = getDB()->prepare('UPDATE blog_posts SET title=?, excerpt=?, content=?, cover_path=?, album_id=?, tags=?, published_at=?, in_feed=? WHERE id=? AND user_id=?');
+        $stmt->execute([$title, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $inFeed, $id, $profile['id']]);
         getDB()->prepare('DELETE FROM blog_post_categories WHERE post_id=?')->execute([$id]);
         if ($categoryIds) {
             $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
@@ -141,6 +142,11 @@ include __DIR__ . '/_dash_header.php';
     <?php else: ?>
       <p style="color:var(--text-muted);font-size:12.5px;">Non hai ancora nessuna categoria — creane una dalla pagina Blog per poterla assegnare qui.</p>
     <?php endif; ?>
+
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+      <input type="checkbox" name="in_feed" value="1" <?= (int) ($post['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+    </label>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la visibilità dell'articolo sul sito (resta sempre pubblico una volta pubblicato): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
     <label>Data di pubblicazione</label>
     <input type="datetime-local" name="published_at" value="<?= e(localDateTimeInputValue($post['published_at'], $profile)) ?>">

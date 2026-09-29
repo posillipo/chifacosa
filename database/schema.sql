@@ -238,6 +238,10 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     album_id INT DEFAULT NULL,
     tags VARCHAR(300) DEFAULT NULL,
     published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Come per Timeline/Che Amo: un articolo può restare pubblico e visibile sul sito senza
+    -- per questo comparire anche nel feed RSS (/slug/feed) letto dalle automazioni social
+    -- (es. Metricool) — vedi getTimelineFeedForUsers() e dashboard_blog_new.php/_edit.php.
+    in_feed TINYINT(1) NOT NULL DEFAULT 1,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE SET NULL,
     UNIQUE KEY uniq_user_slug (user_id, slug)

@@ -109,6 +109,9 @@ include __DIR__ . '/_dash_header.php';
         <?php else: ?>
           <div class="date"><?= e(formatLocalDateTime($p['published_at'], $profile)) ?></div>
         <?php endif; ?>
+        <?php if (!(int) ($p['in_feed'] ?? 1)): ?>
+          <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
+        <?php endif; ?>
         <strong><?= e($p['title']) ?></strong>
         <p style="color:var(--text-muted);font-size:13px;margin:4px 0;"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
         <?php $pCats = array_filter($categories, fn ($c) => in_array((int) $c['id'], $postCategoryIds[(int) $p['id']], true)); ?>

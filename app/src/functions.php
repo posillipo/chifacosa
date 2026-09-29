@@ -6778,13 +6778,13 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     // e già coperte dal caso comune (poche decine di elementi per tipo).
     $perTypeLimit = max(200, $offset + $limit);
 
-    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.in_feed, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
         WHERE b.user_id IN ($placeholders) AND b.published_at <= NOW() ORDER BY b.published_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
-            'tipo' => 'blog', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
+            'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'blog', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => blogPostUrl($r['user_slug'], $r),
         ];

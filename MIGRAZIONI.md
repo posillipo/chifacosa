@@ -1217,6 +1217,17 @@ La firma in chiaro viene mostrata una sola volta alla creazione (Dashboard → A
 firme per attore"): va consegnata solo all'AI o persona corrispondente. Creare una firma con lo
 stesso nome attore la rigenera (upsert), invalidando immediatamente quella precedente.
 
+## 57. Visibilità nel Feed per il Blog (`blog_posts.in_feed`)
+```sql
+ALTER TABLE blog_posts ADD COLUMN in_feed TINYINT(1) NOT NULL DEFAULT 1;
+```
+Stesso meccanismo già usato da Timeline e dai moduli Che Amo: un articolo può restare pubblico e
+visibile sul sito senza per questo comparire anche nel feed RSS (`/slug/feed`) letto dalle
+automazioni social (es. Metricool) — checkbox "Includi nel Feed" in
+`dashboard_blog_new.php`/`dashboard_blog_edit.php`, lette da `getTimelineFeedForUsers()` in
+`functions.php`. Esposto anche via API (`include_in_feed` in `POST /api/v1/blog-posts/create` e
+`PUT /api/v1/blog-posts/{id}`) e tool MCP (`create_blog_post`/`update_blog_post`).
+
 ---
 
 ## Come aggiungere una nuova voce

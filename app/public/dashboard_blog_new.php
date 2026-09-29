@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tags = $tagsRaw !== '' ? implode(', ', array_filter(array_map('trim', explode(',', $tagsRaw)), fn ($t) => $t !== '')) : null;
     $tags = $tags !== '' ? $tags : null;
     $categoryIds = array_filter(array_map('intval', $_POST['category_ids'] ?? []));
+    $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
     // Stesso pattern di dashboard_albums.php: interpretata nel fuso orario reale di chi sta
     // scrivendo in questo momento (offset del browser), campo vuoto = pubblica subito.
     $publishedAt = parseLocalDateTime($_POST['published_at'] ?? '', $profile, browserTzOffsetFromRequest()) ?: date('Y-m-d H:i:s');
@@ -43,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $coverPath = handleCoverUpload($profile['slug']);
 
         $slug = generateUniquePostSlug((int) $profile['id'], $title);
-        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, album_id, tags, published_at) VALUES (?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt]);
+        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, album_id, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $inFeed]);
         $newId = (int) getDB()->lastInsertId();
         if ($categoryIds) {
             $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
@@ -135,6 +136,11 @@ include __DIR__ . '/_dash_header.php';
     <?php else: ?>
       <p style="color:var(--text-muted);font-size:12.5px;">Non hai ancora nessuna categoria — <a href="/dashboard_blog_categories.php">creane una</a> per poterla assegnare qui.</p>
     <?php endif; ?>
+
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
+    </label>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la visibilità dell'articolo sul sito (resta sempre pubblico una volta pubblicato): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
     <label>Programma la pubblicazione (opzionale)</label>
     <input type="datetime-local" name="published_at">

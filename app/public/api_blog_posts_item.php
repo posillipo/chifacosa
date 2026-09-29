@@ -60,7 +60,7 @@ if ($method === 'PUT') {
         unset($v['categories']);
     }
 
-    $columnMap = ['title', 'slug', 'excerpt', 'content', 'tags', 'published_at', 'cover_path'];
+    $columnMap = ['title', 'slug', 'excerpt', 'content', 'tags', 'published_at', 'cover_path', 'in_feed'];
     $sets = [];
     $params = [];
     foreach ($columnMap as $col) {

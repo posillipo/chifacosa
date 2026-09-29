@@ -333,6 +333,7 @@ function apiSerializeBlogPost(array $post, string $slug): array {
         'cover_image_url' => $post['cover_path'] ? siteUrl('/' . $post['cover_path']) : null,
         'status' => apiDeriveBlogPostStatus($post),
         'publication_date' => apiFormatDateTimeRome($post['published_at'] ?? null),
+        'include_in_feed' => (bool) ((int) ($post['in_feed'] ?? 1)),
         'url' => siteUrl(blogPostUrl($slug, $post)),
     ];
 }
@@ -425,6 +426,13 @@ function apiValidateBlogPostPayload(array $data, bool $partial): array {
         } catch (Exception $e) {
             return ['error' => 'Il campo "publication_date" non è una data valida (usa il formato ISO 8601, es. 2026-09-24T08:00:00+02:00).', 'values' => []];
         }
+    }
+
+    // Stesso meccanismo già esposto per Timeline/Che Amo lato dashboard (checkbox "Includi nel
+    // Feed"): un articolo può restare pubblico sul sito senza comparire anche nel feed RSS letto
+    // dalle automazioni social — vedi getTimelineFeedForUsers() e blog_posts.in_feed.
+    if (array_key_exists('include_in_feed', $data)) {
+        $values['in_feed'] = !empty($data['include_in_feed']) ? 1 : 0;
     }
 
     return ['error' => null, 'values' => $values];
