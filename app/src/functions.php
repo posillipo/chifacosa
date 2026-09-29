@@ -950,6 +950,11 @@ function adminLteAssetLinks(): string {
          . '@media (min-width:768px){.adminlte-main-col{display:flex;flex-direction:column;}'
          . '.adminlte-main-col>.card{flex:1 1 auto;}'
          . '.adminlte-main-col>.card>.card-body{flex:1 1 auto;}}'
+         // Colonna centrale ristretta e centrata da tablet in su (invece del 50% pieno del suo
+         // slot nella griglia a 3 colonne): stesso principio di un feed social, più leggibile su
+         // schermi larghi. Sidebar ed extra restano alla loro larghezza, resta solo più spazio
+         // vuoto ai lati della colonna centrale.
+         . '@media (min-width:768px){.adminlte-main-col{max-width:600px;margin-left:auto;margin-right:auto;}}'
          // Sotto i 768px le tre colonne (sidebar, contenuto, extra) sono impilate una sopra
          // l'altra: il padding del container Bootstrap (.75rem) sommato al gutter della riga
          // (.5rem, da "row g-3") lasciava fino a 20px di sfondo vuoto per lato attorno alle card,
