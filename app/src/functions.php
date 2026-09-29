@@ -1909,6 +1909,10 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
     // capitare che un gruppo finisca diviso in due se il confine tra una pagina di scroll
     // infinito e la successiva cade a metà — compromesso accettato, questi moduli non sono mai
     // molto frequenti.
+    // In standby su richiesta esplicita (29/09/2026): $groupingEnabled a false disattiva il
+    // raggruppamento senza toccare il resto della logica sotto — per riattivarla basta rimetterlo
+    // a true.
+    $groupingEnabled = false;
     $groupKeys = [];
     $groupCounts = [];
     foreach ($items as $it) {
@@ -1927,7 +1931,7 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
         }
         $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
 
-        if ($groupCounts[$groupKey] > 1):
+        if ($groupingEnabled && $groupCounts[$groupKey] > 1):
             $renderedGroups[$groupKey] = true;
             $groupItems = [];
             foreach ($items as $j => $other) {
