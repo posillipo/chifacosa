@@ -71,6 +71,14 @@ RewriteRule ^api/v1/board/create/?$ api_board_create.php [L,QSA]
 RewriteRule ^api/v1/board/list/?$ api_board_list.php [L,QSA]
 RewriteRule ^api/v1/board/([0-9]+)/?$ api_board_item.php?id=$1 [L,QSA]
 
+# API pubblica /api/v1/pinned-items/* — gestione "Primo Piano" (carosello di elementi fissati in
+# cima alla Timeline pubblica), stesso token Bearer delle altre risorse. search/list operano su
+# tutti i tipi di contenuto pinnabili del profilo (vedi PINNABLE_CONTENT_TYPES).
+RewriteRule ^api/v1/pinned-items/create/?$ api_pinned_items_create.php [L,QSA]
+RewriteRule ^api/v1/pinned-items/list/?$ api_pinned_items_list.php [L,QSA]
+RewriteRule ^api/v1/pinned-items/search/?$ api_pinned_items_search.php [L,QSA]
+RewriteRule ^api/v1/pinned-items/([0-9]+)/?$ api_pinned_items_item.php?id=$1 [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 

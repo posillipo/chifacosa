@@ -188,7 +188,7 @@ const BOARD_SIGNATURE_NOTE = 'Ogni scrittura va firmata: il segreto assegnato al
 const boardActorSchema = z.string().regex(/^[a-z0-9_-]{2,30}$/);
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.8.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.9.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -327,6 +327,47 @@ function buildMcpServer() {
         description: 'Elimina definitivamente una categoria del blog di un profilo, dato il suo ID (vedi list_blog_categories). Gli articoli eventualmente assegnati a quella categoria restano, perdono solo l\'assegnazione.',
         inputSchema: { ...profileField, id: z.number().int().describe('ID della categoria da eliminare') },
     }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/blog-categories/${id}`, { method: 'DELETE' })));
+
+    // "Primo Piano": elementi fissati in cima alla Timeline pubblica (Home e pagina Timeline), in
+    // un carosello dedicato — compare solo con almeno 2 elementi fissati; con uno solo non compare
+    // nulla, ma restano comunque visibili nella loro normale posizione cronologica (fissarli non li
+    // rimuove dal flusso). Stessa gestione già offerta da Dashboard -> Primo Piano.
+    const pinnableContentTypeEnum = z.enum([
+        'pensiero', 'blog', 'brano', 'evento', 'band_favorita', 'attore_favorito', 'film_favorito',
+        'libro_favorito', 'viaggio_favorito', 'playlist_favorita', 'album_favorito', 'ricetta_favorita',
+        'squadra_favorita', 'calciatore_favorito', 'partita_favorita', 'pubblicazione_favorita',
+        'offerta', 'album_foto', 'servizio',
+    ]).describe('Tipo di contenuto: post Timeline (pensiero), articolo Blog (blog), uno dei moduli "che amo" (brano, band_favorita, attore_favorito, film_favorito, libro_favorito, viaggio_favorito, playlist_favorita, album_favorito, ricetta_favorita, squadra_favorita, calciatore_favorito, partita_favorita, pubblicazione_favorita), evento, offerta, album foto o servizio — vedi search_pinnable_content per trovare content_type/content_id a partire da un titolo');
+
+    server.registerTool('list_pinned_items', {
+        title: 'Elenca gli elementi fissati in "Primo Piano"',
+        description: 'Elenca gli elementi attualmente fissati in "Primo Piano" per un profilo, nell\'ordine in cui compaiono nel carosello pubblico (inclusi quelli non ancora pubblici/programmati, che il carosello mostrerà solo una volta pubblicati).',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/pinned-items/list')));
+
+    server.registerTool('search_pinnable_content', {
+        title: 'Cerca un contenuto da fissare in "Primo Piano"',
+        description: 'Cerca per titolo tra TUTTI i contenuti pinnabili di un profilo (Timeline, Blog, ogni modulo "che amo", eventi, offerte, album foto, servizi), restituendo per ciascun risultato content_type/content_id (da passare a pin_content_item) e se è già fissato (already_pinned).',
+        inputSchema: { ...profileField, q: z.string().min(1).describe('Testo da cercare nel titolo/nome dei contenuti') },
+    }, async ({ profile, q }) => toolResult(await chifacosaApi(profile, '/pinned-items/search?q=' + encodeURIComponent(q))));
+
+    server.registerTool('pin_content_item', {
+        title: 'Fissa un contenuto in "Primo Piano"',
+        description: 'Fissa un contenuto (Timeline, Blog, un modulo "che amo", evento, offerta, album foto o servizio) in cima al carosello "Primo Piano", in coda all\'ordine attuale — usa prima search_pinnable_content per trovare content_type/content_id. Se è già fissato, non succede nulla (nessun duplicato).',
+        inputSchema: { ...profileField, content_type: pinnableContentTypeEnum, content_id: z.number().int().describe('ID del contenuto da fissare (vedi search_pinnable_content)') },
+    }, async ({ profile, content_type, content_id }) => toolResult(await chifacosaApi(profile, '/pinned-items/create', { method: 'POST', body: { content_type, content_id } })));
+
+    server.registerTool('unpin_content_item', {
+        title: 'Rimuove un elemento da "Primo Piano"',
+        description: 'Toglie il pin da un elemento di "Primo Piano", dato il suo pin_id (vedi list_pinned_items) — il contenuto stesso non viene toccato, resta al suo posto nel flusso normale.',
+        inputSchema: { ...profileField, pin_id: z.number().int().describe('ID del pin da rimuovere (campo pin_id di list_pinned_items)') },
+    }, async ({ profile, pin_id }) => toolResult(await chifacosaApi(profile, `/pinned-items/${pin_id}`, { method: 'DELETE' })));
+
+    server.registerTool('move_pinned_item', {
+        title: 'Sposta un elemento in "Primo Piano"',
+        description: 'Scambia la posizione di un elemento fissato con quello immediatamente sopra o sotto nel carosello "Primo Piano" (dato il suo pin_id, vedi list_pinned_items). Restituisce l\'elenco aggiornato.',
+        inputSchema: { ...profileField, pin_id: z.number().int().describe('ID del pin da spostare (campo pin_id di list_pinned_items)'), direction: z.enum(['up', 'down']).describe('up = verso l\'inizio del carosello, down = verso la fine') },
+    }, async ({ profile, pin_id, direction }) => toolResult(await chifacosaApi(profile, `/pinned-items/${pin_id}`, { method: 'PUT', body: { direction } })));
 
     server.registerTool('create_event', {
         title: 'Crea un evento su un profilo CHIFACOSA',

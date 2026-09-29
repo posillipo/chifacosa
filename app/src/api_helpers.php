@@ -559,6 +559,47 @@ function apiSerializeCinemaFilm(array $link): array {
 }
 
 // ---------------------------------------------------------------------------------------------
+// "Primo Piano" (/api/v1/pinned-items/*): elementi fissati in cima alla Timeline pubblica, stessa
+// gestione già offerta da dashboard_featured.php — vedi PINNABLE_CONTENT_TYPES, getPinnedItemsForUser(),
+// searchPinnableContent(), pinContentItem(), unpinContentItem() e movePinnedItem() in functions.php.
+// ---------------------------------------------------------------------------------------------
+
+// Una cover può già essere un URL assoluto (es. artist_image di Spotify) o un path locale — stesso
+// controllo già usato in dashboard_featured.php.
+function apiPinnedItemCoverUrl(?string $cover): ?string {
+    if (!$cover) {
+        return null;
+    }
+    return str_starts_with($cover, 'http') ? $cover : siteUrl('/' . $cover);
+}
+
+// $item è un elemento restituito da getPinnedItemsForUser() (ha già 'pin_id').
+function apiSerializePinnedItem(array $item): array {
+    return [
+        'pin_id' => (int) $item['pin_id'],
+        'content_type' => $item['tipo'],
+        'content_id' => (int) $item['id'],
+        'label' => PINNABLE_CONTENT_TYPES[$item['tipo']]['label'] ?? $item['tipo'],
+        'title' => $item['titolo'],
+        'cover_image_url' => apiPinnedItemCoverUrl($item['cover']),
+        'url' => siteUrl($item['url']),
+    ];
+}
+
+// $r è un elemento restituito da searchPinnableContent() (niente 'pin_id', ma 'pinned' booleano).
+function apiSerializePinnableSearchResult(array $r): array {
+    return [
+        'content_type' => $r['tipo'],
+        'content_id' => (int) $r['id'],
+        'label' => $r['label'],
+        'title' => $r['titolo'],
+        'cover_image_url' => apiPinnedItemCoverUrl($r['cover']),
+        'url' => siteUrl($r['url']),
+        'already_pinned' => (bool) $r['pinned'],
+    ];
+}
+
+// ---------------------------------------------------------------------------------------------
 // Bacheca condivisa tra AI e direttore (/api/v1/board/*): messaggi, brief e consegne scambiati tra
 // più assistenti (Claude, Grok, Manus, ...) e la persona che dirige il lavoro. Vive nello stesso
 // profilo/token delle altre risorse. "author" e "recipient" sono etichette libere (slug), NON
