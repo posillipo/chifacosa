@@ -7510,18 +7510,22 @@ function renderAdminLteMiniCarousel(array $slides, int $perView = 1, bool $ribbo
         <div class="admlte-carousel-slide">
           <a href="<?= e($s['url']) ?>" class="text-decoration-none text-body d-block">
             <?php if ($ribbonStyle): ?>
-              <div class="position-relative">
+              <!-- object-fit:contain, non cover: queste copertine sono spesso grafiche verticali
+                   con testo/CTA sia in alto che in fondo (locandine social pronte all'uso) — un
+                   ritaglio a riempimento le taglierebbe. Qui si vede sempre l'immagine per
+                   intero, con eventuale spazio vuoto ai lati riempito dallo sfondo bianco del
+                   riquadro. Sfondo bianco con bordo (non bg-body-tertiary): qui sopra non c'è più
+                   una card bianca a fare da sfondo — vedi renderAdminLtePinnedCarousel(), senza
+                   contenitore — quindi un grigio chiaro su grigio chiaro sparirebbe. -->
+              <div class="position-relative bg-white border rounded" style="height:320px;overflow:hidden;">
                 <?php if (!empty($s['cover'])):
                   $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
                 ?>
-                <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:320px;width:100%;object-fit:cover;">
+                <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
                 <?php else: ?>
                 <!-- Niente copertina (es. articolo del blog senza immagine): il titolo, tolto
-                     altrove in questo stile, resta l'unico modo per capire di cosa si tratta.
-                     Sfondo bianco con bordo (non bg-body-tertiary): qui sopra non c'è più una
-                     card bianca a fare da sfondo — vedi renderAdminLtePinnedCarousel(), senza
-                     contenitore — quindi un grigio chiaro su grigio chiaro sparirebbe. -->
-                <div class="bg-white border rounded d-flex align-items-center justify-content-center text-center p-3" style="min-height:180px;">
+                     altrove in questo stile, resta l'unico modo per capire di cosa si tratta. -->
+                <div class="d-flex align-items-center justify-content-center text-center p-3 h-100">
                   <span class="fw-semibold"><?= e($s['titolo']) ?></span>
                 </div>
                 <?php endif; ?>
