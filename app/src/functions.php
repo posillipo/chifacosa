@@ -980,11 +980,6 @@ function adminLteAssetLinks(): string {
          . '.admlte-carousel-wrap-3 .admlte-carousel-track{gap:.75rem;}'
          . '.admlte-carousel-wrap-3 .admlte-carousel-slide{flex:0 0 calc((100% - 1.5rem)/3);min-width:160px;}'
          . '.admlte-carousel-wrap-3.admlte-carousel-fit .admlte-carousel-slide{flex:1 1 0;min-width:0;}'
-         // Card "Primo Piano" (renderAdminLtePinnedCarousel()): stesso impianto delle altre card
-         // della Timeline, con un accento cromatico dedicato per distinguerla a colpo d'occhio dal
-         // resto del feed cronologico.
-         . '.admlte-pinned-card{border:2px solid #f0ad4e;}'
-         . '.admlte-pinned-card>.card-header{background:#fff8ec;}'
          . '</style>';
 }
 
@@ -7487,13 +7482,16 @@ function movePinnedItem(int $userId, int $pinId, string $direction): void {
 // Mini-carosello generico a schede: una slide a piena larghezza per volta (foto+titolo, cliccabile
 // per intero), swipe/scroll orizzontale nativo — vedi il CSS in adminLteAssetLinks() e il JS
 // delegato in adminLteFooterBlock(). Usato sia per raggruppare elementi omogenei dello stesso
-// giorno (renderAdminLteTimelineRows(), $perView=1 implicito) sia per il carosello "Primo Piano"
-// (renderAdminLtePinnedCarousel(), $perView=3). Ogni slide: ['url','titolo','cover'] + opzionale
+// giorno (renderAdminLteTimelineRows(), $perView=1 implicito, badge a pillola + titolo in testo)
+// sia per il carosello "Primo Piano" (renderAdminLtePinnedCarousel(), $perView=3, $ribbonStyle=
+// true: badge come ribbon sovrapposto all'immagine, niente titolo in testo — le copertine usate
+// lì sono già grafiche autoesplicative con il titolo incorporato nell'immagine stessa, ripeterlo
+// sotto sarebbe ridondante). Ogni slide: ['url','titolo','cover'] + opzionale
 // ['badge_label','badge_color','badge_icon']. Con $perView>1: se gli slide sono meno o uguali a
 // $perView si dividono lo spazio in proporzione (niente scroll, niente freccette, vedi
 // .admlte-carousel-fit nel CSS) — altrimenti restano a larghezza fissa e se ne vedono sempre al
 // massimo $perView per volta, scorrendo in orizzontale per il resto.
-function renderAdminLteMiniCarousel(array $slides, int $perView = 1): string {
+function renderAdminLteMiniCarousel(array $slides, int $perView = 1, bool $ribbonStyle = false): string {
     if (!$slides) {
         return '';
     }
@@ -7511,14 +7509,38 @@ function renderAdminLteMiniCarousel(array $slides, int $perView = 1): string {
         <?php foreach ($slides as $s): ?>
         <div class="admlte-carousel-slide">
           <a href="<?= e($s['url']) ?>" class="text-decoration-none text-body d-block">
-            <?php if (!empty($s['badge_label'])): ?>
-            <span class="badge text-bg-<?= e($s['badge_color'] ?? 'secondary') ?> mb-2"><?php if (!empty($s['badge_icon'])): ?><i class="bi <?= e($s['badge_icon']) ?> me-1"></i><?php endif; ?><?= e($s['badge_label']) ?></span>
-            <?php endif; ?>
-            <p class="fw-semibold mb-2"><?= e($s['titolo']) ?></p>
-            <?php if (!empty($s['cover'])):
-              $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
-            ?>
-            <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:320px;width:100%;object-fit:cover;">
+            <?php if ($ribbonStyle): ?>
+              <div class="position-relative">
+                <?php if (!empty($s['cover'])):
+                  $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
+                ?>
+                <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:320px;width:100%;object-fit:cover;">
+                <?php else: ?>
+                <!-- Niente copertina (es. articolo del blog senza immagine): il titolo, tolto
+                     altrove in questo stile, resta l'unico modo per capire di cosa si tratta.
+                     Sfondo bianco con bordo (non bg-body-tertiary): qui sopra non c'è più una
+                     card bianca a fare da sfondo — vedi renderAdminLtePinnedCarousel(), senza
+                     contenitore — quindi un grigio chiaro su grigio chiaro sparirebbe. -->
+                <div class="bg-white border rounded d-flex align-items-center justify-content-center text-center p-3" style="min-height:180px;">
+                  <span class="fw-semibold"><?= e($s['titolo']) ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($s['badge_label'])): ?>
+                <div class="ribbon-wrapper">
+                  <div class="ribbon text-bg-<?= e($s['badge_color'] ?? 'secondary') ?>"><?php if (!empty($s['badge_icon'])): ?><i class="bi <?= e($s['badge_icon']) ?> me-1"></i><?php endif; ?><?= e($s['badge_label']) ?></div>
+                </div>
+                <?php endif; ?>
+              </div>
+            <?php else: ?>
+              <?php if (!empty($s['badge_label'])): ?>
+              <span class="badge text-bg-<?= e($s['badge_color'] ?? 'secondary') ?> mb-2"><?php if (!empty($s['badge_icon'])): ?><i class="bi <?= e($s['badge_icon']) ?> me-1"></i><?php endif; ?><?= e($s['badge_label']) ?></span>
+              <?php endif; ?>
+              <p class="fw-semibold mb-2"><?= e($s['titolo']) ?></p>
+              <?php if (!empty($s['cover'])):
+                $coverUrl = str_starts_with($s['cover'], 'http') ? $s['cover'] : '/' . $s['cover'];
+              ?>
+              <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:320px;width:100%;object-fit:cover;">
+              <?php endif; ?>
             <?php endif; ?>
           </a>
         </div>
@@ -7536,11 +7558,12 @@ function renderAdminLteMiniCarousel(array $slides, int $perView = 1): string {
 // Card "Primo Piano" prima della Timeline, mostrata appena c'è almeno un pin attivo e visibile —
 // vedi renderAdminLteTimelineFeedBlock(), che decide quando chiamare questa funzione. Fino a 3
 // elementi si vedono tutti insieme, senza scorrimento; da 4 in su diventa un vero carosello che ne
-// mostra comunque sempre 3 alla volta (renderAdminLteMiniCarousel() con $perView=3). Card con lo
-// stesso impianto delle altre della Timeline ma un accento cromatico dedicato
-// (.admlte-pinned-card), per distinguerla a colpo d'occhio dal feed cronologico sotto — gli
-// elementi fissati vi restano comunque anche nella loro posizione cronologica normale, non ne
-// vengono rimossi.
+// mostra comunque sempre 3 alla volta (renderAdminLteMiniCarousel() con $perView=3). Nessun
+// contenitore/card attorno (a differenza delle altre sezioni della Timeline): solo un titolo
+// semplice, come "Timeline" subito sotto — la natura di ogni elemento è già indicata dal ribbon
+// sovrapposto alla copertina ($ribbonStyle=true), niente più titolo in testo (le copertine sono
+// già grafiche autoesplicative, vedi renderAdminLteMiniCarousel()). Gli elementi fissati restano
+// comunque anche nella loro posizione cronologica normale nel feed sotto, non ne vengono rimossi.
 function renderAdminLtePinnedCarousel(array $pinnedItems): string {
     if (!$pinnedItems) {
         return '';
@@ -7555,13 +7578,9 @@ function renderAdminLtePinnedCarousel(array $pinnedItems): string {
     }
     ob_start();
     ?>
-    <div class="card admlte-pinned-card mb-3">
-      <div class="card-header">
-        <h3 class="card-title h6 mb-0"><i class="bi bi-pin-angle-fill me-1"></i>In Primo Piano</h3>
-      </div>
-      <div class="card-body">
-        <?= renderAdminLteMiniCarousel($slides, 3) ?>
-      </div>
+    <div class="mb-3">
+      <h3 class="mb-3"><i class="bi bi-pin-angle-fill me-1"></i>In Primo Piano</h3>
+      <?= renderAdminLteMiniCarousel($slides, 3, true) ?>
     </div>
     <?php
     return ob_get_clean();
