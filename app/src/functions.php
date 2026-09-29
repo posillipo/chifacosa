@@ -1983,12 +1983,7 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
             <?php if (count($photos) === 1):
               $soloUrl = str_starts_with($photos[0], 'http') ? $photos[0] : '/' . $photos[0];
             ?>
-            <?php // object-fit:contain (non cover): molte copertine sono locandine promozionali
-                  // con testo/data proprio ai bordi — un ritaglio a riempimento le tagliava, stesso
-                  // problema già risolto per il carosello "Primo Piano" (admlte-pinned-cover). Lo
-                  // sfondo bianco con bordo riempie lo spazio residuo quando il rapporto d'aspetto
-                  // non combacia con i 420px di altezza massima. ?>
-            <a href="<?= e($it['url']) ?>" class="d-block bg-white border rounded" style="max-height:420px;overflow:hidden;"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="w-100" style="max-height:420px;object-fit:contain;"></a>
+            <a href="<?= e($it['url']) ?>"><img src="<?= e($soloUrl) ?>" alt="" loading="lazy" class="img-fluid rounded" style="max-height:420px;width:100%;object-fit:cover;"></a>
             <?php elseif (count($photos) > 1):
               $shown = array_slice($photos, 0, 4);
               $colClass = count($photos) === 2 ? 'col-6' : 'col-6 col-sm-4';
