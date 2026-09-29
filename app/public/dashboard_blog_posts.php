@@ -19,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         getDB()->prepare('DELETE FROM blog_posts WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
     }
     // Riporta alla stessa ricerca/filtro che si stava usando, invece di azzerarla dopo ogni eliminazione.
-    $backQs = trim($_POST['q'] ?? '') !== ''
-        ? '?' . http_build_query(['q' => trim($_POST['q']), 'in_content' => !empty($_POST['in_content']) ? 1 : 0])
+    $backQs = (trim($_POST['q'] ?? '') !== '' || (int) ($_POST['category'] ?? 0) > 0)
+        ? '?' . http_build_query(['q' => trim($_POST['q']), 'in_content' => !empty($_POST['in_content']) ? 1 : 0, 'category' => (int) ($_POST['category'] ?? 0)])
         : '';
     header('Location: /dashboard_blog_posts.php' . $backQs);
     exit;
@@ -28,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $q = trim($_GET['q'] ?? '');
 $inContent = !empty($_GET['in_content']);
+$categoryId = (int) ($_GET['category'] ?? 0);
+
+$stmt = getDB()->prepare('SELECT * FROM blog_categories WHERE user_id=? ORDER BY name ASC');
+$stmt->execute([$profile['id']]);
+$categories = $stmt->fetchAll();
+// Filtro per categoria non valida (di un altro profilo, o cancellata nel frattempo): si ignora
+// invece di restituire un elenco vuoto senza spiegazione.
+if ($categoryId > 0 && !in_array($categoryId, array_column($categories, 'id'), true)) {
+    $categoryId = 0;
+}
 
 $sql = 'SELECT * FROM blog_posts WHERE user_id=?';
 $params = [$profile['id']];
@@ -45,14 +55,14 @@ if ($q !== '') {
         $params[] = $likeTerm;
     }
 }
+if ($categoryId > 0) {
+    $sql .= ' AND EXISTS (SELECT 1 FROM blog_post_categories bpc WHERE bpc.post_id = blog_posts.id AND bpc.category_id = ?)';
+    $params[] = $categoryId;
+}
 $sql .= ' ORDER BY published_at DESC';
 $stmt = getDB()->prepare($sql);
 $stmt->execute($params);
 $posts = $stmt->fetchAll();
-
-$stmt = getDB()->prepare('SELECT * FROM blog_categories WHERE user_id=? ORDER BY name ASC');
-$stmt->execute([$profile['id']]);
-$categories = $stmt->fetchAll();
 
 $postCategoryIds = [];
 foreach ($posts as $p) {
@@ -65,19 +75,27 @@ include __DIR__ . '/_dash_header.php';
 
   <form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
     <input type="text" name="q" value="<?= e($q) ?>" placeholder="Cerca per titolo..." style="flex:1;min-width:180px;margin-bottom:0;">
+    <?php if ($categories): ?>
+      <select name="category" style="width:auto;margin-bottom:0;">
+        <option value="0">Tutte le categorie</option>
+        <?php foreach ($categories as $c): ?>
+          <option value="<?= (int) $c['id'] ?>" <?= $categoryId === (int) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    <?php endif; ?>
     <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;white-space:nowrap;">
       <input type="checkbox" name="in_content" value="1" style="width:auto;" <?= $inContent ? 'checked' : '' ?>>
       Ricerca avanzata: cerca anche nel testo
     </label>
     <button type="submit" class="btn" style="width:auto;">Cerca</button>
-    <?php if ($q !== ''): ?><a href="/dashboard_blog_posts.php" class="btn small secondary">Azzera</a><?php endif; ?>
+    <?php if ($q !== '' || $categoryId > 0): ?><a href="/dashboard_blog_posts.php" class="btn small secondary">Azzera</a><?php endif; ?>
   </form>
 
   <div class="section-title">
-    <?= $q !== '' ? 'Risultati (' . count($posts) . ')' : 'Tutti gli articoli (' . count($posts) . ')' ?>
+    <?= ($q !== '' || $categoryId > 0) ? 'Risultati (' . count($posts) . ')' : 'Tutti gli articoli (' . count($posts) . ')' ?>
   </div>
   <?php if (!$posts): ?>
-    <div class="alert error"><?= $q !== '' ? 'Nessun articolo trovato per questa ricerca.' : 'Non hai ancora scritto nessun articolo.' ?></div>
+    <div class="alert error"><?= ($q !== '' || $categoryId > 0) ? 'Nessun articolo trovato per questa ricerca/filtro.' : 'Non hai ancora scritto nessun articolo.' ?></div>
   <?php endif; ?>
   <?php foreach ($posts as $p): ?>
     <?php $isScheduled = strtotime($p['published_at']) > time(); ?>
@@ -110,6 +128,7 @@ include __DIR__ . '/_dash_header.php';
             <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
             <input type="hidden" name="q" value="<?= e($q) ?>">
             <input type="hidden" name="in_content" value="<?= $inContent ? 1 : 0 ?>">
+            <input type="hidden" name="category" value="<?= $categoryId ?>">
             <button class="btn small danger" type="submit">Elimina</button>
           </form>
         </div>
