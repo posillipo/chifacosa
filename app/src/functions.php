@@ -1001,6 +1001,7 @@ function adminLteAssetLinks(): string {
          // copertine non quadrate. Scale(1.15) evita che la sfocatura mostri i bordi netti
          // dell'immagine originale ai margini del riquadro.
          . '.admlte-pinned-cover-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.9);transform:scale(1.15);}'
+         . '@media (min-width:768px){.adminlte-sidebar-col,.adminlte-extras-col{position:sticky;top:60px;align-self:flex-start;max-height:calc(100vh - 70px);overflow-y:auto;scrollbar-width:thin;}}'
          . '</style>';
 }
 
@@ -1467,7 +1468,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
 
     ob_start();
     ?>
-          <div class="col-md-3 order-2 order-md-1">
+          <div class="col-md-3 order-2 order-md-1 adminlte-sidebar-col">
             <div class="card widget-user-2 mb-0">
               <div class="widget-user-header text-bg-warning">
                 <div class="widget-user-image">
@@ -1715,7 +1716,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
 
     ob_start();
     ?>
-          <div class="col-md-3 order-3 order-md-3">
+          <div class="col-md-3 order-3 order-md-3 adminlte-extras-col">
             <?php foreach ($blocks as $i => $block): ?>
             <div class="<?= $i > 0 ? 'mt-3' : '' ?>"><?= $block ?></div>
             <?php endforeach; ?>
@@ -1933,13 +1934,85 @@ function renderAdminLteTimelineRows(array $items, array $artist): string {
         $groupCounts[$groupKey] = ($groupCounts[$groupKey] ?? 0) + 1;
     }
 
+    $eventGroupCounts = [];
+    foreach ($items as $it) {
+        if (($it['tipo'] ?? '') === 'evento') {
+            $eKey = 'evt|' . mb_strtolower(trim($it['titolo']));
+            $eventGroupCounts[$eKey] = ($eventGroupCounts[$eKey] ?? 0) + 1;
+        }
+    }
+
     ob_start();
     $renderedGroups = [];
+    $renderedEventGroups = [];
     foreach ($items as $i => $it):
         $groupKey = $groupKeys[$i];
         if (isset($renderedGroups[$groupKey])) {
             continue;
         }
+
+        if (($it['tipo'] ?? '') === 'evento') {
+            $eKey = 'evt|' . mb_strtolower(trim($it['titolo']));
+            if ($eventGroupCounts[$eKey] > 1) {
+                if (isset($renderedEventGroups[$eKey])) {
+                    continue;
+                }
+                $renderedEventGroups[$eKey] = true;
+                $evtGroup = [];
+                foreach ($items as $other) {
+                    if (($other['tipo'] ?? '') === 'evento' && mb_strtolower(trim($other['titolo'])) === mb_strtolower(trim($it['titolo']))) {
+                        $evtGroup[] = $other;
+                    }
+                }
+                usort($evtGroup, fn ($a, $b) => strtotime($a['evento_quando']) <=> strtotime($b['evento_quando']));
+                $meta = ADMINLTE_TIMELINE_TYPE_META['evento'] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Evento'];
+                $coverUrl = '';
+                if (!empty($it['cover'])) {
+                    $coverUrl = str_starts_with($it['cover'], 'http') ? $it['cover'] : '/' . $it['cover'];
+                }
+                ?>
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="user-block">
+              <img src="<?= e($avatarUrl) ?>" alt="<?= e($displayName) ?>" class="rounded-circle">
+              <span class="username"><?= e($displayName) ?></span>
+              <span class="description">
+                <span class="badge text-bg-<?= $meta['color'] ?>"><i class="bi <?= e($meta['icon']) ?> me-1"></i><?= e($meta['label']) ?> (<?= count($evtGroup) ?> date)</span>
+              </span>
+            </div>
+            <div class="card-tools">
+              <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <?php if ($coverUrl): ?>
+            <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="img-fluid rounded mb-3">
+            <?php endif; ?>
+            <p class="fw-semibold mb-3"><?= e($it['titolo']) ?></p>
+            <div class="list-group list-group-flush">
+              <?php foreach ($evtGroup as $ev):
+                $evDate = formatLocalDateTime($ev['evento_quando'], ['dashboard_theme' => $ev['owner_tz'] ?? null], 'd/m/Y · H:i');
+                $evLocation = trim(($ev['evento_venue'] ?? '') . ($ev['evento_city'] ? ', ' . $ev['evento_city'] : ''));
+              ?>
+              <a href="<?= e($ev['url']) ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-calendar-event me-1 text-secondary"></i><?= e($evDate) ?>
+                  <?php if ($evLocation): ?><br><small class="text-secondary"><i class="bi bi-geo-alt me-1"></i><?= e($evLocation) ?></small><?php endif; ?>
+                </div>
+                <i class="bi bi-chevron-right text-secondary"></i>
+              </a>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        </div>
+                <?php
+                continue;
+            }
+        }
+
         $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['icon' => 'bi-star', 'color' => 'primary', 'label' => 'Aggiornamento'];
 
         if ($groupingEnabled && $groupCounts[$groupKey] > 1):
@@ -6821,7 +6894,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT e.id, e.title, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT e.id, e.title, e.venue, e.city, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = u.id
         WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
@@ -6829,6 +6902,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         $items[] = [
             'tipo' => 'evento', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'evento_quando' => $r['event_date'], 'evento_is_perpetual' => $r['is_perpetual'], 'evento_recurrence' => $r['recurrence'],
+            'evento_venue' => $r['venue'], 'evento_city' => $r['city'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/eventi/' . $r['id'],
         ];
