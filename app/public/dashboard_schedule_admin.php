@@ -79,11 +79,11 @@ include __DIR__ . '/_dash_header.php';
 .mob-item-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mob-item-meta{font-size:11px;color:var(--text-muted,#6c757d);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 
-@media(max-width:768px){
+@media(max-width:1023px){
   .cal-desktop{display:none!important}
   .cal-mobile{display:block!important}
 }
-@media(min-width:769px){
+@media(min-width:1024px){
   .cal-desktop{display:block}
   .cal-mobile{display:none!important}
 }
