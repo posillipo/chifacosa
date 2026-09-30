@@ -2922,7 +2922,12 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                     <div class="user-block mb-0">
                       <img src="<?= e($avatarUrl) ?>" alt="<?= e($post['display_name']) ?>" class="rounded-circle">
                       <span class="username"><a href="/<?= e($slug) ?>"><?= e($post['display_name']) ?></a> <small class="fw-normal text-secondary">ha pubblicato un articolo</small></span>
-                      <span class="description"><i class="bi bi-clock me-1"></i><?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
+                      <span class="description"><?php
+                        $pubDt = new DateTime($post['published_at']);
+                        $pubDt->setTimezone(new DateTimeZone(profileTimezoneName($artist)));
+                        $fmt = new IntlDateFormatter('it_IT', IntlDateFormatter::FULL, IntlDateFormatter::NONE, $pubDt->getTimezone());
+                        echo e($fmt->format($pubDt));
+                      ?></span>
                     </div>
                   </div>
                   <?php if ($post['cover_path']): ?>
