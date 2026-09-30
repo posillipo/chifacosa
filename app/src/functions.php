@@ -1880,6 +1880,94 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'pubblicazione_favorita' => ['icon' => 'bi-journal-medical', 'color' => 'info', 'label' => 'Pubblicazione che amo'],
 ];
 
+function renderAdminLteMonthlyEventsGrid(int $userId, string $slug, ?array $profile = null): string {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT id, title, venue, city, cover_path, event_date, is_perpetual
+        FROM events
+        WHERE user_id = ? AND (
+            (event_date >= DATE_FORMAT(NOW(), '%Y-%m-01') AND event_date < DATE_FORMAT(NOW() + INTERVAL 1 MONTH, '%Y-%m-01'))
+            OR is_perpetual = 1
+        )
+        ORDER BY is_perpetual ASC, event_date ASC
+        LIMIT 50");
+    $stmt->execute([$userId]);
+    $events = $stmt->fetchAll();
+    if (!$events) {
+        return '';
+    }
+    $perPage = 8;
+    $totalPages = (int) ceil(count($events) / $perPage);
+    $carouselId = 'evt-month-' . $userId;
+    ob_start();
+    ?>
+                <div class="card mb-3">
+                  <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title flex-grow-1"><i class="bi bi-calendar-event me-2"></i>Gli eventi del mese</h3>
+                    <?php if ($totalPages > 1): ?>
+                    <div class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-evt-nav="prev" data-target="<?= $carouselId ?>" disabled><i class="bi bi-chevron-left"></i></button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-evt-nav="next" data-target="<?= $carouselId ?>"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    <?php endif; ?>
+                  </div>
+                  <div class="card-body">
+                    <?php for ($page = 0; $page < $totalPages; $page++):
+                      $pageEvents = array_slice($events, $page * $perPage, $perPage);
+                    ?>
+                    <div class="row g-2 <?= $carouselId ?>-page" <?php if ($page > 0): ?>style="display:none;"<?php endif; ?> data-page="<?= $page ?>">
+                      <?php foreach ($pageEvents as $ev):
+                        $coverUrl = $ev['cover_path'] ? '/' . $ev['cover_path'] : '';
+                        $evDate = '';
+                        if ($ev['is_perpetual']) {
+                            $evDate = 'Permanente';
+                        } else {
+                            $evDate = formatItalianDate($ev['event_date'], $profile);
+                        }
+                        $location = trim(($ev['venue'] ?? '') . ($ev['city'] ? ', ' . $ev['city'] : ''));
+                      ?>
+                      <div class="col-6 col-sm-4 col-lg-3">
+                        <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card text-decoration-none text-body p-3 h-100 text-center">
+                          <?php if ($coverUrl): ?>
+                            <img src="<?= e($coverUrl) ?>" alt="" loading="lazy" class="mx-auto mb-2 d-block" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">
+                          <?php else: ?>
+                            <span class="mx-auto mb-2 d-flex align-items-center justify-content-center bg-body-secondary" style="width:64px;height:64px;border-radius:50%;"><i class="bi bi-calendar-event fs-4 text-secondary"></i></span>
+                          <?php endif; ?>
+                          <div class="fw-semibold small text-truncate"><?= e($ev['title']) ?></div>
+                          <?php if ($location): ?><div class="text-secondary" style="font-size:11.5px;"><?= e($location) ?></div><?php endif; ?>
+                          <small class="text-secondary" style="font-size:11px;"><?= e($evDate) ?></small>
+                        </a>
+                      </div>
+                      <?php endforeach; ?>
+                    </div>
+                    <?php endfor; ?>
+                  </div>
+                  <div class="card-footer text-center">
+                    <a href="/<?= e($slug) ?>/eventi" class="text-decoration-none small"><i class="bi bi-calendar3 me-1"></i>Tutti gli eventi</a>
+                  </div>
+                </div>
+                <?php if ($totalPages > 1): ?>
+                <script>
+                (function(){
+                  var id='<?= $carouselId ?>';
+                  var cur=0, max=<?= $totalPages - 1 ?>;
+                  document.addEventListener('click',function(e){
+                    var b=e.target.closest('[data-evt-nav]');
+                    if(!b||b.dataset.target!==id)return;
+                    var pages=document.querySelectorAll('.'+id+'-page');
+                    pages[cur].style.display='none';
+                    cur+=b.dataset.evtNav==='next'?1:-1;
+                    cur=Math.max(0,Math.min(max,cur));
+                    pages[cur].style.display='';
+                    b.closest('.d-flex').querySelector('[data-evt-nav="prev"]').disabled=cur===0;
+                    b.closest('.d-flex').querySelector('[data-evt-nav="next"]').disabled=cur===max;
+                  });
+                })();
+                </script>
+                <?php endif; ?>
+    <?php
+    return ob_get_clean();
+}
+
 // Righe della Timeline in stile "social" AdminLTE: ogni elemento è una .card a sé (componente
 // nativo .card/.user-block, mescolato con la griglia foto del pattern .post) con intestazione
 // avatar+nome+badge tipo+data/ora, foto a piena larghezza o griglia, link "Apri" nel card-footer:
@@ -2124,9 +2212,11 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     // infinito aggiunge altri elementi in fondo, non fare parte del flusso che si "consuma"
     // scorrendo.
     $pinnedHtml = renderAdminLtePinnedCarousel(getPinnedItemsForUser($uid));
+    $monthlyEventsHtml = renderAdminLteMonthlyEventsGrid($uid, $slug, $artist);
     ob_start();
     ?>
                 <?= $pinnedHtml ?>
+                <?= $monthlyEventsHtml ?>
                 <h3 class="mb-3">Timeline</h3>
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
