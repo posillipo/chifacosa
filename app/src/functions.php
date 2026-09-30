@@ -999,13 +999,6 @@ function adminLteAssetLinks(): string {
          // dell'immagine originale ai margini del riquadro.
          . '.admlte-pinned-cover-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.9);transform:scale(1.15);}'
          . '@media (min-width:768px){.adminlte-sidebar-col,.adminlte-extras-col{position:sticky;top:60px;align-self:flex-start;}}'
-         . '@media (min-width:768px){.adminlte-sidebar-col .card,.adminlte-extras-col .card{border:none;box-shadow:none;background:transparent;}'
-         . '.adminlte-sidebar-col .card-header,.adminlte-extras-col .card-header{background:transparent;border-bottom:none;padding-left:0;padding-right:0;}'
-         . '.adminlte-sidebar-col .card-body,.adminlte-extras-col .card-body{padding-left:0;padding-right:0;}'
-         . '.adminlte-sidebar-col .card-footer,.adminlte-extras-col .card-footer{background:transparent;border-top:none;padding-left:0;padding-right:0;}'
-         . '.adminlte-sidebar-col .list-group-item,.adminlte-extras-col .list-group-item{border-left:none;border-right:none;padding-left:0;padding-right:0;background:transparent;}'
-         . '.adminlte-sidebar-col .widget-user-header{border-radius:.375rem;}'
-         . '.adminlte-sidebar-col .widget-user-2 .card-footer{padding-left:1rem;padding-right:1rem;}}'
          . '</style>';
 }
 
