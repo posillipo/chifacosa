@@ -2923,11 +2923,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                       <img src="<?= e($avatarUrl) ?>" alt="<?= e($post['display_name']) ?>" class="rounded-circle">
                       <span class="username"><a href="/<?= e($slug) ?>"><?= e($post['display_name']) ?></a> <small class="fw-normal text-secondary">ha pubblicato un articolo</small></span>
                       <span class="description"><?php
-                        $pubDt = new DateTime($post['published_at']);
-                        $pubDt->setTimezone(new DateTimeZone(profileTimezoneName($artist)));
-                        $giorniIt = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
-                        $mesiIt = ['','gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-                        echo e($giorniIt[(int)$pubDt->format('w')] . ' ' . $pubDt->format('j') . ' ' . $mesiIt[(int)$pubDt->format('n')] . ' ' . $pubDt->format('Y'));
+                        echo e(formatItalianDate($post['published_at'], $artist));
                       ?></span>
                     </div>
                   </div>
@@ -6616,6 +6612,21 @@ function profileTimezoneKey(?array $profile): string {
 
 function profileTimezoneName(?array $profile): string {
     return TIMEZONE_OPTIONS[profileTimezoneKey($profile)]['tz'];
+}
+
+function formatItalianDate(?string $datetime, ?array $profile): string {
+    if (!$datetime) {
+        return '';
+    }
+    try {
+        $dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new DateTimeZone(profileTimezoneName($profile)));
+        $giorni = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+        $mesi = ['','gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+        return $giorni[(int)$dt->format('w')] . ' ' . $dt->format('j') . ' ' . $mesi[(int)$dt->format('n')] . ' ' . $dt->format('Y');
+    } catch (Throwable $e) {
+        return date('d/m/Y', strtotime($datetime));
+    }
 }
 
 // Converte una data/ora salvata nel database (interpretata nel fuso orario con cui il server PHP
