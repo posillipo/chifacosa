@@ -2913,30 +2913,31 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug, $blogLatestPostsHtml . $blogCoverSidebarHtml . renderAdminLteBlogCategoriesNavCard((int) $post['user_id'], $slug, $activeCategoryId), true) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Articolo') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
                 <?php if (($isOwner || $isPreview) && $isScheduledFuture): ?>
-                  <div class="alert alert-warning">Questo articolo non è ancora pubblico (programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
+                  <div class="alert alert-warning mb-3">Questo articolo non è ancora pubblico (programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
                 <?php endif; ?>
 
                 <article class="card mb-3">
+                  <div class="card-header">
+                    <div class="user-block">
+                      <img src="<?= e($avatarUrl) ?>" alt="<?= e($post['display_name']) ?>" class="rounded-circle">
+                      <span class="username"><a href="/<?= e($slug) ?>" class="text-decoration-none"><?= e($post['display_name']) ?></a></span>
+                      <span class="description">
+                        <span class="badge text-bg-info"><i class="bi bi-journal-text me-1"></i>Blog</span>
+                        <?= e(formatLocalDateTime($post['published_at'], $artist)) ?>
+                      </span>
+                    </div>
+                    <div class="card-tools">
+                      <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
+                        <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
+                        <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
+                      </button>
+                    </div>
+                  </div>
                   <?php if ($post['cover_path']): ?>
-                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top d-md-none" style="max-height:360px;object-fit:cover;">
+                    <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="d-md-none" style="width:100%;display:block;">
                   <?php endif; ?>
                   <div class="card-body">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                      <img src="<?= e($avatarUrl) ?>" class="rounded-circle" style="width:28px;height:28px;object-fit:cover;" alt="">
-                      <span class="text-secondary small"><?= e($post['display_name']) ?> · <?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
-                    </div>
                     <h2 class="h3 mb-3"><?= e($post['title']) ?></h2>
                     <?php if ($postCategories): ?>
                       <p class="mb-3">
@@ -2949,6 +2950,10 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                     <?php if ($post['tags']): ?>
                       <p class="text-secondary small mt-3 mb-0"><i class="bi bi-tags me-1" aria-hidden="true"></i><?= e($post['tags']) ?></p>
                     <?php endif; ?>
+                  </div>
+                  <div class="card-footer small text-secondary">
+                    <i class="bi bi-share me-1"></i>
+                    <strong>Condividi</strong> · <span class="user-select-all"><?= e($permalink) ?></span>
                   </div>
                 </article>
 
@@ -2966,15 +2971,6 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                 </a>
                 <?php endif; ?>
 
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <strong>Condividi questo articolo</strong><br>
-                    <small class="text-secondary"><?= e($permalink) ?></small>
-                  </div>
-                </div>
-
-            </div>
-            </div>
           </div>
         </div>
       </div>
