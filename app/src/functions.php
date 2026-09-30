@@ -2918,20 +2918,11 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                 <?php endif; ?>
 
                 <article class="card mb-3">
-                  <div class="card-header">
-                    <div class="user-block">
+                  <div class="card-header d-flex align-items-center">
+                    <div class="user-block mb-0">
                       <img src="<?= e($avatarUrl) ?>" alt="<?= e($post['display_name']) ?>" class="rounded-circle">
-                      <span class="username"><a href="/<?= e($slug) ?>" class="text-decoration-none"><?= e($post['display_name']) ?></a></span>
-                      <span class="description">
-                        <span class="badge text-bg-info"><i class="bi bi-journal-text me-1"></i>Blog</span>
-                        <?= e(formatLocalDateTime($post['published_at'], $artist)) ?>
-                      </span>
-                    </div>
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                        <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                        <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                      </button>
+                      <span class="username"><a href="/<?= e($slug) ?>"><?= e($post['display_name']) ?></a> <small class="fw-normal text-secondary">ha pubblicato un articolo</small></span>
+                      <span class="description"><i class="bi bi-clock me-1"></i><?= e(formatLocalDateTime($post['published_at'], $artist)) ?></span>
                     </div>
                   </div>
                   <?php if ($post['cover_path']): ?>
