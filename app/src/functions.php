@@ -4879,46 +4879,39 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Foto') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
 
             <?php if ($albums): ?>
-              <div class="card mb-2">
+              <div class="card mb-3">
                 <div class="card-header"><h3 class="card-title h6 mb-0">Album (<?= count($albums) ?>)</h3></div>
-              </div>
-              <div class="row g-3 text-center mb-3">
-                <?php foreach ($albums as $al): ?>
-                  <div class="col-6 col-sm-4 col-lg-3">
-                    <a href="/<?= e($slug) ?>/album/<?= (int) $al['id'] ?>" class="card text-decoration-none text-body p-2 h-100">
-                      <?php if ($al['cover_path']): ?><img src="/<?= e($al['cover_path']) ?>" alt="" loading="lazy" class="rounded mb-2" style="width:100%;aspect-ratio:1;object-fit:cover;"><?php endif; ?>
-                      <div class="small fw-semibold"><i class="bi bi-images me-1"></i><?= e($al['title']) ?></div>
-                    </a>
+                <div class="card-body">
+                  <div class="row g-3 text-center">
+                    <?php foreach ($albums as $al): ?>
+                      <div class="col-6 col-sm-4 col-lg-4">
+                        <a href="/<?= e($slug) ?>/album/<?= (int) $al['id'] ?>" class="card text-decoration-none text-body p-2 h-100">
+                          <?php if ($al['cover_path']): ?><img src="/<?= e($al['cover_path']) ?>" alt="" loading="lazy" class="rounded mb-2" style="width:100%;aspect-ratio:1;object-fit:cover;"><?php endif; ?>
+                          <div class="small fw-semibold"><i class="bi bi-images me-1"></i><?= e($al['title']) ?></div>
+                        </a>
+                      </div>
+                    <?php endforeach; ?>
                   </div>
-                <?php endforeach; ?>
+                </div>
               </div>
             <?php endif; ?>
 
             <?php if ($timelinePhotos): ?>
-              <div class="card mb-2">
+              <div class="card mb-3">
                 <div class="card-header"><h3 class="card-title h6 mb-0">Foto (<?= count($timelinePhotos) ?>)</h3></div>
-              </div>
-              <div class="row g-2">
-                <?php foreach ($timelinePhotos as $i => $ph): ?>
-                  <div class="col-4 col-sm-3 col-lg-2">
-                    <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>" class="ig-grid-item d-block" data-lightbox="foto-grid" data-index="<?= $i ?>">
-                      <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" class="rounded" style="width:100%;aspect-ratio:1;object-fit:cover;">
-                    </a>
+                <div class="card-body p-2">
+                  <div class="row g-1">
+                    <?php foreach ($timelinePhotos as $i => $ph): ?>
+                      <div class="col-4 col-lg-3">
+                        <a href="/<?= e($slug) ?>/timeline/<?= (int) $ph['post_id'] ?>" class="ig-grid-item d-block" data-lightbox="foto-grid" data-index="<?= $i ?>">
+                          <img src="/<?= e($ph['photo']) ?>" alt="" loading="lazy" class="rounded-1" style="width:100%;aspect-ratio:1;object-fit:cover;">
+                        </a>
+                      </div>
+                    <?php endforeach; ?>
                   </div>
-                <?php endforeach; ?>
+                </div>
               </div>
               <div class="ig-lightbox" data-post="foto-grid">
                 <button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>
@@ -4935,8 +4928,6 @@ function renderAdminLteFotoPage(array $artist, string $slug, array $albums, arra
               <div class="card"><div class="card-body text-secondary">Nessuna foto ancora.</div></div>
             <?php endif; ?>
 
-            </div>
-            </div>
           </div>
         </div>
       </div>
