@@ -16,7 +16,7 @@ if (!$owner) {
     exit('Pagina non trovata.');
 }
 
-$stmt = getDB()->prepare('SELECT * FROM events WHERE id = ? AND user_id = ? AND accepts_reservations = 1');
+$stmt = getDB()->prepare('SELECT * FROM events WHERE id = ? AND user_id = ? AND accepts_reservations = 1 AND (publish_at IS NULL OR publish_at <= NOW())');
 $stmt->execute([$eventId, $owner['id']]);
 $event = $stmt->fetch();
 

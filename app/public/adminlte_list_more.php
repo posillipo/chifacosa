@@ -86,7 +86,7 @@ if ($type === 'blog') {
     // provincia" della colonna destra) — lo scroll infinito deve rispettarlo, non ricadere
     // sull'elenco completo dalla seconda pagina in poi.
     $provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
-    $sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1)';
+    $sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())';
     if ($provinciaFilter !== '') {
         $sql .= ' AND provincia = ?';
     }

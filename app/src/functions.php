@@ -1731,7 +1731,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
 // invece di lasciarla indistinguibile dalle altre.
 function renderAdminLteEventiByProvinciaCard(int $userId, string $slug, ?string $activeProvincia = null): string {
     $stmt = getDB()->prepare("SELECT provincia, COUNT(*) c FROM events
-        WHERE user_id=? AND provincia IS NOT NULL AND provincia <> '' AND (event_date >= NOW() OR is_perpetual = 1)
+        WHERE user_id=? AND provincia IS NOT NULL AND provincia <> '' AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())
         GROUP BY provincia ORDER BY provincia ASC");
     $stmt->execute([$userId]);
     $rows = $stmt->fetchAll();
@@ -2038,7 +2038,7 @@ function renderAdminLteMonthlyEventsGrid(int $userId, string $slug, ?array $prof
         WHERE user_id = ? AND (
             (event_date >= DATE_FORMAT(NOW(), '%Y-%m-01') AND event_date < DATE_FORMAT(NOW() + INTERVAL 1 MONTH, '%Y-%m-01'))
             OR is_perpetual = 1
-        )
+        ) AND (publish_at IS NULL OR publish_at <= NOW())
         ORDER BY is_perpetual ASC, event_date ASC
         LIMIT 50");
     $stmt->execute([$userId]);
@@ -5350,7 +5350,7 @@ function renderAdminLteEventoDetailPage(array $artist, string $slug, array $even
     // centrale — così chi guarda un evento scopre subito cos'altro c'è nella stessa zona.
     $otherProvinciaEventsHtml = '';
     if (!empty($event['provincia'])) {
-        $stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND id <> ? AND (event_date >= NOW() OR is_perpetual = 1) ORDER BY is_perpetual DESC, event_date ASC LIMIT 20');
+        $stmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND id <> ? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY is_perpetual DESC, event_date ASC LIMIT 20');
         $stmt->execute([$event['user_id'], $event['provincia'], $event['id']]);
         $otherProvinciaEvents = $stmt->fetchAll();
         if ($otherProvinciaEvents) {
@@ -7165,7 +7165,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
 
     $stmt = $db->prepare("SELECT e.id, e.title, e.venue, e.city, e.cover_path, e.created_at AS data, e.event_date, e.is_perpetual, e.recurrence, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = u.id
-        WHERE e.user_id IN ($placeholders) ORDER BY e.created_at DESC LIMIT {$perTypeLimit}");
+        WHERE e.user_id IN ($placeholders) AND (e.publish_at IS NULL OR e.publish_at <= NOW()) ORDER BY e.created_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
@@ -7487,7 +7487,7 @@ const PINNABLE_CONTENT_TYPES = [
     'pensiero' => ['table' => 'timeline_posts', 'title_col' => 'testo', 'cover_cols' => ['image_thumb_path', 'image_path'], 'date_col' => 'created_at', 'visibility' => 'timeline', 'url_tpl' => '/%s/timeline/%d', 'label' => 'Pensiero'],
     'blog' => ['table' => 'blog_posts', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'published_at', 'visibility' => 'blog', 'url_tpl' => null, 'label' => 'Blog'],
     'brano' => ['table' => 'favorite_tracks', 'title_col' => 'track_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'track_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/brani/%d/scheda', 'label' => 'Brano che amo'],
-    'evento' => ['table' => 'events', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'none', 'url_tpl' => '/%s/eventi/%d', 'label' => 'Evento'],
+    'evento' => ['table' => 'events', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'evento', 'url_tpl' => '/%s/eventi/%d', 'label' => 'Evento'],
     'band_favorita' => ['table' => 'fan_favorite_bands', 'title_col' => 'spotify_artist_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'artist_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/band-che-amo/%d', 'label' => 'Band che amo'],
     'attore_favorito' => ['table' => 'fan_favorite_actors', 'title_col' => 'actor_name', 'cover_cols' => ['image_thumb_path', 'image_path', 'actor_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/attori-che-amo/%d', 'label' => 'Attore che amo'],
     'film_favorito' => ['table' => 'fan_favorite_movies', 'title_col' => 'movie_title', 'cover_cols' => ['image_thumb_path', 'image_path', 'movie_image'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/film-che-amo/%d', 'label' => 'Film che amo'],
@@ -7512,6 +7512,7 @@ function pinnableVisibilityClause(string $mode): string {
         'timeline' => "AND visibility = 'public' AND (publish_at IS NULL OR publish_at <= NOW())",
         'blog' => "AND published_at <= NOW()",
         'offerta' => "AND is_active = 1 AND (valid_from IS NULL OR valid_from <= NOW()) AND (valid_until IS NULL OR valid_until >= NOW())",
+        'evento' => "AND (publish_at IS NULL OR publish_at <= NOW())",
         default => '',
     };
 }
@@ -7524,10 +7525,10 @@ function pinnableVisibilityClause(string $mode): string {
 // dashboard_post.php mostra già il badge "⏰ Programmato", che infatti non guarda la privacy).
 function pinnableScheduleColumn(string $mode): ?string {
     return match ($mode) {
-        'standard', 'timeline' => 'publish_at',
+        'standard', 'timeline', 'evento' => 'publish_at',
         'blog' => 'published_at',
         'offerta' => 'valid_from',
-        default => null, // 'none' (es. eventi): nessun concetto di programmazione
+        default => null,
     };
 }
 
@@ -7553,6 +7554,7 @@ const SCHEDULABLE_DASHBOARD_URLS = [
     'offerta' => '/dashboard_offers.php',
     'album_foto' => '/dashboard_albums.php',
     'servizio' => '/dashboard_services.php',
+    'evento' => '/dashboard_events.php',
 ];
 
 // "Calendario pubblicazioni" (dashboard_schedule.php): tutti gli elementi con una data di

@@ -14,8 +14,7 @@ $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = min(100, max(1, (int) ($_GET['per_page'] ?? 20)));
 $offset = ($page - 1) * $perPage;
 
-// from/to filtrano su event_date (quando si terrà l'evento), non su una data di creazione — non
-// esiste un equivalente di "publish_at" per gli eventi, sono sempre visibili subito.
+// from/to filtrano su event_date (quando si terrà l'evento), non su una data di creazione.
 $where = ['user_id = ?'];
 $params = [$auth['user_id']];
 if ($from !== '') {

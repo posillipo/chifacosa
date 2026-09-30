@@ -30,7 +30,7 @@ if (!empty($v['image_url'])) {
     }
 }
 
-$stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+$stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
 $stmt->execute([
     $auth['user_id'],
     $v['title'],
@@ -44,18 +44,20 @@ $stmt->execute([
     $v['recurrence'] ?? 'none',
     $coverPath,
     $v['accepts_reservations'] ?? 0,
+    $v['publish_at'] ?? null,
 ]);
 $eventId = (int) getDB()->lastInsertId();
 
-// Stessa regola della dashboard (dashboard_events.php): un evento è sempre visibile subito (non
-// esiste un concetto di programmazione/bozza per gli eventi), quindi la notifica ai follower
-// parte sempre alla creazione.
-$stmt = getDB()->prepare('SELECT display_name, slug FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?');
-$stmt->execute([$auth['user_id']]);
-$profileRow = $stmt->fetch();
-if ($profileRow) {
-    $eventUrl = siteUrl('/' . $profileRow['slug'] . '/eventi/' . $eventId);
-    notifyFollowersNewContent($auth['user_id'], $profileRow['display_name'], $profileRow['slug'], 'evento', $v['title'], $eventUrl);
+$publishAt = $v['publish_at'] ?? null;
+$isScheduledForFuture = $publishAt !== null && strtotime($publishAt) > time();
+if (!$isScheduledForFuture) {
+    $stmt = getDB()->prepare('SELECT display_name, slug FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?');
+    $stmt->execute([$auth['user_id']]);
+    $profileRow = $stmt->fetch();
+    if ($profileRow) {
+        $eventUrl = siteUrl('/' . $profileRow['slug'] . '/eventi/' . $eventId);
+        notifyFollowersNewContent($auth['user_id'], $profileRow['display_name'], $profileRow['slug'], 'evento', $v['title'], $eventUrl);
+    }
 }
 
 $response = [

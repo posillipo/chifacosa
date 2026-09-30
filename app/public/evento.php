@@ -12,7 +12,7 @@ $stmt = getDB()->prepare('SELECT u.slug, u.account_type, p.display_name, p.avata
                           FROM events ev
                           JOIN users u ON u.id = ev.user_id
                           JOIN profiles p ON p.user_id = u.id
-                          WHERE u.slug = ? AND ev.id = ? AND u.is_active = 1');
+                          WHERE u.slug = ? AND ev.id = ? AND u.is_active = 1 AND (ev.publish_at IS NULL OR ev.publish_at <= NOW())');
 $stmt->execute([$slug, $eventId]);
 $event = $stmt->fetch();
 

@@ -26,16 +26,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recurrenceRaw = $_POST['recurrence'] ?? 'none';
         $recurrence = in_array($recurrenceRaw, ['none', 'weekdays', 'weekend'], true) ? $recurrenceRaw : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
+        $publishAtRaw = trim($_POST['publish_at'] ?? '');
+        $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
             $coverPath = handleCoverUpload($profile['slug']);
-            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
-            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations]);
+            $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations, $publishAt]);
             $newEventId = (int) getDB()->lastInsertId();
 
-            $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
-            notifyFollowersNewContent((int)$profile['id'], $profile['display_name'], $profile['slug'], 'evento', $title, $eventUrl);
+            $isScheduledForFuture = $publishAt !== null && strtotime($publishAt) > time();
+            if (!$isScheduledForFuture) {
+                $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
+                notifyFollowersNewContent((int)$profile['id'], $profile['display_name'], $profile['slug'], 'evento', $title, $eventUrl);
+            }
         }
     } elseif ($action === 'edit') {
         $id = (int) ($_POST['id'] ?? 0);
@@ -52,11 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recurrenceRaw = $_POST['recurrence'] ?? 'none';
         $recurrence = in_array($recurrenceRaw, ['none', 'weekdays', 'weekend'], true) ? $recurrenceRaw : 'none';
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
+        $publishAtRaw = trim($_POST['publish_at'] ?? '');
+        $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
         } else {
-            // Copertina opzionale: un nuovo file la sostituisce (e cancella quella precedente),
-            // se il campo è lasciato vuoto quella già caricata resta invariata.
             $newCoverPath = handleCoverUpload($profile['slug']);
             if ($newCoverPath) {
                 $stmt = getDB()->prepare('SELECT cover_path FROM events WHERE id=? AND user_id=?');
@@ -64,11 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($old = $stmt->fetch()) {
                     deleteCoverFile($old['cover_path']);
                 }
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, cover_path=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $newCoverPath, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, cover_path=?, accepts_reservations=?, publish_at=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $newCoverPath, $acceptsReservations, $publishAt, $id, $profile['id']]);
             } else {
-                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=? WHERE id=? AND user_id=?');
-                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $id, $profile['id']]);
+                $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=?, publish_at=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $publishAt, $id, $profile['id']]);
             }
         }
     } elseif ($action === 'delete') {
@@ -130,6 +135,9 @@ include __DIR__ . '/_dash_header.php';
       </div>
       <p id="ev-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
     </div>
+    <label>Pubblicazione programmata (opzionale)</label>
+    <input type="datetime-local" name="publish_at">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Se impostata, l'evento resta nascosto fino a questa data e ora.</p>
     <label>Copertina (opzionale, jpg/png/webp)</label>
     <input type="file" name="cover" accept="image/*">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
@@ -167,6 +175,9 @@ include __DIR__ . '/_dash_header.php';
         <strong><?= e($ev['title']) ?></strong>
         <?php if ($ev['venue'] || $ev['city']): ?>
           <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>
+        <?php endif; ?>
+        <?php if (!empty($ev['publish_at']) && strtotime($ev['publish_at']) > time()): ?>
+          <div style="color:#e67e22;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(date('d/m/Y H:i', strtotime($ev['publish_at']))) ?></div>
         <?php endif; ?>
         <?php if ((int) $ev['accepts_reservations'] === 1): ?>
           <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni attive</div>
@@ -223,6 +234,9 @@ include __DIR__ . '/_dash_header.php';
               </div>
               <p class="ev-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
             </div>
+            <label>Pubblicazione programmata (opzionale)</label>
+            <input type="datetime-local" name="publish_at" value="<?= !empty($ev['publish_at']) ? e(date('Y-m-d\TH:i', strtotime($ev['publish_at']))) : '' ?>">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Se impostata, l'evento resta nascosto fino a questa data e ora. Lascia vuoto per pubblicare subito.</p>
             <label>Copertina (opzionale — lascia vuoto per non cambiarla)</label>
             <input type="file" name="cover" accept="image/*">
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">

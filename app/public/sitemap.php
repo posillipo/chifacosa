@@ -108,7 +108,7 @@ foreach ($stmt->fetchAll() as $c) {
 // Singoli eventi
 $stmt = $db->query("SELECT e.id, e.created_at, u.slug AS user_slug
     FROM events e JOIN users u ON u.id = e.user_id
-    WHERE u.is_active = 1");
+    WHERE u.is_active = 1 AND (e.publish_at IS NULL OR e.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $ev) {
     sitemapUrl(siteUrl('/' . $ev['user_slug'] . '/eventi/' . $ev['id']), $ev['created_at'], 'monthly', '0.5');
 }

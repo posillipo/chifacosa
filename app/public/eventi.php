@@ -26,7 +26,7 @@ $isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
 // confronto diretto (non LIKE), niente normalizzazione maiuscole/minuscole.
 $provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
 
-$sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1)';
+$sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())';
 $params = [$artist['id']];
 if ($provinciaFilter !== '') {
     $sql .= ' AND provincia = ?';
@@ -41,7 +41,7 @@ $events = $events->fetchAll();
 // ma restano consultabili sotto un separatore solo quando si sta filtrando per provincia.
 $expiredEvents = [];
 if ($isAdminLte && $provinciaFilter !== '') {
-    $expiredStmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND event_date < NOW() AND is_perpetual = 0 ORDER BY event_date DESC LIMIT 20');
+    $expiredStmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND event_date < NOW() AND is_perpetual = 0 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY event_date DESC LIMIT 20');
     $expiredStmt->execute([$artist['id'], $provinciaFilter]);
     $expiredEvents = $expiredStmt->fetchAll();
 }

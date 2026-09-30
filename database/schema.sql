@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS events (
     recurrence ENUM('none','weekdays','weekend') NOT NULL DEFAULT 'none',
     cover_path VARCHAR(255) DEFAULT NULL,
     accepts_reservations TINYINT(1) NOT NULL DEFAULT 0,
+    publish_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

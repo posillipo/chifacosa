@@ -452,6 +452,7 @@ function apiSerializeEvent(array $event, string $slug): array {
         'is_perpetual' => (bool) $event['is_perpetual'],
         'recurrence' => $event['recurrence'],
         'accepts_reservations' => (bool) $event['accepts_reservations'],
+        'publish_at' => apiFormatDateTimeRome($event['publish_at'] ?? null),
         'cover_image_url' => $event['cover_path'] ? siteUrl('/' . $event['cover_path']) : null,
         'url' => siteUrl('/' . $slug . '/eventi/' . (int) $event['id']),
     ];
@@ -459,9 +460,8 @@ function apiSerializeEvent(array $event, string $slug): array {
 
 // Valida e normalizza il payload JSON di create/update per un evento. $partial=true per PUT
 // (tutti i campi opzionali, solo quelli presenti vengono validati/aggiornati) — stesso principio
-// di apiValidateBlogPostPayload(). A differenza di Timeline/Blog un evento non ha un concetto di
-// programmazione/bozza (vedi dashboard_events.php): è sempre visibile subito, "event_date" è solo
-// quando si terrà, non quando pubblicarlo.
+// di apiValidateBlogPostPayload(). "publish_at" opzionale: se impostato, l'evento resta nascosto
+// dalle pagine pubbliche fino a quella data; "event_date" è quando si terrà.
 function apiValidateEventPayload(array $data, bool $partial): array {
     $values = [];
 
@@ -528,6 +528,21 @@ function apiValidateEventPayload(array $data, bool $partial): array {
             return ['error' => 'Il campo "image_url" non è un URL pubblico valido.', 'values' => []];
         }
         $values['image_url'] = $imageUrl;
+    }
+
+    if (array_key_exists('publish_at', $data)) {
+        $raw = trim((string) $data['publish_at']);
+        if ($raw === '' || $raw === 'null') {
+            $values['publish_at'] = null;
+        } else {
+            try {
+                $dt = new DateTime($raw);
+                $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+                $values['publish_at'] = $dt->format('Y-m-d H:i:s');
+            } catch (Exception $e) {
+                return ['error' => 'Il campo "publish_at" non è una data valida (usa il formato ISO 8601, es. 2026-10-01T09:00:00+02:00).', 'values' => []];
+            }
+        }
     }
 
     if (array_key_exists('event_date', $data) && trim((string) $data['event_date']) !== '') {
