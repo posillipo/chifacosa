@@ -9,26 +9,27 @@
  * per aprire a tutto schermo le griglie di foto singole di post diversi (es. la sezione Foto
  * del profilo pubblico): ogni miniatura .ig-grid-item apre la lightbox già posizionata sulla
  * foto cliccata, navigabile con le frecce a schermo e con i tasti freccia della tastiera.
+ *
+ * Deep-link: navigando lo slideshow la URL si aggiorna con #foto-N (1-based) — condividendo
+ * quel link la pagina si apre direttamente sulla foto indicata.
  */
 (function () {
-  // Ogni lightbox nasce dentro il markup dell'elemento (comodo da generare in PHP), ma per
-  // essere DAVVERO a tutto schermo su ogni telefono non deve avere nessun antenato con
-  // transform/filter/opacity — condizione che non possiamo garantire con certezza (temi
-  // diversi, sfondi animati...). Spostarla come figlio diretto di <body> la mette al riparo da
-  // qualsiasi antenato del genere, prima ancora che l'utente la apra.
   document.querySelectorAll('.ig-lightbox').forEach(function (lb) {
     document.body.appendChild(lb);
   });
 
-  // Tiene traccia di goTo()/currentIndex() di ogni lightbox aperta, per poterla far scorrere
-  // con le frecce della tastiera (vedi il listener keydown più sotto).
   var lightboxControllers = new Map();
+  var activeLightbox = null;
 
-  // Un solo carosello (nell'anteprima o nella vista a tutto schermo) è sempre lo stesso
-  // meccanismo: scroll-snap orizzontale + frecce/puntini/contatore che leggono/impostano la
-  // posizione — condiviso qui invece di duplicarlo. counterEl è opzionale, usato al posto dei
-  // puntini quando le foto sono troppe per mostrarne uno a testa (es. la griglia Foto).
-  function wireCarousel(track, dots, prevBtn, nextBtn, counterEl) {
+  function updateHash(idx) {
+    history.replaceState(null, '', location.pathname + location.search + '#foto-' + (idx + 1));
+  }
+
+  function clearHash() {
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  function wireCarousel(track, dots, prevBtn, nextBtn, counterEl, onIndexChange) {
     if (!track) return null;
     var count = dots.length || track.children.length;
     if (!count) return null;
@@ -42,6 +43,7 @@
     function updateIndicators(idx) {
       dots.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
       if (counterEl) counterEl.textContent = (idx + 1) + ' / ' + count;
+      if (onIndexChange) onIndexChange(idx);
     }
     dots.forEach(function (dot) {
       dot.addEventListener('click', function () { goTo(parseInt(dot.dataset.index, 10)); });
@@ -64,13 +66,23 @@
   function openLightbox(lb, startIdx) {
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
+    activeLightbox = lb;
     var track = lb.querySelector('.ig-lightbox-track');
     if (track) track.scrollTo({ left: (startIdx || 0) * track.clientWidth, behavior: 'auto' });
+    updateHash(startIdx || 0);
   }
 
   function closeLightbox(lb) {
     lb.classList.remove('open');
     document.body.style.overflow = '';
+    if (activeLightbox === lb) {
+      activeLightbox = null;
+      clearHash();
+    }
+  }
+
+  function hashOnSlide(idx) {
+    if (activeLightbox) updateHash(idx);
   }
 
   document.querySelectorAll('.ig-carousel').forEach(function (carousel) {
@@ -88,21 +100,22 @@
       lightboxEl.querySelector('.ig-lightbox-track'),
       lightboxEl.querySelectorAll('.ig-dot'),
       lightboxEl.querySelector('.ig-arrow-prev'),
-      lightboxEl.querySelector('.ig-arrow-next')
+      lightboxEl.querySelector('.ig-arrow-next'),
+      null,
+      hashOnSlide
     );
     lightboxControllers.set(lightboxEl, lbCtrl);
 
     var expandBtn = carousel.querySelector('.ig-expand-btn');
     if (expandBtn) {
-      // Apre sulla stessa foto che si stava già guardando nell'anteprima, senza scatto.
       expandBtn.addEventListener('click', function () { openLightbox(lightboxEl, main ? main.currentIndex() : 0); });
     }
     var closeBtn = lightboxEl.querySelector('.ig-lightbox-close');
     if (closeBtn) closeBtn.addEventListener('click', function () { closeLightbox(lightboxEl); });
   });
 
-  // Lightbox rimaste senza una .ig-carousel di anteprima abbinata: sono quelle "a sé stanti"
-  // usate per aprire a tutto schermo una griglia di miniature (.ig-grid-item).
+  // Lightbox standalone (griglia foto senza carosello di anteprima)
+  var standaloneLightboxes = [];
   document.querySelectorAll('.ig-lightbox').forEach(function (lightboxEl) {
     if (lightboxControllers.has(lightboxEl)) return;
     var lbCtrl = wireCarousel(
@@ -110,9 +123,11 @@
       lightboxEl.querySelectorAll('.ig-dot'),
       lightboxEl.querySelector('.ig-arrow-prev'),
       lightboxEl.querySelector('.ig-arrow-next'),
-      lightboxEl.querySelector('.ig-lightbox-counter')
+      lightboxEl.querySelector('.ig-lightbox-counter'),
+      hashOnSlide
     );
     lightboxControllers.set(lightboxEl, lbCtrl);
+    standaloneLightboxes.push({ el: lightboxEl, ctrl: lbCtrl });
     var closeBtn = lightboxEl.querySelector('.ig-lightbox-close');
     if (closeBtn) closeBtn.addEventListener('click', function () { closeLightbox(lightboxEl); });
   });
@@ -120,8 +135,6 @@
   document.querySelectorAll('.ig-grid-item').forEach(function (item) {
     var lb = document.querySelector('.ig-lightbox[data-post="' + item.dataset.lightbox + '"]');
     if (!lb) return;
-    // Il link resta un <a href> vero (funziona senza JS / per i motori di ricerca) — con JS
-    // attivo, il click apre invece la foto a tutto schermo senza lasciare la pagina.
     item.addEventListener('click', function (e) {
       e.preventDefault();
       openLightbox(lb, parseInt(item.dataset.index, 10) || 0);
@@ -140,4 +153,22 @@
     if (!ctrl) return;
     ctrl.goTo(ctrl.currentIndex() + (e.key === 'ArrowRight' ? 1 : -1));
   });
+
+  // Deep-link: #foto-N apre la lightbox alla foto N (1-based)
+  function openFromHash() {
+    var m = location.hash.match(/^#foto-(\d+)$/);
+    if (!m) return;
+    var idx = parseInt(m[1], 10) - 1;
+    if (idx < 0) return;
+    // Cerca la prima lightbox standalone (griglia foto/album), altrimenti la prima con carosello
+    var target = standaloneLightboxes[0] || null;
+    if (!target) {
+      var first = lightboxControllers.keys().next().value;
+      if (first) target = { el: first, ctrl: lightboxControllers.get(first) };
+    }
+    if (target) openLightbox(target.el, idx);
+  }
+  openFromHash();
+
+  window.addEventListener('hashchange', openFromHash);
 })();
