@@ -2003,21 +2003,24 @@ function renderAdminLteCheAmoInterstitial(int $userId, string $slug): string {
     $db = getDB();
     $tiles = [];
     foreach (ADMINLTE_FAN_FAVORITE_KINDS as $kind => $cfg) {
+        try {
         $nameCol = $cfg['name_col'];
         $imgCol = $cfg['image_col'];
         $tbl = $cfg['table'];
-        $stmt = $db->prepare("SELECT id, {$nameCol} AS name, COALESCE(image_thumb_path, image_path, {$imgCol}) AS img, created_at FROM {$tbl} WHERE user_id=? AND is_public=1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY created_at DESC LIMIT 4");
+        $stmt = $db->prepare("SELECT id, {$nameCol} AS name, image_thumb_path, image_path, created_at FROM {$tbl} WHERE user_id=? AND is_public=1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY created_at DESC LIMIT 4");
         $stmt->execute([$userId]);
         foreach ($stmt->fetchAll() as $r) {
+            $img = $r['image_thumb_path'] ?: ($r['image_path'] ?: '');
             $tiles[] = [
                 'url' => '/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $r['id'],
-                'image' => $r['img'] ?? '',
+                'image' => $img,
                 'placeholder_icon' => 'bi-heart',
                 'title' => $r['name'],
                 'subtitle' => $cfg['label'],
                 'sort' => $r['created_at'],
             ];
         }
+        } catch (\Throwable $e) {}
     }
     if (!$tiles) {
         return '';
@@ -2358,11 +2361,17 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $pinnedHtml = renderAdminLtePinnedCarousel(getPinnedItemsForUser($uid));
     $monthlyEventsHtml = renderAdminLteMonthlyEventsGrid($uid, $slug, $artist);
 
-    $interstitials = array_filter([
-        renderAdminLteBlogInterstitial($uid, $slug, $artist),
-        renderAdminLteVideoInterstitial($artist, $slug),
-        renderAdminLteCheAmoInterstitial($uid, $slug),
-    ]);
+    $interstitials = [];
+    foreach ([
+        fn () => renderAdminLteBlogInterstitial($uid, $slug, $artist),
+        fn () => renderAdminLteVideoInterstitial($artist, $slug),
+        fn () => renderAdminLteCheAmoInterstitial($uid, $slug),
+    ] as $fn) {
+        try {
+            $h = $fn();
+            if ($h !== '') { $interstitials[] = $h; }
+        } catch (\Throwable $e) {}
+    }
 
     $chunkSize = 3;
     $feedHtml = '';
