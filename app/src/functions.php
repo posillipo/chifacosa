@@ -1001,7 +1001,7 @@ function adminLteAssetLinks(): string {
          // copertine non quadrate. Scale(1.15) evita che la sfocatura mostri i bordi netti
          // dell'immagine originale ai margini del riquadro.
          . '.admlte-pinned-cover-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.9);transform:scale(1.15);}'
-         . '@media (min-width:768px){.adminlte-sidebar-col,.adminlte-extras-col{position:sticky;top:60px;align-self:flex-start;max-height:calc(100vh - 70px);overflow-y:auto;scrollbar-width:thin;}}'
+         . '@media (min-width:768px){.adminlte-sidebar-col,.adminlte-extras-col{position:sticky;top:60px;align-self:flex-start;}}'
          . '</style>';
 }
 
