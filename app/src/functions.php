@@ -1880,6 +1880,154 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'pubblicazione_favorita' => ['icon' => 'bi-journal-medical', 'color' => 'info', 'label' => 'Pubblicazione che amo'],
 ];
 
+function renderAdminLteGridCarousel(string $title, string $icon, string $footerUrl, string $footerLabel, array $tiles, string $imageShape = 'circle'): string {
+    if (!$tiles) {
+        return '';
+    }
+    $perPage = 8;
+    $totalPages = (int) ceil(count($tiles) / $perPage);
+    $cid = 'grid-' . substr(md5($title), 0, 8);
+    $imgStyle = $imageShape === 'circle'
+        ? 'width:64px;height:64px;border-radius:50%;object-fit:cover;'
+        : 'width:80px;height:80px;border-radius:10px;object-fit:cover;';
+    $phStyle = $imageShape === 'circle'
+        ? 'width:64px;height:64px;border-radius:50%;'
+        : 'width:80px;height:80px;border-radius:10px;';
+    ob_start();
+    ?>
+                <div class="card mb-3">
+                  <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title flex-grow-1"><i class="bi <?= e($icon) ?> me-2"></i><?= e($title) ?></h3>
+                    <?php if ($totalPages > 1): ?>
+                    <div class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-grid-nav="prev" data-target="<?= $cid ?>" disabled><i class="bi bi-chevron-left"></i></button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-grid-nav="next" data-target="<?= $cid ?>"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    <?php endif; ?>
+                  </div>
+                  <div class="card-body">
+                    <?php for ($page = 0; $page < $totalPages; $page++):
+                      $pageTiles = array_slice($tiles, $page * $perPage, $perPage);
+                    ?>
+                    <div class="row g-2 <?= $cid ?>-page" <?php if ($page > 0): ?>style="display:none;"<?php endif; ?> data-page="<?= $page ?>">
+                      <?php foreach ($pageTiles as $t): ?>
+                      <div class="col-6 col-sm-4 col-lg-3">
+                        <a href="<?= e($t['url']) ?>" class="card text-decoration-none text-body p-3 h-100 text-center">
+                          <?php if (!empty($t['image'])): ?>
+                            <img src="<?= e($t['image']) ?>" alt="" loading="lazy" class="mx-auto mb-2 d-block" style="<?= $imgStyle ?>">
+                          <?php else: ?>
+                            <span class="mx-auto mb-2 d-flex align-items-center justify-content-center bg-body-secondary" style="<?= $phStyle ?>"><i class="bi <?= e($t['placeholder_icon'] ?? $icon) ?> fs-4 text-secondary"></i></span>
+                          <?php endif; ?>
+                          <div class="fw-semibold small text-truncate"><?= e($t['title']) ?></div>
+                          <?php if (!empty($t['subtitle'])): ?><div class="text-secondary text-truncate" style="font-size:11.5px;"><?= e($t['subtitle']) ?></div><?php endif; ?>
+                          <?php if (!empty($t['date'])): ?><small class="text-secondary" style="font-size:11px;"><?= e($t['date']) ?></small><?php endif; ?>
+                        </a>
+                      </div>
+                      <?php endforeach; ?>
+                    </div>
+                    <?php endfor; ?>
+                  </div>
+                  <?php if ($footerUrl): ?>
+                  <div class="card-footer text-center">
+                    <a href="<?= e($footerUrl) ?>" class="text-decoration-none small"><?= e($footerLabel) ?></a>
+                  </div>
+                  <?php endif; ?>
+                </div>
+                <?php if ($totalPages > 1): ?>
+                <script>
+                (function(){
+                  var id='<?= $cid ?>';
+                  var cur=0, max=<?= $totalPages - 1 ?>;
+                  document.addEventListener('click',function(e){
+                    var b=e.target.closest('[data-grid-nav]');
+                    if(!b||b.dataset.target!==id)return;
+                    var pages=document.querySelectorAll('.'+id+'-page');
+                    pages[cur].style.display='none';
+                    cur+=b.dataset.gridNav==='next'?1:-1;
+                    cur=Math.max(0,Math.min(max,cur));
+                    pages[cur].style.display='';
+                    b.closest('.d-flex').querySelector('[data-grid-nav="prev"]').disabled=cur===0;
+                    b.closest('.d-flex').querySelector('[data-grid-nav="next"]').disabled=cur===max;
+                  });
+                })();
+                </script>
+                <?php endif; ?>
+    <?php
+    return ob_get_clean();
+}
+
+function renderAdminLteBlogInterstitial(int $userId, string $slug, ?array $profile = null): string {
+    $stmt = getDB()->prepare('SELECT id, title, slug, cover_path, published_at FROM blog_posts WHERE user_id=? AND published_at <= NOW() ORDER BY published_at DESC LIMIT 8');
+    $stmt->execute([$userId]);
+    $posts = $stmt->fetchAll();
+    if (!$posts) {
+        return '';
+    }
+    $tiles = [];
+    foreach ($posts as $p) {
+        $tiles[] = [
+            'url' => blogPostUrl($slug, $p),
+            'image' => $p['cover_path'] ? '/' . $p['cover_path'] : '',
+            'placeholder_icon' => 'bi-newspaper',
+            'title' => $p['title'],
+            'date' => formatItalianDate($p['published_at'], $profile),
+        ];
+    }
+    return renderAdminLteGridCarousel('Ultimi articoli', 'bi-newspaper', '/' . $slug . '/blog', 'Leggi il Blog', $tiles, 'square');
+}
+
+function renderAdminLteVideoInterstitial(array $artist, string $slug): string {
+    if (empty($artist['youtube_channel_id'])) {
+        return '';
+    }
+    require_once __DIR__ . '/youtube.php';
+    $uploadsPlaylistId = 'UU' . substr($artist['youtube_channel_id'], 2);
+    $videos = youtubeGetChannelVideos($uploadsPlaylistId, 8);
+    if (!$videos) {
+        return '';
+    }
+    $tiles = [];
+    foreach ($videos as $v) {
+        $tiles[] = [
+            'url' => '/' . $slug . '/video',
+            'image' => $v['thumbnail'] ?? '',
+            'placeholder_icon' => 'bi-play-btn',
+            'title' => $v['title'],
+            'date' => $v['published_at'] ? date('d/m/Y', strtotime($v['published_at'])) : '',
+        ];
+    }
+    return renderAdminLteGridCarousel('Ultimi video', 'bi-play-btn', '/' . $slug . '/video', 'Tutti i video', $tiles, 'square');
+}
+
+function renderAdminLteCheAmoInterstitial(int $userId, string $slug): string {
+    $db = getDB();
+    $tiles = [];
+    foreach (ADMINLTE_FAN_FAVORITE_KINDS as $kind => $cfg) {
+        $nameCol = $cfg['name_col'];
+        $imgCol = $cfg['image_col'];
+        $tbl = $cfg['table'];
+        $stmt = $db->prepare("SELECT id, {$nameCol} AS name, COALESCE(image_thumb_path, image_path, {$imgCol}) AS img, created_at FROM {$tbl} WHERE user_id=? AND is_public=1 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY created_at DESC LIMIT 4");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll() as $r) {
+            $tiles[] = [
+                'url' => '/' . $slug . '/' . $cfg['list_url_segment'] . '/' . $r['id'],
+                'image' => $r['img'] ?? '',
+                'placeholder_icon' => 'bi-heart',
+                'title' => $r['name'],
+                'subtitle' => $cfg['label'],
+                'sort' => $r['created_at'],
+            ];
+        }
+    }
+    if (!$tiles) {
+        return '';
+    }
+    usort($tiles, fn ($a, $b) => strtotime($b['sort'] ?? '0') <=> strtotime($a['sort'] ?? '0'));
+    $tiles = array_slice($tiles, 0, 16);
+    foreach ($tiles as &$t) { unset($t['sort']); }
+    return renderAdminLteGridCarousel('Che Amo', 'bi-heart', '/' . $slug . '/che-amo', 'Scopri tutto', $tiles, 'circle');
+}
+
 function renderAdminLteMonthlyEventsGrid(int $userId, string $slug, ?array $profile = null): string {
     $db = getDB();
     $stmt = $db->prepare("SELECT id, title, venue, city, cover_path, event_date, is_perpetual
@@ -2206,13 +2354,30 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $uid = (int) $artist['id'];
     $pageSize = 20;
     $feed = getTimelineFeedForUsers([$uid], $pageSize, 0);
-    $html = renderAdminLteTimelineRows($feed, $artist);
     $finished = count($feed) < $pageSize;
-    // Fuori da #timeline-feed apposta: deve restare fisso in cima anche quando lo scroll
-    // infinito aggiunge altri elementi in fondo, non fare parte del flusso che si "consuma"
-    // scorrendo.
     $pinnedHtml = renderAdminLtePinnedCarousel(getPinnedItemsForUser($uid));
     $monthlyEventsHtml = renderAdminLteMonthlyEventsGrid($uid, $slug, $artist);
+
+    $interstitials = array_filter([
+        renderAdminLteBlogInterstitial($uid, $slug, $artist),
+        renderAdminLteVideoInterstitial($artist, $slug),
+        renderAdminLteCheAmoInterstitial($uid, $slug),
+    ]);
+
+    $chunkSize = 3;
+    $feedHtml = '';
+    if ($feed) {
+        $chunks = array_chunk($feed, $chunkSize);
+        $intIdx = 0;
+        foreach ($chunks as $ci => $chunk) {
+            $feedHtml .= renderAdminLteTimelineRows($chunk, $artist);
+            if ($intIdx < count($interstitials)) {
+                $feedHtml .= $interstitials[$intIdx];
+                $intIdx++;
+            }
+        }
+    }
+
     ob_start();
     ?>
                 <?= $pinnedHtml ?>
@@ -2221,7 +2386,7 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
                 <?php if (!$feed): ?>
                   <p class="text-secondary">Nessun aggiornamento ancora.</p>
                 <?php else: ?>
-                  <div id="timeline-feed"><?= $html ?></div>
+                  <div id="timeline-feed"><?= $feedHtml ?></div>
                 <?php endif; ?>
                 <p id="timeline-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
                 <p id="timeline-end" class="text-secondary text-center small" style="display:<?= ($finished && $feed) ? 'block' : 'none' ?>;">Hai visto tutto.</p>
