@@ -4994,30 +4994,43 @@ function renderAdminLteAlbumDetailPage(array $artist, string $slug, array $album
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-md-6 order-1 order-md-2 adminlte-main-col">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title"><?= e('Album') ?></h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
-                    <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                    <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
             <?php if (($isOwner || $isPreview) && (!(int) $album['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo album non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
               <div class="card-body text-center">
-                <?= renderPhotoCarousel($photos, (int) $album['id']) ?>
+                <?php if ($album['cover_path']): ?><img src="/<?= e($album['cover_path']) ?>" alt="" class="rounded mb-3" style="max-width:280px;width:100%;aspect-ratio:1;object-fit:cover;"><?php endif; ?>
                 <h1 class="h4 mb-1"><?= e($album['title']) ?></h1>
                 <p class="text-secondary">Album di <?= e($album['display_name']) ?> · <?= count($photos) ?> foto</p>
                 <?php if (!empty($album['description'])): ?><p class="text-start mt-2"><?= nl2br(e($album['description'])) ?></p><?php endif; ?>
               </div>
             </div>
-            </div>
-            </div>
+            <?php if ($photos): ?>
+              <div class="card mb-3">
+                <div class="card-body p-2">
+                  <div class="row g-1">
+                    <?php foreach ($photos as $i => $ph): ?>
+                      <div class="col-4 col-lg-3">
+                        <a href="/<?= e($ph) ?>" class="ig-grid-item d-block" data-lightbox="album-<?= (int) $album['id'] ?>" data-index="<?= $i ?>">
+                          <img src="/<?= e($ph) ?>" alt="" loading="lazy" class="rounded-1" style="width:100%;aspect-ratio:1;object-fit:cover;">
+                        </a>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                </div>
+              </div>
+              <div class="ig-lightbox" data-post="album-<?= (int) $album['id'] ?>">
+                <button type="button" class="ig-lightbox-close" aria-label="Chiudi">✕</button>
+                <div class="ig-lightbox-track">
+                  <?php foreach ($photos as $ph): ?><img src="/<?= e($ph) ?>" alt="" loading="lazy"><?php endforeach; ?>
+                </div>
+                <button type="button" class="ig-arrow ig-arrow-prev" aria-label="Foto precedente">‹</button>
+                <button type="button" class="ig-arrow ig-arrow-next" aria-label="Foto successiva">›</button>
+                <div class="ig-lightbox-counter"></div>
+              </div>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessuna foto in questo album.</div></div>
+            <?php endif; ?>
           </div>
         </div>
       </div>
