@@ -2925,8 +2925,9 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                       <span class="description"><?php
                         $pubDt = new DateTime($post['published_at']);
                         $pubDt->setTimezone(new DateTimeZone(profileTimezoneName($artist)));
-                        $fmt = new IntlDateFormatter('it_IT', IntlDateFormatter::FULL, IntlDateFormatter::NONE, $pubDt->getTimezone());
-                        echo e($fmt->format($pubDt));
+                        $giorniIt = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+                        $mesiIt = ['','gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+                        echo e($giorniIt[(int)$pubDt->format('w')] . ' ' . $pubDt->format('j') . ' ' . $mesiIt[(int)$pubDt->format('n')] . ' ' . $pubDt->format('Y'));
                       ?></span>
                     </div>
                   </div>
