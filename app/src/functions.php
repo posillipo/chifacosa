@@ -7606,6 +7606,65 @@ function getScheduledContentForUser(int $userId, ?string $slug = null): array {
     return $items;
 }
 
+// Come getScheduledContentForUser(), ma raccoglie gli elementi di TUTTI gli account — riservata
+// all'admin. Ogni riga include user_id, slug e display_name del proprietario per il filtro
+// account-per-account e per mostrare a chi appartiene ciascun contenuto.
+function getScheduledContentForAllUsers(): array {
+    $db = getDB();
+    $items = [];
+    foreach (PINNABLE_CONTENT_TYPES as $type => $cfg) {
+        $col = pinnableScheduleColumn($cfg['visibility']);
+        if ($col === null) {
+            continue;
+        }
+        try {
+            $stmt = $db->query(
+                "SELECT t.*, u.slug AS user_slug, p.display_name AS user_display_name
+                 FROM {$cfg['table']} t
+                 JOIN users u ON u.id = t.user_id
+                 LEFT JOIN profiles p ON p.user_id = u.id
+                 WHERE t.{$col} > NOW()
+                 ORDER BY t.{$col} ASC"
+            );
+        } catch (\Throwable $e) {
+            continue;
+        }
+        foreach ($stmt->fetchAll() as $row) {
+            $title = trim((string) ($row[$cfg['title_col']] ?? ''));
+            if ($title === '') {
+                $title = !empty($row['title']) ? $row['title'] : (!empty($row['image_path']) ? '📷 Foto' : '(senza titolo)');
+            }
+            $cover = null;
+            foreach ($cfg['cover_cols'] as $coverCol) {
+                if (!empty($row[$coverCol])) {
+                    $cover = $row[$coverCol];
+                    break;
+                }
+            }
+            $slug = $row['user_slug'];
+            $previewUrl = null;
+            if ($slug) {
+                $publicPath = ($type === 'blog') ? blogPostUrl($slug, $row) : sprintf($cfg['url_tpl'], $slug, (int) $row['id']);
+                $previewUrl = withPreviewToken(siteUrl($publicPath), $type, (int) $row['id']);
+            }
+            $items[] = [
+                'type' => $type,
+                'label' => $cfg['label'],
+                'title' => $title,
+                'cover' => $cover,
+                'scheduled_for' => $row[$col],
+                'edit_url' => sprintf(SCHEDULABLE_DASHBOARD_URLS[$type] ?? '#', (int) $row['id']),
+                'preview_url' => $previewUrl,
+                'user_id' => (int) $row['user_id'],
+                'user_slug' => $slug,
+                'user_display_name' => $row['user_display_name'] ?: $slug,
+            ];
+        }
+    }
+    usort($items, fn ($a, $b) => strtotime($a['scheduled_for']) <=> strtotime($b['scheduled_for']));
+    return $items;
+}
+
 // Token di "anteprima riservata": permette di aprire un contenuto non ancora pubblico (privato o
 // programmato nel futuro) senza essere autenticati — serve ad esempio al Tool di Meta per le
 // Anteprime (Sharing Debugger), che non ha una sessione, per poter leggere gli og:tag prima che il

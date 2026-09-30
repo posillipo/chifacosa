@@ -97,6 +97,7 @@ $dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'act
 // Come "Primo Piano"/"API": strumento di gestione trasversale a tutti i moduli, non una sezione
 // del sito pubblico — sempre visibile, non legato al "Menu di Navigazione".
 $dashTabs['schedule'] = ['label' => 'Programmati', 'url' => '/dashboard_schedule.php', 'active' => 'schedule', 'visible' => true];
+$dashTabs['schedule_admin'] = ['label' => 'Calendario', 'url' => '/dashboard_schedule_admin.php', 'active' => 'schedule_admin', 'visible' => !empty($user['is_admin'])];
 // Interfaccia umana sulla bacheca condivisa con le AI (board_messages) — finora accessibile solo
 // via API/MCP con firma. Scrive sempre come "direttore" (autenticazione = sessione già loggata,
 // più forte di qualunque firma), senza passare dall'endpoint pubblico. Come API/Programmati:
