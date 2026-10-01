@@ -10,19 +10,23 @@ $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $t = getProfileTracking($profile);
+    $form = $_POST['_form'] ?? 'tracking';
 
-    $t['privacy_script'] = $_POST['privacy_script'] ?? '';
-    $t['privacy_policy_url'] = trim($_POST['privacy_policy_url'] ?? '');
-    $t['ga_measurement_id'] = trim($_POST['ga_measurement_id'] ?? '');
-    $t['gtm_head_script'] = $_POST['gtm_head_script'] ?? '';
-    $t['gtm_body_script'] = $_POST['gtm_body_script'] ?? '';
-    $t['fb_pixel_script'] = $_POST['fb_pixel_script'] ?? '';
-    $t['fb_pixel_id'] = trim($_POST['fb_pixel_id'] ?? '');
-    $newCapiToken = trim($_POST['fb_capi_token'] ?? '');
-    if ($newCapiToken !== '') {
-        $t['fb_capi_token'] = $newCapiToken;
-    } elseif (!empty($_POST['fb_capi_token_clear'])) {
-        $t['fb_capi_token'] = '';
+    if ($form === 'tracking') {
+        $t['privacy_script'] = $_POST['privacy_script'] ?? '';
+        $t['privacy_policy_url'] = trim($_POST['privacy_policy_url'] ?? '');
+        $t['ga_measurement_id'] = trim($_POST['ga_measurement_id'] ?? '');
+        $t['gtm_head_script'] = $_POST['gtm_head_script'] ?? '';
+        $t['gtm_body_script'] = $_POST['gtm_body_script'] ?? '';
+        $t['fb_pixel_script'] = $_POST['fb_pixel_script'] ?? '';
+    } else {
+        $t['fb_pixel_id'] = trim($_POST['fb_pixel_id'] ?? '');
+        $newCapiToken = trim($_POST['fb_capi_token'] ?? '');
+        if ($newCapiToken !== '') {
+            $t['fb_capi_token'] = $newCapiToken;
+        } elseif (!empty($_POST['fb_capi_token_clear'])) {
+            $t['fb_capi_token'] = '';
+        }
     }
 
     $json = json_encode($t);
@@ -62,6 +66,7 @@ include __DIR__ . '/_dash_header.php';
 
   <form method="post" class="card">
     <?= csrfField() ?>
+    <input type="hidden" name="_form" value="tracking">
     <label>Script privacy / cookie (HTML/JS fornito dal tuo servizio, es. Iubenda, Cookiebot)</label>
     <textarea name="privacy_script" rows="8" placeholder="&lt;script type=&quot;text/javascript&quot;&gt;...&lt;/script&gt;"><?= e($t['privacy_script'] ?? '') ?></textarea>
 
@@ -99,12 +104,7 @@ include __DIR__ . '/_dash_header.php';
   </div>
   <form method="post" class="card">
     <?= csrfField() ?>
-    <input type="hidden" name="privacy_script" value="<?= e($t['privacy_script'] ?? '') ?>">
-    <input type="hidden" name="privacy_policy_url" value="<?= e($t['privacy_policy_url'] ?? '') ?>">
-    <input type="hidden" name="ga_measurement_id" value="<?= e($t['ga_measurement_id'] ?? '') ?>">
-    <input type="hidden" name="gtm_head_script" value="<?= e($t['gtm_head_script'] ?? '') ?>">
-    <input type="hidden" name="gtm_body_script" value="<?= e($t['gtm_body_script'] ?? '') ?>">
-    <input type="hidden" name="fb_pixel_script" value="<?= e($t['fb_pixel_script'] ?? '') ?>">
+    <input type="hidden" name="_form" value="capi">
 
     <label>ID del Pixel</label>
     <input type="text" name="fb_pixel_id" placeholder="es. 123456789012345" value="<?= e($t['fb_pixel_id'] ?? '') ?>">
