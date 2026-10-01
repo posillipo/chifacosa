@@ -47,21 +47,20 @@ include __DIR__ . '/_dash_header.php';
 ?>
 
 <style>
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:24px}
-.cal-cell{min-height:70px;border:1px solid var(--border-color,#dee2e6);border-radius:4px;padding:3px;font-size:11px;background:var(--card-bg,#fff)}
-.cal-cell.today{border-color:#0d6efd;border-width:2px}
-.cal-cell.empty{background:transparent;border-color:transparent}
+.cal-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-bottom:24px}
+.cal-table th{text-align:center;font-size:11px;font-weight:700;color:var(--text-muted,#6c757d);text-transform:uppercase;padding:0 0 4px}
+.cal-table td{vertical-align:top;min-height:70px;height:70px;border:1px solid var(--border-color,#dee2e6);border-radius:4px;padding:3px;font-size:11px;background:var(--card-bg,#fff);overflow:hidden}
+.cal-table td.today{border-color:#0d6efd;border-width:2px}
+.cal-table td.empty{background:transparent;border-color:transparent}
 .cal-date{font-weight:700;margin-bottom:2px;color:var(--text-muted,#6c757d);font-size:11px}
-.cal-cell.today .cal-date{color:#0d6efd}
-.cal-item{display:flex;gap:3px;align-items:center;padding:1px 2px;border-radius:3px;margin-bottom:1px;cursor:pointer;text-decoration:none;color:inherit;font-size:10px;line-height:1.3}
+td.today .cal-date{color:#0d6efd}
+.cal-item{display:flex;gap:3px;align-items:center;padding:1px 2px;border-radius:3px;margin-bottom:1px;cursor:pointer;text-decoration:none;color:inherit;font-size:10px;line-height:1.3;overflow:hidden}
 .cal-item:hover{background:rgba(0,0,0,.06)}
 .cal-item img{width:18px;height:18px;border-radius:2px;object-fit:cover;flex-shrink:0}
 .cal-item-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .cal-item-time{font-size:9px;color:var(--text-muted,#6c757d);white-space:nowrap;flex-shrink:0}
 .cal-type-badge{display:inline-block;font-size:8px;font-weight:700;padding:1px 3px;border-radius:999px;white-space:nowrap;color:#fff;line-height:1.3;flex-shrink:0}
 .cal-more{font-size:10px;color:var(--text-muted);padding:1px 2px;cursor:pointer}
-.cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
-.cal-header span{text-align:center;font-size:11px;font-weight:700;color:var(--text-muted,#6c757d);text-transform:uppercase}
 .view-toggle{display:inline-flex;gap:0;border:1px solid var(--border-color,#dee2e6);border-radius:6px;overflow:hidden}
 .view-toggle a{padding:6px 14px;font-size:13px;text-decoration:none;color:var(--text-muted,#6c757d);border-right:1px solid var(--border-color,#dee2e6)}
 .view-toggle a:last-child{border-right:none}
@@ -118,27 +117,35 @@ include __DIR__ . '/_dash_header.php';
 
 <?php $dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']; ?>
 
-<!-- Desktop: griglia 7 colonne -->
+<!-- Desktop: tabella 7 colonne a larghezza fissa -->
 <div class="cal-desktop">
-<div class="cal-header">
+<table class="cal-table">
+<thead><tr>
   <?php foreach ($dayNames as $dn): ?>
-    <span><?= $dn ?></span>
+    <th><?= $dn ?></th>
   <?php endforeach; ?>
-</div>
-<div class="cal-grid">
+</tr></thead>
+<tbody>
 <?php
 $cursor = clone $calendarStart;
 $startDow = (int) $calendarStart->format('N');
+$cellIndex = 0;
+
+echo '<tr>';
 for ($pad = 1; $pad < $startDow; $pad++) {
-    echo '<div class="cal-cell empty"></div>';
+    echo '<td class="empty"></td>';
+    $cellIndex++;
 }
 for ($day = 0; $day < 30; $day++):
+    if ($cellIndex > 0 && $cellIndex % 7 === 0) {
+        echo '</tr><tr>';
+    }
     $dateKey = $cursor->format('Y-m-d');
     $isToday = $dateKey === $today->format('Y-m-d');
     $dayItems = $byDate[$dateKey] ?? [];
     $maxShow = 4;
 ?>
-  <div class="cal-cell<?= $isToday ? ' today' : '' ?>">
+  <td class="<?= $isToday ? 'today' : '' ?>">
     <div class="cal-date"><?= $cursor->format('d') ?> <?= strtolower($cursor->format('M')) ?></div>
     <?php foreach (array_slice($dayItems, 0, $maxShow) as $it):
         $bg = $typeBg[$it['type']] ?? '#999';
@@ -156,12 +163,22 @@ for ($day = 0; $day < 30; $day++):
     <?php if (count($dayItems) > $maxShow): ?>
       <div class="cal-more">+<?= count($dayItems) - $maxShow ?> altri</div>
     <?php endif; ?>
-  </div>
+  </td>
 <?php
+    $cellIndex++;
     $cursor->modify('+1 day');
 endfor;
+// Celle vuote per completare l'ultima riga
+$remainder = $cellIndex % 7;
+if ($remainder > 0) {
+    for ($pad = $remainder; $pad < 7; $pad++) {
+        echo '<td class="empty"></td>';
+    }
+}
 ?>
-</div>
+</tr>
+</tbody>
+</table>
 </div>
 
 <!-- Mobile: lista per giorno (solo giorni con contenuti + oggi) -->
