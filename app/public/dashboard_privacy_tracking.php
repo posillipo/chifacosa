@@ -25,11 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $t['fb_capi_token'] = '';
     }
 
+    $json = json_encode($t);
     $stmt = getDB()->prepare('UPDATE profiles SET privacy_tracking_settings=? WHERE user_id=?');
-    $stmt->execute([json_encode($t), $profile['id']]);
+    $stmt->execute([$json, $profile['id']]);
     $success = 'Impostazioni aggiornate. Saranno visibili sulla tua pagina pubblica entro pochi secondi.';
-    $user = currentUser();
-    $profile = getActingProfile($user);
+    $profile['privacy_tracking_settings'] = $json;
 }
 
 $t = getProfileTracking($profile);
