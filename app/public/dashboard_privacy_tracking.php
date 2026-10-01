@@ -6,10 +6,21 @@ $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'privacy_tracking';
 $pageTitle = 'Privacy e Tracking';
 $success = null;
+$profileUserId = (int) $profile['id'];
+
+// Read privacy_tracking_settings directly from DB — never rely on currentUser() having the column.
+function _readTrackingFromDB(int $uid): array {
+    $stmt = getDB()->prepare('SELECT privacy_tracking_settings FROM profiles WHERE user_id = ?');
+    $stmt->execute([$uid]);
+    $raw = $stmt->fetchColumn();
+    if (!$raw) return [];
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    $t = getProfileTracking($profile);
+    $t = _readTrackingFromDB($profileUserId);
     $form = $_POST['_form'] ?? 'tracking';
 
     if ($form === 'tracking') {
@@ -31,12 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $json = json_encode($t);
     $stmt = getDB()->prepare('UPDATE profiles SET privacy_tracking_settings=? WHERE user_id=?');
-    $stmt->execute([$json, $profile['id']]);
+    $stmt->execute([$json, $profileUserId]);
     $success = 'Impostazioni aggiornate. Saranno visibili sulla tua pagina pubblica entro pochi secondi.';
-    $profile['privacy_tracking_settings'] = $json;
 }
 
-$t = getProfileTracking($profile);
+$t = _readTrackingFromDB($profileUserId);
 $hasCapiToken = trim($t['fb_capi_token'] ?? '') !== '';
 $anyFilled = trim($t['privacy_script'] ?? '') !== ''
     || trim($t['ga_measurement_id'] ?? '') !== ''
