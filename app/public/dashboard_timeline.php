@@ -7,6 +7,14 @@ $activeTab = 'timeline';
 $pageTitle = 'Feed';
 
 const DASH_TIMELINE_PAGE_SIZE = 20;
+$viewMode = $_GET['view'] ?? ($_COOKIE['dash_feed_view'] ?? 'list');
+if (!in_array($viewMode, ['list', 'card'], true)) {
+    $viewMode = 'list';
+}
+if (isset($_GET['view'])) {
+    setcookie('dash_feed_view', $viewMode, time() + 86400 * 365, '/', '', false, true);
+}
+
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
 $feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0);
@@ -21,6 +29,37 @@ if ($followedIds) {
 
 include __DIR__ . '/_dash_header.php';
 ?>
+  <style>
+  .dtc-card{display:block;text-decoration:none;color:inherit;background:var(--card-bg);border:1px solid #e2e2e7;border-radius:12px;margin-bottom:14px;overflow:hidden;transition:box-shadow .15s}
+  .dtc-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+  .dtc-mine{border-left:3px solid var(--accent)}
+  .dtc-header{display:flex;gap:10px;align-items:center;padding:12px 14px 8px}
+  .dtc-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}
+  .dtc-author{flex:1;min-width:0}
+  .dtc-name{font-weight:600;font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dtc-you{color:var(--accent);font-weight:700}
+  .dtc-date{font-size:12px;color:var(--text-muted)}
+  .dtc-badge{font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0}
+  .dtc-cover{width:100%;max-height:420px;object-fit:cover;display:block}
+  .dtc-body{padding:10px 14px 14px}
+  .dtc-body strong{font-size:15px;line-height:1.35;display:block;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  .dtc-evento-info{font-size:12.5px;color:var(--text-muted);margin-top:4px}
+  </style>
+
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">
+    <div class="section-title" style="margin:0;flex:1;min-width:140px;">Feed</div>
+    <div class="view-toggle">
+      <a href="?view=list" class="<?= $viewMode === 'list' ? 'active' : '' ?>">☰ Lista</a>
+      <a href="?view=card" class="<?= $viewMode === 'card' ? 'active' : '' ?>">🖼️ Card</a>
+    </div>
+  </div>
+  <style>
+  .view-toggle{display:inline-flex;gap:0;border:1px solid #d5d5da;border-radius:6px;overflow:hidden}
+  .view-toggle a{padding:6px 14px;font-size:13px;text-decoration:none;color:var(--text-muted,#6c757d);border-right:1px solid #d5d5da}
+  .view-toggle a:last-child{border-right:none}
+  .view-toggle a.active{background:var(--accent);color:#fff}
+  </style>
+
   <details class="help-box">
     <summary>👥 Band Seguite (<?= count($followedBands) ?>)</summary>
     <div style="padding:0 16px 14px;">
@@ -92,7 +131,7 @@ include __DIR__ . '/_dash_header.php';
   <?php else: ?>
     <div id="dash-timeline-feed">
       <?php foreach ($feed as $item): ?>
-        <?= renderDashboardTimelineItem($item, $profile['slug']) ?>
+        <?= $viewMode === 'card' ? renderDashboardTimelineCard($item, $profile['slug']) : renderDashboardTimelineItem($item, $profile['slug']) ?>
       <?php endforeach; ?>
     </div>
     <div id="dash-timeline-sentinel" style="height:1px;"></div>
@@ -102,6 +141,7 @@ include __DIR__ . '/_dash_header.php';
     (function () {
       var offset = <?= count($feed) ?>;
       var pageSize = <?= DASH_TIMELINE_PAGE_SIZE ?>;
+      var viewMode = <?= json_encode($viewMode) ?>;
       var loading = false;
       var finished = <?= count($feed) < DASH_TIMELINE_PAGE_SIZE ? 'true' : 'false' ?>;
       var feedEl = document.getElementById('dash-timeline-feed');
@@ -113,7 +153,7 @@ include __DIR__ . '/_dash_header.php';
         if (loading || finished) return;
         loading = true;
         loadingEl.style.display = 'block';
-        fetch('/dashboard_timeline_more.php?offset=' + offset)
+        fetch('/dashboard_timeline_more.php?offset=' + offset + '&view=' + viewMode)
           .then(function (r) { return r.json(); })
           .then(function (data) {
             loadingEl.style.display = 'none';

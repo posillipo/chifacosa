@@ -8183,6 +8183,53 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     return $html;
 }
 
+function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): string {
+    $cover = $item['cover'];
+    $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
+    $label = $labels[$item['tipo']] ?? '';
+    $eventoInfo = '';
+    if ($item['tipo'] === 'evento') {
+        $scheduleLabel = eventScheduleLabel($item['evento_recurrence'] ?? 'none', (bool) ($item['evento_is_perpetual'] ?? false));
+        if ($scheduleLabel) {
+            $eventoInfo = ' · ' . e($scheduleLabel);
+        } elseif (!empty($item['evento_quando'])) {
+            $eventoInfo = ' · si terrà il ' . e(formatLocalDateTime($item['evento_quando'], ['dashboard_theme' => $item['owner_tz'] ?? null]));
+        }
+    }
+    $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
+    $mineClass = $isMine ? ' dtc-mine' : '';
+    $html = '<a href="' . e($item['url']) . '" class="dtc-card' . $mineClass . '">';
+    // header: avatar + nome + badge tipo
+    $html .= '<div class="dtc-header">';
+    if (!empty($item['avatar'])) {
+        $html .= '<img class="dtc-avatar" src="/' . e($item['avatar']) . '">';
+    }
+    $html .= '<div class="dtc-author">';
+    $html .= '<span class="dtc-name">' . e($item['display_name']);
+    if ($isMine) {
+        $html .= ' <span class="dtc-you">(tu)</span>';
+    }
+    $html .= '</span>';
+    $html .= '<span class="dtc-date">' . e(formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . '</span>';
+    $html .= '</div>';
+    $html .= '<span class="dtc-badge">' . e($label) . '</span>';
+    $html .= '</div>';
+    // foto grande
+    if ($coverSrc) {
+        $html .= '<img class="dtc-cover" src="' . e($coverSrc) . '">';
+    }
+    // titolo + info evento
+    $html .= '<div class="dtc-body">';
+    $html .= '<strong>' . e($item['titolo']) . '</strong>';
+    if ($eventoInfo) {
+        $html .= '<div class="dtc-evento-info">' . $eventoInfo . '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</a>';
+    return $html;
+}
+
 function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];

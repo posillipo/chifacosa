@@ -8,6 +8,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 $offset = max(0, (int) ($_GET['offset'] ?? 0));
 $pageSize = 20;
+$viewMode = ($_GET['view'] ?? 'list') === 'card' ? 'card' : 'list';
 
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
@@ -15,7 +16,9 @@ $items = getTimelineFeedForUsers($feedUserIds, $pageSize, $offset);
 
 $html = '';
 foreach ($items as $item) {
-    $html .= renderDashboardTimelineItem($item, $profile['slug']);
+    $html .= $viewMode === 'card'
+        ? renderDashboardTimelineCard($item, $profile['slug'])
+        : renderDashboardTimelineItem($item, $profile['slug']);
 }
 
 echo json_encode(['html' => $html, 'count' => count($items)]);
