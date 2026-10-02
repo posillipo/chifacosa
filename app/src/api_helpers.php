@@ -763,3 +763,122 @@ function generateBoardActorSignature(): array {
     $signature = bin2hex(random_bytes(20)); // 40 caratteri esadecimali
     return ['signature' => $signature, 'hash' => hash('sha256', $signature)];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Album fotografici (/api/v1/albums/*): CRUD sugli album con accesso alla URL pubblica di ogni
+// foto. Il connettore MCP ha bisogno della URL pubblica indipendentemente dal flag is_public
+// dell'album — le immagini restano raggiungibili via URL diretto anche se l'album è privato (è
+// la pagina pubblica che decide di non mostrarli, non un meccanismo di protezione del file).
+// ---------------------------------------------------------------------------------------------
+
+function apiDeriveAlbumStatus(array $album): string {
+    if (!((int) ($album['is_public'] ?? 1))) {
+        return 'private';
+    }
+    if (!empty($album['publish_at']) && strtotime($album['publish_at']) > time()) {
+        return 'scheduled';
+    }
+    return 'published';
+}
+
+function apiSerializeAlbum(array $album, string $slug): array {
+    $photos = [];
+    if ($album['cover_path']) {
+        $photos[] = siteUrl('/' . $album['cover_path']);
+    }
+    foreach (getAlbumPhotos((int) $album['id']) as $p) {
+        $photos[] = siteUrl('/' . $p);
+    }
+    return [
+        'id' => (int) $album['id'],
+        'title' => $album['title'],
+        'description' => $album['description'] ?? null,
+        'cover_image_url' => $album['cover_path'] ? siteUrl('/' . $album['cover_path']) : null,
+        'photos' => $photos,
+        'photo_count' => count($photos),
+        'status' => apiDeriveAlbumStatus($album),
+        'is_public' => (bool) ((int) ($album['is_public'] ?? 1)),
+        'include_in_feed' => (bool) ((int) ($album['in_feed'] ?? 1)),
+        'publish_at' => apiFormatDateTimeRome($album['publish_at'] ?? null),
+        'created_at' => apiFormatDateTimeRome($album['created_at'] ?? null),
+        'url' => siteUrl('/' . $slug . '/album/' . (int) $album['id']),
+    ];
+}
+
+function apiValidateAlbumPayload(array $data, bool $partial): array {
+    $values = [];
+
+    if (array_key_exists('title', $data)) {
+        $title = trim((string) $data['title']);
+        if (mb_strlen($title) > 150) {
+            return ['error' => 'Il campo "title" supera i 150 caratteri consentiti.', 'values' => []];
+        }
+        if (!$partial && $title === '') {
+            return ['error' => 'Il campo "title" è obbligatorio.', 'values' => []];
+        }
+        if ($partial && $title === '') {
+            return ['error' => 'Il campo "title" non può essere svuotato.', 'values' => []];
+        }
+        $values['title'] = $title;
+    }
+    if (array_key_exists('description', $data)) {
+        $values['description'] = trim((string) $data['description']) ?: null;
+    }
+    if (array_key_exists('is_public', $data)) {
+        $values['is_public'] = !empty($data['is_public']) ? 1 : 0;
+    }
+    if (array_key_exists('include_in_feed', $data)) {
+        $values['in_feed'] = !empty($data['include_in_feed']) ? 1 : 0;
+    }
+    if (array_key_exists('publish_at', $data)) {
+        $raw = trim((string) $data['publish_at']);
+        if ($raw === '' || $raw === 'null') {
+            $values['publish_at'] = null;
+        } else {
+            try {
+                $dt = new DateTime($raw);
+                $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+                $values['publish_at'] = $dt->format('Y-m-d H:i:s');
+            } catch (Exception $e) {
+                return ['error' => 'Il campo "publish_at" non è una data valida (usa il formato ISO 8601).', 'values' => []];
+            }
+        }
+    }
+
+    if (array_key_exists('cover_image_url', $data) && trim((string) $data['cover_image_url']) !== '') {
+        $imageUrl = trim((string) $data['cover_image_url']);
+        if (!filter_var($imageUrl, FILTER_VALIDATE_URL) || !isSafePublicUrl($imageUrl)) {
+            return ['error' => 'Il campo "cover_image_url" non è un URL pubblico valido.', 'values' => []];
+        }
+        $values['cover_image_url'] = $imageUrl;
+    }
+
+    if (array_key_exists('extra_photo_urls', $data)) {
+        if (!is_array($data['extra_photo_urls'])) {
+            return ['error' => 'Il campo "extra_photo_urls" deve essere un elenco di URL.', 'values' => []];
+        }
+        if (count($data['extra_photo_urls']) > 50) {
+            return ['error' => 'Massimo 50 foto per album.', 'values' => []];
+        }
+        foreach ($data['extra_photo_urls'] as $u) {
+            $u = trim((string) $u);
+            if (!filter_var($u, FILTER_VALIDATE_URL) || !isSafePublicUrl($u)) {
+                return ['error' => "L'URL \"$u\" non è un URL pubblico valido.", 'values' => []];
+            }
+        }
+        $values['extra_photo_urls'] = $data['extra_photo_urls'];
+    }
+
+    return ['error' => null, 'values' => $values];
+}
+
+function apiDownloadAndSaveAlbumPhotos(array $urls, string $slug): array {
+    $saved = [];
+    foreach ($urls as $url) {
+        $downloaded = downloadImageFromUrlAsCover(trim($url), $slug);
+        if ($downloaded !== null) {
+            $saved[] = $downloaded['image_path'];
+        }
+    }
+    return $saved;
+}

@@ -188,7 +188,7 @@ const BOARD_SIGNATURE_NOTE = 'Ogni scrittura va firmata: il segreto assegnato al
 const boardActorSchema = z.string().regex(/^[a-z0-9_-]{2,30}$/);
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.9.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.10.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -368,6 +368,61 @@ function buildMcpServer() {
         description: 'Scambia la posizione di un elemento fissato con quello immediatamente sopra o sotto nel carosello "Primo Piano" (dato il suo pin_id, vedi list_pinned_items). Restituisce l\'elenco aggiornato.',
         inputSchema: { ...profileField, pin_id: z.number().int().describe('ID del pin da spostare (campo pin_id di list_pinned_items)'), direction: z.enum(['up', 'down']).describe('up = verso l\'inizio del carosello, down = verso la fine') },
     }, async ({ profile, pin_id, direction }) => toolResult(await chifacosaApi(profile, `/pinned-items/${pin_id}`, { method: 'PUT', body: { direction } })));
+
+    // Album fotografici: CRUD con accesso alla URL pubblica di ogni foto, indipendentemente dal
+    // flag is_public dell'album (le immagini restano raggiungibili via URL, la privacy riguarda
+    // solo la pagina pubblica che le mostra).
+    const albumFieldsSchema = {
+        title: z.string().max(150).optional().describe('Titolo dell\'album (max 150 caratteri)'),
+        description: z.string().optional().describe('Descrizione dell\'album (opzionale)'),
+        cover_image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da usare come copertina dell\'album'),
+        extra_photo_urls: z.array(z.string().url()).max(50).optional().describe('Elenco di URL di foto aggiuntive da scaricare e aggiungere all\'album (max 50). In un aggiornamento (update_album), sostituiscono TUTTE le foto extra esistenti.'),
+        is_public: z.boolean().optional().describe('true (default) = album visibile sulla pagina pubblica, false = solo per te (le URL delle foto restano comunque accessibili)'),
+        include_in_feed: z.boolean().optional().describe('true (default) = compare anche nel feed RSS, false = resta pubblico ma non finisce nel feed'),
+        publish_at: z.string().optional().describe('Data/ora di pubblicazione programmata in ISO 8601 — se futura l\'album resta nascosto fino ad allora, se omessa si pubblica subito'),
+    };
+
+    server.registerTool('list_albums', {
+        title: 'Elenca gli album fotografici di un profilo',
+        description: 'Elenca gli album fotografici del profilo scelto, con filtro opzionale per visibilità (public/private) e paginazione. Ogni album include la lista completa delle URL pubbliche di tutte le foto.',
+        inputSchema: {
+            ...profileField,
+            visibility: z.enum(['public', 'private']).optional().describe('Filtra per visibilità: public = solo album pubblici, private = solo privati. Ometti per entrambi.'),
+            page: z.number().int().min(1).optional(),
+            per_page: z.number().int().min(1).max(100).optional(),
+        },
+    }, async ({ profile, ...args }) => {
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(args || {})) {
+            if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+        const qs = params.toString();
+        return toolResult(await chifacosaApi(profile, '/albums/list' + (qs ? `?${qs}` : '')));
+    });
+
+    server.registerTool('get_album', {
+        title: 'Dettaglio di un album fotografico',
+        description: 'Recupera i dettagli di un singolo album fotografico di un profilo, dato il suo ID. Include la lista completa delle URL pubbliche di tutte le foto, indipendentemente dal flag is_public.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'album') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/albums/${id}`)));
+
+    server.registerTool('create_album', {
+        title: 'Crea un album fotografico su un profilo CHIFACOSA',
+        description: 'Crea un nuovo album fotografico (pubblico o privato, subito o programmato). Richiede title. Usa cover_image_url per la copertina e extra_photo_urls per le foto aggiuntive: verranno scaricate e salvate nel profilo.',
+        inputSchema: { ...profileField, ...albumFieldsSchema },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/albums/create', { method: 'POST', body: fields })));
+
+    server.registerTool('update_album', {
+        title: 'Modifica un album fotografico',
+        description: 'Modifica un album fotografico esistente di un profilo. Tutti i campi oltre a profile/id sono opzionali. Se passi extra_photo_urls, le foto esistenti vengono sostituite interamente dalle nuove.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'album da modificare'), ...albumFieldsSchema },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/albums/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('delete_album', {
+        title: 'Elimina un album fotografico',
+        description: 'Elimina definitivamente un album fotografico di un profilo, dato il suo ID. Tutte le foto vengono rimosse dal disco.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID dell\'album da eliminare') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/albums/${id}`, { method: 'DELETE' })));
 
     server.registerTool('create_event', {
         title: 'Crea un evento su un profilo CHIFACOSA',

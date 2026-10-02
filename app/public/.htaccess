@@ -71,6 +71,12 @@ RewriteRule ^api/v1/board/create/?$ api_board_create.php [L,QSA]
 RewriteRule ^api/v1/board/list/?$ api_board_list.php [L,QSA]
 RewriteRule ^api/v1/board/([0-9]+)/?$ api_board_item.php?id=$1 [L,QSA]
 
+# API pubblica /api/v1/albums/* — stesso token Bearer delle altre risorse, gestione album
+# fotografici (CRUD + accesso alle URL pubbliche di ogni foto).
+RewriteRule ^api/v1/albums/create/?$ api_albums_create.php [L,QSA]
+RewriteRule ^api/v1/albums/list/?$ api_albums_list.php [L,QSA]
+RewriteRule ^api/v1/albums/([0-9]+)/?$ api_albums_item.php?id=$1 [L,QSA]
+
 # API pubblica /api/v1/pinned-items/* — gestione "Primo Piano" (carosello di elementi fissati in
 # cima alla Timeline pubblica), stesso token Bearer delle altre risorse. search/list operano su
 # tutti i tipi di contenuto pinnabili del profilo (vedi PINNABLE_CONTENT_TYPES).
