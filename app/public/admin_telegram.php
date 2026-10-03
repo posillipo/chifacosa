@@ -1,5 +1,8 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/telegram.php';
 $admin = requireAdmin();
@@ -23,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $testResult = $me
                 ? ['ok' => true, 'msg' => 'Connessione riuscita! Bot: @' . ($me['username'] ?? '?') . ' (' . ($me['first_name'] ?? '') . ')']
                 : ['ok' => false, 'msg' => 'Connessione fallita. Controlla il Bot Token.'];
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $testResult = ['ok' => false, 'msg' => 'Errore di connessione: ' . $e->getMessage()];
         }
     } elseif ($action === 'setup_webhook') {
@@ -34,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $webhookResult = $result !== null
                 ? ['ok' => true, 'msg' => 'Webhook registrato: ' . $webhookUrl]
                 : ['ok' => false, 'msg' => 'Registrazione webhook fallita. Verifica che il sito sia raggiungibile via HTTPS.'];
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $webhookResult = ['ok' => false, 'msg' => 'Errore: ' . $e->getMessage()];
         }
     } elseif ($action === 'delete_webhook') {
@@ -43,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $webhookResult = $result !== null
                 ? ['ok' => true, 'msg' => 'Webhook rimosso.']
                 : ['ok' => false, 'msg' => 'Rimozione webhook fallita.'];
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $webhookResult = ['ok' => false, 'msg' => 'Errore: ' . $e->getMessage()];
         }
     }
@@ -56,7 +59,7 @@ try {
     if (getTelegramBotToken()) {
         $webhookInfo = telegramGetWebhookInfo();
     }
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     // Ignora errori API
 }
 

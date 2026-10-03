@@ -87,7 +87,7 @@ try {
         $me = telegramGetMe();
         $botUsername = $me['username'] ?? null;
     }
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     // Ignora errori API
 }
 
