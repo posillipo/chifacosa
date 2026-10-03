@@ -1245,6 +1245,32 @@ inviato automaticamente al canale collegato (con immagine, testo e link alla pag
 
 ---
 
+## 59. Telegram: pubblicazione DA Telegram (webhook, collegamento account, pending posts)
+```sql
+ALTER TABLE profiles
+  ADD COLUMN telegram_user_id BIGINT DEFAULT NULL,
+  ADD COLUMN telegram_link_code VARCHAR(20) DEFAULT NULL,
+  ADD COLUMN telegram_link_expires DATETIME DEFAULT NULL;
+
+CREATE TABLE IF NOT EXISTS telegram_pending_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    telegram_user_id BIGINT NOT NULL,
+    profile_user_id INT NOT NULL,
+    file_id VARCHAR(200) DEFAULT NULL,
+    caption TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX (telegram_user_id),
+    INDEX (created_at)
+) ENGINE=InnoDB;
+```
+Ogni profilo può collegare il proprio account Telegram personale: genera un codice dalla
+dashboard, lo invia al bot con `/start CODICE`, e da quel momento può inviare foto e testi
+al bot in chat privata. Il bot chiede se pubblicare su Timeline o Blog con bottoni inline.
+Il webhook riceve gli aggiornamenti su `/webhook/telegram`. La tabella `telegram_pending_posts`
+tiene in memoria il contenuto finché l'utente non sceglie la destinazione (auto-pulizia dopo 1h).
+
+---
+
 ## Come aggiungere una nuova voce
 
 Quando una futura modifica tocca lo schema, aggiungi qui una nuova sezione numerata con il

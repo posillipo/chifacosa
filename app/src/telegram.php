@@ -158,12 +158,8 @@ function telegramEscapeHtml(string $text): string {
     return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-/**
- * Imposta il webhook di Telegram per ricevere aggiornamenti (messaggi in arrivo).
- * L'URL deve essere HTTPS e raggiungibile dall'esterno.
- */
 function telegramSetWebhook(string $url, ?string $secretToken = null): ?array {
-    $params = ['url' => $url];
+    $params = ['url' => $url, 'allowed_updates' => ['message', 'callback_query']];
     if ($secretToken) {
         $params['secret_token'] = $secretToken;
     }
@@ -176,4 +172,80 @@ function telegramDeleteWebhook(): ?array {
 
 function telegramGetWebhookInfo(): ?array {
     return telegramApiCall('getWebhookInfo');
+}
+
+function telegramSendMessageWithKeyboard(string $chatId, string $text, array $inlineKeyboard): ?array {
+    return telegramApiCall('sendMessage', [
+        'chat_id' => $chatId,
+        'text' => $text,
+        'parse_mode' => 'HTML',
+        'reply_markup' => ['inline_keyboard' => $inlineKeyboard],
+    ]);
+}
+
+function telegramAnswerCallbackQuery(string $callbackQueryId, ?string $text = null): ?array {
+    $params = ['callback_query_id' => $callbackQueryId];
+    if ($text) {
+        $params['text'] = $text;
+    }
+    return telegramApiCall('answerCallbackQuery', $params);
+}
+
+function telegramEditMessageText(string $chatId, int $messageId, string $text): ?array {
+    return telegramApiCall('editMessageText', [
+        'chat_id' => $chatId,
+        'message_id' => $messageId,
+        'text' => $text,
+        'parse_mode' => 'HTML',
+    ]);
+}
+
+function telegramGetFile(string $fileId): ?array {
+    return telegramApiCall('getFile', ['file_id' => $fileId]);
+}
+
+function telegramDownloadFile(string $filePath): ?string {
+    $token = getTelegramBotToken();
+    if (!$token) return null;
+    $url = 'https://api.telegram.org/file/bot' . $token . '/' . $filePath;
+    $data = @file_get_contents($url);
+    return $data !== false ? $data : null;
+}
+
+function telegramGenerateLinkCode(int $profileUserId): string {
+    $code = strtoupper(bin2hex(random_bytes(4)));
+    $expires = date('Y-m-d H:i:s', time() + 600);
+    $stmt = getDB()->prepare('UPDATE profiles SET telegram_link_code=?, telegram_link_expires=? WHERE user_id=?');
+    $stmt->execute([$code, $expires, $profileUserId]);
+    return $code;
+}
+
+function telegramFindProfileByLinkCode(string $code): ?array {
+    $stmt = getDB()->prepare('SELECT p.*, u.slug FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.telegram_link_code=? AND p.telegram_link_expires > NOW()');
+    $stmt->execute([$code]);
+    $profile = $stmt->fetch();
+    if (!$profile) return null;
+    // Codice monouso
+    getDB()->prepare('UPDATE profiles SET telegram_link_code=NULL, telegram_link_expires=NULL WHERE user_id=?')->execute([$profile['user_id']]);
+    return $profile;
+}
+
+function telegramFindProfileByTelegramUserId(int $telegramUserId): ?array {
+    $stmt = getDB()->prepare('SELECT p.*, u.slug FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.telegram_user_id=?');
+    $stmt->execute([$telegramUserId]);
+    return $stmt->fetch() ?: null;
+}
+
+function telegramSaveIncomingPhoto(string $fileId, string $slug): ?string {
+    $file = telegramGetFile($fileId);
+    if (!$file || empty($file['file_path'])) return null;
+    $data = telegramDownloadFile($file['file_path']);
+    if (!$data) return null;
+    $jpeg = compressImageToJpeg($data);
+    if (!$jpeg) return null;
+    $fname = 'tg_' . bin2hex(random_bytes(6)) . '.jpg';
+    $dir = '/var/www/html/uploads/images/' . $slug;
+    if (!is_dir($dir)) mkdir($dir, 0775, true);
+    if (file_put_contents($dir . '/' . $fname, $jpeg) === false) return null;
+    return 'uploads/images/' . $slug . '/' . $fname;
 }

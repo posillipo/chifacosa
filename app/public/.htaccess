@@ -89,6 +89,9 @@ RewriteRule ^api/v1/pinned-items/([0-9]+)/?$ api_pinned_items_item.php?id=$1 [L,
 # Telegram collegato al profilo autenticato.
 RewriteRule ^api/v1/telegram/send/?$ api_telegram_send.php [L,QSA]
 
+# Webhook Telegram (riceve gli aggiornamenti dal bot)
+RewriteRule ^webhook/telegram/?$ webhook_telegram.php [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 

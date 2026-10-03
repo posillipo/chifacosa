@@ -118,7 +118,7 @@ function currentUser(): ?array {
     if (empty($_SESSION['user_id'])) return null;
     static $cache = null;
     if ($cache !== null) return $cache;
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.telegram_chat_id, p.telegram_chat_title, p.telegram_auto_publish, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.telegram_chat_id, p.telegram_chat_title, p.telegram_auto_publish, p.telegram_user_id, p.telegram_link_code, p.telegram_link_expires, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
                               FROM users u LEFT JOIN profiles p ON p.user_id = u.id
                               WHERE u.id = ?');
     $stmt->execute([$_SESSION['user_id']]);
@@ -323,7 +323,7 @@ function getActingProfile(array $loggedInUser): array {
         unset($_SESSION['acting_as_user_id']);
         return $loggedInUser;
     }
-    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.telegram_chat_id, p.telegram_chat_title, p.telegram_auto_publish, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
+    $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.telegram_chat_id, p.telegram_chat_title, p.telegram_auto_publish, p.telegram_user_id, p.telegram_link_code, p.telegram_link_expires, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled
                               FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
     $stmt->execute([(int) $actingId]);
     $profile = $stmt->fetch();

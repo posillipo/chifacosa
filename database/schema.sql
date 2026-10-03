@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     telegram_chat_id VARCHAR(50) DEFAULT NULL,
     telegram_chat_title VARCHAR(200) DEFAULT NULL,
     telegram_auto_publish TINYINT(1) NOT NULL DEFAULT 0,
+    telegram_user_id BIGINT DEFAULT NULL,
+    telegram_link_code VARCHAR(20) DEFAULT NULL,
+    telegram_link_expires DATETIME DEFAULT NULL,
     genere VARCHAR(100) DEFAULT NULL,
     citta VARCHAR(100) DEFAULT NULL,
     provincia VARCHAR(50) DEFAULT NULL,
@@ -651,6 +654,17 @@ CREATE TABLE IF NOT EXISTS api_request_logs (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (api_token_id) REFERENCES api_tokens(id) ON DELETE SET NULL,
     INDEX idx_token_time (api_token_id, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS telegram_pending_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    telegram_user_id BIGINT NOT NULL,
+    profile_user_id INT NOT NULL,
+    file_id VARCHAR(200) DEFAULT NULL,
+    caption TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX (telegram_user_id),
+    INDEX (created_at)
 ) ENGINE=InnoDB;
 
 -- Bacheca condivisa tra AI e direttore (Claude, Grok, Manus, ...): messaggi/brief/consegne per
