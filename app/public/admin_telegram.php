@@ -18,28 +18,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setSiteSetting('telegram_webhook_secret', trim($_POST['telegram_webhook_secret'] ?? ''));
         $success = 'Configurazione Telegram salvata.';
     } elseif ($action === 'test') {
-        $me = telegramGetMe();
-        $testResult = $me
-            ? ['ok' => true, 'msg' => 'Connessione riuscita! Bot: @' . ($me['username'] ?? '?') . ' (' . ($me['first_name'] ?? '') . ')']
-            : ['ok' => false, 'msg' => 'Connessione fallita. Controlla il Bot Token.'];
+        try {
+            $me = telegramGetMe();
+            $testResult = $me
+                ? ['ok' => true, 'msg' => 'Connessione riuscita! Bot: @' . ($me['username'] ?? '?') . ' (' . ($me['first_name'] ?? '') . ')']
+                : ['ok' => false, 'msg' => 'Connessione fallita. Controlla il Bot Token.'];
+        } catch (Exception $e) {
+            $testResult = ['ok' => false, 'msg' => 'Errore di connessione: ' . $e->getMessage()];
+        }
     } elseif ($action === 'setup_webhook') {
-        $webhookUrl = siteUrl('webhook/telegram');
-        $secret = getSiteSetting('telegram_webhook_secret') ?: null;
-        $result = telegramSetWebhook($webhookUrl, $secret);
-        $webhookResult = $result !== null
-            ? ['ok' => true, 'msg' => 'Webhook registrato: ' . $webhookUrl]
-            : ['ok' => false, 'msg' => 'Registrazione webhook fallita. Verifica che il sito sia raggiungibile via HTTPS.'];
+        try {
+            $webhookUrl = siteUrl('webhook/telegram');
+            $secret = getSiteSetting('telegram_webhook_secret') ?: null;
+            $result = telegramSetWebhook($webhookUrl, $secret);
+            $webhookResult = $result !== null
+                ? ['ok' => true, 'msg' => 'Webhook registrato: ' . $webhookUrl]
+                : ['ok' => false, 'msg' => 'Registrazione webhook fallita. Verifica che il sito sia raggiungibile via HTTPS.'];
+        } catch (Exception $e) {
+            $webhookResult = ['ok' => false, 'msg' => 'Errore: ' . $e->getMessage()];
+        }
     } elseif ($action === 'delete_webhook') {
-        $result = telegramDeleteWebhook();
-        $webhookResult = $result !== null
-            ? ['ok' => true, 'msg' => 'Webhook rimosso.']
-            : ['ok' => false, 'msg' => 'Rimozione webhook fallita.'];
+        try {
+            $result = telegramDeleteWebhook();
+            $webhookResult = $result !== null
+                ? ['ok' => true, 'msg' => 'Webhook rimosso.']
+                : ['ok' => false, 'msg' => 'Rimozione webhook fallita.'];
+        } catch (Exception $e) {
+            $webhookResult = ['ok' => false, 'msg' => 'Errore: ' . $e->getMessage()];
+        }
     }
 }
 
 $botToken = getSiteSetting('telegram_bot_token') ?: '';
 $webhookSecret = getSiteSetting('telegram_webhook_secret') ?: '';
-$webhookInfo = getTelegramBotToken() ? telegramGetWebhookInfo() : null;
+$webhookInfo = null;
+try {
+    if (getTelegramBotToken()) {
+        $webhookInfo = telegramGetWebhookInfo();
+    }
+} catch (Exception $e) {
+    // Ignora errori API
+}
 
 include __DIR__ . '/_admin_header.php';
 ?>

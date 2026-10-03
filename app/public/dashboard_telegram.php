@@ -82,9 +82,13 @@ $profile = getActingProfile($user);
 
 // Recupera il bot username per il link
 $botUsername = null;
-if (getTelegramBotToken()) {
-    $me = telegramGetMe();
-    $botUsername = $me['username'] ?? null;
+try {
+    if (getTelegramBotToken()) {
+        $me = telegramGetMe();
+        $botUsername = $me['username'] ?? null;
+    }
+} catch (Exception $e) {
+    // Ignora errori API
 }
 
 include __DIR__ . '/_dash_header.php';
