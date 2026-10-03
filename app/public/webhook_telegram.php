@@ -43,7 +43,28 @@ if (preg_match('#^/start\s+([A-F0-9]{8})$#i', $text, $m)) {
     $code = strtoupper($m[1]);
     $profile = telegramFindProfileByLinkCode($code);
     if (!$profile) {
-        telegramSendMessage($chatId, '❌ Codice non valido o scaduto. Generane uno nuovo dalla dashboard.');
+        // Debug: verifica perché il codice non è stato trovato
+        $dbg = getDB()->prepare('SELECT telegram_link_code, telegram_link_expires, NOW() as db_now FROM profiles WHERE telegram_link_code = ?');
+        $dbg->execute([$code]);
+        $row = $dbg->fetch();
+        if ($row) {
+            $msg = "❌ Codice trovato ma scaduto.\nScade: {$row['telegram_link_expires']}\nOra DB: {$row['db_now']}";
+        } else {
+            // Cerca anche senza filtro codice per capire se c'è un profilo con un codice
+            $dbg2 = getDB()->prepare('SELECT user_id, telegram_link_code, telegram_link_expires FROM profiles WHERE telegram_link_code IS NOT NULL LIMIT 3');
+            $dbg2->execute();
+            $rows = $dbg2->fetchAll();
+            $msg = "❌ Codice '{$code}' non trovato nel DB.";
+            if ($rows) {
+                $msg .= "\nCodici presenti:";
+                foreach ($rows as $r) {
+                    $msg .= "\n  user={$r['user_id']} code={$r['telegram_link_code']} exp={$r['telegram_link_expires']}";
+                }
+            } else {
+                $msg .= "\nNessun codice attivo nel DB.";
+            }
+        }
+        telegramSendMessage($chatId, $msg);
         exit;
     }
     getDB()->prepare('UPDATE profiles SET telegram_user_id=? WHERE user_id=?')
