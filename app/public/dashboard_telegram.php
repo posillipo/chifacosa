@@ -18,10 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!getTelegramBotToken()) {
             $error = 'Telegram non è ancora configurato. Contatta l\'amministratore del sito.';
         } else {
-            $code = telegramGenerateLinkCode((int) $profile['id']);
-            // Ricarica il profilo per mostrare il codice
-            $user = currentUser();
-            $profile = getActingProfile($user);
+            telegramGenerateLinkCode((int) $profile['id']);
+            header('Location: /dashboard_telegram.php');
+            exit;
         }
     } elseif ($action === 'unlink_user') {
         $stmt = getDB()->prepare('UPDATE profiles SET telegram_user_id=NULL WHERE user_id=?');
