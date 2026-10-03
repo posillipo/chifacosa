@@ -32,7 +32,8 @@ function telegramApiCall(string $method, array $params = []): ?array {
         error_log("[Telegram] API {$method} fallita: {$desc}");
         return null;
     }
-    return $data['result'] ?? [];
+    $result = $data['result'] ?? [];
+    return is_array($result) ? $result : [];
 }
 
 function telegramGetMe(): ?array {
