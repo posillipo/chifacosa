@@ -32,7 +32,7 @@ include __DIR__ . '/_dash_header.php';
     <div class="alert error">Nessun contenuto programmato al momento.</div>
   <?php else: ?>
     <?php foreach ($items as $it): ?>
-      <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
+      <a href="<?= e($it['edit_url']) ?>" class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;text-decoration:none;color:inherit;">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
         <?php endif; ?>
@@ -45,14 +45,13 @@ include __DIR__ . '/_dash_header.php';
           </div>
           <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;">
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;" onclick="event.stopPropagation();">
           <?php if ($it['preview_url']): ?>
             <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
-            <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
+            <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary" onclick="event.stopPropagation();">👁️ Anteprima</a>
           <?php endif; ?>
-          <a href="<?= e($it['edit_url']) ?>" class="btn small secondary">Modifica</a>
         </div>
-      </div>
+      </a>
     <?php endforeach; ?>
   <?php endif; ?>
 <script>

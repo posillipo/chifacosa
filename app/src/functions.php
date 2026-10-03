@@ -7135,12 +7135,13 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     // e già coperte dal caso comune (poche decine di elementi per tipo).
     $perTypeLimit = max(200, $offset + $limit);
 
-    $stmt = $db->prepare("SELECT b.title, b.cover_path, b.slug, b.published_at, b.in_feed, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT b.id, b.title, b.cover_path, b.slug, b.published_at, b.in_feed, b.published_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM blog_posts b JOIN users u ON u.id = b.user_id JOIN profiles p ON p.user_id = u.id
         WHERE b.user_id IN ($placeholders) AND b.published_at <= NOW() ORDER BY b.published_at DESC LIMIT {$perTypeLimit}");
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'blog', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => blogPostUrl($r['user_slug'], $r),
@@ -7157,6 +7158,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $brTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'brano', 'titolo' => $brTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['track_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/brani/' . $r['id'] . '/scheda',
@@ -7169,6 +7171,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
+            'item_id' => (int) $r['id'],
             'tipo' => 'evento', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'evento_quando' => $r['event_date'], 'evento_is_perpetual' => $r['is_perpetual'], 'evento_recurrence' => $r['recurrence'],
             'evento_venue' => $r['venue'], 'evento_city' => $r['city'],
@@ -7177,7 +7180,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
-    $stmt = $db->prepare("SELECT tp.id, tp.title, tp.testo, tp.image_path, tp.image_thumb_path, tp.in_feed, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+    $stmt = $db->prepare("SELECT tp.id, tp.title, tp.testo, tp.image_path, tp.image_thumb_path, tp.in_feed, tp.redirect_link, tp.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM timeline_posts tp JOIN users u ON u.id = tp.user_id JOIN profiles p ON p.user_id = u.id
         WHERE tp.user_id IN ($placeholders) AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())
         ORDER BY tp.created_at DESC LIMIT {$perTypeLimit}");
@@ -7202,10 +7205,11 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     }
     foreach ($pensieroRows as $r) {
         $items[] = [
-            'id' => (int) $r['id'],
+            'id' => (int) $r['id'], 'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'pensiero', 'titolo' => $r['testo'] ? textExcerpt($r['testo'], 100) : (!empty($r['title']) ? $r['title'] : ($r['image_path'] ? '📷 Foto' : '')), 'cover' => $r['image_path'],
             'cover_thumb' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
             'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($pensieroPhotoCounts[(int) $r['id']]),
+            'redirect_link' => $r['redirect_link'] ?: null,
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/timeline/' . $r['id'],
         ];
@@ -7221,6 +7225,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fbTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'band_favorita', 'titolo' => $fbTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['artist_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/band-che-amo/' . $r['id'],
@@ -7237,6 +7242,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $faTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'attore_favorito', 'titolo' => $faTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['actor_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/attori-che-amo/' . $r['id'],
@@ -7253,6 +7259,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fmTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'film_favorito', 'titolo' => $fmTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['movie_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/film-che-amo/' . $r['id'],
@@ -7269,6 +7276,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fkTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'libro_favorito', 'titolo' => $fkTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['book_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/libri-che-amo/' . $r['id'],
@@ -7297,6 +7305,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $ftTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'viaggio_favorito', 'titolo' => $ftTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['map_image_path']), 'data' => $r['data'],
             'raw_image_path' => $r['image_path'], 'has_multi_photo' => !empty($tripPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
@@ -7314,6 +7323,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fpTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'playlist_favorita', 'titolo' => $fpTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['playlist_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/playlist-che-amo/' . $r['id'],
@@ -7330,6 +7340,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $falTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'album_favorito', 'titolo' => $falTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['album_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/album-che-amo/' . $r['id'],
@@ -7346,6 +7357,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $frTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'ricetta_favorita', 'titolo' => $frTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['recipe_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/ricette-che-amo/' . $r['id'],
@@ -7362,6 +7374,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $ftTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'squadra_favorita', 'titolo' => $ftTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['team_badge']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/squadre-che-amo/' . $r['id'],
@@ -7378,6 +7391,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fpTitolo2 .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'calciatore_favorito', 'titolo' => $fpTitolo2, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['player_photo']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/calciatori-che-amo/' . $r['id'],
@@ -7394,6 +7408,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fmTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'partita_favorita', 'titolo' => $fmTitolo, 'cover' => $r['image_thumb_path'] ?: ($r['image_path'] ?: $r['match_image']), 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/partite-che-amo/' . $r['id'],
@@ -7410,6 +7425,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
             $fpTitolo .= ': ' . textExcerpt($r['note'], 100);
         }
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'pubblicazione_favorita', 'titolo' => $fpTitolo, 'cover' => $r['image_thumb_path'] ?: $r['image_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/pubblicazioni-che-amo/' . $r['id'],
@@ -7425,6 +7441,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     foreach ($stmt->fetchAll() as $r) {
         $soTitolo = $r['title'] . ($r['price_label'] ? ' — ' . $r['price_label'] : '');
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'offerta', 'titolo' => $soTitolo, 'cover' => $r['cover_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/offerte/' . $r['id'],
@@ -7452,6 +7469,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     }
     foreach ($albumRows as $r) {
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'album_foto', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'raw_image_path' => $r['cover_path'], 'has_multi_photo' => !empty($albumPhotoCounts[(int) $r['id']]),
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
@@ -7465,6 +7483,7 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     $stmt->execute($userIds);
     foreach ($stmt->fetchAll() as $r) {
         $items[] = [
+            'item_id' => (int) $r['id'],
             'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'servizio', 'titolo' => $r['title'], 'cover' => $r['cover_path'], 'data' => $r['data'],
             'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
             'url' => '/' . $r['user_slug'] . '/servizi/' . $r['id'],
@@ -7472,7 +7491,13 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
     }
 
     usort($items, fn($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
-    return array_slice($items, $offset, $limit);
+    $slice = array_slice($items, $offset, $limit);
+    foreach ($slice as &$it) {
+        $tpl = SCHEDULABLE_DASHBOARD_URLS[$it['tipo']] ?? null;
+        $it['edit_url'] = $tpl ? sprintf($tpl, $it['item_id'] ?? 0) : $it['url'];
+    }
+    unset($it);
+    return $slice;
 }
 
 // ===== Elementi fissati in "Primo Piano" (pinned_items) =====
@@ -8169,7 +8194,9 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     // Sfondo grigio tenue per distinguere subito i propri contenuti dal resto del feed
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
     $bgStyle = $isMine ? 'background:#eef0f2;' : '';
-    $html = '<a href="' . e($item['url']) . '" class="link-item" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;' . $bgStyle . '">';
+    $editUrl = $item['edit_url'] ?? $item['url'];
+    $html = '<div style="display:flex;gap:0;align-items:center;' . $bgStyle . '">';
+    $html .= '<a href="' . e($editUrl) . '" class="link-item" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;flex:1;min-width:0;">';
     if ($coverSrc) {
         $html .= '<img src="' . e($coverSrc) . '" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
     } elseif (!empty($item['avatar'])) {
@@ -8180,6 +8207,10 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
     $html .= '<small style="color:var(--text-muted)">' . e(formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
     $html .= '</div></a>';
+    if (!empty($item['redirect_link'])) {
+        $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
+    }
+    $html .= '</div>';
     return $html;
 }
 
@@ -8199,8 +8230,9 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): s
     }
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
     $mineClass = $isMine ? ' dtc-mine' : '';
-    $html = '<a href="' . e($item['url']) . '" class="dtc-card' . $mineClass . '">';
-    // header: avatar + nome + badge tipo
+    $editUrl = $item['edit_url'] ?? $item['url'];
+    $html = '<div class="dtc-card' . $mineClass . '" style="position:relative;">';
+    $html .= '<a href="' . e($editUrl) . '" style="display:block;text-decoration:none;color:inherit;">';
     $html .= '<div class="dtc-header">';
     if (!empty($item['avatar'])) {
         $html .= '<img class="dtc-avatar" src="/' . e($item['avatar']) . '">';
@@ -8215,11 +8247,9 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): s
     $html .= '</div>';
     $html .= '<span class="dtc-badge">' . e($label) . '</span>';
     $html .= '</div>';
-    // foto grande
     if ($coverSrc) {
         $html .= '<img class="dtc-cover" src="' . e($coverSrc) . '">';
     }
-    // titolo + info evento
     $html .= '<div class="dtc-body">';
     $html .= '<strong>' . e($item['titolo']) . '</strong>';
     if ($eventoInfo) {
@@ -8227,6 +8257,10 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): s
     }
     $html .= '</div>';
     $html .= '</a>';
+    if (!empty($item['redirect_link'])) {
+        $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato" style="position:absolute;top:12px;right:12px;">🔗</a>';
+    }
+    $html .= '</div>';
     return $html;
 }
 

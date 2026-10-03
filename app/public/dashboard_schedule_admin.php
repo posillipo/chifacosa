@@ -151,7 +151,7 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <a class="cal-item" href="<?= e($it['preview_url'] ?: $it['edit_url']) ?>" target="_blank" title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
+      <a class="cal-item" href="<?= e($it['edit_url']) ?>" title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -204,7 +204,7 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <a class="mob-item" href="<?= e($it['preview_url'] ?: $it['edit_url']) ?>" target="_blank">
+      <a class="mob-item" href="<?= e($it['edit_url']) ?>">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -259,7 +259,7 @@ foreach ($filteredItems as $it) {
     ?>
   </div>
   <?php foreach ($dateItems as $it): ?>
-    <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
+    <a href="<?= e($it['edit_url']) ?>" class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;text-decoration:none;color:inherit;">
       <?php if ($it['cover']): ?>
         <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
@@ -273,14 +273,13 @@ foreach ($filteredItems as $it) {
         <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
         <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">👤 <?= e($it['user_display_name']) ?></p>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;">
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;" onclick="event.stopPropagation();">
         <?php if ($it['preview_url']): ?>
           <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
-          <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
+          <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary" onclick="event.stopPropagation();">👁️ Anteprima</a>
         <?php endif; ?>
-        <a href="<?= e($it['edit_url']) ?>" class="btn small secondary">Modifica</a>
       </div>
-    </div>
+    </a>
   <?php endforeach; ?>
 <?php endforeach; ?>
 

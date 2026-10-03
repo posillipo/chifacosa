@@ -44,6 +44,8 @@ include __DIR__ . '/_dash_header.php';
   .dtc-body{padding:10px 14px 14px}
   .dtc-body strong{font-size:15px;line-height:1.35;display:block;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
   .dtc-evento-info{font-size:12.5px;color:var(--text-muted);margin-top:4px}
+  .dtc-redirect-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--card-bg);border:1px solid #e2e2e7;font-size:15px;text-decoration:none;flex-shrink:0;z-index:1;transition:background .15s}
+  .dtc-redirect-btn:hover{background:#f0f0f4}
   </style>
 
   <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">
