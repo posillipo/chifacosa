@@ -17,6 +17,7 @@ foreach ($allItems as $it) {
 }
 asort($accounts);
 
+$myUserId = (int) $profile['id'];
 $filterUserId = isset($_GET['account']) && $_GET['account'] !== '' ? (int) $_GET['account'] : null;
 $filteredItems = $filterUserId !== null
     ? array_values(array_filter($allItems, fn ($it) => $it['user_id'] === $filterUserId))
@@ -151,7 +152,8 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <a class="cal-item" href="<?= e($it['edit_url']) ?>" title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
+      <?php $calHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $calTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
+      <a class="cal-item" href="<?= e($calHref) ?>"<?= $calTarget ?> title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -204,7 +206,8 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <a class="mob-item" href="<?= e($it['edit_url']) ?>">
+      <?php $mobHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $mobTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
+      <a class="mob-item" href="<?= e($mobHref) ?>"<?= $mobTarget ?>>
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -259,27 +262,30 @@ foreach ($filteredItems as $it) {
     ?>
   </div>
   <?php foreach ($dateItems as $it): ?>
-    <a href="<?= e($it['edit_url']) ?>" class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;text-decoration:none;color:inherit;">
-      <?php if ($it['cover']): ?>
-        <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-      <?php endif; ?>
-      <div style="flex:1;min-width:180px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
-          <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;">
-            ⏰ <?= e(date('d/m/Y H:i', strtotime($it['scheduled_for']))) ?>
-          </span>
-          <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;"><?= e($it['label']) ?></span>
-        </div>
-        <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
-        <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">👤 <?= e($it['user_display_name']) ?></p>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:4px;" onclick="event.stopPropagation();">
-        <?php if ($it['preview_url']): ?>
-          <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
-          <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary" onclick="event.stopPropagation();">👁️ Anteprima</a>
+    <?php $listHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $listTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
+    <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
+      <a href="<?= e($listHref) ?>"<?= $listTarget ?> style="display:flex;flex:1;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
+        <?php if ($it['cover']): ?>
+          <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
         <?php endif; ?>
-      </div>
-    </a>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
+            <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;">
+              ⏰ <?= e(date('d/m/Y H:i', strtotime($it['scheduled_for']))) ?>
+            </span>
+            <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;"><?= e($it['label']) ?></span>
+          </div>
+          <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">👤 <?= e($it['user_display_name']) ?></p>
+        </div>
+      </a>
+      <?php if ($it['preview_url']): ?>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
+          <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
+        </div>
+      <?php endif; ?>
+    </div>
   <?php endforeach; ?>
 <?php endforeach; ?>
 
