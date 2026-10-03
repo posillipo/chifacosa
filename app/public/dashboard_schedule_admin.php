@@ -17,7 +17,6 @@ foreach ($allItems as $it) {
 }
 asort($accounts);
 
-$myUserId = (int) $profile['id'];
 $filterUserId = isset($_GET['account']) && $_GET['account'] !== '' ? (int) $_GET['account'] : null;
 $filteredItems = $filterUserId !== null
     ? array_values(array_filter($allItems, fn ($it) => $it['user_id'] === $filterUserId))
@@ -152,8 +151,7 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <?php $calHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $calTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
-      <a class="cal-item" href="<?= e($calHref) ?>"<?= $calTarget ?> title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
+      <a class="cal-item" href="<?= e($it['edit_url']) ?>" title="<?= e($it['title']) ?> — <?= e($it['user_display_name']) ?> (<?= e($it['label']) ?>) ore <?= $time ?>">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -206,8 +204,7 @@ for ($day = 0; $day < 30; $day++):
         $bg = $typeBg[$it['type']] ?? '#999';
         $time = date('H:i', strtotime($it['scheduled_for']));
     ?>
-      <?php $mobHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $mobTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
-      <a class="mob-item" href="<?= e($mobHref) ?>"<?= $mobTarget ?>>
+      <a class="mob-item" href="<?= e($it['edit_url']) ?>">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" alt="">
         <?php endif; ?>
@@ -262,9 +259,8 @@ foreach ($filteredItems as $it) {
     ?>
   </div>
   <?php foreach ($dateItems as $it): ?>
-    <?php $listHref = ($it['user_id'] === $myUserId) ? $it['edit_url'] : ($it['preview_url'] ?: $it['edit_url']); $listTarget = ($it['user_id'] === $myUserId) ? '' : ' target="_blank" rel="noopener"'; ?>
     <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
-      <a href="<?= e($listHref) ?>"<?= $listTarget ?> style="display:flex;flex:1;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
+      <a href="<?= e($it['edit_url']) ?>" style="display:flex;flex:1;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
         <?php if ($it['cover']): ?>
           <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
         <?php endif; ?>

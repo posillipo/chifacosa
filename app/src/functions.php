@@ -222,8 +222,20 @@ function getManagedProfiles(int $viewerId): array {
     return $stmt->fetchAll();
 }
 
+function isSiteAdmin(int $userId): bool {
+    static $cache = [];
+    if (isset($cache[$userId])) return $cache[$userId];
+    $stmt = getDB()->prepare('SELECT is_admin FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    return $cache[$userId] = ($row && !empty($row['is_admin']));
+}
+
 function canManageProfile(int $viewerId, int $ownerId): bool {
     if ($viewerId === $ownerId) {
+        return true;
+    }
+    if (isSiteAdmin($viewerId)) {
         return true;
     }
     $stmt = getDB()->prepare('SELECT 1 FROM profile_admins WHERE owner_user_id = ? AND admin_user_id = ?');
@@ -237,6 +249,9 @@ function canManageProfile(int $viewerId, int $ownerId): bool {
 // con lui. Titolare del profilo (viewerId === ownerId) conta sempre come full owner.
 function isFullOwnerOf(int $viewerId, int $ownerId): bool {
     if ($viewerId === $ownerId) {
+        return true;
+    }
+    if (isSiteAdmin($viewerId)) {
         return true;
     }
     $stmt = getDB()->prepare("SELECT 1 FROM profile_admins WHERE owner_user_id = ? AND admin_user_id = ? AND role = 'owner'");
@@ -7674,13 +7689,16 @@ function getScheduledContentForAllUsers(): array {
                 $publicPath = ($type === 'blog') ? blogPostUrl($slug, $row) : sprintf($cfg['url_tpl'], $slug, (int) $row['id']);
                 $previewUrl = withPreviewToken(siteUrl($publicPath), $type, (int) $row['id']);
             }
+            $baseEditUrl = sprintf(SCHEDULABLE_DASHBOARD_URLS[$type] ?? '#', (int) $row['id']);
+            $sep = str_contains($baseEditUrl, '?') ? '&' : '?';
+            $editUrl = $baseEditUrl . $sep . 'acting_as=' . (int) $row['user_id'];
             $items[] = [
                 'type' => $type,
                 'label' => $cfg['label'],
                 'title' => $title,
                 'cover' => $cover,
                 'scheduled_for' => $row[$col],
-                'edit_url' => sprintf(SCHEDULABLE_DASHBOARD_URLS[$type] ?? '#', (int) $row['id']),
+                'edit_url' => $editUrl,
                 'preview_url' => $previewUrl,
                 'user_id' => (int) $row['user_id'],
                 'user_slug' => $slug,
