@@ -214,9 +214,8 @@ function telegramDownloadFile(string $filePath): ?string {
 
 function telegramGenerateLinkCode(int $profileUserId): string {
     $code = strtoupper(bin2hex(random_bytes(4)));
-    $expires = date('Y-m-d H:i:s', time() + 600);
-    $stmt = getDB()->prepare('UPDATE profiles SET telegram_link_code=?, telegram_link_expires=? WHERE user_id=?');
-    $stmt->execute([$code, $expires, $profileUserId]);
+    $stmt = getDB()->prepare('UPDATE profiles SET telegram_link_code=?, telegram_link_expires=DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE user_id=?');
+    $stmt->execute([$code, $profileUserId]);
     return $code;
 }
 
