@@ -59,6 +59,14 @@ if ($visibility === 'public' && !$publishAt) {
         $anteprima = !empty($v['title']) ? $v['title'] : (!empty($v['testo']) ? textExcerpt($v['testo'], 80) : 'Nuovo contenuto pubblicato');
         $timelineUrl = siteUrl('/' . $profileRow['slug'] . '/timeline');
         notifyFollowersNewContent($auth['user_id'], $profileRow['display_name'], $profileRow['slug'], 'timeline', $anteprima, $timelineUrl);
+
+        require_once __DIR__ . '/../src/telegram.php';
+        telegramAutoPublishIfEnabled($auth['user_id'], 'post', [
+            'title' => $v['title'] ?? null,
+            'body' => $v['testo'] ?? null,
+            'image_url' => $imagePath,
+            'public_url' => $timelineUrl,
+        ]);
     }
 }
 

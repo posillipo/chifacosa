@@ -86,13 +86,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             logAdminAction((int) $profile['id'], (int) $user['id'], 'Nuovo aggiornamento in Timeline', $testo !== '' ? textExcerpt($testo, 60) : 'Foto pubblicata');
 
-            // Niente notifica ai follower se il post è privato o programmato per il futuro —
-            // scatterà semmai in futuro, quando sarà davvero pubblicato (non gestito automaticamente
-            // oggi: la notifica per i post programmati va eventualmente rivista quando arriva il momento).
             if ($visibility === 'public' && !$publishAt) {
                 $anteprima = $testo !== '' ? textExcerpt($testo, 80) : 'Nuova foto pubblicata';
                 $timelineUrl = siteUrl('/' . $profile['slug'] . '/timeline');
                 notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'timeline', $anteprima, $timelineUrl);
+
+                require_once __DIR__ . '/../src/telegram.php';
+                telegramAutoPublishIfEnabled((int) $profile['id'], 'post', [
+                    'body' => $testo,
+                    'image_url' => $imagePath,
+                    'public_url' => $timelineUrl,
+                ]);
             }
         }
     }

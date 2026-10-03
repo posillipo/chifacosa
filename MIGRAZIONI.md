@@ -1228,6 +1228,21 @@ automazioni social (es. Metricool) — checkbox "Includi nel Feed" in
 `functions.php`. Esposto anche via API (`include_in_feed` in `POST /api/v1/blog-posts/create` e
 `PUT /api/v1/blog-posts/{id}`) e tool MCP (`create_blog_post`/`update_blog_post`).
 
+## 58. Integrazione Telegram (`profiles.telegram_*` + site_settings)
+```sql
+ALTER TABLE profiles
+  ADD COLUMN telegram_chat_id VARCHAR(50) DEFAULT NULL,
+  ADD COLUMN telegram_chat_title VARCHAR(200) DEFAULT NULL,
+  ADD COLUMN telegram_auto_publish TINYINT(1) NOT NULL DEFAULT 0;
+
+INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES
+  ('telegram_bot_token', ''), ('telegram_webhook_secret', '');
+```
+Ogni profilo può collegare un canale o gruppo Telegram dalla dashboard (Integrazioni → Canale
+Telegram). L'admin del sito configura il Bot Token in Admin → Telegram. Quando un post Timeline
+o articolo Blog viene pubblicato, se il profilo ha `telegram_auto_publish=1` il contenuto viene
+inviato automaticamente al canale collegato (con immagine, testo e link alla pagina pubblica).
+
 ---
 
 ## Come aggiungere una nuova voce

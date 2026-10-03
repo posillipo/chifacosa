@@ -11,6 +11,7 @@ $navItems = [
     'smtp'      => ['url' => '/admin_smtp.php',      'icon' => 'fas fa-paper-plane', 'label' => 'Email / SMTP'],
     'spotify'   => ['url' => '/admin_spotify.php',   'icon' => 'fa-brands fa-spotify', 'label' => 'Spotify'],
     'youtube'   => ['url' => '/admin_youtube.php',   'icon' => 'fa-brands fa-youtube', 'label' => 'YouTube'],
+    'telegram'  => ['url' => '/admin_telegram.php',  'icon' => 'fa-brands fa-telegram', 'label' => 'Telegram'],
     'gemini'    => ['url' => '/admin_gemini.php',    'icon' => 'fas fa-wand-magic-sparkles', 'label' => 'Assistente AI'],
     'tmdb'      => ['url' => '/admin_tmdb.php',      'icon' => 'fas fa-clapperboard', 'label' => 'TMDb (Attori)'],
     'googlebooks' => ['url' => '/admin_googlebooks.php', 'icon' => 'fas fa-book', 'label' => 'Google Books (Libri)'],

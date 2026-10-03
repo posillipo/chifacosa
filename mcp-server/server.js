@@ -524,6 +524,15 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/board/${id}`, { method: 'PUT', body: fields })));
 
+    server.registerTool('send_telegram_message', {
+        title: 'Invia un messaggio sul canale Telegram del profilo',
+        description: 'Invia un messaggio di testo al canale o gruppo Telegram collegato al profilo. Il profilo deve aver collegato un canale Telegram dalla dashboard e il bot deve esserne amministratore. Supporta formattazione HTML (es. <b>grassetto</b>, <i>corsivo</i>, <a href="...">link</a>).',
+        inputSchema: {
+            ...profileField,
+            text: z.string().min(1).max(4096).describe('Testo del messaggio da inviare (supporta HTML: <b>, <i>, <a href="...">)'),
+        },
+    }, async ({ profile, text }) => toolResult(await chifacosaApi(profile, '/telegram/send', { method: 'POST', body: { text } })));
+
     return server;
 }
 

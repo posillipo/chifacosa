@@ -56,6 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (strtotime($publishedAt) <= time()) {
             $postUrl = siteUrl(blogPostUrl($profile['slug'], ['published_at' => $publishedAt, 'slug' => $slug]));
             notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'blog', $title, $postUrl);
+
+            require_once __DIR__ . '/../src/telegram.php';
+            telegramAutoPublishIfEnabled((int) $profile['id'], 'blog', [
+                'title' => $title,
+                'body' => $content,
+                'image_url' => $coverPath,
+                'public_url' => $postUrl,
+            ]);
         }
         header('Location: /dashboard_blog_posts.php');
         exit;

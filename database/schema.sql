@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     spotify_show_name VARCHAR(200) DEFAULT NULL,
     youtube_channel_id VARCHAR(50) DEFAULT NULL,
     youtube_channel_name VARCHAR(200) DEFAULT NULL,
+    telegram_chat_id VARCHAR(50) DEFAULT NULL,
+    telegram_chat_title VARCHAR(200) DEFAULT NULL,
+    telegram_auto_publish TINYINT(1) NOT NULL DEFAULT 0,
     genere VARCHAR(100) DEFAULT NULL,
     citta VARCHAR(100) DEFAULT NULL,
     provincia VARCHAR(50) DEFAULT NULL,
@@ -883,6 +886,8 @@ CREATE TABLE IF NOT EXISTS pinned_items (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('spotify_app_token_expires', '');
+INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('telegram_bot_token', '');
+INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES ('telegram_webhook_secret', '');
 
 -- Ordine personalizzato dei tasti nella barra della dashboard (Feed, Timeline, Che Amo, Primo
 -- Piano...), indipendente dall'ordine del menu pubblico (profile_navigation_menu/

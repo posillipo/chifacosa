@@ -55,6 +55,14 @@ if (strtotime($publishedAt) <= time()) {
     if ($profileRow) {
         $postUrl = siteUrl(blogPostUrl($profileRow['slug'], ['published_at' => $publishedAt, 'slug' => $slug]));
         notifyFollowersNewContent($auth['user_id'], $profileRow['display_name'], $profileRow['slug'], 'blog', $v['title'], $postUrl);
+
+        require_once __DIR__ . '/../src/telegram.php';
+        telegramAutoPublishIfEnabled($auth['user_id'], 'blog', [
+            'title' => $v['title'],
+            'body' => $v['content'],
+            'image_url' => $coverPath,
+            'public_url' => $postUrl,
+        ]);
     }
 }
 

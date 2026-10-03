@@ -20,7 +20,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? 'save';
 
-    if ($action === 'delete') {
+    if ($action === 'send_telegram') {
+        require_once __DIR__ . '/../src/telegram.php';
+        if (empty($profile['telegram_chat_id'])) {
+            $error = 'Nessun canale Telegram collegato. Vai in Integrazioni → Canale Telegram per collegarne uno.';
+        } elseif (!getTelegramBotToken()) {
+            $error = 'Telegram non è ancora configurato dall\'amministratore del sito.';
+        } else {
+            $timelineUrl = siteUrl('/' . $profile['slug'] . '/timeline');
+            $result = telegramPublishContent($profile, [
+                'type' => 'post',
+                'title' => $post['title'] ?? null,
+                'body' => $post['testo'] ?? null,
+                'image_url' => $post['image_path'],
+                'public_url' => $timelineUrl,
+            ]);
+            if ($result) {
+                header('Location: /dashboard_timeline_edit.php?id=' . $id . '&tg=ok');
+                exit;
+            }
+            $error = 'Invio su Telegram fallito. Verifica che il bot sia ancora amministratore del canale.';
+        }
+    } elseif ($action === 'delete') {
         deleteCoverFile($post['image_path']);
         deleteFeedShareImage($post['image_path']);
         deleteCoverFile($post['image_thumb_path']);
@@ -86,6 +107,7 @@ include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_post.php"><i class="fa-solid fa-arrow-left"></i> Torna alla Timeline</a></p>
 
+  <?php if (isset($_GET['tg']) && $_GET['tg'] === 'ok'): ?><div class="alert success">Inviato su Telegram!</div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
   <div class="section-title">Modifica aggiornamento</div>
@@ -187,6 +209,19 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if (($post['visibility'] ?? 'public') !== 'private'): ?>
     <p><a href="/<?= e($profile['slug']) ?>/timeline/<?= (int) $post['id'] ?>" target="_blank">Vedi pagina pubblica ↗</a></p>
+  <?php endif; ?>
+
+  <?php if (!empty($profile['telegram_chat_id']) && ($post['visibility'] ?? 'public') !== 'private'): ?>
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Telegram</div>
+    <p style="color:var(--text-muted);font-size:13px;">Invia questo post manualmente al canale Telegram <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p>
+    <form method="post" onsubmit="return confirm('Inviare questo post su Telegram?');">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="send_telegram">
+      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
+      <button class="btn secondary" type="submit"><i class="fa-brands fa-telegram"></i> Invia su Telegram</button>
+    </form>
+  </div>
   <?php endif; ?>
 
   <div class="card">

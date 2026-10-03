@@ -335,6 +335,10 @@ if (switcherEl && navbarEl) {
         <i class="fa-brands fa-youtube"></i> Account YouTube
         <?php if (!empty($user['youtube_channel_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
       </a>
+      <a href="/dashboard_telegram.php" class="account-sidebar-link <?= $activeTab==='telegram'?'active':'' ?>">
+        <i class="fa-brands fa-telegram"></i> Canale Telegram
+        <?php if (!empty($user['telegram_chat_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
+      </a>
     <?php endif; ?>
   </div>
 </div>

@@ -33,6 +33,28 @@ $selectedCategoryIds = $_SERVER['REQUEST_METHOD'] === 'POST'
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
+    if (($_POST['action'] ?? '') === 'send_telegram') {
+        require_once __DIR__ . '/../src/telegram.php';
+        if (empty($profile['telegram_chat_id'])) {
+            $error = 'Nessun canale Telegram collegato. Vai in Integrazioni → Canale Telegram.';
+        } elseif (!getTelegramBotToken()) {
+            $error = 'Telegram non è ancora configurato dall\'amministratore del sito.';
+        } else {
+            $postUrl = siteUrl(blogPostUrl($profile['slug'], $post));
+            $result = telegramPublishContent($profile, [
+                'type' => 'blog',
+                'title' => $post['title'],
+                'body' => $post['content'],
+                'image_url' => $post['cover_path'],
+                'public_url' => $postUrl,
+            ]);
+            if ($result) {
+                header('Location: /dashboard_blog_edit.php?id=' . $id . '&tg=ok');
+                exit;
+            }
+            $error = 'Invio su Telegram fallito. Verifica che il bot sia amministratore del canale.';
+        }
+    }
     $title = trim($_POST['title'] ?? '');
     $content = trim($_POST['content'] ?? '');
     $albumId = (int) ($_POST['album_id'] ?? 0) ?: null;
@@ -95,6 +117,7 @@ include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_blog_posts.php"><i class="fa-solid fa-arrow-left"></i> Torna agli articoli</a></p>
 
+  <?php if (isset($_GET['tg']) && $_GET['tg'] === 'ok'): ?><div class="alert success">Inviato su Telegram!</div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
   <div class="section-title">Modifica articolo</div>
@@ -155,4 +178,17 @@ include __DIR__ . '/_dash_header.php';
     <button type="submit" class="btn">Salva modifiche</button>
     <a href="/dashboard_blog_posts.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
   </form>
+
+  <?php if (!empty($profile['telegram_chat_id'])): ?>
+  <div class="card" style="margin-top:14px;">
+    <div class="section-title" style="margin-top:0;">Telegram</div>
+    <p style="color:var(--text-muted);font-size:13px;">Invia questo articolo manualmente al canale Telegram <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p>
+    <form method="post" onsubmit="return confirm('Inviare questo articolo su Telegram?');">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="send_telegram">
+      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
+      <button class="btn secondary" type="submit"><i class="fa-brands fa-telegram"></i> Invia su Telegram</button>
+    </form>
+  </div>
+  <?php endif; ?>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
