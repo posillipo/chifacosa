@@ -7,7 +7,7 @@ requireBandOrLabel($profile);
 $activeTab = 'metricool';
 $pageTitle = 'Social Automatico';
 $error = null;
-$success = null;
+$success = isset($_GET['saved']) ? 'Configurazione salvata.' : null;
 
 // Brand ID → label map (from Metricool, hardcoded to avoid API call on every page load)
 // Keys are Metricool brand IDs, values are display labels.
@@ -45,18 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = getDB()->prepare('UPDATE profiles SET metricool_blog_id=?, metricool_networks=?, metricool_auto_social=? WHERE user_id=?');
         $stmt->execute([$blogId, $netJson, $autoOn, $profile['id']]);
-        $success = $blogId && $networks
-            ? 'Configurazione salvata. La pubblicazione automatica è attiva.'
-            : 'Configurazione salvata. Seleziona un brand e almeno un social per attivare la pubblicazione automatica.';
-        $user    = currentUser();
-        $profile = getActingProfile($user);
+        header('Location: /dashboard_metricool.php?saved=1');
+        exit;
 
     } elseif ($action === 'disable') {
         $stmt = getDB()->prepare('UPDATE profiles SET metricool_auto_social=0 WHERE user_id=?');
         $stmt->execute([$profile['id']]);
-        $success = 'Pubblicazione automatica disattivata.';
-        $user    = currentUser();
-        $profile = getActingProfile($user);
+        header('Location: /dashboard_metricool.php?saved=1');
+        exit;
     }
 }
 
