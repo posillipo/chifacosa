@@ -541,6 +541,25 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
 
+    server.registerTool('enqueue_social_queue', {
+        title: 'Aggiungi un elemento alla coda di pubblicazione social',
+        description: 'Inserisce un contenuto della timeline nella coda social per la pubblicazione automatica via Metricool. Funziona per qualsiasi tipo di contenuto: blog, fan_band, fan_actor, fan_movie, fan_book, fan_trip, fan_playlist, fan_album, fan_recipe, fan_team, fan_footballer, fan_match, fan_publication, fan_track, event, offer, album, service, timeline. Se lo stesso contenuto è già in coda (pending/processing/suspended), aggiorna solo scheduled_for.',
+        inputSchema: {
+            ...profileField,
+            content_type: z.string().describe('Tipo di contenuto: blog, fan_band, fan_actor, fan_movie, fan_book, fan_trip, fan_playlist, fan_album, fan_recipe, fan_team, fan_footballer, fan_match, fan_publication, fan_track, event, offer, album, service, timeline'),
+            content_id: z.number().int().describe('ID del contenuto'),
+            title: z.string().describe('Titolo del contenuto'),
+            image_url: z.string().optional().describe('URL immagine di copertina (opzionale)'),
+            public_url: z.string().describe('URL pubblico del contenuto'),
+            scheduled_for: z.string().optional().describe('Data/ora di pubblicazione programmata (formato: "YYYY-MM-DD HH:MM"). Se omesso, viene processato alla prima run disponibile.'),
+        },
+    }, async ({ profile, content_type, content_id, title, image_url, public_url, scheduled_for }) =>
+        toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
+            method: 'POST',
+            body: { content_type, content_id, title, image_url, public_url, scheduled_for }
+        }))
+    );
+
     server.registerTool('send_telegram_message', {
         title: 'Invia un messaggio sul canale Telegram del profilo',
         description: 'Invia un messaggio di testo al canale o gruppo Telegram collegato al profilo. Il profilo deve aver collegato un canale Telegram dalla dashboard e il bot deve esserne amministratore. Supporta formattazione HTML (es. <b>grassetto</b>, <i>corsivo</i>, <a href="...">link</a>).',
