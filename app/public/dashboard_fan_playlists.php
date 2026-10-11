@@ -102,6 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            $stmtFan = getDB()->prepare('SELECT playlist_name, playlist_image FROM fan_favorite_playlists WHERE id=? AND user_id=?');
+            $stmtFan->execute([$id, $profile['id']]);
+            $fanRow = $stmtFan->fetch() ?: [];
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_playlist', [
+                'content_id' => $id,
+                'title'      => $fanRow['playlist_name'] ?? '',
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['playlist_image'] ?? '') ?: null),
+                'public_url' => siteUrl('/' . $profile['slug'] . '/playlist-che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_playlists WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);

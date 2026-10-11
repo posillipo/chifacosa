@@ -36,6 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $offerUrl = siteUrl('/' . $profile['slug'] . '/offerte/' . $newId);
             notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'offerta', $title, $offerUrl);
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'offer', [
+                'content_id' => $newId,
+                'title'      => $title,
+                'body'       => $description,
+                'image_url'  => $coverPath ? siteUrl($coverPath) : null,
+                'public_url' => $offerUrl,
+            ]);
         } else {
             // Copertina opzionale in modifica: un nuovo file la sostituisce (e cancella quella
             // precedente), lasciando il campo vuoto quella già caricata resta invariata.

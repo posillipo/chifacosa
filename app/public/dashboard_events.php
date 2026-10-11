@@ -40,6 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$isScheduledForFuture) {
                 $eventUrl = siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId);
                 notifyFollowersNewContent((int)$profile['id'], $profile['display_name'], $profile['slug'], 'evento', $title, $eventUrl);
+                require_once __DIR__ . '/../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'event', [
+                    'content_id' => $newEventId,
+                    'title'      => $title,
+                    'body'       => $description,
+                    'image_url'  => $coverPath ? siteUrl($coverPath) : null,
+                    'public_url' => $eventUrl,
+                ]);
             }
         }
     } elseif ($action === 'edit') {

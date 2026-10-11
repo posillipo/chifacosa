@@ -114,6 +114,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            $stmtFan = getDB()->prepare('SELECT recipe_title, recipe_image FROM fan_favorite_recipes WHERE id=? AND user_id=?');
+            $stmtFan->execute([$id, $profile['id']]);
+            $fanRow = $stmtFan->fetch() ?: [];
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_recipe', [
+                'content_id' => $id,
+                'title'      => $fanRow['recipe_title'] ?? '',
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['recipe_image'] ?? '') ?: null),
+                'public_url' => siteUrl('/' . $profile['slug'] . '/ricette-che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_recipes WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);

@@ -102,6 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            $stmtFan = getDB()->prepare('SELECT player_name, player_photo FROM fan_favorite_players WHERE id=? AND user_id=?');
+            $stmtFan->execute([$id, $profile['id']]);
+            $fanRow = $stmtFan->fetch() ?: [];
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_footballer', [
+                'content_id' => $id,
+                'title'      => $fanRow['player_name'] ?? '',
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['player_photo'] ?? '') ?: null),
+                'public_url' => siteUrl('/' . $profile['slug'] . '/calciatori-che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_players WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);

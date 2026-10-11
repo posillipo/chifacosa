@@ -172,6 +172,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$placeName, $note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'trip', [
+                'content_id' => $id,
+                'title'      => $placeName,
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : null,
+                'public_url' => siteUrl('/' . $profile['slug'] . '/che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_trips WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);

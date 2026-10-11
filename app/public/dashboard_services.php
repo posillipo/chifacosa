@@ -52,6 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($visibility === 'public' && !$publishAt) {
                         $serviceUrl = siteUrl('/' . $profile['slug'] . '/servizi/' . $newId);
                         notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'servizio', $title, $serviceUrl);
+                        require_once __DIR__ . '/../src/metricool_queue.php';
+                        socialQueueEnqueueIfEnabled((int) $profile['id'], 'service', [
+                            'content_id' => $newId,
+                            'title'      => $title,
+                            'body'       => $description,
+                            'image_url'  => $newCoverPath ? siteUrl($newCoverPath) : null,
+                            'public_url' => $serviceUrl,
+                        ]);
                     }
                 }
             } else {
