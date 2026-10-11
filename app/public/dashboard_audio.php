@@ -122,6 +122,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            $stmtTrack = getDB()->prepare('SELECT track_name, artist_name, image_path, track_image FROM favorite_tracks WHERE id=? AND user_id=?');
+            $stmtTrack->execute([$id, $profile['id']]);
+            $trackRow = $stmtTrack->fetch() ?: [];
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_track', [
+                'content_id' => $id,
+                'title'      => trim(($trackRow['track_name'] ?? '') . ' — ' . ($trackRow['artist_name'] ?? '')),
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : (($trackRow['image_path'] ?? '') ? siteUrl($trackRow['image_path']) : (($trackRow['track_image'] ?? '') ?: null)),
+                'public_url' => siteUrl('/' . $profile['slug'] . '/brani-che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM favorite_tracks WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);
