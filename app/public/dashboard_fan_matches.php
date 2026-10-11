@@ -135,6 +135,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        if ($isPublic && !$publishAt) {
+            $stmtFan = getDB()->prepare('SELECT match_title, match_image FROM fan_favorite_matches WHERE id=? AND user_id=?');
+            $stmtFan->execute([$id, $profile['id']]);
+            $fanRow = $stmtFan->fetch() ?: [];
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_match', [
+                'content_id' => $id,
+                'title'      => $fanRow['match_title'] ?? '',
+                'body'       => $note ?: null,
+                'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['match_image'] ?? '') ?: null),
+                'public_url' => siteUrl('/' . $profile['slug'] . '/partite-che-amo'),
+            ]);
+        }
+
         if ($isAjax) {
             $stmt = getDB()->prepare('SELECT * FROM fan_favorite_matches WHERE id=? AND user_id=?');
             $stmt->execute([$id, $profile['id']]);
