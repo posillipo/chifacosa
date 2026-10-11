@@ -23,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
          FROM social_queue q
          JOIN profiles p ON p.user_id = q.user_id
          JOIN users u ON u.id = q.user_id
-         WHERE q.status = "pending"
-         ORDER BY q.created_at ASC
+         WHERE q.status = "pending" AND (q.suspended = 0 OR q.suspended IS NULL) AND (q.scheduled_for IS NULL OR q.scheduled_for <= NOW())
+         ORDER BY q.scheduled_for ASC, q.created_at ASC
          LIMIT 10'
     );
     $stmt->execute();

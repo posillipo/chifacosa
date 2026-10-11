@@ -159,6 +159,11 @@ if ($actingAsId) {
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
+    <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+      <a href="/dashboard_social_queue.php" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
+        <i class="fa-solid fa-share-nodes"></i>
+      </a>
+    <?php endif; ?>
     <a href="/dashboard_contacts.php" title="Contatti" style="position:relative;font-size:17px;">
       <i class="fa-solid fa-bell"></i>
       <?php if ($unreadMessages > 0): ?>
@@ -359,6 +364,102 @@ if (switcherEl && navbarEl) {
   closeBtn.addEventListener('click', close);
 })();
 </script>
+
+<?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+<!-- ── Modale condivisione social ───────────────────────────────────────────── -->
+<dialog id="sq-share-dialog" style="border:none;border-radius:14px;padding:0;width:min(420px,94vw);box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+  <form method="dialog" style="padding:22px 22px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <strong style="font-size:16px;">📤 Condividi sui social</strong>
+      <button type="submit" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+    </div>
+    <p id="sq-share-title" style="margin:0 0 14px;font-size:14px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Programma per (opzionale)</label>
+    <input type="datetime-local" id="sq-share-date" style="width:100%;margin-bottom:18px;padding:8px 10px;border:1px solid #d0d0d8;border-radius:7px;font-size:14px;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button type="submit" class="btn secondary" style="min-width:90px;">Annulla</button>
+      <button type="button" id="sq-share-confirm" class="btn" style="min-width:120px;">Aggiungi in coda</button>
+    </div>
+    <p id="sq-share-status" style="margin:10px 0 0;font-size:13px;text-align:center;color:var(--text-muted);min-height:18px;"></p>
+  </form>
+</dialog>
+<script>
+(function () {
+  var dialog = document.getElementById('sq-share-dialog');
+  var confirmBtn = document.getElementById('sq-share-confirm');
+  var dateInput = document.getElementById('sq-share-date');
+  var titleEl = document.getElementById('sq-share-title');
+  var statusEl = document.getElementById('sq-share-status');
+  var _pending = null;
+
+  window.sqSuggest = function (sq) {
+    if (!sq || !sq.suggest) return;
+    _pending = sq;
+    titleEl.textContent = sq.title || sq.type;
+    dateInput.value = '';
+    statusEl.textContent = '';
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Aggiungi in coda';
+    dialog.showModal();
+  };
+
+  confirmBtn.addEventListener('click', function () {
+    if (!_pending) return;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Invio...';
+    statusEl.textContent = '';
+    fetch('/api_social_queue_action.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'enqueue',
+        type: _pending.type,
+        content_id: _pending.id,
+        title: _pending.title,
+        img: _pending.img,
+        url: _pending.url,
+        scheduled_for: dateInput.value || null,
+      }),
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.ok) {
+        statusEl.style.color = '#27ae60';
+        statusEl.textContent = data.updated ? 'Già in coda — data aggiornata.' : '✓ Aggiunto in coda!';
+        setTimeout(function () { dialog.close(); }, 1400);
+      } else {
+        statusEl.style.color = '#e74c3c';
+        statusEl.textContent = data.error || 'Errore';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Aggiungi in coda';
+      }
+    }).catch(function () {
+      statusEl.style.color = '#e74c3c';
+      statusEl.textContent = 'Errore di connessione';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Aggiungi in coda';
+    });
+  });
+
+  // Intercetta tutte le risposte fetch con sq.suggest
+  (function () {
+    var origFetch = window.fetch;
+    window.fetch = function () {
+      var args = arguments;
+      return origFetch.apply(this, args).then(function (response) {
+        var ct = response.headers.get('Content-Type') || '';
+        if (ct.indexOf('application/json') === -1) return response;
+        var clone = response.clone();
+        clone.json().then(function (data) {
+          if (data && data.sq && data.sq.suggest) {
+            window.sqSuggest(data.sq);
+          }
+        }).catch(function () {});
+        return response;
+      });
+    };
+  })();
+})();
+</script>
+<?php endif; ?>
 
 <div class="container">
   <div class="tabs-wrap">

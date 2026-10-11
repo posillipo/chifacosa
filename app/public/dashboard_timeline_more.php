@@ -13,12 +13,14 @@ $viewMode = ($_GET['view'] ?? 'list') === 'card' ? 'card' : 'list';
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
 $items = getTimelineFeedForUsers($feedUserIds, $pageSize, $offset);
+require_once __DIR__ . '/../src/metricool_queue.php';
+$metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
 $html = '';
 foreach ($items as $item) {
     $html .= $viewMode === 'card'
-        ? renderDashboardTimelineCard($item, $profile['slug'])
-        : renderDashboardTimelineItem($item, $profile['slug']);
+        ? renderDashboardTimelineCard($item, $profile['slug'], $metricoolActive)
+        : renderDashboardTimelineItem($item, $profile['slug'], $metricoolActive);
 }
 
 echo json_encode(['html' => $html, 'count' => count($items)]);

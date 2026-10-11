@@ -102,18 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
+        $sq = null;
         if ($isPublic && !$publishAt) {
             $stmtFan = getDB()->prepare('SELECT spotify_artist_name, artist_image FROM fan_favorite_bands WHERE id=? AND user_id=?');
             $stmtFan->execute([$id, $profile['id']]);
             $fanRow = $stmtFan->fetch() ?: [];
             require_once __DIR__ . '/../src/metricool_queue.php';
-            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_band', [
+            $sq = socialQueueBuildSq((int) $profile['id'], 'fan_band', [
                 'content_id' => $id,
                 'title'      => $fanRow['spotify_artist_name'] ?? '',
-                'body'       => $note ?: null,
                 'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['artist_image'] ?? '') ?: null),
                 'public_url' => siteUrl('/' . $profile['slug'] . '/band-che-amo'),
-            ]);
+            ], (bool) $isPublic, $publishAt);
         }
 
         if ($isAjax) {
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $profile['id']]);
             $row = $stmt->fetch();
             header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error]);
+            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'sq' => $sq]);
             exit;
         }
     } elseif ($action === 'search') {

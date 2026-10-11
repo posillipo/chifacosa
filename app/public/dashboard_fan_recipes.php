@@ -119,13 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtFan->execute([$id, $profile['id']]);
             $fanRow = $stmtFan->fetch() ?: [];
             require_once __DIR__ . '/../src/metricool_queue.php';
-            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_recipe', [
+            $sq = socialQueueBuildSq((int) $profile['id'], 'fan_recipe', [
                 'content_id' => $id,
                 'title'      => $fanRow['recipe_title'] ?? '',
-                'body'       => $note ?: null,
                 'image_url'  => $imagePath ? siteUrl($imagePath) : (($fanRow['recipe_image'] ?? '') ?: null),
                 'public_url' => siteUrl('/' . $profile['slug'] . '/ricette-che-amo'),
-            ]);
+            ], (bool) $isPublic, $publishAt);
         }
 
         if ($isAjax) {
@@ -133,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $profile['id']]);
             $row = $stmt->fetch();
             header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error]);
+            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'sq' => $sq ?? null]);
             exit;
         }
     } elseif ($action === 'search') {

@@ -8193,7 +8193,7 @@ function renderAddToCalendarLinks(array $event, string $slug, array $profile, st
     return ob_get_clean();
 }
 
-function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): string {
+function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
@@ -8228,11 +8228,21 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null): s
     if (!empty($item['redirect_link'])) {
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
     }
+    if ($isMine && $metricoolActive) {
+        static $sqTypeMap = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'servizio' => 'service'];
+        $sqType = $sqTypeMap[$item['tipo']] ?? null;
+        if ($sqType) {
+            $cover = $item['cover_thumb'] ?? $item['cover'];
+            $imgUrl = $cover ? (str_starts_with($cover, 'http') ? $cover : siteUrl('/' . ltrim($cover, '/'))) : null;
+            $sq = json_encode(['suggest' => true, 'type' => $sqType, 'id' => (int) $item['item_id'], 'title' => $item['titolo'], 'img' => $imgUrl, 'url' => siteUrl($item['url'])]);
+            $html .= '<button type="button" onclick=\'window.sqSuggest(' . htmlspecialchars($sq, ENT_QUOTES) . ')\' title="Condividi sui social" style="background:none;border:none;cursor:pointer;font-size:15px;padding:4px 8px;color:var(--text-muted);">📤</button>';
+        }
+    }
     $html .= '</div>';
     return $html;
 }
 
-function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): string {
+function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     $cover = $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
     $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
@@ -8277,6 +8287,16 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null): s
     $html .= '</a>';
     if (!empty($item['redirect_link'])) {
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato" style="position:absolute;top:12px;right:12px;">🔗</a>';
+    }
+    if ($isMine && $metricoolActive) {
+        static $sqTypeMapCard = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'servizio' => 'service'];
+        $sqType = $sqTypeMapCard[$item['tipo']] ?? null;
+        if ($sqType) {
+            $cover = $item['cover'];
+            $imgUrl = $cover ? (str_starts_with($cover, 'http') ? $cover : siteUrl('/' . ltrim($cover, '/'))) : null;
+            $sq = json_encode(['suggest' => true, 'type' => $sqType, 'id' => (int) $item['item_id'], 'title' => $item['titolo'], 'img' => $imgUrl, 'url' => siteUrl($item['url'])]);
+            $html .= '<button type="button" onclick=\'window.sqSuggest(' . htmlspecialchars($sq, ENT_QUOTES) . ')\' title="Condividi sui social" style="position:absolute;bottom:10px;right:10px;background:none;border:none;cursor:pointer;font-size:15px;padding:4px 6px;color:var(--text-muted);">📤</button>';
+        }
     }
     $html .= '</div>';
     return $html;
