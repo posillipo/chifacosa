@@ -40,15 +40,19 @@ $items = $stmt->fetchAll();
 include __DIR__ . '/_dash_header.php';
 ?>
 <style>
-.sq-table td, .sq-table th { padding: 9px 12px; }
-.sq-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.sq-table td, .sq-table th { padding: 9px 12px; white-space:nowrap; }
+.sq-table { width:100%; border-collapse:collapse; font-size:13.5px; table-layout:auto; }
 .sq-table tr { border-top:1px solid var(--border-color,#e0e0e0); }
 .sq-table thead tr { background:var(--bg-alt,#f5f5f5); border-top:none; }
+.sq-table th { white-space:nowrap; }
+.sq-col-tipo { width:90px; }
+.sq-col-contenuto { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sq-status { font-weight:600; white-space:nowrap; }
 .sq-actions { display:flex; gap:6px; align-items:center; }
 .btn-xs { font-size:12px; padding:3px 9px; border-radius:4px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
 .btn-xs.danger { color:#e74c3c; border-color:#e74c3c; }
 .btn-xs.primary { color:#fff; background:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); }
+@media(max-width:600px) { .sq-col-aggiunto { display:none; } }
 </style>
 
 <?php if (!$metricoolActive): ?>
@@ -74,11 +78,11 @@ include __DIR__ . '/_dash_header.php';
     <table class="sq-table">
       <thead>
         <tr>
-          <th style="text-align:left;">Tipo</th>
+          <th class="sq-col-tipo" style="text-align:left;">Tipo</th>
           <th style="text-align:left;">Contenuto</th>
           <th style="text-align:left;">Stato</th>
           <th style="text-align:left;">Programmato</th>
-          <th style="text-align:left;">Aggiunto</th>
+          <th class="sq-col-aggiunto" style="text-align:left;">Aggiunto</th>
           <th></th>
         </tr>
       </thead>
@@ -92,8 +96,8 @@ include __DIR__ . '/_dash_header.php';
           $isEditable = in_array($qi['status'], ['pending', 'suspended', 'processing'], true);
           ?>
           <tr id="sq-row-<?= $qi['id'] ?>">
-            <td><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <td class="sq-col-tipo"><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
+            <td class="sq-col-contenuto">
               <?php if ($qi['public_url']): ?><a href="<?= e($qi['public_url']) ?>" target="_blank" style="color:inherit;"><?= e($label) ?></a>
               <?php else: ?><?= e($label) ?>
               <?php endif; ?>
@@ -111,7 +115,7 @@ include __DIR__ . '/_dash_header.php';
                 <span style="color:var(--text-muted);font-size:12.5px;"><?= $qi['scheduled_for'] ? date('d/m H:i', strtotime($qi['scheduled_for'])) : '—' ?></span>
               <?php endif; ?>
             </td>
-            <td style="color:var(--text-muted);font-size:12.5px;white-space:nowrap;"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
+            <td class="sq-col-aggiunto" style="color:var(--text-muted);font-size:12.5px;"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
             <td>
               <div class="sq-actions">
                 <?php if ($isEditable): ?>
