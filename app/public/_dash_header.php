@@ -339,6 +339,10 @@ if (switcherEl && navbarEl) {
         <i class="fa-brands fa-telegram"></i> Canale Telegram
         <?php if (!empty($user['telegram_chat_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
       </a>
+      <a href="/dashboard_metricool.php" class="account-sidebar-link <?= $activeTab==='metricool'?'active':'' ?>">
+        <i class="fa-solid fa-share-nodes"></i> Social Automatico
+        <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
+      </a>
     <?php endif; ?>
   </div>
 </div>

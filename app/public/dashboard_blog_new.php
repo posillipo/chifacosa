@@ -64,6 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'image_url' => $coverPath,
                 'public_url' => $postUrl,
             ]);
+
+            require_once __DIR__ . '/../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'blog', [
+                'content_id' => $newId,
+                'title'      => $title,
+                'body'       => $content,
+                'image_url'  => $coverPath ? siteUrl($coverPath) : null,
+                'public_url' => $postUrl,
+            ]);
         }
         header('Location: /dashboard_blog_posts.php');
         exit;

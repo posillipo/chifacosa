@@ -97,6 +97,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'image_url' => $imagePath,
                     'public_url' => $timelineUrl,
                 ]);
+
+                require_once __DIR__ . '/../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'timeline', [
+                    'content_id' => $newPostId,
+                    'body'       => $testo,
+                    'image_url'  => $imagePath ? siteUrl($imagePath) : null,
+                    'public_url' => $timelineUrl,
+                ]);
             }
         }
     }
