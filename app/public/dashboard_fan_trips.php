@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($isPublic && !$publishAt) {
             require_once __DIR__ . '/../src/metricool_queue.php';
-            socialQueueEnqueueIfEnabled((int) $profile['id'], 'trip', [
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_trip', [
                 'content_id' => $id,
                 'title'      => $placeName,
                 'body'       => $note ?: null,
