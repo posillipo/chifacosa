@@ -524,6 +524,23 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/board/${id}`, { method: 'PUT', body: fields })));
 
+    server.registerTool('get_social_queue', {
+        title: 'Leggi la coda di pubblicazione automatica Metricool',
+        description: 'Restituisce fino a 10 elementi "pending" della coda social del profilo (contenuti pronti da pubblicare su Metricool) e li marca come "processing". Ogni elemento include content_type, title, body, image_url, public_url, metricool_blog_id e metricool_networks. Da chiamare all\'inizio della Routine di auto-pubblicazione.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/social-queue/pending')));
+
+    server.registerTool('update_social_queue_item', {
+        title: 'Aggiorna lo stato di un elemento nella coda Metricool',
+        description: 'Segna un elemento della coda social come "done" (pubblicato con successo su Metricool) o "failed" (errore). Da chiamare dopo aver tentato la schedulazione su Metricool per ogni elemento restituito da get_social_queue.',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID dell\'elemento della coda (campo "id" restituito da get_social_queue)'),
+            status: z.enum(['done', 'failed']).describe('"done" = schedulato con successo su Metricool, "failed" = errore'),
+            error_msg: z.string().optional().describe('Messaggio di errore (solo se status è "failed")'),
+        },
+    }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
+
     server.registerTool('send_telegram_message', {
         title: 'Invia un messaggio sul canale Telegram del profilo',
         description: 'Invia un messaggio di testo al canale o gruppo Telegram collegato al profilo. Il profilo deve aver collegato un canale Telegram dalla dashboard e il bot deve esserne amministratore. Supporta formattazione HTML (es. <b>grassetto</b>, <i>corsivo</i>, <a href="...">link</a>).',
