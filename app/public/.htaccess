@@ -91,6 +91,7 @@ RewriteRule ^api/v1/telegram/send/?$ api_telegram_send.php [L,QSA]
 
 # API /api/v1/social-queue/* — usata dalla Routine Claude (via MCP) per leggere la coda di
 # pubblicazione automatica su Metricool e aggiornare lo stato degli elementi processati.
+RewriteRule ^api/v1/social-queue/enqueue/?$ api_social_queue_enqueue.php [L,QSA]
 RewriteRule ^api/v1/social-queue/pending/?$ api_social_queue_pending.php [L,QSA]
 RewriteRule ^api/v1/social-queue/([0-9]+)/?$ api_social_queue_item.php?id=$1 [L,QSA]
 
