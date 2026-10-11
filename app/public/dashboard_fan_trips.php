@@ -174,13 +174,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($isPublic && !$publishAt) {
             require_once __DIR__ . '/../src/metricool_queue.php';
-            socialQueueEnqueueIfEnabled((int) $profile['id'], 'fan_trip', [
+            $sq = socialQueueBuildSq((int) $profile['id'], 'fan_trip', [
                 'content_id' => $id,
                 'title'      => $placeName,
-                'body'       => $note ?: null,
                 'image_url'  => $imagePath ? siteUrl($imagePath) : null,
                 'public_url' => siteUrl('/' . $profile['slug'] . '/che-amo'),
-            ]);
+            ], (bool) $isPublic, $publishAt);
         }
 
         if ($isAjax) {
@@ -188,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $profile['id']]);
             $row = $stmt->fetch();
             header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'extra_photo_count' => $row ? count(getTripPhotos($id)) : 0]);
+            echo json_encode(['ok' => (bool) $row, 'item' => $row, 'error' => $error, 'extra_photo_count' => $row ? count(getTripPhotos($id)) : 0, 'sq' => $sq ?? null]);
             exit;
         }
     } elseif ($action === 'delete_photo') {

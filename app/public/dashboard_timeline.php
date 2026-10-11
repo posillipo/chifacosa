@@ -18,6 +18,8 @@ if (isset($_GET['view'])) {
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
 $feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0);
+require_once __DIR__ . '/../src/metricool_queue.php';
+$metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
 $followedBands = [];
 if ($followedIds) {
@@ -133,7 +135,7 @@ include __DIR__ . '/_dash_header.php';
   <?php else: ?>
     <div id="dash-timeline-feed">
       <?php foreach ($feed as $item): ?>
-        <?= $viewMode === 'card' ? renderDashboardTimelineCard($item, $profile['slug']) : renderDashboardTimelineItem($item, $profile['slug']) ?>
+        <?= $viewMode === 'card' ? renderDashboardTimelineCard($item, $profile['slug'], $metricoolActive) : renderDashboardTimelineItem($item, $profile['slug'], $metricoolActive) ?>
       <?php endforeach; ?>
     </div>
     <div id="dash-timeline-sentinel" style="height:1px;"></div>
