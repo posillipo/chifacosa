@@ -47,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $t = _readTrackingFromDB($profileUserId);
+// DEBUG TEMP
+if (isset($_GET['debug'])) { header('Content-Type: text/plain'); echo "profileUserId=$profileUserId\n"; echo "t=".json_encode($t)."\n"; exit; }
 $hasCapiToken = trim($t['fb_capi_token'] ?? '') !== '';
 $anyFilled = trim($t['privacy_script'] ?? '') !== ''
     || trim($t['ga_measurement_id'] ?? '') !== ''
