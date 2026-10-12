@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $json = json_encode($t);
     $stmt = getDB()->prepare('UPDATE profiles SET privacy_tracking_settings=? WHERE user_id=?');
     $stmt->execute([$json, $profileUserId]);
-    $success = 'Impostazioni aggiornate. Saranno visibili sulla tua pagina pubblica entro pochi secondi.';
+    $rowsAffected = $stmt->rowCount();
+    $success = 'Impostazioni aggiornate (' . $rowsAffected . ' righe). user_id=' . $profileUserId . '. Saranno visibili sulla tua pagina pubblica entro pochi secondi.';
 }
 
 $t = _readTrackingFromDB($profileUserId);
