@@ -541,6 +541,71 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
 
+    const favoriteKind = z.enum(['track', 'band', 'playlist', 'album']).describe('Sezione: track = Brani che amo, band = Band che amo, playlist = Playlist che amo, album = Album che amo');
+
+    server.registerTool('search_favorites', {
+        title: 'Cerca su Spotify un brano/band/playlist/album da aggiungere ai preferiti',
+        description: 'Cerca su Spotify nella sezione scelta (track, band, playlist, album). Restituisce id, name, image e spotify_url da passare a add_favorite; already_in_list indica se è già nella lista del profilo.',
+        inputSchema: { ...profileField, kind: favoriteKind, query: z.string().describe('Testo da cercare (titolo, artista o nome)') },
+    }, async ({ profile, kind, query }) => toolResult(await chifacosaApi(profile, `/favorites/${kind}/search?query=${encodeURIComponent(query)}`)));
+
+    server.registerTool('add_favorite', {
+        title: 'Aggiungi ai preferiti (Brani/Band/Playlist/Album che amo)',
+        description: 'Aggiunge un elemento alla sezione "che amo" scelta. Usa i valori restituiti da search_favorites (spotify_id = id, name, image_url = image, artist_name e spotify_url per i brani, artist_name per gli album). Di default parte privato ("Solo io"): imposta is_public=true per pubblicarlo. Se già in lista non modifica nulla.',
+        inputSchema: {
+            ...profileField,
+            kind: favoriteKind,
+            spotify_id: z.string().describe('ID Spotify dell\'elemento (campo id della ricerca)'),
+            name: z.string().describe('Nome/titolo (campo name della ricerca; per i brani è il titolo del brano)'),
+            artist_name: z.string().optional().describe('Artista (solo track e album)'),
+            image_url: z.string().optional().describe('URL immagine di copertina'),
+            spotify_url: z.string().optional().describe('Link Spotify (solo track)'),
+            note: z.string().optional().describe('Perché ti piace (testo mostrato sulla pagina)'),
+            is_public: z.boolean().optional().describe('true = visibile nel Feed/timeline, false (default) = solo io'),
+            include_in_feed: z.boolean().optional().describe('true (default) = incluso nel feed RSS per le automazioni social'),
+            publish_at: z.string().optional().describe('Pubblicazione programmata in ISO 8601'),
+        },
+    }, async ({ profile, kind, ...fields }) => toolResult(await chifacosaApi(profile, `/favorites/${kind}/add`, { method: 'POST', body: fields })));
+
+    server.registerTool('list_favorites', {
+        title: 'Elenca i preferiti (Brani/Band/Playlist/Album che amo)',
+        description: 'Elenca gli elementi della sezione scelta, con filtro opzionale per visibilità e paginazione. Ogni elemento include id, url pubblico, stato e note.',
+        inputSchema: {
+            ...profileField,
+            kind: favoriteKind,
+            visibility: z.enum(['public', 'private']).optional(),
+            page: z.number().int().min(1).optional(),
+            per_page: z.number().int().min(1).max(100).optional(),
+        },
+    }, async ({ profile, kind, ...args }) => {
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(args || {})) {
+            if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+        const qs = params.toString();
+        return toolResult(await chifacosaApi(profile, `/favorites/${kind}/list` + (qs ? `?${qs}` : '')));
+    });
+
+    server.registerTool('update_favorite', {
+        title: 'Modifica un preferito (Brani/Band/Playlist/Album che amo)',
+        description: 'Modifica nota, visibilità, inclusione nel feed o programmazione di un elemento. Tutti i campi oltre a profile/kind/id sono opzionali. Per mandarlo anche sui social usa poi enqueue_social_queue (content_type fan_track / fan_band / fan_playlist / fan_album).',
+        inputSchema: {
+            ...profileField,
+            kind: favoriteKind,
+            id: z.number().int().describe('ID dell\'elemento (da list_favorites)'),
+            note: z.string().optional().describe('Testo "perché ti piace" (stringa vuota per cancellarlo)'),
+            is_public: z.boolean().optional(),
+            include_in_feed: z.boolean().optional(),
+            publish_at: z.string().optional().describe('ISO 8601; stringa vuota per rimuovere la programmazione'),
+        },
+    }, async ({ profile, kind, id, ...fields }) => toolResult(await chifacosaApi(profile, `/favorites/${kind}/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('remove_favorite', {
+        title: 'Rimuovi un preferito (Brani/Band/Playlist/Album che amo)',
+        description: 'Rimuove definitivamente un elemento dalla lista scelta, dato il suo ID (e cancella l\'eventuale foto caricata).',
+        inputSchema: { ...profileField, kind: favoriteKind, id: z.number().int().describe('ID dell\'elemento da rimuovere') },
+    }, async ({ profile, kind, id }) => toolResult(await chifacosaApi(profile, `/favorites/${kind}/${id}`, { method: 'DELETE' })));
+
     server.registerTool('enqueue_social_queue', {
         title: 'Aggiungi un elemento alla coda di pubblicazione social',
         description: 'Inserisce un contenuto della timeline nella coda social per la pubblicazione automatica via Metricool. Funziona per qualsiasi tipo di contenuto: blog, fan_band, fan_actor, fan_movie, fan_book, fan_trip, fan_playlist, fan_album, fan_recipe, fan_team, fan_footballer, fan_match, fan_publication, fan_track, event, offer, album, service, timeline. Se lo stesso contenuto è già in coda (pending/processing/suspended), aggiorna solo scheduled_for.',
