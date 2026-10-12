@@ -20,41 +20,39 @@ function _readTrackingFromDB(int $uid): array {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    $t = _readTrackingFromDB($profileUserId);
+    $trackingSettings = _readTrackingFromDB($profileUserId);
     $form = $_POST['_form'] ?? 'tracking';
 
     if ($form === 'tracking') {
-        $t['privacy_script'] = $_POST['privacy_script'] ?? '';
-        $t['privacy_policy_url'] = trim($_POST['privacy_policy_url'] ?? '');
-        $t['ga_measurement_id'] = trim($_POST['ga_measurement_id'] ?? '');
-        $t['gtm_head_script'] = $_POST['gtm_head_script'] ?? '';
-        $t['gtm_body_script'] = $_POST['gtm_body_script'] ?? '';
-        $t['fb_pixel_script'] = $_POST['fb_pixel_script'] ?? '';
+        $trackingSettings['privacy_script'] = $_POST['privacy_script'] ?? '';
+        $trackingSettings['privacy_policy_url'] = trim($_POST['privacy_policy_url'] ?? '');
+        $trackingSettings['ga_measurement_id'] = trim($_POST['ga_measurement_id'] ?? '');
+        $trackingSettings['gtm_head_script'] = $_POST['gtm_head_script'] ?? '';
+        $trackingSettings['gtm_body_script'] = $_POST['gtm_body_script'] ?? '';
+        $trackingSettings['fb_pixel_script'] = $_POST['fb_pixel_script'] ?? '';
     } else {
-        $t['fb_pixel_id'] = trim($_POST['fb_pixel_id'] ?? '');
+        $trackingSettings['fb_pixel_id'] = trim($_POST['fb_pixel_id'] ?? '');
         $newCapiToken = trim($_POST['fb_capi_token'] ?? '');
         if ($newCapiToken !== '') {
-            $t['fb_capi_token'] = $newCapiToken;
+            $trackingSettings['fb_capi_token'] = $newCapiToken;
         } elseif (!empty($_POST['fb_capi_token_clear'])) {
-            $t['fb_capi_token'] = '';
+            $trackingSettings['fb_capi_token'] = '';
         }
     }
 
-    $json = json_encode($t);
+    $json = json_encode($trackingSettings);
     $stmt = getDB()->prepare('UPDATE profiles SET privacy_tracking_settings=? WHERE user_id=?');
     $stmt->execute([$json, $profileUserId]);
     $success = 'Impostazioni aggiornate. Saranno visibili sulla tua pagina pubblica entro pochi secondi.';
 }
 
-$t = _readTrackingFromDB($profileUserId);
-// DEBUG TEMP
-if (isset($_GET['debug'])) { header('Content-Type: text/plain'); echo "profileUserId=$profileUserId\n"; echo "t=".json_encode($t)."\n"; exit; }
-$hasCapiToken = trim($t['fb_capi_token'] ?? '') !== '';
-$anyFilled = trim($t['privacy_script'] ?? '') !== ''
-    || trim($t['ga_measurement_id'] ?? '') !== ''
-    || trim($t['gtm_head_script'] ?? '') !== ''
-    || trim($t['gtm_body_script'] ?? '') !== ''
-    || trim($t['fb_pixel_script'] ?? '') !== '';
+$trackingSettings = _readTrackingFromDB($profileUserId);
+$hasCapiToken = trim($trackingSettings['fb_capi_token'] ?? '') !== '';
+$anyFilled = trim($trackingSettings['privacy_script'] ?? '') !== ''
+    || trim($trackingSettings['ga_measurement_id'] ?? '') !== ''
+    || trim($trackingSettings['gtm_head_script'] ?? '') !== ''
+    || trim($trackingSettings['gtm_body_script'] ?? '') !== ''
+    || trim($trackingSettings['fb_pixel_script'] ?? '') !== '';
 
 include __DIR__ . '/_dash_header.php';
 ?>
@@ -80,22 +78,22 @@ include __DIR__ . '/_dash_header.php';
     <?= csrfField() ?>
     <input type="hidden" name="_form" value="tracking">
     <label>Script privacy / cookie (HTML/JS fornito dal tuo servizio, es. Iubenda, Cookiebot)</label>
-    <textarea name="privacy_script" rows="8" placeholder="&lt;script type=&quot;text/javascript&quot;&gt;...&lt;/script&gt;"><?= e($t['privacy_script'] ?? '') ?></textarea>
+    <textarea name="privacy_script" rows="8" placeholder="&lt;script type=&quot;text/javascript&quot;&gt;...&lt;/script&gt;"><?= e($trackingSettings['privacy_script'] ?? '') ?></textarea>
 
     <label>URL della tua Privacy Policy (per il link "Privacy" nel footer della tua pagina)</label>
-    <input type="url" name="privacy_policy_url" value="<?= e($t['privacy_policy_url'] ?? '') ?>" placeholder="https://www.iubenda.com/privacy-policy/...">
+    <input type="url" name="privacy_policy_url" value="<?= e($trackingSettings['privacy_policy_url'] ?? '') ?>" placeholder="https://www.iubenda.com/privacy-policy/...">
 
     <label>Google Analytics — Measurement ID</label>
-    <input type="text" name="ga_measurement_id" value="<?= e($t['ga_measurement_id'] ?? '') ?>" placeholder="G-XXXXXXXXXX">
+    <input type="text" name="ga_measurement_id" value="<?= e($trackingSettings['ga_measurement_id'] ?? '') ?>" placeholder="G-XXXXXXXXXX">
 
     <label>Google Tag Manager — script per l'&lt;head&gt;</label>
-    <textarea name="gtm_head_script" rows="4" placeholder="&lt;script&gt;(function(w,d,s,l,i){...})(window,document,'script','dataLayer','GTM-XXXXXXX');&lt;/script&gt;"><?= e($t['gtm_head_script'] ?? '') ?></textarea>
+    <textarea name="gtm_head_script" rows="4" placeholder="&lt;script&gt;(function(w,d,s,l,i){...})(window,document,'script','dataLayer','GTM-XXXXXXX');&lt;/script&gt;"><?= e($trackingSettings['gtm_head_script'] ?? '') ?></textarea>
 
     <label>Google Tag Manager — snippet noscript per subito dopo &lt;body&gt;</label>
-    <textarea name="gtm_body_script" rows="3" placeholder="&lt;noscript&gt;&lt;iframe src=&quot;https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX&quot; ...&gt;&lt;/iframe&gt;&lt;/noscript&gt;"><?= e($t['gtm_body_script'] ?? '') ?></textarea>
+    <textarea name="gtm_body_script" rows="3" placeholder="&lt;noscript&gt;&lt;iframe src=&quot;https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX&quot; ...&gt;&lt;/iframe&gt;&lt;/noscript&gt;"><?= e($trackingSettings['gtm_body_script'] ?? '') ?></textarea>
 
     <label>Facebook (Meta) Pixel — script completo</label>
-    <textarea name="fb_pixel_script" rows="5" placeholder="&lt;script&gt;!function(f,b,e,v,n,t,s){...}(window, document,'script', 'https://connect.facebook.net/en_US/fbevents.js');&lt;/script&gt;"><?= e($t['fb_pixel_script'] ?? '') ?></textarea>
+    <textarea name="fb_pixel_script" rows="5" placeholder="&lt;script&gt;!function(f,b,e,v,n,t,s){...}(window, document,'script', 'https://connect.facebook.net/en_US/fbevents.js');&lt;/script&gt;"><?= e($trackingSettings['fb_pixel_script'] ?? '') ?></textarea>
 
     <button type="submit" class="btn">Salva</button>
   </form>
@@ -119,7 +117,7 @@ include __DIR__ . '/_dash_header.php';
     <input type="hidden" name="_form" value="capi">
 
     <label>ID del Pixel</label>
-    <input type="text" name="fb_pixel_id" placeholder="es. 123456789012345" value="<?= e($t['fb_pixel_id'] ?? '') ?>">
+    <input type="text" name="fb_pixel_id" placeholder="es. 123456789012345" value="<?= e($trackingSettings['fb_pixel_id'] ?? '') ?>">
 
     <label>Token di accesso Conversions API</label>
     <input type="password" name="fb_capi_token" placeholder="<?= $hasCapiToken ? '••••••••  (lascia vuoto per non modificarlo)' : 'incolla qui il token generato da Meta' ?>">
