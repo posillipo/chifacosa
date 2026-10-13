@@ -9,12 +9,6 @@ $pageTitle = 'Social Automatico';
 $error = null;
 $success = isset($_GET['saved']) ? 'Configurazione salvata.' : null;
 
-// Elenco dinamico dal tuo account Metricool (null = non raggiungibile/non configurato). Contiene i
-// brand di tutti i clienti: solo l'amministratore può assegnarne uno a un profilo.
-require_once __DIR__ . '/../src/metricool_queue.php';
-$metricoolBrands = metricoolListBrands();
-$canPickBrand = !empty($user['is_admin']);
-
 $allNetworks = [
     'instagram' => 'Instagram',
     'facebook'  => 'Facebook',
@@ -25,16 +19,37 @@ $allNetworks = [
     'bluesky'   => 'Bluesky',
 ];
 
+// L'ID Metricool lo inserisce a mano solo l'amministratore del sito: è il numero che dice dove
+// vengono pubblicati i post, quindi un valore sbagliato li manderebbe sui social di un altro.
+$canEditBlogId = !empty($user['is_admin']);
+
+// Profili dell'utente loggato: il proprio + quelli che co-gestisce.
+$profileIds = [(int) $user['id']];
+foreach (getManagedProfiles((int) $user['id']) as $m) {
+    $profileIds[] = (int) $m['id'];
+}
+$profileIds = array_values(array_unique($profileIds));
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? '';
+    $targetId = (int) ($_POST['target_id'] ?? 0);
 
-    if ($action === 'save') {
-        $blogId   = $canPickBrand
-            ? ((int) ($_POST['metricool_blog_id'] ?? 0) ?: null)
-            : ((int) ($profile['metricool_blog_id'] ?? 0) ?: null);
-        if ($canPickBrand && $blogId !== null && (!$metricoolBrands || !isset($metricoolBrands[$blogId]))) {
-            $error = 'Brand non valido o elenco Metricool non raggiungibile: configurazione non salvata.';
+    if (!in_array($targetId, $profileIds, true)) {
+        $error = 'Profilo non valido.';
+    } elseif ($action === 'save') {
+        $stmt = getDB()->prepare('SELECT metricool_blog_id FROM profiles WHERE user_id=?');
+        $stmt->execute([$targetId]);
+        $currentId = (int) $stmt->fetchColumn();
+
+        if ($canEditBlogId) {
+            $rawId = trim((string) ($_POST['metricool_blog_id'] ?? ''));
+            if ($rawId !== '' && !ctype_digit($rawId)) {
+                $error = 'L\'ID Metricool deve essere un numero.';
+            }
+            $blogId = $rawId !== '' ? (int) $rawId : null;
+        } else {
+            $blogId = $currentId ?: null;
         }
         $networks = array_intersect(array_keys($allNetworks), (array) ($_POST['networks'] ?? []));
         $autoOn   = !empty($networks) && $blogId ? 1 : 0;
@@ -42,28 +57,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === null) {
             $stmt = getDB()->prepare('UPDATE profiles SET metricool_blog_id=?, metricool_networks=?, metricool_auto_social=? WHERE user_id=?');
-            $stmt->execute([$blogId, $netJson, $autoOn, $profile['id']]);
+            $stmt->execute([$blogId, $netJson, $autoOn, $targetId]);
             header('Location: /dashboard_metricool.php?saved=1');
             exit;
         }
-
     } elseif ($action === 'disable') {
         $stmt = getDB()->prepare('UPDATE profiles SET metricool_auto_social=0 WHERE user_id=?');
-        $stmt->execute([$profile['id']]);
+        $stmt->execute([$targetId]);
         header('Location: /dashboard_metricool.php?saved=1');
         exit;
     }
 }
 
-// Reload fresh profile
-$user    = currentUser();
-$profile = getActingProfile($user);
+$in = implode(',', array_fill(0, count($profileIds), '?'));
+$stmt = getDB()->prepare("SELECT u.id, u.slug, p.display_name, p.metricool_blog_id, p.metricool_networks, p.metricool_auto_social
+    FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id IN ($in)");
+$stmt->execute($profileIds);
+$rows = $stmt->fetchAll();
+usort($rows, fn($a, $b) => ((int) $b['id'] === (int) $user['id']) <=> ((int) $a['id'] === (int) $user['id']) ?: strcasecmp($a['display_name'], $b['display_name']));
 
-$currentBlogId  = (int) ($profile['metricool_blog_id'] ?? 0);
-$currentNetworks = $profile['metricool_networks'] ? json_decode($profile['metricool_networks'], true) : [];
-$autoActive      = !empty($profile['metricool_auto_social']);
-
-// Queue stats
+// Coda del profilo che stai gestendo adesso
 $stmtStats = getDB()->prepare(
     'SELECT status, COUNT(*) n FROM social_queue WHERE user_id=? GROUP BY status'
 );
@@ -73,7 +86,6 @@ foreach ($stmtStats->fetchAll() as $row) {
     $stats[$row['status']] = (int) $row['n'];
 }
 
-// Recent queue items
 $stmtQ = getDB()->prepare(
     'SELECT * FROM social_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 20'
 );
@@ -93,71 +105,58 @@ include __DIR__ . '/_dash_header.php';
       network</strong> (tono, lunghezza, hashtag diversi per Instagram, Facebook, LinkedIn, ecc.)
       e la schedula su Metricool. Nessun intervento manuale richiesto.
     </p>
+    <p style="color:var(--text-muted)">
+      Per ogni profilo serve l'<strong>ID Metricool</strong> del brand collegato: lo inserisce
+      l'amministratore del sito. Poi scegli su quali social pubblicare.
+    </p>
   </details>
 
-  <!-- Configurazione -->
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="save">
+  <div class="section-title">Profili e ID Metricool</div>
+  <?php foreach ($rows as $r): ?>
+    <?php
+      $rid = (int) $r['id'];
+      $rBlog = (int) ($r['metricool_blog_id'] ?? 0);
+      $rNets = $r['metricool_networks'] ? (json_decode($r['metricool_networks'], true) ?: []) : [];
+      $rAuto = !empty($r['metricool_auto_social']);
+    ?>
+    <form method="post" class="card" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;align-items:start;">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="save">
+      <input type="hidden" name="target_id" value="<?= $rid ?>">
+      <div>
+        <strong><?= e($r['display_name']) ?></strong>
+        <div style="color:var(--text-muted);font-size:12.5px;">/<?= e($r['slug']) ?><?= $rid === (int) $user['id'] ? ' · il tuo profilo' : '' ?></div>
+        <div style="font-size:12.5px;margin-top:6px;color:<?= $rAuto ? '#27ae60' : '#e74c3c' ?>;">
+          <?= $rAuto ? '✅ Pubblicazione automatica attiva' : '⏸ Non attiva' ?>
+        </div>
+      </div>
+      <div>
+        <label>ID Metricool</label>
+        <?php if ($canEditBlogId): ?>
+          <input type="text" name="metricool_blog_id" inputmode="numeric" pattern="[0-9]*" value="<?= $rBlog ?: '' ?>" placeholder="es. 1234567">
+        <?php else: ?>
+          <p style="margin:0 0 12px;"><?= $rBlog ? '<strong>' . $rBlog . '</strong>' : '<span style="color:var(--text-muted);">Non assegnato: contatta l\'amministratore.</span>' ?></p>
+        <?php endif; ?>
 
-    <label>Brand Metricool</label>
-    <?php if ($canPickBrand): ?>
-    <select name="metricool_blog_id">
-      <option value="">— Nessuno —</option>
-      <?php foreach (($metricoolBrands ?? []) as $bid => $blabel): ?>
-        <option value="<?= $bid ?>" <?= $currentBlogId === $bid ? 'selected' : '' ?>><?= e($blabel) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <p style="color:var(--text-muted);font-size:13px;margin:-8px 0 12px;">
-      <?= $metricoolBrands ? 'Seleziona il brand Metricool corrispondente a questo profilo.' : 'Elenco Metricool non disponibile: imposta METRICOOL_USER_TOKEN e METRICOOL_USER_ID nel container.' ?>
-    </p>
-    <?php else: ?>
-    <p style="margin:0 0 12px;">
-      <?php if ($currentBlogId): ?>
-        <strong><?= e(($metricoolBrands[$currentBlogId] ?? '') ?: ('Brand ' . $currentBlogId)) ?></strong>
-      <?php else: ?>
-        <span style="color:var(--text-muted);">Nessun brand assegnato a questo profilo: contatta l'amministratore per collegarlo.</span>
-      <?php endif; ?>
-    </p>
-    <?php endif; ?>
-
-    <label>Social network da pubblicare</label>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <?php foreach ($allNetworks as $net => $netlabel): ?>
-        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
-          <input type="checkbox" name="networks[]" value="<?= $net ?>"
-                 <?= in_array($net, $currentNetworks, true) ? 'checked' : '' ?>>
-          <?= e($netlabel) ?>
-        </label>
-      <?php endforeach; ?>
-    </div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button type="submit" class="btn">Salva configurazione</button>
-      <?php if ($autoActive): ?>
-        <button type="submit" name="action" value="disable" class="btn danger"
-                onclick="return confirm('Disattivare la pubblicazione automatica?');">Disattiva</button>
-      <?php endif; ?>
-    </div>
-  </form>
-
-  <!-- Stato -->
-  <?php if ($autoActive): ?>
-    <div class="card" style="border-left:4px solid #27ae60;">
-      <strong>✅ Pubblicazione automatica attiva</strong>
-      <p style="color:var(--text-muted);margin:6px 0 0;">
-        Brand: <strong><?= e($metricoolBrands[$currentBlogId] ?? $currentBlogId) ?></strong> ·
-        Social: <strong><?= e(implode(', ', array_map(fn($n) => $allNetworks[$n] ?? $n, $currentNetworks))) ?></strong>
-      </p>
-    </div>
-  <?php else: ?>
-    <div class="card" style="border-left:4px solid #e74c3c;">
-      <strong>⏸ Pubblicazione automatica non attiva</strong>
-      <p style="color:var(--text-muted);margin:6px 0 0;">
-        Seleziona un brand Metricool e almeno un social per attivarla.
-      </p>
-    </div>
-  <?php endif; ?>
+        <label>Social network da pubblicare</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+          <?php foreach ($allNetworks as $net => $netlabel): ?>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
+              <input type="checkbox" name="networks[]" value="<?= $net ?>" <?= in_array($net, $rNets, true) ? 'checked' : '' ?>>
+              <?= e($netlabel) ?>
+            </label>
+          <?php endforeach; ?>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" class="btn small">Salva</button>
+          <?php if ($rAuto): ?>
+            <button type="submit" name="action" value="disable" class="btn small danger"
+                    onclick="return confirm('Disattivare la pubblicazione automatica?');">Disattiva</button>
+          <?php endif; ?>
+        </div>
+      </div>
+    </form>
+  <?php endforeach; ?>
 
   <!-- Statistiche coda -->
   <?php if ($stats): ?>
