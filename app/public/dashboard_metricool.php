@@ -9,22 +9,10 @@ $pageTitle = 'Social Automatico';
 $error = null;
 $success = isset($_GET['saved']) ? 'Configurazione salvata.' : null;
 
-// Brand ID → label map (from Metricool, hardcoded to avoid API call on every page load)
-// Keys are Metricool brand IDs, values are display labels.
-// Update this list by checking admin_metricool.php if new brands are added.
-$metricoolBrands = [
-    2567772 => 'Gianluca Di Pietro',
-    3764086 => 'Dream Cinema Frosinone',
-    4051862 => 'Fratelli Ragusa',
-    4812943 => 'Baia Beach Club',
-    5019366 => 'La Caraffa',
-    5222258 => 'Antonio Liberti Compagnia Della Bellezza',
-    5300254 => 'myband.it',
-    7041529 => 'Notaio Angelone',
-];
-
-// L'elenco contiene i brand di TUTTI i clienti dell'account Metricool: solo l'amministratore può
-// assegnarne uno a un profilo. Gli altri utenti vedono e mantengono solo quello già assegnato.
+// Elenco dinamico dal tuo account Metricool (null = non raggiungibile/non configurato). Contiene i
+// brand di tutti i clienti: solo l'amministratore può assegnarne uno a un profilo.
+require_once __DIR__ . '/../src/metricool_queue.php';
+$metricoolBrands = metricoolListBrands();
 $canPickBrand = !empty($user['is_admin']);
 
 $allNetworks = [
@@ -45,17 +33,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $blogId   = $canPickBrand
             ? ((int) ($_POST['metricool_blog_id'] ?? 0) ?: null)
             : ((int) ($profile['metricool_blog_id'] ?? 0) ?: null);
-        if ($blogId !== null && !isset($metricoolBrands[$blogId])) {
-            $blogId = null;
+        if ($canPickBrand && $blogId !== null && (!$metricoolBrands || !isset($metricoolBrands[$blogId]))) {
+            $error = 'Brand non valido o elenco Metricool non raggiungibile: configurazione non salvata.';
         }
         $networks = array_intersect(array_keys($allNetworks), (array) ($_POST['networks'] ?? []));
         $autoOn   = !empty($networks) && $blogId ? 1 : 0;
         $netJson  = $networks ? json_encode(array_values($networks)) : null;
 
-        $stmt = getDB()->prepare('UPDATE profiles SET metricool_blog_id=?, metricool_networks=?, metricool_auto_social=? WHERE user_id=?');
-        $stmt->execute([$blogId, $netJson, $autoOn, $profile['id']]);
-        header('Location: /dashboard_metricool.php?saved=1');
-        exit;
+        if ($error === null) {
+            $stmt = getDB()->prepare('UPDATE profiles SET metricool_blog_id=?, metricool_networks=?, metricool_auto_social=? WHERE user_id=?');
+            $stmt->execute([$blogId, $netJson, $autoOn, $profile['id']]);
+            header('Location: /dashboard_metricool.php?saved=1');
+            exit;
+        }
 
     } elseif ($action === 'disable') {
         $stmt = getDB()->prepare('UPDATE profiles SET metricool_auto_social=0 WHERE user_id=?');
@@ -114,17 +104,17 @@ include __DIR__ . '/_dash_header.php';
     <?php if ($canPickBrand): ?>
     <select name="metricool_blog_id">
       <option value="">— Nessuno —</option>
-      <?php foreach ($metricoolBrands as $bid => $blabel): ?>
+      <?php foreach (($metricoolBrands ?? []) as $bid => $blabel): ?>
         <option value="<?= $bid ?>" <?= $currentBlogId === $bid ? 'selected' : '' ?>><?= e($blabel) ?></option>
       <?php endforeach; ?>
     </select>
     <p style="color:var(--text-muted);font-size:13px;margin:-8px 0 12px;">
-      Seleziona il brand Metricool corrispondente a questo profilo.
+      <?= $metricoolBrands ? 'Seleziona il brand Metricool corrispondente a questo profilo.' : 'Elenco Metricool non disponibile: imposta METRICOOL_USER_TOKEN e METRICOOL_USER_ID nel container.' ?>
     </p>
     <?php else: ?>
     <p style="margin:0 0 12px;">
-      <?php if ($currentBlogId && isset($metricoolBrands[$currentBlogId])): ?>
-        <strong><?= e($metricoolBrands[$currentBlogId]) ?></strong>
+      <?php if ($currentBlogId): ?>
+        <strong><?= e(($metricoolBrands[$currentBlogId] ?? '') ?: ('Brand ' . $currentBlogId)) ?></strong>
       <?php else: ?>
         <span style="color:var(--text-muted);">Nessun brand assegnato a questo profilo: contatta l'amministratore per collegarlo.</span>
       <?php endif; ?>

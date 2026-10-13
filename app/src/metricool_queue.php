@@ -65,3 +65,49 @@ function socialQueueEnqueueIfEnabled(int $userId, string $type, array $data): vo
     }
     socialQueueEnqueue($userId, $type, $data);
 }
+
+/**
+ * Elenco dinamico dei brand Metricool dell'account (id => etichetta), letto dall'API Metricool.
+ * Richiede le variabili d'ambiente METRICOOL_USER_TOKEN e METRICOOL_USER_ID (mai nel codice).
+ * Ritorna null se non configurato o se la chiamata fallisce. Cache su file di 10 minuti.
+ */
+function metricoolListBrands(): ?array {
+    $token = getenv('METRICOOL_USER_TOKEN') ?: '';
+    $mcUser = getenv('METRICOOL_USER_ID') ?: '';
+    if ($token === '' || $mcUser === '') {
+        return null;
+    }
+    $cache = sys_get_temp_dir() . '/metricool_brands_' . md5($mcUser) . '.json';
+    if (is_file($cache) && filemtime($cache) > time() - 600) {
+        $cached = json_decode((string) file_get_contents($cache), true);
+        if (is_array($cached)) {
+            return array_combine(array_map('intval', array_keys($cached)), array_values($cached));
+        }
+    }
+    $ch = curl_init('https://app.metricool.com/api/admin/simpleProfiles?userId=' . urlencode($mcUser));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => ['X-Mc-Auth: ' . $token, 'Accept: application/json'],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    $data = $body !== false && $code === 200 ? json_decode($body, true) : null;
+    if (!is_array($data)) {
+        return null;
+    }
+    $brands = [];
+    foreach ($data as $b) {
+        $id = (int) ($b['id'] ?? $b['blogId'] ?? 0);
+        $label = trim((string) ($b['label'] ?? $b['title'] ?? $b['name'] ?? ''));
+        if ($id > 0) {
+            $brands[$id] = $label !== '' ? $label : ('Brand ' . $id);
+        }
+    }
+    if ($brands) {
+        @file_put_contents($cache, json_encode($brands), LOCK_EX);
+    }
+    return $brands ?: null;
+}
+
