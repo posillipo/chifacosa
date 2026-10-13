@@ -23,6 +23,10 @@ $metricoolBrands = [
     7041529 => 'Notaio Angelone',
 ];
 
+// L'elenco contiene i brand di TUTTI i clienti dell'account Metricool: solo l'amministratore può
+// assegnarne uno a un profilo. Gli altri utenti vedono e mantengono solo quello già assegnato.
+$canPickBrand = !empty($user['is_admin']);
+
 $allNetworks = [
     'instagram' => 'Instagram',
     'facebook'  => 'Facebook',
@@ -38,7 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save') {
-        $blogId   = (int) ($_POST['metricool_blog_id'] ?? 0) ?: null;
+        $blogId   = $canPickBrand
+            ? ((int) ($_POST['metricool_blog_id'] ?? 0) ?: null)
+            : ((int) ($profile['metricool_blog_id'] ?? 0) ?: null);
+        if ($blogId !== null && !isset($metricoolBrands[$blogId])) {
+            $blogId = null;
+        }
         $networks = array_intersect(array_keys($allNetworks), (array) ($_POST['networks'] ?? []));
         $autoOn   = !empty($networks) && $blogId ? 1 : 0;
         $netJson  = $networks ? json_encode(array_values($networks)) : null;
@@ -102,6 +111,7 @@ include __DIR__ . '/_dash_header.php';
     <input type="hidden" name="action" value="save">
 
     <label>Brand Metricool</label>
+    <?php if ($canPickBrand): ?>
     <select name="metricool_blog_id">
       <option value="">— Nessuno —</option>
       <?php foreach ($metricoolBrands as $bid => $blabel): ?>
@@ -111,6 +121,15 @@ include __DIR__ . '/_dash_header.php';
     <p style="color:var(--text-muted);font-size:13px;margin:-8px 0 12px;">
       Seleziona il brand Metricool corrispondente a questo profilo.
     </p>
+    <?php else: ?>
+    <p style="margin:0 0 12px;">
+      <?php if ($currentBlogId && isset($metricoolBrands[$currentBlogId])): ?>
+        <strong><?= e($metricoolBrands[$currentBlogId]) ?></strong>
+      <?php else: ?>
+        <span style="color:var(--text-muted);">Nessun brand assegnato a questo profilo: contatta l'amministratore per collegarlo.</span>
+      <?php endif; ?>
+    </p>
+    <?php endif; ?>
 
     <label>Social network da pubblicare</label>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
