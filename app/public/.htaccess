@@ -89,6 +89,11 @@ RewriteRule ^api/v1/pinned-items/([0-9]+)/?$ api_pinned_items_item.php?id=$1 [L,
 # Telegram collegato al profilo autenticato.
 RewriteRule ^api/v1/telegram/send/?$ api_telegram_send.php [L,QSA]
 
+# API pubblica /api/v1/links/* — stesso token Bearer, gestione del modulo Link (link, separatori,
+# mappe, copertine, ordine, attivo/nascosto, sezioni del sito).
+RewriteRule ^api/v1/links/(list|create|reorder|sync-sections)/?$ api_links.php?action=$1 [L,QSA]
+RewriteRule ^api/v1/links/([0-9]+)/?$ api_links.php?action=item&id=$1 [L,QSA]
+
 # API pubblica /api/v1/favorites/{track|band|playlist|album}/* — stesso token Bearer, gestione di
 # "Brani/Band/Playlist/Album che amo" (ricerca Spotify, aggiunta, elenco, modifica, rimozione).
 RewriteRule ^api/v1/favorites/(track|band|playlist|album)/(search|add|list)/?$ api_favorites.php?kind=$1&action=$2 [L,QSA]

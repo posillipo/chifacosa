@@ -541,6 +541,66 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
 
+    server.registerTool('list_links', {
+        title: 'Elenca i Link della pagina (modulo LINK)',
+        description: 'Elenca tutti i link del profilo nell\'ordine in cui compaiono: link, separatori (divider), mappe (map) e film. Ogni voce ha id, type, position (1 = primo), label, url, cover_image_url, is_active, is_website_icon, placement (social_icon = diventa icona social in cima, button = pulsante) e click_count.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/links/list')));
+
+    server.registerTool('create_link', {
+        title: 'Crea un link, un separatore o una mappa',
+        description: 'Aggiunge una voce al modulo LINK in fondo all\'elenco (o alla posizione indicata). type "link": servono label e url (http/https/mailto), opzionali cover_image_url (immagine del pulsante, scaricata e salvata) e is_website_icon (mostra come icona globo "sito web"). type "divider": serve solo label (titolo del separatore). type "map": serve address (viene geolocalizzato) oppure lat e lng, label opzionale.',
+        inputSchema: {
+            ...profileField,
+            type: z.enum(['link', 'divider', 'map']).optional().describe('Default link'),
+            label: z.string().optional().describe('Etichetta del pulsante / titolo del separatore / nome della mappa'),
+            url: z.string().optional().describe('Solo per type link'),
+            cover_image_url: z.string().optional().describe('URL pubblico dell\'immagine da associare al link (solo type link)'),
+            is_website_icon: z.boolean().optional().describe('Solo type link: true = icona "sito web" in cima alla pagina'),
+            address: z.string().optional().describe('Solo type map: indirizzo da geolocalizzare'),
+            lat: z.number().optional().describe('Solo type map'),
+            lng: z.number().optional().describe('Solo type map'),
+            position: z.number().int().min(1).optional().describe('Posizione finale (1 = primo). Se omesso va in fondo'),
+        },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/links/create', { method: 'POST', body: fields })));
+
+    server.registerTool('update_link', {
+        title: 'Modifica un link, separatore o mappa',
+        description: 'Modifica una voce del modulo LINK, dato il suo id (da list_links). Tutti i campi oltre a profile/id sono opzionali: label, url e is_website_icon (link), cover_image_url per cambiare l\'immagine o remove_cover=true per toglierla, is_active (false = nascosto sulla pagina), address/lat/lng (mappe), position per spostarlo (1 = primo). I link film accettano solo is_active e position.',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID della voce'),
+            label: z.string().optional(),
+            url: z.string().optional(),
+            cover_image_url: z.string().optional().describe('URL pubblico della nuova immagine'),
+            remove_cover: z.boolean().optional().describe('true = rimuove l\'immagine associata'),
+            is_website_icon: z.boolean().optional(),
+            is_active: z.boolean().optional(),
+            address: z.string().optional(),
+            lat: z.number().optional(),
+            lng: z.number().optional(),
+            position: z.number().int().min(1).optional(),
+        },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/links/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('delete_link', {
+        title: 'Elimina un link, separatore o mappa',
+        description: 'Elimina definitivamente una voce del modulo LINK, dato il suo id (e la sua immagine, se presente).',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID della voce') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/links/${id}`, { method: 'DELETE' })));
+
+    server.registerTool('reorder_links', {
+        title: 'Riordina i Link della pagina',
+        description: 'Imposta l\'ordine delle voci del modulo LINK (separatori compresi): passa gli id nell\'ordine desiderato, dal primo all\'ultimo. Gli id non indicati restano in coda nel loro ordine attuale. Restituisce l\'elenco aggiornato.',
+        inputSchema: { ...profileField, order: z.array(z.number().int()).min(1).describe('ID delle voci nell\'ordine desiderato') },
+    }, async ({ profile, order }) => toolResult(await chifacosaApi(profile, '/links/reorder', { method: 'POST', body: { order } })));
+
+    server.registerTool('sync_section_links', {
+        title: 'Genera i pulsanti delle sezioni del sito (Tasto Speciale)',
+        description: 'Come il "Tasto Speciale" della dashboard: aggiunge, aggiorna o rimuove i pulsanti delle sezioni del sito che hanno davvero contenuti (Timeline, Blog, Eventi, ...), dietro un separatore "Sezioni del sito". Si può rilanciare senza creare doppioni.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/links/sync-sections', { method: 'POST', body: {} })));
+
     const favoriteKind = z.enum(['track', 'band', 'playlist', 'album']).describe('Sezione: track = Brani che amo, band = Band che amo, playlist = Playlist che amo, album = Album che amo');
 
     server.registerTool('search_favorites', {
