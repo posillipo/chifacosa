@@ -541,6 +541,12 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
 
+    server.registerTool('request_image_upload', {
+        title: 'Richiedi un indirizzo per caricare un\'immagine generata',
+        description: 'Restituisce un indirizzo di caricamento monouso (valido 10 minuti) per salvare un\'immagine generata nell\'album privato "Immagini social" del profilo, senza servizi esterni. Poi invia il file con Bash: curl -sS -X PUT -H "Content-Type: image/jpeg" --data-binary @file.jpg "<upload_url>". La risposta del PUT contiene image_url (indirizzo pubblico stabile sul sito): usalo come image_url di post, articoli, eventi o link. Una richiesta per ogni immagine. Le foto più vecchie di 60 giorni vengono eliminate.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/uploads/request', { method: 'POST', body: {} })));
+
     server.registerTool('list_links', {
         title: 'Elenca i Link della pagina (modulo LINK)',
         description: 'Elenca tutti i link del profilo nell\'ordine in cui compaiono: link, separatori (divider), mappe (map) e film. Ogni voce ha id, type, position (1 = primo), label, url, cover_image_url, is_active, is_website_icon, placement (social_icon = diventa icona social in cima, button = pulsante) e click_count.',
