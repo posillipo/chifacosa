@@ -87,20 +87,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $excerpt = textExcerpt($content, 200);
-        $coverPath = handleCoverUpload($profile['slug']);
-        if ($coverPath) {
-            deleteCoverFile($post['cover_path']);
+        require_once __DIR__ . '/../src/videos.php';
+        // Copertina: immagine OPPURE video. Un nuovo file sostituisce quello attuale, di qualunque tipo.
+        $coverPath = $post['cover_path'];
+        $coverVideoPath = $post['cover_video_path'] ?? null;
+        $vid = blogCoverVideoFromUpload($profile['slug']);
+        if ($vid !== null && isset($vid['error'])) {
+            $error = $vid['error'];
+        } elseif ($vid !== null) {
+            blogCoverDeleteAll($post);
+            if (empty($post['cover_video_path'])) {
+                deleteCoverFile($post['cover_path']);
+            }
+            $coverVideoPath = $vid['video_path'];
+            $coverPath = $vid['poster_path'];
+        } elseif ($newImage = handleCoverUpload($profile['slug'])) {
+            blogCoverDeleteAll($post);
+            if (empty($post['cover_video_path'])) {
+                deleteCoverFile($post['cover_path']);
+            }
+            $coverPath = $newImage;
+            $coverVideoPath = null;
         } elseif (isset($_POST['remove_cover'])) {
-            deleteCoverFile($post['cover_path']);
+            blogCoverDeleteAll($post);
+            if (empty($post['cover_video_path'])) {
+                deleteCoverFile($post['cover_path']);
+            }
             $coverPath = null;
-        } else {
-            $coverPath = $post['cover_path'];
+            $coverVideoPath = null;
         }
+    }
+    if (!$error) {
 
         // Lo slug (e quindi la parte finale del permalink) non cambia mai in modifica, anche se
         // il titolo cambia: un link già condiviso deve continuare a funzionare.
-        $stmt = getDB()->prepare('UPDATE blog_posts SET title=?, excerpt=?, content=?, cover_path=?, album_id=?, tags=?, published_at=?, in_feed=? WHERE id=? AND user_id=?');
-        $stmt->execute([$title, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $inFeed, $id, $profile['id']]);
+        $stmt = getDB()->prepare('UPDATE blog_posts SET title=?, excerpt=?, content=?, cover_path=?, cover_video_path=?, album_id=?, tags=?, published_at=?, in_feed=? WHERE id=? AND user_id=?');
+        $stmt->execute([$title, $excerpt, $content, $coverPath, $coverVideoPath, $albumId, $tags, $publishedAt, $inFeed, $id, $profile['id']]);
         getDB()->prepare('DELETE FROM blog_post_categories WHERE post_id=?')->execute([$id]);
         if ($categoryIds) {
             $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
@@ -130,7 +152,14 @@ include __DIR__ . '/_dash_header.php';
     <label>Contenuto</label>
     <textarea name="content" rows="16" required><?= e($post['content']) ?></textarea>
 
-    <?php if ($post['cover_path']): ?>
+    <?php if (!empty($post['cover_video_path'])): ?>
+      <label>Video di copertina attuale</label>
+      <video src="/<?= e($post['cover_video_path']) ?>" <?= $post['cover_path'] ? 'poster="/' . e($post['cover_path']) . '"' : '' ?> controls preload="none" style="width:220px;max-width:100%;border-radius:8px;display:block;margin-bottom:10px;"></video>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:14px;">
+        <input type="checkbox" name="remove_cover" value="1" style="width:auto;">
+        Rimuovi il video di copertina (senza sostituirlo)
+      </label>
+    <?php elseif ($post['cover_path']): ?>
       <label>Copertina attuale</label>
       <img src="/<?= e($post['cover_path']) ?>" style="width:120px;height:120px;border-radius:8px;object-fit:cover;display:block;margin-bottom:10px;">
       <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:14px;">
@@ -140,6 +169,8 @@ include __DIR__ . '/_dash_header.php';
     <?php endif; ?>
     <label>Nuova copertina (opzionale — lascia vuoto per non cambiarla)</label>
     <input type="file" name="cover" accept="image/*">
+    <label>Oppure nuovo video di copertina (MP4/MOV/WebM, max 200 MB — sostituisce l'immagine o il video attuale)</label>
+    <input type="file" name="cover_video" accept="video/mp4,video/quicktime,video/webm,.m4v">
 
     <label>Album collegato (opzionale)</label>
     <select name="album_id">

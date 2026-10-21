@@ -264,6 +264,8 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     excerpt VARCHAR(300),
     content TEXT NOT NULL,
     cover_path VARCHAR(255) DEFAULT NULL,
+    -- Copertina alternativa: video (in quel caso cover_path contiene il fotogramma di anteprima).
+    cover_video_path VARCHAR(255) DEFAULT NULL,
     album_id INT DEFAULT NULL,
     tags VARCHAR(300) DEFAULT NULL,
     published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -3129,11 +3129,15 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
     // sempre stata, dentro la card dell'articolo: le due colonne laterali lì sono impilate sotto
     // il contenuto, quindi spostarla lì avrebbe solo allungato la pagina senza risolvere nulla.
     $blogCoverSidebarHtml = '';
-    if ($post['cover_path']) {
+    if ($post['cover_path'] || !empty($post['cover_video_path'])) {
         ob_start();
         ?>
         <div class="card mb-3 d-none d-md-block">
+          <?php if (!empty($post['cover_video_path'])): ?>
+            <video src="/<?= e($post['cover_video_path']) ?>" <?= $post['cover_path'] ? 'poster="/' . e($post['cover_path']) . '"' : '' ?> controls playsinline preload="metadata" class="card-img-top" style="width:100%;height:auto;display:block;background:#000;"></video>
+          <?php else: ?>
           <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="card-img-top" style="width:100%;height:auto;display:block;">
+          <?php endif; ?>
         </div>
         <?php
         $blogCoverSidebarHtml = ob_get_clean();
@@ -3197,6 +3201,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
 <meta property="og:url" content="<?= e($permalink) ?>">
 <meta property="og:site_name" content="<?= e(siteName()) ?>">
 <?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<?php if (!empty($post['cover_video_path'])): ?><meta property="og:video" content="<?= e(siteUrl('/' . $post['cover_video_path'])) ?>"><meta property="og:video:type" content="video/mp4"><?php endif; ?>
 
 <meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
 <meta name="twitter:title" content="<?= e($post['title']) ?>">
@@ -3241,7 +3246,9 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                       ?></span>
                     </div>
                   </div>
-                  <?php if ($post['cover_path']): ?>
+                  <?php if (!empty($post['cover_video_path'])): ?>
+                    <video src="/<?= e($post['cover_video_path']) ?>" <?= $post['cover_path'] ? 'poster="/' . e($post['cover_path']) . '"' : '' ?> controls playsinline preload="metadata" class="d-md-none" style="width:100%;display:block;background:#000;"></video>
+                  <?php elseif ($post['cover_path']): ?>
                     <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>" class="d-md-none" style="width:100%;display:block;">
                   <?php endif; ?>
                   <div class="card-body">

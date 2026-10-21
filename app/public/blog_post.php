@@ -87,6 +87,7 @@ if (!empty($post['album_id'])) {
 <meta property="og:url" content="<?= e($permalink) ?>">
 <meta property="og:site_name" content="<?= e(siteName()) ?>">
 <?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<?php if (!empty($post['cover_video_path'])): ?><meta property="og:video" content="<?= e(siteUrl('/' . $post['cover_video_path'])) ?>"><meta property="og:video:type" content="video/mp4"><?php endif; ?>
 
 <meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
 <meta name="twitter:title" content="<?= e($post['title']) ?>">
@@ -126,7 +127,9 @@ if (!empty($post['album_id'])) {
         // su .card nel CSS e azzera il padding orizzontale: va ripristinato esplicitamente,
         // altrimenti il testo dell'articolo tocca i bordi del riquadro. ?>
   <article class="blog-item card" style="border-bottom:none;padding:26px 24px;">
-    <?php if ($post['cover_path']): ?>
+    <?php if (!empty($post['cover_video_path'])): ?>
+      <video src="/<?= e($post['cover_video_path']) ?>" <?= $post['cover_path'] ? 'poster="/' . e($post['cover_path']) . '"' : '' ?> controls playsinline preload="metadata" style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,0.15);"></video>
+    <?php elseif ($post['cover_path']): ?>
       <img src="/<?= e($post['cover_path']) ?>" alt="<?= e($post['title']) ?>"
            style="width:100%;max-width:400px;display:block;margin:0 auto 16px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
     <?php endif; ?>

@@ -11,10 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
-        $stmt = getDB()->prepare('SELECT cover_path FROM blog_posts WHERE id=? AND user_id=?');
+        $stmt = getDB()->prepare('SELECT cover_path, cover_video_path FROM blog_posts WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
         if ($row = $stmt->fetch()) {
-            deleteCoverFile($row['cover_path']);
+            require_once __DIR__ . '/../src/videos.php';
+            blogCoverDeleteAll($row);
+            if (empty($row['cover_video_path'])) {
+                deleteCoverFile($row['cover_path']);
+            }
         }
         getDB()->prepare('DELETE FROM blog_posts WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
     }
@@ -101,7 +105,7 @@ include __DIR__ . '/_dash_header.php';
     <?php $isScheduled = strtotime($p['published_at']) > time(); ?>
     <div class="blog-item" style="display:flex;gap:14px;align-items:flex-start;">
       <?php if ($p['cover_path']): ?>
-        <img src="/<?= e($p['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+        <span style="position:relative;flex-shrink:0;"><img src="/<?= e($p['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;display:block;"><?php if (!empty($p['cover_video_path'])): ?><i class="fa-solid fa-circle-play" style="position:absolute;right:3px;bottom:3px;color:#fff;text-shadow:0 0 4px #000;"></i><?php endif; ?></span>
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
         <?php if ($isScheduled): ?>

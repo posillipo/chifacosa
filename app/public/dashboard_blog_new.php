@@ -41,11 +41,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $excerpt = textExcerpt($content, 200);
-        $coverPath = handleCoverUpload($profile['slug']);
-
+        require_once __DIR__ . '/../src/videos.php';
+        // Copertina: immagine OPPURE video (se arrivano entrambi vince il video).
+        $coverPath = null;
+        $coverVideoPath = null;
+        $vid = blogCoverVideoFromUpload($profile['slug']);
+        if ($vid !== null && isset($vid['error'])) {
+            $error = $vid['error'];
+        } elseif ($vid !== null) {
+            $coverVideoPath = $vid['video_path'];
+            $coverPath = $vid['poster_path'];
+        } else {
+            $coverPath = handleCoverUpload($profile['slug']);
+        }
+    }
+    if (!$error) {
         $slug = generateUniquePostSlug((int) $profile['id'], $title);
-        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, album_id, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $albumId, $tags, $publishedAt, $inFeed]);
+        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, cover_video_path, album_id, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $coverVideoPath, $albumId, $tags, $publishedAt, $inFeed]);
         $newId = (int) getDB()->lastInsertId();
         if ($categoryIds) {
             $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');
@@ -125,6 +138,8 @@ include __DIR__ . '/_dash_header.php';
     </div>
     <label>Copertina quadrata (opzionale, jpg/png/webp — usata anche come immagine di anteprima quando condividi il link)</label>
     <input type="file" name="cover" accept="image/*">
+    <label>Oppure video di copertina (opzionale, MP4/MOV/WebM, max 200 MB — al posto dell'immagine)</label>
+    <input type="file" name="cover_video" accept="video/mp4,video/quicktime,video/webm,.m4v">
 
     <label>Album collegato (opzionale)</label>
     <select name="album_id">
