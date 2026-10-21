@@ -156,7 +156,8 @@ const blogPostFieldsSchema = {
     content: z.string().optional().describe('Contenuto/corpo dell\'articolo'),
     tags: z.string().max(300).optional().describe('Tag separati da virgola, es. "concerti, novità, napoli"'),
     categories: z.array(z.string()).optional().describe('Nomi delle categorie da assegnare — una categoria non ancora esistente viene creata automaticamente'),
-    image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e usare come copertina'),
+    image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e usare come copertina (in alternativa a cover_video_url)'),
+    cover_video_url: z.string().url().optional().describe('URL pubblico di un VIDEO (MP4/MOV/WebM, max 200 MB) da usare come copertina al posto dell\'immagine: viene scaricato e salvato, e ne viene ricavato il fotogramma di anteprima. Per un video locale: request_video_upload, poi usa come cover_video_url l\'URL video_url restituito. Non combinabile con image_url.'),
     publication_date: z.string().optional().describe('Data/ora di pubblicazione in ISO 8601 con fuso orario esplicito, es. 2026-09-24T08:00:00+02:00 — se futura l\'articolo resta programmato fino ad allora, se omessa si pubblica subito'),
     include_in_feed: z.boolean().optional().describe('true (default) = compare anche nel feed RSS del profilo, letto dalle automazioni social come Metricool. false = resta pubblico sul sito ma non finisce nel feed. Non riguarda la visibilità dell\'articolo sul sito, solo la pubblicazione automatica sui social.'),
 };
@@ -188,7 +189,7 @@ const BOARD_SIGNATURE_NOTE = 'Ogni scrittura va firmata: il segreto assegnato al
 const boardActorSchema = z.string().regex(/^[a-z0-9_-]{2,30}$/);
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.10.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.11.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -257,7 +258,7 @@ function buildMcpServer() {
 
     server.registerTool('create_blog_post', {
         title: 'Crea un articolo sul Blog di un profilo CHIFACOSA',
-        description: 'Crea un nuovo articolo (subito pubblicato, o programmato per una data futura) sul Blog del profilo CHIFACOSA scelto. Richiede title e content.',
+        description: 'Crea un nuovo articolo (subito pubblicato, o programmato per una data futura) sul Blog del profilo CHIFACOSA scelto. Richiede title e content. La copertina può essere un\'immagine (image_url) OPPURE un video (cover_video_url).',
         inputSchema: { ...profileField, ...blogPostFieldsSchema },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/blog-posts/create', { method: 'POST', body: fields })));
 

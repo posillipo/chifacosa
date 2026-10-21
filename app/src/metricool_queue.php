@@ -60,6 +60,21 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
             error_log('socialQueueEnqueue(video): ' . $e->getMessage());
         }
     }
+    // Articolo con video di copertina: la coda porta il file (media_url) e l'anteprima come immagine.
+    if ($type === 'blog' && empty($data['media_url']) && !empty($data['content_id'])) {
+        try {
+            $bs = getDB()->prepare('SELECT cover_video_path, cover_path FROM blog_posts WHERE id = ? AND user_id = ?');
+            $bs->execute([(int) $data['content_id'], $userId]);
+            if (($b = $bs->fetch()) && !empty($b['cover_video_path'])) {
+                $data['media_url'] = siteUrl('/' . $b['cover_video_path']);
+                if (empty($data['image_url']) && !empty($b['cover_path'])) {
+                    $data['image_url'] = siteUrl('/' . $b['cover_path']);
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('socialQueueEnqueue(blog): ' . $e->getMessage());
+        }
+    }
     $cols = ['user_id', 'content_type', 'content_id', 'title', 'body', 'image_url', 'public_url', 'scheduled_for'];
     $vals = [
         $userId,

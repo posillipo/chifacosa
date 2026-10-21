@@ -199,6 +199,57 @@ function videoCreateRecord(int $userId, string $slug, string $videoRelPath, stri
     return (int) getDB()->lastInsertId();
 }
 
+// ---- Video di copertina degli articoli del blog ----
+// Il file va in uploads/videos/<slug>/ come per il modulo Video; il fotogramma di anteprima
+// diventa la cover_path dell'articolo, così miniature, anteprime social e feed continuano a
+// funzionare con un'immagine. Ritorna ['video_path' => ..., 'poster_path' => ...|null] o ['error' => ...].
+function blogCoverVideoStore(string $tmpPath, string $originalName, string $slug, bool $isHttpUpload): array {
+    $check = videoValidateFile($tmpPath, $originalName);
+    if (isset($check['error'])) {
+        return $check;
+    }
+    $rel = videoStoreFile($tmpPath, $slug, $check['ext'], $isHttpUpload);
+    if ($rel === null) {
+        return ['error' => 'Impossibile salvare il video.'];
+    }
+    [$duration] = videoProbe('/var/www/html/' . $rel);
+    return ['video_path' => $rel, 'poster_path' => videoMakeThumbnail($rel, $slug, $duration)];
+}
+
+// Da un URL pubblico (anche di un video già caricato nel modulo Video dello stesso profilo).
+function blogCoverVideoFromUrl(string $url, string $slug): array {
+    $dl = videoDownloadToTemp($url);
+    if (isset($dl['error'])) {
+        return $dl;
+    }
+    $name = basename((string) parse_url($url, PHP_URL_PATH));
+    $res = blogCoverVideoStore($dl['path'], $name, $slug, false);
+    if (isset($res['error'])) {
+        @unlink($dl['path']);
+    }
+    return $res;
+}
+
+// Dal campo file del form (name="cover_video"). null = nessun file inviato.
+function blogCoverVideoFromUpload(string $slug): ?array {
+    $f = $_FILES['cover_video'] ?? null;
+    if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if ($f['error'] !== UPLOAD_ERR_OK) {
+        return ['error' => 'Caricamento del video non riuscito (codice ' . (int) $f['error'] . ').'];
+    }
+    return blogCoverVideoStore($f['tmp_name'], $f['name'], $slug, true);
+}
+
+// Elimina file video + anteprima di un articolo.
+function blogCoverDeleteAll(array $post): void {
+    videoDeleteFile($post['cover_video_path'] ?? null);
+    if (!empty($post['cover_video_path']) && !empty($post['cover_path'])) {
+        deleteCoverFile($post['cover_path']);
+    }
+}
+
 function videoStatus(array $v): string {
     if (!(int) $v['is_public']) {
         return 'private';

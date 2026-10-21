@@ -30,13 +30,25 @@ if (!empty($v['image_url'])) {
     }
 }
 
+$coverVideoPath = null;
+if (!empty($v['cover_video_url'])) {
+    require_once __DIR__ . '/../src/videos.php';
+    $vid = blogCoverVideoFromUrl($v['cover_video_url'], $auth['slug']);
+    if (isset($vid['error'])) {
+        $imageWarning = 'Non è stato possibile scaricare "cover_video_url" (' . $vid['error'] . '): l\'articolo è stato creato senza copertina.';
+    } else {
+        $coverVideoPath = $vid['video_path'];
+        $coverPath = $vid['poster_path'];
+    }
+}
+
 $categoryIds = !empty($v['categories']) ? apiResolveOrCreateBlogCategories($auth['user_id'], $v['categories']) : [];
 $publishedAt = $v['published_at'] ?? date('Y-m-d H:i:s');
 $excerpt = textExcerpt($v['content'], 200);
 $slug = generateUniquePostSlug($auth['user_id'], $v['title']);
 
-$stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?)');
-$stmt->execute([$auth['user_id'], $v['title'], $slug, $excerpt, $v['content'], $coverPath, $v['tags'] ?? null, $publishedAt, $v['in_feed'] ?? 1]);
+$stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, cover_video_path, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?,?)');
+$stmt->execute([$auth['user_id'], $v['title'], $slug, $excerpt, $v['content'], $coverPath, $coverVideoPath, $v['tags'] ?? null, $publishedAt, $v['in_feed'] ?? 1]);
 $postId = (int) getDB()->lastInsertId();
 
 if ($categoryIds) {

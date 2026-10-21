@@ -47,9 +47,30 @@ if ($method === 'PUT') {
         if ($downloaded === null) {
             apiError(422, 'Non è stato possibile scaricare la nuova "image_url".', $auth['token_id'], $auth['user_id']);
         }
-        deleteCoverFile($post['cover_path'] ?? null);
+        if (!empty($post['cover_video_path'])) {
+            require_once __DIR__ . '/../src/videos.php';
+            blogCoverDeleteAll($post);
+            $v['cover_video_path'] = null;
+        } else {
+            deleteCoverFile($post['cover_path'] ?? null);
+        }
         $v['cover_path'] = $downloaded['image_path'];
         unset($v['image_url']);
+    }
+
+    if (array_key_exists('cover_video_url', $v)) {
+        require_once __DIR__ . '/../src/videos.php';
+        $vid = blogCoverVideoFromUrl($v['cover_video_url'], $auth['slug']);
+        if (isset($vid['error'])) {
+            apiError(422, 'Video di copertina non scaricato: ' . $vid['error'], $auth['token_id'], $auth['user_id']);
+        }
+        blogCoverDeleteAll($post);
+        if (empty($post['cover_video_path'])) {
+            deleteCoverFile($post['cover_path'] ?? null);
+        }
+        $v['cover_video_path'] = $vid['video_path'];
+        $v['cover_path'] = $vid['poster_path'];
+        unset($v['cover_video_url']);
     }
 
     // Le categorie non sono una colonna di blog_posts (tabella ponte blog_post_categories):
@@ -60,7 +81,7 @@ if ($method === 'PUT') {
         unset($v['categories']);
     }
 
-    $columnMap = ['title', 'slug', 'excerpt', 'content', 'tags', 'published_at', 'cover_path', 'in_feed'];
+    $columnMap = ['title', 'slug', 'excerpt', 'content', 'tags', 'published_at', 'cover_path', 'cover_video_path', 'in_feed'];
     $sets = [];
     $params = [];
     foreach ($columnMap as $col) {
@@ -92,7 +113,11 @@ if ($method === 'PUT') {
 }
 
 if ($method === 'DELETE') {
-    deleteCoverFile($post['cover_path'] ?? null);
+    require_once __DIR__ . '/../src/videos.php';
+    blogCoverDeleteAll($post);
+    if (empty($post['cover_video_path'])) {
+        deleteCoverFile($post['cover_path'] ?? null);
+    }
     getDB()->prepare('DELETE FROM blog_posts WHERE id = ? AND user_id = ?')->execute([$id, $auth['user_id']]);
     apiRespond(200, ['success' => true, 'message' => 'Articolo eliminato.'], $auth['token_id'], $auth['user_id']);
 }

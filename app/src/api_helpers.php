@@ -331,6 +331,8 @@ function apiSerializeBlogPost(array $post, string $slug): array {
         'tags' => $post['tags'],
         'categories' => array_column(getBlogPostCategories((int) $post['id']), 'name'),
         'cover_image_url' => $post['cover_path'] ? siteUrl('/' . $post['cover_path']) : null,
+        // Se presente, la copertina è un video e cover_image_url è il suo fotogramma di anteprima.
+        'cover_video_url' => !empty($post['cover_video_path']) ? siteUrl('/' . $post['cover_video_path']) : null,
         'status' => apiDeriveBlogPostStatus($post),
         'publication_date' => apiFormatDateTimeRome($post['published_at'] ?? null),
         'include_in_feed' => (bool) ((int) ($post['in_feed'] ?? 1)),
@@ -416,6 +418,18 @@ function apiValidateBlogPostPayload(array $data, bool $partial): array {
             return ['error' => 'Il campo "image_url" non è un URL pubblico valido.', 'values' => []];
         }
         $values['image_url'] = $imageUrl;
+    }
+
+    // Copertina: immagine OPPURE video, non entrambi.
+    if (array_key_exists('cover_video_url', $data) && trim((string) $data['cover_video_url']) !== '') {
+        $videoUrl = trim((string) $data['cover_video_url']);
+        if (!filter_var($videoUrl, FILTER_VALIDATE_URL) || !isSafePublicUrl($videoUrl)) {
+            return ['error' => 'Il campo "cover_video_url" non è un URL pubblico valido.', 'values' => []];
+        }
+        if (isset($values['image_url'])) {
+            return ['error' => 'Un articolo può avere un\'immagine di copertina ("image_url") oppure un video ("cover_video_url"), non entrambi.', 'values' => []];
+        }
+        $values['cover_video_url'] = $videoUrl;
     }
 
     if (array_key_exists('publication_date', $data) && trim((string) $data['publication_date']) !== '') {
