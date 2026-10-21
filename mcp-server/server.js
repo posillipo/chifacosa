@@ -541,6 +541,61 @@ function buildMcpServer() {
         },
     }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
 
+    const videoFields = {
+        title: z.string().describe('Titolo del video (max 150 caratteri)'),
+        description: z.string().optional().describe('Descrizione del video'),
+        is_public: z.boolean().optional().describe('true (default) = visibile nella sezione Video, false = solo per te (il file resta raggiungibile da chi ha l\'indirizzo)'),
+        include_in_feed: z.boolean().optional().describe('true (default) = incluso nel feed RSS per le automazioni social'),
+        publish_at: z.string().optional().describe('Pubblicazione programmata in ISO 8601 — se futura il video resta nascosto fino ad allora'),
+        queue_social: z.boolean().optional().describe('true = se il video è pubblico lo mette subito nella coda social (pending) per Metricool, con scheduled_for = publish_at. Default false'),
+    };
+
+    server.registerTool('list_videos', {
+        title: 'Elenca i video caricati (modulo VIDEO)',
+        description: 'Elenca i video del profilo nell\'ordine di visualizzazione (position 1 = in alto). Ogni video ha id, title, description, video_url (file, stabile: è l\'indirizzo da dare a Metricool come media), thumbnail_url, durata, dimensioni, status (published/scheduled/private) e url della pagina pubblica. Non è la sezione YouTube.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/videos/list')));
+
+    server.registerTool('request_video_upload', {
+        title: 'Richiedi un indirizzo per caricare un video',
+        description: 'Per caricare un file video già presente nella sandbox (fino a 200 MB, MP4/MOV/WebM). Crea il video con titolo e descrizione e restituisce un indirizzo di caricamento monouso (30 minuti). Poi invia il file con Bash: curl -sS -X PUT --data-binary @video.mp4 "<upload_url>". La risposta del PUT contiene il video creato (video_url, thumbnail_url, url pagina). Passa filename con l\'estensione giusta (es. "clip.mov"). Il caricamento richiede che l\'ambiente raggiunga il dominio del sito.',
+        inputSchema: { ...profileField, ...videoFields, filename: z.string().optional().describe('Nome del file con estensione (mp4, mov, webm). Default video.mp4') },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/videos/request-upload', { method: 'POST', body: fields })));
+
+    server.registerTool('add_video_from_url', {
+        title: 'Crea un video scaricandolo da un URL pubblico',
+        description: 'Se il video è già online (indirizzo pubblico, max 200 MB, MP4/MOV/WebM) il server lo scarica e lo salva nel profilo, con titolo e descrizione. Genera da solo anteprima e durata.',
+        inputSchema: { ...profileField, ...videoFields, video_url: z.string().describe('URL pubblico del file video') },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/videos/from-url', { method: 'POST', body: fields })));
+
+    server.registerTool('update_video', {
+        title: 'Modifica un video',
+        description: 'Modifica titolo, descrizione, visibilità (is_public), feed, programmazione (publish_at, stringa vuota per toglierla), anteprima (thumbnail_url, indirizzo pubblico di un\'immagine) e posizione (position, 1 = in alto) di un video, dato il suo id (da list_videos).',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID del video'),
+            title: z.string().optional(),
+            description: z.string().optional(),
+            is_public: z.boolean().optional(),
+            include_in_feed: z.boolean().optional(),
+            publish_at: z.string().optional(),
+            thumbnail_url: z.string().optional().describe('URL pubblico della nuova immagine di anteprima'),
+            position: z.number().int().min(1).optional(),
+        },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/videos/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('delete_video', {
+        title: 'Elimina un video',
+        description: 'Elimina definitivamente un video (record e file) dato il suo id.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del video') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/videos/${id}`, { method: 'DELETE' })));
+
+    server.registerTool('reorder_videos', {
+        title: 'Riordina i video',
+        description: 'Imposta l\'ordine dei video: passa gli id dal primo (in alto) all\'ultimo. Gli id non indicati restano dopo, nel loro ordine attuale. Restituisce l\'elenco aggiornato.',
+        inputSchema: { ...profileField, order: z.array(z.number().int()).min(1).describe('ID dei video nell\'ordine desiderato') },
+    }, async ({ profile, order }) => toolResult(await chifacosaApi(profile, '/videos/reorder', { method: 'POST', body: { order } })));
+
     server.registerTool('request_image_upload', {
         title: 'Richiedi un indirizzo per caricare un\'immagine generata',
         description: 'Restituisce un indirizzo di caricamento monouso (valido 10 minuti) per salvare un\'immagine generata nell\'album privato "Immagini social" del profilo, senza servizi esterni. Poi invia il file con Bash: curl -sS -X PUT -H "Content-Type: image/jpeg" --data-binary @file.jpg "<upload_url>". La risposta del PUT contiene image_url (indirizzo pubblico stabile sul sito): usalo come image_url di post, articoli, eventi o link. Una richiesta per ogni immagine. Le foto più vecchie di 60 giorni vengono eliminate.',
@@ -682,12 +737,13 @@ function buildMcpServer() {
             title: z.string().describe('Titolo del contenuto'),
             image_url: z.string().optional().describe('URL immagine di copertina (opzionale)'),
             public_url: z.string().describe('URL pubblico del contenuto'),
+            media_url: z.string().optional().describe('URL del file video da pubblicare (per content_type "video": è il campo video_url del video)'),
             scheduled_for: z.string().optional().describe('Data/ora di pubblicazione programmata (formato: "YYYY-MM-DD HH:MM"). Se omesso, viene processato alla prima run disponibile.'),
         },
-    }, async ({ profile, content_type, content_id, title, image_url, public_url, scheduled_for }) =>
+    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for }) =>
         toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
             method: 'POST',
-            body: { content_type, content_id, title, image_url, public_url, scheduled_for }
+            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for }
         }))
     );
 

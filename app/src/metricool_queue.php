@@ -38,11 +38,8 @@ function socialQueueBuildSq(int $userId, string $type, array $data, bool $isPubl
  * the caller is responsible for that check (use metricoolIsEnabled() first).
  */
 function socialQueueEnqueue(int $userId, string $type, array $data, ?string $scheduledFor = null): int {
-    $ins = getDB()->prepare(
-        'INSERT INTO social_queue (user_id, content_type, content_id, title, body, image_url, public_url, scheduled_for)
-         VALUES (?,?,?,?,?,?,?,?)'
-    );
-    $ins->execute([
+    $cols = ['user_id', 'content_type', 'content_id', 'title', 'body', 'image_url', 'public_url', 'scheduled_for'];
+    $vals = [
         $userId,
         $type,
         (int) ($data['content_id'] ?? 0),
@@ -51,7 +48,16 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
         $data['image_url'] ?? null,
         $data['public_url'] ?? '',
         $scheduledFor ?: null,
-    ]);
+    ];
+    // media_url (file video) solo per i contenuti che ce l'hanno: gli altri non dipendono dalla colonna.
+    if (!empty($data['media_url'])) {
+        $cols[] = 'media_url';
+        $vals[] = $data['media_url'];
+    }
+    $ins = getDB()->prepare(
+        'INSERT INTO social_queue (' . implode(', ', $cols) . ') VALUES (' . implode(',', array_fill(0, count($cols), '?')) . ')'
+    );
+    $ins->execute($vals);
     return (int) getDB()->lastInsertId();
 }
 

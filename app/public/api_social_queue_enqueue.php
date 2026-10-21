@@ -9,6 +9,7 @@
  *   title         string
  *   image_url     string|null
  *   public_url    string
+ *   media_url     string|null  file video/audio da pubblicare (es. content_type "video")
  *   scheduled_for string|null  "YYYY-MM-DD HH:MM" or "YYYY-MM-DDTHH:MM"
  * }
  */
@@ -32,6 +33,7 @@ $contentId   = (int) ($body['content_id'] ?? 0);
 $title       = mb_substr(trim($body['title'] ?? ''), 0, 250);
 $imageUrl    = $body['image_url'] ?? null;
 $publicUrl   = trim($body['public_url'] ?? '');
+$mediaUrl    = trim($body['media_url'] ?? '');
 $scheduledFor = $body['scheduled_for'] ?? null;
 
 if (!$contentType || !$contentId) {
@@ -67,6 +69,7 @@ $id = socialQueueEnqueue($userId, $contentType, [
     'title'      => $title,
     'image_url'  => $imageUrl,
     'public_url' => $publicUrl,
+    'media_url'  => $mediaUrl,
 ], $scheduledFor);
 
 apiRespond(201, ['success' => true, 'id' => $id], $auth['token_id'], $userId);

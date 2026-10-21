@@ -94,6 +94,12 @@ RewriteRule ^api/v1/telegram/send/?$ api_telegram_send.php [L,QSA]
 RewriteRule ^api/v1/uploads/request/?$ api_uploads.php?action=request [L,QSA]
 RewriteRule ^api/v1/uploads/put/([A-Za-z0-9_.-]+)/?$ api_uploads.php?action=put&token=$1 [L,QSA]
 
+# API pubblica /api/v1/videos/* — stesso token Bearer, gestione del modulo Video (elenco, modifica,
+# ordine, creazione da URL, caricamento firmato "request-upload" + "put/{token}").
+RewriteRule ^api/v1/videos/(list|reorder|from-url|request-upload)/?$ api_videos.php?action=$1 [L,QSA]
+RewriteRule ^api/v1/videos/put/([A-Za-z0-9_.-]+)/?$ api_videos.php?action=put&token=$1 [L,QSA]
+RewriteRule ^api/v1/videos/([0-9]+)/?$ api_videos.php?action=item&id=$1 [L,QSA]
+
 # API pubblica /api/v1/links/* — stesso token Bearer, gestione del modulo Link (link, separatori,
 # mappe, copertine, ordine, attivo/nascosto, sezioni del sito).
 RewriteRule ^api/v1/links/(list|create|reorder|sync-sections)/?$ api_links.php?action=$1 [L,QSA]
@@ -260,8 +266,14 @@ RewriteRule ^([a-zA-Z0-9_-]+)/servizi/([0-9]+)/?$ servizio_item.php?slug=$1&id=$
 # /nomeartista/servizi -> elenco servizi pubblicati
 RewriteRule ^([a-zA-Z0-9_-]+)/servizi/?$ servizi.php?slug=$1 [L,QSA]
 
-# /nomeartista/video -> pagina video YouTube
+# /nomeartista/video/ID -> pagina dedicata al singolo video caricato (condivisibile sui social)
+RewriteRule ^([a-zA-Z0-9_-]+)/video/([0-9]+)/?$ video_item.php?slug=$1&id=$2 [L,QSA]
+
+# /nomeartista/video -> elenco dei video caricati (modulo Video)
 RewriteRule ^([a-zA-Z0-9_-]+)/video/?$ video.php?slug=$1 [L,QSA]
+
+# /nomeartista/youtube -> pagina dei video del canale YouTube
+RewriteRule ^([a-zA-Z0-9_-]+)/youtube/?$ youtube.php?slug=$1 [L,QSA]
 
 # /nomeartista/podcast -> pagina episodi podcast Spotify
 RewriteRule ^([a-zA-Z0-9_-]+)/podcast/?$ podcast.php?slug=$1 [L,QSA]

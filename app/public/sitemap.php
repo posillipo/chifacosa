@@ -68,6 +68,9 @@ foreach ($stmt->fetchAll() as $p) {
     if (hasPublicPhotoContent((int) $p['id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/foto'), null, 'weekly', '0.5');
     }
+    if (hasPublicVideos((int) $p['id'])) {
+        sitemapUrl(siteUrl('/' . $slug . '/video'), null, 'weekly', '0.5');
+    }
     if (hasVisibleServices((int) $p['id'])) {
         sitemapUrl(siteUrl('/' . $slug . '/servizi'), null, 'weekly', '0.5');
     }
@@ -78,7 +81,7 @@ foreach ($stmt->fetchAll() as $p) {
         sitemapUrl(siteUrl('/' . $slug . '/podcast'), null, 'weekly', '0.5');
     }
     if ($isBandOrLabel && !empty($p['youtube_channel_id'])) {
-        sitemapUrl(siteUrl('/' . $slug . '/video'), null, 'weekly', '0.5');
+        sitemapUrl(siteUrl('/' . $slug . '/youtube'), null, 'weekly', '0.5');
     }
     if (hasAnyVisibleCheAmo((int) $p['id'], getHiddenNavKeys((int) $p['id']))) {
         sitemapUrl(siteUrl('/' . $slug . '/che-amo'), null, 'monthly', '0.4');
