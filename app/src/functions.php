@@ -1894,6 +1894,7 @@ const ADMINLTE_TIMELINE_TYPE_META = [
     'playlist_favorita' => ['icon' => 'bi-music-note-list', 'color' => 'warning', 'label' => 'Playlist che amo'],
     'album_favorito' => ['icon' => 'bi-disc', 'color' => 'primary', 'label' => 'Album che amo'],
     'album_foto' => ['icon' => 'bi-images', 'color' => 'secondary', 'label' => 'Album foto'],
+    'video' => ['icon' => 'bi-play-btn-fill', 'color' => 'danger', 'label' => 'Video'],
     'ricetta_favorita' => ['icon' => 'bi-egg-fried', 'color' => 'warning', 'label' => 'Ricetta che amo'],
     'squadra_favorita' => ['icon' => 'bi-shield-fill', 'color' => 'success', 'label' => 'Squadra che amo'],
     'calciatore_favorito' => ['icon' => 'bi-person-badge-fill', 'color' => 'primary', 'label' => 'Calciatore che amo'],
@@ -7658,6 +7659,25 @@ function getTimelineFeedForUsers(array $userIds, int $limit = 50, int $offset = 
         ];
     }
 
+    // Video caricati (modulo "Video"): come gli album, compaiono nella Timeline/Feed se pubblici e già
+    // pubblicati. La tabella può non esistere ancora (migrazione non eseguita): in quel caso si salta.
+    try {
+        $stmt = $db->prepare("SELECT v.id, v.title, v.description, v.thumb_path, v.in_feed, v.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
+            FROM videos v JOIN users u ON u.id = v.user_id JOIN profiles p ON p.user_id = u.id
+            WHERE v.user_id IN ($placeholders) AND v.is_public = 1 AND (v.publish_at IS NULL OR v.publish_at <= NOW()) ORDER BY v.created_at DESC LIMIT {$perTypeLimit}");
+        $stmt->execute($userIds);
+        foreach ($stmt->fetchAll() as $r) {
+            $items[] = [
+                'item_id' => (int) $r['id'],
+                'in_feed' => (int) ($r['in_feed'] ?? 1), 'tipo' => 'video', 'titolo' => $r['title'], 'cover' => $r['thumb_path'], 'data' => $r['data'],
+                'user_slug' => $r['user_slug'], 'display_name' => $r['display_name'], 'avatar' => $r['avatar_path'], 'owner_tz' => $r['dashboard_theme'],
+                'url' => '/' . $r['user_slug'] . '/video/' . $r['id'],
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('getTimelineFeedForUsers(video): ' . $e->getMessage());
+    }
+
     $stmt = $db->prepare("SELECT sv.id, sv.title, sv.cover_path, sv.in_feed, sv.created_at AS data, u.slug AS user_slug, p.display_name, p.avatar_path, p.dashboard_theme
         FROM services sv JOIN users u ON u.id = sv.user_id JOIN profiles p ON p.user_id = u.id
         WHERE sv.user_id IN ($placeholders) AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.created_at DESC LIMIT {$perTypeLimit}");
@@ -7708,6 +7728,7 @@ const PINNABLE_CONTENT_TYPES = [
     'pubblicazione_favorita' => ['table' => 'fan_favorite_publications', 'title_col' => 'publication_title', 'cover_cols' => ['image_thumb_path', 'image_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/pubblicazioni-che-amo/%d', 'label' => 'Pubblicazione che amo'],
     'offerta' => ['table' => 'special_offers', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'offerta', 'url_tpl' => '/%s/offerte/%d', 'label' => 'Offerta'],
     'album_foto' => ['table' => 'photo_albums', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/album/%d', 'label' => 'Album foto'],
+    'video' => ['table' => 'videos', 'title_col' => 'title', 'cover_cols' => ['thumb_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/video/%d', 'label' => 'Video'],
     'servizio' => ['table' => 'services', 'title_col' => 'title', 'cover_cols' => ['cover_path'], 'date_col' => 'created_at', 'visibility' => 'standard', 'url_tpl' => '/%s/servizi/%d', 'label' => 'Servizio'],
 ];
 
@@ -7759,6 +7780,7 @@ const SCHEDULABLE_DASHBOARD_URLS = [
     'pubblicazione_favorita' => '/dashboard_fan_publications.php',
     'offerta' => '/dashboard_offers.php',
     'album_foto' => '/dashboard_albums.php',
+    'video' => '/dashboard_videos.php',
     'servizio' => '/dashboard_services.php',
     'evento' => '/dashboard_events.php',
 ];
@@ -8364,7 +8386,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'video' => '🎬 Video', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -8395,7 +8417,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
     }
     if ($isMine && $metricoolActive) {
-        static $sqTypeMap = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'servizio' => 'service'];
+        static $sqTypeMap = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
         $sqType = $sqTypeMap[$item['tipo']] ?? null;
         if ($sqType) {
             $cover = $item['cover_thumb'] ?? $item['cover'];
@@ -8411,7 +8433,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
 function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     $cover = $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'video' => '🎬 Video', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {
@@ -8455,7 +8477,7 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null, bo
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato" style="position:absolute;top:12px;right:12px;">🔗</a>';
     }
     if ($isMine && $metricoolActive) {
-        static $sqTypeMapCard = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'servizio' => 'service'];
+        static $sqTypeMapCard = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
         $sqType = $sqTypeMapCard[$item['tipo']] ?? null;
         if ($sqType) {
             $cover = $item['cover'];
@@ -8472,7 +8494,7 @@ function renderTimelineFeedItem(array $item): string {
     // Vedi commento in renderDashboardTimelineItem(): stessa logica, miniatura leggera in lista.
     $cover = $item['cover_thumb'] ?? $item['cover'];
     $coverSrc = $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . $cover) : null;
-    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
+    $labels = ['blog' => '📝 Articolo', 'brano' => '🎵 Brano che amo', 'evento' => '📅 Evento', 'pensiero' => '💬 Aggiornamento', 'band_favorita' => '❤️ Band che amo', 'attore_favorito' => '🎬 Attore che amo', 'film_favorito' => '🍿 Film che amo', 'libro_favorito' => '📚 Libro che amo', 'viaggio_favorito' => '✈️ Viaggio', 'playlist_favorita' => '🎧 Playlist che amo', 'album_favorito' => '💿 Album che amo', 'offerta' => '🏷️ Offerta speciale', 'album_foto' => '📸 Album fotografico', 'video' => '🎬 Video', 'servizio' => '💼 Servizio', 'ricetta_favorita' => '🍲 Ricetta che amo', 'squadra_favorita' => '🛡️ Squadra che amo', 'calciatore_favorito' => '👕 Calciatore che amo', 'partita_favorita' => '⚽ Partita che amo', 'pubblicazione_favorita' => '🔬 Pubblicazione che amo'];
     $label = $labels[$item['tipo']] ?? '';
     $eventoInfo = '';
     if ($item['tipo'] === 'evento') {

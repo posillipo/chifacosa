@@ -38,6 +38,28 @@ function socialQueueBuildSq(int $userId, string $type, array $data, bool $isPubl
  * the caller is responsible for that check (use metricoolIsEnabled() first).
  */
 function socialQueueEnqueue(int $userId, string $type, array $data, ?string $scheduledFor = null): int {
+    // Per i video la coda deve portare il FILE (media_url): se chi accoda non lo indica (pulsanti
+    // della dashboard, enqueue_social_queue senza media_url) lo si ricava dal video stesso.
+    if ($type === 'video' && empty($data['media_url']) && !empty($data['content_id'])) {
+        try {
+            $vs = getDB()->prepare('SELECT v.video_path, v.thumb_path, v.title, v.description FROM videos v WHERE v.id = ? AND v.user_id = ?');
+            $vs->execute([(int) $data['content_id'], $userId]);
+            if ($v = $vs->fetch()) {
+                $data['media_url'] = siteUrl('/' . $v['video_path']);
+                if (empty($data['image_url']) && !empty($v['thumb_path'])) {
+                    $data['image_url'] = siteUrl('/' . $v['thumb_path']);
+                }
+                if (empty($data['body'])) {
+                    $data['body'] = $v['description'] ?? '';
+                }
+                if (empty($data['title'])) {
+                    $data['title'] = $v['title'];
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('socialQueueEnqueue(video): ' . $e->getMessage());
+        }
+    }
     $cols = ['user_id', 'content_type', 'content_id', 'title', 'body', 'image_url', 'public_url', 'scheduled_for'];
     $vals = [
         $userId,

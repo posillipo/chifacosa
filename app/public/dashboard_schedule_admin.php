@@ -39,7 +39,7 @@ $typeBg = [
     'libro_favorito' => '#FDCB6E', 'viaggio_favorito' => '#00CEC9', 'playlist_favorita' => '#A29BFE',
     'album_favorito' => '#55EFC4', 'ricetta_favorita' => '#FAB1A0', 'squadra_favorita' => '#74B9FF',
     'calciatore_favorito' => '#636E72', 'partita_favorita' => '#2D3436',
-    'pubblicazione_favorita' => '#FD79A8', 'offerta' => '#F0AD4E', 'album_foto' => '#81ECEC',
+    'pubblicazione_favorita' => '#FD79A8', 'offerta' => '#F0AD4E', 'album_foto' => '#81ECEC', 'video' => '#74B9FF',
     'servizio' => '#DFE6E9',
 ];
 
