@@ -4545,7 +4545,7 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
             <div class="card mb-3">
               <div class="card-body p-0">
                 <video controls playsinline preload="metadata" style="width:100%;display:block;background:#000;" <?= $ogImage ? 'poster="' . e($ogImage) . '"' : '' ?>>
-                  <source src="<?= e($videoUrl) ?>" type="<?= e($video['mime_type']) ?>">
+                  <source src="<?= e($videoUrl) ?><?= empty($video['thumb_path']) ? '#t=1' : '' ?>" type="<?= e($video['mime_type']) ?>">
                 </video>
               </div>
               <div class="card-body">
