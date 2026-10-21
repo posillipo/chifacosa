@@ -81,15 +81,25 @@ function videoMakeThumbnail(string $videoRelPath, string $slug, ?int $duration):
     $dir = videoUploadDir($slug);
     $fname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
     $out = $dir . '/' . $fname;
-    $at = ($duration !== null && $duration > 0) ? min(1.0, $duration / 2) : 0.5;
-    $cmd = sprintf(
-        'timeout 60 ffmpeg -y -v error -ss %s -i %s -frames:v 1 -vf "scale=720:-2" -q:v 3 %s 2>/dev/null',
-        escapeshellarg((string) $at),
-        escapeshellarg('/var/www/html/' . $videoRelPath),
-        escapeshellarg($out)
-    );
-    @shell_exec($cmd);
-    return (is_file($out) && filesize($out) > 0) ? 'uploads/videos/' . $slug . '/' . $fname : null;
+    $at = ($duration !== null && $duration > 0) ? max(0.5, min(2.0, $duration / 4)) : 1.0;
+    $in = escapeshellarg('/var/www/html/' . $videoRelPath);
+    $dst = escapeshellarg($out);
+    // 1° tentativo: il fotogramma più "rappresentativo" tra i 90 successivi all'istante scelto
+    // (filtro thumbnail) — evita i neri/dissolvenze d'apertura. 2° tentativo: un singolo fotogramma.
+    $attempts = [
+        sprintf('timeout 120 ffmpeg -y -v error -ss %s -i %s -vf "thumbnail=90,scale=720:-2" -frames:v 1 -q:v 3 %s 2>&1', escapeshellarg((string) $at), $in, $dst),
+        sprintf('timeout 60 ffmpeg -y -v error -ss %s -i %s -frames:v 1 -vf "scale=720:-2" -q:v 3 %s 2>&1', escapeshellarg((string) $at), $in, $dst),
+    ];
+    foreach ($attempts as $cmd) {
+        $log = (string) @shell_exec($cmd);
+        if (is_file($out) && filesize($out) > 0) {
+            return 'uploads/videos/' . $slug . '/' . $fname;
+        }
+        if (trim($log) !== '') {
+            error_log('videoMakeThumbnail: ' . trim($log));
+        }
+    }
+    return null;
 }
 
 // Salva l'immagine di anteprima caricata a mano (alternativa a ffmpeg).

@@ -98,6 +98,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             videoDeleteFiles($row);
             getDB()->prepare('DELETE FROM videos WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
         }
+    } elseif ($action === 'regen_thumb' || $action === 'regen_missing') {
+        if (!videoHasFfmpeg()) {
+            $error = 'ffmpeg non è installato in questo container: le anteprime automatiche non sono possibili finché l\'immagine dell\'app non viene ricostruita. Puoi caricare un\'immagine a mano da "Modifica".';
+        } else {
+            if ($action === 'regen_thumb') {
+                $stmt = getDB()->prepare('SELECT * FROM videos WHERE id=? AND user_id=?');
+                $stmt->execute([(int) ($_POST['id'] ?? 0), $profile['id']]);
+            } else {
+                $stmt = getDB()->prepare("SELECT * FROM videos WHERE user_id=? AND (thumb_path IS NULL OR thumb_path = '')");
+                $stmt->execute([$profile['id']]);
+            }
+            $made = 0;
+            foreach ($stmt->fetchAll() as $row) {
+                [$d, $w, $h] = videoProbe('/var/www/html/' . $row['video_path']);
+                $newThumb = videoMakeThumbnail($row['video_path'], $profile['slug'], $d);
+                if ($newThumb) {
+                    videoDeleteFile($row['thumb_path']);
+                    getDB()->prepare('UPDATE videos SET thumb_path=?, duration_seconds=COALESCE(duration_seconds, ?), width=COALESCE(width, ?), height=COALESCE(height, ?) WHERE id=? AND user_id=?')
+                        ->execute([$newThumb, $d, $w, $h, $row['id'], $profile['id']]);
+                    $made++;
+                }
+            }
+            header('Location: /dashboard_videos.php?regen=' . $made);
+            exit;
+        }
     } elseif ($action === 'move_up' || $action === 'move_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id FROM videos WHERE user_id=? ORDER BY sort_order DESC, id DESC');
@@ -140,6 +165,22 @@ include __DIR__ . '/_dash_header.php';
   </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if (isset($_GET['regen'])): ?>
+    <div class="alert <?= (int) $_GET['regen'] > 0 ? 'success' : 'error' ?>"><?= (int) $_GET['regen'] > 0 ? 'Anteprime generate: ' . (int) $_GET['regen'] . '.' : 'Nessuna anteprima generata (controlla che i file video siano leggibili).' ?></div>
+  <?php endif; ?>
+  <?php
+    $missingThumbs = count(array_filter($videos, fn($v) => empty($v['thumb_path'])));
+  ?>
+  <?php if (!videoHasFfmpeg()): ?>
+    <div class="alert error">Le anteprime automatiche non sono disponibili: <strong>ffmpeg non è installato</strong> in questo container (serve ricostruire l'immagine dell'app). Nel frattempo i video si riproducono comunque, ma senza immagine di copertina.</div>
+  <?php elseif ($missingThumbs > 0): ?>
+    <form method="post" class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="regen_missing">
+      <span><?= $missingThumbs ?> video senza anteprima.</span>
+      <button class="btn small" type="submit">Genera le anteprime mancanti</button>
+    </form>
+  <?php endif; ?>
 
   <form class="card" id="vid-upload-form" onsubmit="return false;">
     <?= csrfField() ?>
@@ -197,6 +238,9 @@ include __DIR__ . '/_dash_header.php';
           <a href="/<?= e($profile['slug']) ?>/video/<?= (int) $v['id'] ?>" target="_blank" class="btn small secondary">Vedi pagina pubblica</a>
           <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="action" value="move_up"><input type="hidden" name="id" value="<?= (int) $v['id'] ?>"><button class="btn small secondary" type="submit" title="Sposta su" <?= $i === 0 ? 'disabled' : '' ?>>↑</button></form>
           <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="action" value="move_down"><input type="hidden" name="id" value="<?= (int) $v['id'] ?>"><button class="btn small secondary" type="submit" title="Sposta giù" <?= $i === count($videos) - 1 ? 'disabled' : '' ?>>↓</button></form>
+          <?php if (videoHasFfmpeg()): ?>
+            <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="action" value="regen_thumb"><input type="hidden" name="id" value="<?= (int) $v['id'] ?>"><button class="btn small secondary" type="submit" title="Rigenera l'anteprima dal video">🖼 Anteprima</button></form>
+          <?php endif; ?>
           <form method="post" onsubmit="return confirm('Eliminare questo video? Il file verrà cancellato.');" style="display:inline;">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="delete">

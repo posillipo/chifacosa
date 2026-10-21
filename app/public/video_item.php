@@ -107,7 +107,7 @@ if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
 
   <div class="card" style="padding:0;overflow:hidden;">
     <video controls playsinline preload="metadata" style="width:100%;display:block;background:#000;" <?= !empty($video['thumb_path']) ? 'poster="/' . e($video['thumb_path']) . '"' : '' ?>>
-      <source src="<?= e($videoUrl) ?>" type="<?= e($video['mime_type']) ?>">
+      <source src="<?= e($videoUrl) ?><?= empty($video['thumb_path']) ? '#t=1' : '' ?>" type="<?= e($video['mime_type']) ?>">
       Il tuo browser non supporta la riproduzione video.
     </video>
     <div style="padding:16px;">
