@@ -4508,6 +4508,27 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
     // video resta dentro la card centrale (d-md-none). Con l'anteprima il browser non scarica il
     // file finché non si preme play (le due copie non pesano doppio).
     $avatarUrl = adminLteAvatarUrl($artist);
+
+    // Altri video del profilo (pubblici e già pubblicati, escluso questo), con la stessa griglia
+    // di miniature del widget "Ultimi articoli" — mostrata solo se ce ne sono.
+    $moreVideosHtml = '';
+    $stmt = getDB()->prepare("SELECT id, title, thumb_path, publish_at, created_at FROM videos
+        WHERE user_id = ? AND id <> ? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())
+        ORDER BY sort_order DESC, id DESC LIMIT 8");
+    $stmt->execute([(int) $video['user_id'], (int) $video['id']]);
+    $moreTiles = [];
+    foreach ($stmt->fetchAll() as $mv) {
+        $moreTiles[] = [
+            'url' => '/' . $slug . '/video/' . (int) $mv['id'],
+            'image' => !empty($mv['thumb_path']) ? '/' . $mv['thumb_path'] : '',
+            'placeholder_icon' => 'bi-play-btn',
+            'title' => $mv['title'],
+            'date' => formatItalianDate($mv['publish_at'] ?: $mv['created_at'], $artist),
+        ];
+    }
+    if ($moreTiles) {
+        $moreVideosHtml = renderAdminLteGridCarousel('Altri video', 'bi-play-btn', '/' . $slug . '/video', 'Tutti i video', $moreTiles, 'square');
+    }
     $hasPoster = !empty($video['thumb_path']);
     $playerHtml = '<video controls playsinline preload="' . ($hasPoster ? 'none' : 'metadata') . '" style="width:100%;height:auto;display:block;background:#000;"'
         . ($hasPoster ? ' poster="/' . e($video['thumb_path']) . '"' : '') . '>'
@@ -4579,6 +4600,8 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
                 <strong>Condividi</strong> · <span class="user-select-all"><?= e($pageUrl) ?></span>
               </div>
             </article>
+
+            <?= $moreVideosHtml ?>
 
             <p><a href="/<?= e($slug) ?>/video">← Tutti i video di <?= e($video['display_name']) ?></a></p>
           </div>
