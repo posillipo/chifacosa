@@ -19,6 +19,12 @@ RUN apt-get update \
     && docker-php-ext-install -j"$(nproc)" gd \
     && rm -rf /var/lib/apt/lists/*
 
+# ffmpeg: anteprima (primo fotogramma) e durata/dimensioni dei video caricati nel modulo Video
+# (videos.php). Se manca, il modulo funziona comunque ma senza anteprima automatica.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copia applicazione
 COPY public/ /var/www/html/
 COPY src/ /var/www/src/
@@ -35,9 +41,11 @@ RUN mkdir -p /var/www/html/uploads/audio /var/www/html/uploads/images \
     && chown -R www-data:www-data /var/www/html
 
 RUN { \
-      echo 'upload_max_filesize = 20M'; \
+      echo 'upload_max_filesize = 200M'; \
       echo 'post_max_size = 500M'; \
       echo 'max_file_uploads = 60'; \
+      echo 'max_execution_time = 600'; \
+      echo 'max_input_time = 600'; \
     } > /usr/local/etc/php/conf.d/uploads.ini
 
 RUN { \

@@ -1,28 +1,30 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
-require_once __DIR__ . '/../src/youtube.php';
+require_once __DIR__ . '/../src/videos.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 $slug = $_GET['slug'] ?? '';
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings, p.youtube_channel_name
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.genere, p.youtube_channel_id, p.privacy_tracking_settings
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
 $artist = $stmt->fetch();
 
-if (!$artist || empty($artist['youtube_channel_id'])) {
+if (!$artist) {
     http_response_code(404);
     exit('Pagina non trovata.');
 }
 
-$uploadsPlaylistId = 'UU' . substr($artist['youtube_channel_id'], 2);
-$videos = youtubeGetChannelVideos($uploadsPlaylistId, 12);
+$stmt = getDB()->prepare("SELECT * FROM videos WHERE user_id=? AND is_public = 1
+    AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY sort_order DESC, id DESC");
+$stmt->execute([$artist['id']]);
+$videos = $stmt->fetchAll();
 
 if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
-    echo renderAdminLteVideoPage($artist, $slug, $videos);
+    echo renderAdminLteVideosPage($artist, $slug, $videos);
     exit;
 }
 
@@ -33,9 +35,9 @@ $pageUrl = siteUrl('/' . $slug . '/video');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= e($artist['display_name']) ?> su YouTube — <?= e(siteName()) ?></title>
+<title>Video di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="<?= e($artist['display_name']) ?> su YouTube">
+<meta property="og:title" content="Video di <?= e($artist['display_name']) ?>">
 <meta property="og:url" content="<?= e($pageUrl) ?>">
 <link rel="canonical" href="<?= e($pageUrl) ?>">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
@@ -57,33 +59,35 @@ $pageUrl = siteUrl('/' . $slug . '/video');
   <?= publicProfileHeader($artist, 'video') ?>
 
   <?php if ($videos): ?>
-    <div style="display:grid;grid-template-columns:1fr;gap:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
       <?php foreach ($videos as $v): ?>
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div style="position:relative;padding-bottom:56.25%;height:0;">
-            <iframe src="https://www.youtube.com/embed/<?= e($v['video_id']) ?>"
-                    style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
-                    title="<?= e($v['title']) ?>"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>
+        <a href="/<?= e($slug) ?>/video/<?= (int) $v['id'] ?>" class="card" style="padding:0;overflow:hidden;text-decoration:none;color:inherit;">
+          <div style="position:relative;aspect-ratio:16/9;background:#000;">
+            <?php if (!empty($v['thumb_path'])): ?>
+              <img src="/<?= e($v['thumb_path']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+            <?php endif; ?>
+            <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:44px;text-shadow:0 2px 8px rgba(0,0,0,.6);"><i class="fa-solid fa-circle-play"></i></span>
+            <?php if ($dl = videoDurationLabel($v['duration_seconds'] !== null ? (int) $v['duration_seconds'] : null)): ?>
+              <span style="position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;padding:2px 6px;border-radius:4px;"><?= e($dl) ?></span>
+            <?php endif; ?>
           </div>
           <div style="padding:12px 16px;">
             <strong><?= e($v['title']) ?></strong>
+            <?php if (!empty($v['description'])): ?>
+              <div style="opacity:0.75;font-size:13px;margin-top:4px;"><?= e(textExcerpt($v['description'], 140)) ?></div>
+            <?php endif; ?>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
   <?php else: ?>
-    <div class="card">Nessun video trovato su YouTube per questo canale al momento.</div>
+    <div class="card">Nessun video ancora.</div>
   <?php endif; ?>
 
-  <div class="card" style="margin-top:24px;text-align:center;">
-    <a class="btn" style="background:#FF0000;" href="https://www.youtube.com/channel/<?= e($artist['youtube_channel_id']) ?>" target="_blank" rel="noopener">
-      <i class="fa-brands fa-youtube"></i> Vai al canale completo su YouTube
-    </a>
-  </div>
+  <p style="margin-top:18px;"><a href="/<?= e($slug) ?>">← Torna alla pagina di <?= e($artist['display_name']) ?></a></p>
 </div>
 <?= renderFloatingButtons() ?>
 <?= renderSiteFooterBar($artist) ?>
+
 </body>
 </html>

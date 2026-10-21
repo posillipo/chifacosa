@@ -163,6 +163,28 @@ CREATE TABLE IF NOT EXISTS photo_album_photos (
     FOREIGN KEY (album_id) REFERENCES photo_albums(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Video caricati (modulo "Video", distinto dalla sezione "YouTube" che mostra il canale collegato).
+CREATE TABLE IF NOT EXISTS videos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
+    video_path VARCHAR(255) NOT NULL,
+    thumb_path VARCHAR(255) DEFAULT NULL,
+    mime_type VARCHAR(40) NOT NULL DEFAULT 'video/mp4',
+    size_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    duration_seconds INT DEFAULT NULL,
+    width INT DEFAULT NULL,
+    height INT DEFAULT NULL,
+    is_public TINYINT(1) NOT NULL DEFAULT 1,
+    in_feed TINYINT(1) NOT NULL DEFAULT 1,
+    publish_at DATETIME DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_videos_user_sort (user_id, sort_order),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Servizi aziendali: galleria fotografica (service_photos, stesso schema di photo_album_photos),
 -- accepts_inquiries attiva/disattiva il form "richiedi informazioni" lato pubblico per il singolo
 -- servizio (come accepts_reservations per gli eventi).

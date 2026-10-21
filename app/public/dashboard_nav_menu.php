@@ -60,6 +60,7 @@ $items = getAllProfileNavigationMenu((int) $profile['id'], $profile['slug']);
 $contentCheckers = [
     'Offerte' => 'hasActiveOffers',
     'Foto' => 'hasPublicPhotoContent',
+    'Video' => 'hasPublicVideos',
     'Servizi' => 'hasVisibleServices',
 ];
 $missingContentNames = [];
@@ -94,12 +95,12 @@ include __DIR__ . '/_dash_header.php';
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
       Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica — anche
-      Spotify, Podcast, Video e il pulsante "Segui". Band/Attori/Film/Libri/Playlist/Album che
+      Spotify, Podcast, YouTube e il pulsante "Segui". Band/Attori/Film/Libri/Playlist/Album che
       amo non hanno più un tab a testa in cima alla pagina: sono raccolti dentro "Che Amo", e la
       spunta qui sotto decide se compaiono come card in quella vetrina. Restano comunque
       raggiungibili con un link diretto e condivisibile (es. <code>/tuoslug/film-che-amo</code>),
       come indicato accanto a ciascuna voce.
-      Nota: Spotify/Podcast/Video/Menù/Offerte/Foto/Servizi/Band/Attori/Film/Libri/Playlist/Album
+      Nota: Spotify/Podcast/YouTube/Menù/Offerte/Foto/Servizi/Band/Attori/Film/Libri/Playlist/Album
       che amo/Viaggi restano comunque visibili solo se hanno anche effettivamente del contenuto
       PUBBLICO (collegamento fatto, piatti attivi, elementi aggiunti, offerta/album/servizio con
       visibilità "Pubblico" e non programmato nel futuro) — spuntarli qui non basta da solo a

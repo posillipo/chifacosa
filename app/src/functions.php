@@ -625,7 +625,10 @@ function getPopulatedProfileSectionLinks(array $profile): array {
     if ($isBandOrLabel && !in_array('podcast', $hiddenKeys, true) && !empty($profile['spotify_show_id'])) {
         $sections[] = ['ref' => 'podcast', 'label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
     }
-    if ($isBandOrLabel && !in_array('video', $hiddenKeys, true) && !empty($profile['youtube_channel_id'])) {
+    if ($isBandOrLabel && !in_array('youtube', $hiddenKeys, true) && !empty($profile['youtube_channel_id'])) {
+        $sections[] = ['ref' => 'youtube', 'label' => 'YouTube', 'url' => '/' . $slug . '/youtube'];
+    }
+    if (!in_array('video', $hiddenKeys, true) && hasPublicVideos($userId)) {
         $sections[] = ['ref' => 'video', 'label' => 'Video', 'url' => '/' . $slug . '/video'];
     }
     if (!in_array('blog', $hiddenKeys, true) && hasPublishedBlogPosts($userId)) {
@@ -1340,6 +1343,9 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
         $navItems['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast'];
     }
     if ($isBandOrLabel && !empty($artist['youtube_channel_id'])) {
+        $navItems['youtube'] = ['label' => 'YouTube', 'url' => '/' . $slug . '/youtube'];
+    }
+    if (!in_array('video', $hiddenKeys, true) && hasPublicVideos($uid)) {
         $navItems['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
     }
     $navItems['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
@@ -1402,7 +1408,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                 </ul>
               </li>
               <?php endif; ?>
-              <?php foreach (['spotify', 'podcast', 'video', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
+              <?php foreach (['spotify', 'podcast', 'youtube', 'video', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
                 <?php if (isset($navItems[$key])): ?>
               <li class="nav-item">
                 <a href="<?= e($navItems[$key]['url']) ?>" class="nav-link<?= $activeKey === $key ? ' active' : '' ?>"><?= e($navItems[$key]['label']) ?></a>
@@ -1991,7 +1997,7 @@ function renderAdminLteBlogInterstitial(int $userId, string $slug, ?array $profi
     return renderAdminLteGridCarousel('Ultimi articoli', 'bi-newspaper', '/' . $slug . '/blog', 'Leggi il Blog', $tiles, 'square');
 }
 
-function renderAdminLteVideoInterstitial(array $artist, string $slug): string {
+function renderAdminLteYoutubeInterstitial(array $artist, string $slug): string {
     if (empty($artist['youtube_channel_id'])) {
         return '';
     }
@@ -2004,14 +2010,14 @@ function renderAdminLteVideoInterstitial(array $artist, string $slug): string {
     $tiles = [];
     foreach ($videos as $v) {
         $tiles[] = [
-            'url' => '/' . $slug . '/video',
+            'url' => '/' . $slug . '/youtube',
             'image' => $v['thumbnail'] ?? '',
             'placeholder_icon' => 'bi-play-btn',
             'title' => $v['title'],
             'date' => $v['published_at'] ? date('d/m/Y', strtotime($v['published_at'])) : '',
         ];
     }
-    return renderAdminLteGridCarousel('Ultimi video', 'bi-play-btn', '/' . $slug . '/video', 'Tutti i video', $tiles, 'square');
+    return renderAdminLteGridCarousel('Ultimi video su YouTube', 'bi-youtube', '/' . $slug . '/youtube', 'Tutti i video YouTube', $tiles, 'square');
 }
 
 function renderAdminLteCheAmoInterstitial(int $userId, string $slug): string {
@@ -2379,7 +2385,7 @@ function renderAdminLteTimelineFeedBlock(array $artist, string $slug): string {
     $interstitials = [];
     foreach ([
         fn () => renderAdminLteBlogInterstitial($uid, $slug, $artist),
-        fn () => renderAdminLteVideoInterstitial($artist, $slug),
+        fn () => renderAdminLteYoutubeInterstitial($artist, $slug),
         fn () => renderAdminLteCheAmoInterstitial($uid, $slug),
     ] as $fn) {
         try {
@@ -4338,9 +4344,9 @@ function renderAdminLtePodcastPage(array $artist, string $slug, array $episodes,
     return ob_get_clean();
 }
 
-// Pagina pubblica "Video" (YouTube) a tema AdminLTE — video.php.
-function renderAdminLteVideoPage(array $artist, string $slug, array $videos): string {
-    $pageUrl = siteUrl('/' . $slug . '/video');
+// Pagina pubblica "YouTube" a tema AdminLTE — youtube.php.
+function renderAdminLteYoutubePage(array $artist, string $slug, array $videos): string {
+    $pageUrl = siteUrl('/' . $slug . '/youtube');
     ob_start();
     ?>
 <!doctype html>
@@ -4361,9 +4367,9 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
 <body class="fixed-header bg-body-tertiary">
 <?= embedTrackingBodyStart($artist) ?>
 <div class="app-wrapper">
-      <?= adminLteTopNav($artist, $slug, 'video') ?>
+      <?= adminLteTopNav($artist, $slug, 'youtube') ?>
   <main class="app-main">
-    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Video') ?>
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'YouTube') ?>
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
@@ -4372,7 +4378,7 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
           <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title"><?= e('Video') ?></h3>
+                <h3 class="card-title"><?= e('YouTube') ?></h3>
                 <div class="card-tools">
                   <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" aria-label="Comprimi/espandi">
                     <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
@@ -4404,6 +4410,151 @@ function renderAdminLteVideoPage(array $artist, string $slug, array $videos): st
             </div>
             </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Elenco pubblico dei video caricati a tema AdminLTE — video.php.
+function renderAdminLteVideosPage(array $artist, string $slug, array $videos): string {
+    $pageUrl = siteUrl('/' . $slug . '/video');
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video di <?= e($artist['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Video di <?= e($artist['display_name']) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="fixed-header bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'video') ?>
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], 'Video') ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
+            <?php if ($videos): ?>
+              <?php foreach ($videos as $v): ?>
+                <a href="/<?= e($slug) ?>/video/<?= (int) $v['id'] ?>" class="card mb-3 text-decoration-none text-reset" style="overflow:hidden;">
+                  <div class="ratio ratio-16x9 bg-dark position-relative">
+                    <?php if (!empty($v['thumb_path'])): ?><img src="/<?= e($v['thumb_path']) ?>" alt="" loading="lazy" style="object-fit:cover;width:100%;height:100%;"><?php endif; ?>
+                    <span class="position-absolute top-50 start-50 translate-middle text-white" style="font-size:48px;text-shadow:0 2px 8px rgba(0,0,0,.6);"><i class="bi bi-play-circle-fill"></i></span>
+                  </div>
+                  <div class="p-3">
+                    <strong><?= e($v['title']) ?></strong>
+                    <?php if ($dl = videoDurationLabel($v['duration_seconds'] !== null ? (int) $v['duration_seconds'] : null)): ?><span class="text-secondary small"> · <?= e($dl) ?></span><?php endif; ?>
+                    <?php if (!empty($v['description'])): ?><div class="text-secondary small mt-1"><?= e(textExcerpt($v['description'], 140)) ?></div><?php endif; ?>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="card"><div class="card-body text-secondary">Nessun video ancora.</div></div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <?= adminLteFooterBlock($artist) ?>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="<?= assetUrl('/assets/themes/adminlte-profile/js/adminlte.min.js') ?>"></script>
+</body>
+</html>
+    <?php
+    return ob_get_clean();
+}
+
+// Dettaglio pubblico di un video caricato a tema AdminLTE — video_item.php.
+function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video, bool $isOwner, bool $isScheduledFuture, bool $isPreview = false): string {
+    $pageUrl = videoPublicUrl($slug, (int) $video['id']);
+    if (!(int) $video['is_public'] || $isScheduledFuture) {
+        $pageUrl = withPreviewToken($pageUrl, 'video', (int) $video['id']);
+    }
+    $videoUrl = siteUrl('/' . $video['video_path']);
+    $ogImage = !empty($video['thumb_path']) ? siteUrl('/' . $video['thumb_path']) : null;
+    $ogDescription = $video['description'] ? textExcerpt($video['description'], 160) : ($video['display_name'] . ' — guarda il video su ' . siteName());
+    ob_start();
+    ?>
+<!doctype html>
+<html lang="it" data-lte-color-mode="off" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= e($video['title']) ?> — <?= e($video['display_name']) ?> — <?= e(siteName()) ?></title>
+<meta name="description" content="<?= e($ogDescription) ?>">
+<meta property="og:type" content="video.other">
+<meta property="og:title" content="<?= e($video['title']) ?> — <?= e($video['display_name']) ?>">
+<meta property="og:description" content="<?= e($ogDescription) ?>">
+<meta property="og:url" content="<?= e($pageUrl) ?>">
+<meta property="og:site_name" content="<?= e(siteName()) ?>">
+<meta property="og:video" content="<?= e($videoUrl) ?>">
+<meta property="og:video:type" content="<?= e($video['mime_type']) ?>">
+<?php if ($ogImage): ?><meta property="og:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $ogImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($video['title']) ?> — <?= e($video['display_name']) ?>">
+<meta name="twitter:description" content="<?= e($ogDescription) ?>">
+<?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageUrl) ?>">
+<?= adminLteAssetLinks() ?>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
+</head>
+<body class="fixed-header bg-body-tertiary">
+<?= embedTrackingBodyStart($artist) ?>
+<div class="app-wrapper">
+      <?= adminLteTopNav($artist, $slug, 'video') ?>
+  <main class="app-main">
+    <?= adminLteBreadcrumbHeader($slug, $artist['display_name'], $video['title'], ['Video' => '/' . $slug . '/video']) ?>
+    <div class="app-content">
+      <div class="container-fluid">
+        <div class="row g-3">
+          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
+            <?php if (($isOwner || $isPreview) && (!(int) $video['is_public'] || $isScheduledFuture)): ?>
+              <div class="alert alert-warning">Questo video non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
+            <?php endif; ?>
+            <div class="card mb-3">
+              <div class="card-body p-0">
+                <video controls playsinline preload="metadata" style="width:100%;display:block;background:#000;" <?= $ogImage ? 'poster="' . e($ogImage) . '"' : '' ?>>
+                  <source src="<?= e($videoUrl) ?>" type="<?= e($video['mime_type']) ?>">
+                </video>
+              </div>
+              <div class="card-body">
+                <h1 class="h4 mb-1"><?= e($video['title']) ?></h1>
+                <p class="text-secondary mb-2">Video di <?= e($video['display_name']) ?></p>
+                <?php if (!empty($video['description'])): ?><p class="mb-0"><?= nl2br(e($video['description'])) ?></p><?php endif; ?>
+              </div>
+            </div>
+            <p><a href="/<?= e($slug) ?>/video">← Tutti i video di <?= e($video['display_name']) ?></a></p>
           </div>
         </div>
       </div>
@@ -5801,7 +5952,10 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
         $tabs['podcast'] = ['label' => 'Podcast', 'url' => '/' . $slug . '/podcast', 'icon' => 'fas fa-microphone'];
     }
     if ($hasYoutube && $isBandOrLabel) {
-        $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'icon' => 'fa-brands fa-youtube'];
+        $tabs['youtube'] = ['label' => 'YouTube', 'url' => '/' . $slug . '/youtube', 'icon' => 'fa-brands fa-youtube'];
+    }
+    if ($ownerId && hasPublicVideos($ownerId)) {
+        $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'icon' => 'fas fa-video'];
     }
     $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'icon' => 'fas fa-newspaper'];
     if ($hasMenu) {
@@ -6761,6 +6915,18 @@ function hasPublicPhotoContent(int $userId): bool {
         WHERE user_id = ? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW()) AND cover_path IS NOT NULL");
     $stmt->execute([$userId]);
     return (int) $stmt->fetch()['c'] > 0;
+}
+
+// True se il profilo ha almeno un video caricato, pubblico e già pubblicato (modulo "Video").
+function hasPublicVideos(int $userId): bool {
+    try {
+        $stmt = getDB()->prepare("SELECT COUNT(*) c FROM videos WHERE user_id = ? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetch()['c'] > 0;
+    } catch (Throwable $e) {
+        // Tabella non ancora creata (migrazione non eseguita): il modulo semplicemente non compare.
+        return false;
+    }
 }
 
 // Elimina il file di copertina dal disco, se presente (usato quando si elimina un link/post/evento)
@@ -8404,7 +8570,7 @@ function notifyFollowersNewContent(int $artistUserId, string $artistName, string
     require_once __DIR__ . '/mailer.php';
     $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
 
-    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale', 'album_foto' => 'un nuovo album fotografico', 'servizio' => 'un nuovo servizio'];
+    $labels = ['evento' => 'un nuovo concerto', 'timeline' => 'un nuovo aggiornamento', 'offerta' => 'una nuova offerta speciale', 'album_foto' => 'un nuovo album fotografico', 'servizio' => 'un nuovo servizio', 'video' => 'un nuovo video'];
     $label = $labels[$type] ?? 'un nuovo articolo';
     $subject = "{$artistName} ha pubblicato {$label} su " . siteName();
 
@@ -8435,7 +8601,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'admin','admin_users','admin_user_detail','admin_privacy','brani','eventi',
     'verify','resend_verification','admin_dashboard','admin_user_edit','admin_contacts','admin_tracking','admin_smtp',
     'admin_spotify','dashboard_spotify','follow','follow_confirm','follow_unsubscribe','dashboard_followers',
-    'admin_import_legacy','admin_profiles','track','evento','admin_youtube','dashboard_youtube','video',
+    'admin_import_legacy','admin_profiles','track','evento','admin_youtube','dashboard_youtube','video','youtube','dashboard_videos',
     'forgot_password','reset_password','dashboard_podcast','podcast',
     'choose_account_type','dashboard_fan_bands','band_che_amo','admin_apply_percorso','admin_link_avatars',
     'follow_account','dashboard_timeline','timeline','dashboard_post','timeline_post','feed','admin_import_old_timeline','timeline_more','track_review','admin_reviews','dashboard_password','dashboard_timeline_more',
@@ -8655,6 +8821,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Viaggi' => 'viaggi',
     'Spotify' => 'spotify',
     'Podcast' => 'podcast',
+    'YouTube' => 'youtube',
     'Video' => 'video',
     'Blog' => 'blog',
     'Brani che amo' => 'brani',
@@ -8697,7 +8864,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Viaggi', 'fas fa-plane', '/' . $slug . '/viaggi', 9],
         ['Spotify', 'fa-brands fa-spotify', '/' . $slug . '/spotify', 10],
         ['Podcast', 'fas fa-microphone', '/' . $slug . '/podcast', 11],
-        ['Video', 'fa-brands fa-youtube', '/' . $slug . '/video', 12],
+        ['YouTube', 'fa-brands fa-youtube', '/' . $slug . '/youtube', 12],
         ['Blog', 'fas fa-newspaper', '/' . $slug . '/blog', 13],
         ['Brani che amo', 'fas fa-music', '/' . $slug . '/brani', 14],
         ['Playlist che amo', 'fas fa-list-ul', '/' . $slug . '/playlist-che-amo', 15],
@@ -8714,6 +8881,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Calciatori che amo', 'fas fa-shirt', '/' . $slug . '/calciatori-che-amo', 26],
         ['Partite che amo', 'fas fa-calendar-check', '/' . $slug . '/partite-che-amo', 27],
         ['Pubblicazioni che amo', 'fas fa-microscope', '/' . $slug . '/pubblicazioni-che-amo', 28],
+        ['Video', 'fas fa-video', '/' . $slug . '/video', 29],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {
@@ -8843,7 +9011,7 @@ function resetProfileNavMenuOrder(int $userId): void {
 // di Servizi/Eventi che nella barra della dashboard compaiono come tasti a sé.
 const DASHBOARD_TAB_KEYS = [
     'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
-    'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album',
+    'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album', 'video' => 'Video',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
     'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API', 'schedule' => 'Programmati',
 ];

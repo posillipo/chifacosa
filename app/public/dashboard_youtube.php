@@ -58,7 +58,7 @@ include __DIR__ . '/_dash_header.php';
       <br>
       <a href="https://www.youtube.com/channel/<?= e($profile['youtube_channel_id']) ?>" target="_blank">Vedi su YouTube ↗</a>
       <br><br>
-      <a href="/<?= e($profile['slug']) ?>/video" target="_blank">Vedi la tua pagina pubblica Video ↗</a>
+      <a href="/<?= e($profile['slug']) ?>/youtube" target="_blank">Vedi la tua pagina pubblica YouTube ↗</a>
       <form method="post" style="margin-top:12px;" onsubmit="return confirm('Scollegare il canale YouTube? La sezione dedicata sparirà dalla tua pagina pubblica.');">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="unlink">

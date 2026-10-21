@@ -39,7 +39,7 @@ if ($isBandOrLabel) {
     $optionalModules[] = ['name' => 'Eventi', 'icon' => 'fas fa-calendar', 'desc' => 'Calendario concerti/eventi pubblico'];
     $optionalModules[] = ['name' => 'Spotify', 'icon' => 'fa-brands fa-spotify', 'desc' => 'Discografia collegata a Spotify'];
     $optionalModules[] = ['name' => 'Podcast', 'icon' => 'fas fa-microphone', 'desc' => 'Episodi del tuo podcast Spotify'];
-    $optionalModules[] = ['name' => 'Video', 'icon' => 'fa-brands fa-youtube', 'desc' => 'Video collegati dal tuo canale YouTube'];
+    $optionalModules[] = ['name' => 'YouTube', 'icon' => 'fa-brands fa-youtube', 'desc' => 'Video collegati dal tuo canale YouTube'];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
