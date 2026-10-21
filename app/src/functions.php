@@ -3145,6 +3145,41 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
     $blogLatestPostsHtml = renderAdminLteBlogLatestPostsCard((int) $post['user_id'], $slug, (int) $post['id']);
     $activeCategoryId = $postCategories ? (int) $postCategories[0]['id'] : null;
 
+    // Articoli correlati: gli ultimi articoli già pubblicati che condividono almeno una categoria
+    // con questo (escluso lui stesso), con la stessa griglia di miniature di "Ultimi articoli".
+    // Senza categorie, o senza altri articoli nella stessa categoria, la card non compare.
+    $relatedPostsHtml = '';
+    if ($postCategories) {
+        $catIds = array_map(fn($c) => (int) $c['id'], $postCategories);
+        $ph = implode(',', array_fill(0, count($catIds), '?'));
+        $stmt = getDB()->prepare("SELECT b.id, b.title, b.slug, b.cover_path, b.published_at FROM blog_posts b
+            WHERE b.user_id = ? AND b.id <> ? AND b.published_at <= NOW()
+              AND EXISTS (SELECT 1 FROM blog_post_categories pc WHERE pc.post_id = b.id AND pc.category_id IN ($ph))
+            ORDER BY b.published_at DESC LIMIT 8");
+        $stmt->execute(array_merge([(int) $post['user_id'], (int) $post['id']], $catIds));
+        $relatedTiles = [];
+        foreach ($stmt->fetchAll() as $rp) {
+            $relatedTiles[] = [
+                'url' => blogPostUrl($slug, $rp),
+                'image' => $rp['cover_path'] ? '/' . $rp['cover_path'] : '',
+                'placeholder_icon' => 'bi-newspaper',
+                'title' => $rp['title'],
+                'date' => formatItalianDate($rp['published_at'], $artist),
+            ];
+        }
+        if ($relatedTiles) {
+            $single = count($postCategories) === 1;
+            $relatedPostsHtml = renderAdminLteGridCarousel(
+                $single ? 'Altri articoli in ' . $postCategories[0]['name'] : 'Articoli correlati',
+                'bi-newspaper',
+                $single ? blogCategoryUrl($slug, $postCategories[0]) : '/' . $slug . '/blog',
+                $single ? 'Tutti gli articoli in ' . $postCategories[0]['name'] : 'Leggi il Blog',
+                $relatedTiles,
+                'square'
+            );
+        }
+    }
+
     ob_start();
     ?>
 <!doctype html>
@@ -3242,6 +3277,8 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                   </div>
                 </a>
                 <?php endif; ?>
+
+                <?= $relatedPostsHtml ?>
 
           </div>
         </div>
