@@ -4501,6 +4501,18 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
     $videoUrl = siteUrl('/' . $video['video_path']);
     $ogImage = !empty($video['thumb_path']) ? siteUrl('/' . $video['thumb_path']) : null;
     $ogDescription = $video['description'] ? textExcerpt($video['description'], 160) : ($video['display_name'] . ' — guarda il video su ' . siteName());
+
+    // Come per le foto di eventi e articoli: su schermi larghi il video sta nella colonna destra
+    // (card d-none d-md-block, passata come prima card di renderAdminLteProfileExtras()), nella
+    // colonna centrale restano titolo e descrizione; su mobile, dove le colonne si impilano, il
+    // video resta dentro la card centrale (d-md-none). Con l'anteprima il browser non scarica il
+    // file finché non si preme play (le due copie non pesano doppio).
+    $hasPoster = !empty($video['thumb_path']);
+    $playerHtml = '<video controls playsinline preload="' . ($hasPoster ? 'none' : 'metadata') . '" style="width:100%;height:auto;display:block;background:#000;"'
+        . ($hasPoster ? ' poster="/' . e($video['thumb_path']) . '"' : '') . '>'
+        . '<source src="' . e($videoUrl) . ($hasPoster ? '' : '#t=1') . '" type="' . e($video['mime_type']) . '">'
+        . '</video>';
+    $videoSidebarHtml = '<div class="card mb-3 d-none d-md-block"><div class="card-body p-0" style="overflow:hidden;border-radius:inherit;">' . $playerHtml . '</div></div>';
     ob_start();
     ?>
 <!doctype html>
@@ -4538,16 +4550,14 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
+          <?= renderAdminLteProfileExtras($artist, $slug, $videoSidebarHtml, true) ?>
           <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
             <?php if (($isOwner || $isPreview) && (!(int) $video['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo video non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
             <div class="card mb-3">
-              <div class="card-body p-0">
-                <video controls playsinline preload="metadata" style="width:100%;display:block;background:#000;" <?= $ogImage ? 'poster="' . e($ogImage) . '"' : '' ?>>
-                  <source src="<?= e($videoUrl) ?><?= empty($video['thumb_path']) ? '#t=1' : '' ?>" type="<?= e($video['mime_type']) ?>">
-                </video>
+              <div class="card-body p-0 d-md-none">
+                <?= $playerHtml ?>
               </div>
               <div class="card-body">
                 <h1 class="h4 mb-1"><?= e($video['title']) ?></h1>
