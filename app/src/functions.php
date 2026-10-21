@@ -4507,6 +4507,7 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
     // colonna centrale restano titolo e descrizione; su mobile, dove le colonne si impilano, il
     // video resta dentro la card centrale (d-md-none). Con l'anteprima il browser non scarica il
     // file finché non si preme play (le due copie non pesano doppio).
+    $avatarUrl = adminLteAvatarUrl($artist);
     $hasPoster = !empty($video['thumb_path']);
     $playerHtml = '<video controls playsinline preload="' . ($hasPoster ? 'none' : 'metadata') . '" style="width:100%;height:auto;display:block;background:#000;"'
         . ($hasPoster ? ' poster="/' . e($video['thumb_path']) . '"' : '') . '>'
@@ -4555,16 +4556,30 @@ function renderAdminLteVideoDetailPage(array $artist, string $slug, array $video
             <?php if (($isOwner || $isPreview) && (!(int) $video['is_public'] || $isScheduledFuture)): ?>
               <div class="alert alert-warning">Questo video non è visibile al pubblico al momento (privato o programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
             <?php endif; ?>
-            <div class="card mb-3">
-              <div class="card-body p-0 d-md-none">
+            <article class="card mb-3">
+              <div class="card-header d-flex align-items-center">
+                <div class="user-block mb-0">
+                  <img src="<?= e($avatarUrl) ?>" alt="<?= e($video['display_name']) ?>" class="rounded-circle">
+                  <span class="username"><a href="/<?= e($slug) ?>"><?= e($video['display_name']) ?></a> <small class="fw-normal text-secondary">ha pubblicato un video</small></span>
+                  <span class="description"><?= e(formatItalianDate($video['publish_at'] ?: $video['created_at'], $artist)) ?></span>
+                </div>
+              </div>
+              <div class="d-md-none">
                 <?= $playerHtml ?>
               </div>
               <div class="card-body">
-                <h1 class="h4 mb-1"><?= e($video['title']) ?></h1>
-                <p class="text-secondary mb-2">Video di <?= e($video['display_name']) ?></p>
-                <?php if (!empty($video['description'])): ?><p class="mb-0"><?= nl2br(e($video['description'])) ?></p><?php endif; ?>
+                <h2 class="h3 mb-3"><?= e($video['title']) ?></h2>
+                <p class="mb-3">
+                  <a href="/<?= e($slug) ?>/video" class="badge text-bg-secondary text-decoration-none me-1">Video</a>
+                </p>
+                <?php if (!empty($video['description'])): ?><div><?= nl2br(e($video['description'])) ?></div><?php endif; ?>
               </div>
-            </div>
+              <div class="card-footer small text-secondary">
+                <i class="bi bi-share me-1"></i>
+                <strong>Condividi</strong> · <span class="user-select-all"><?= e($pageUrl) ?></span>
+              </div>
+            </article>
+
             <p><a href="/<?= e($slug) ?>/video">← Tutti i video di <?= e($video['display_name']) ?></a></p>
           </div>
         </div>
