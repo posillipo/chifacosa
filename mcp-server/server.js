@@ -189,7 +189,7 @@ const BOARD_SIGNATURE_NOTE = 'Ogni scrittura va firmata: il segreto assegnato al
 const boardActorSchema = z.string().regex(/^[a-z0-9_-]{2,30}$/);
 
 function buildMcpServer() {
-    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.11.0' });
+    const server = new McpServer({ name: 'chifacosa-social-posts', version: '1.12.0' });
 
     // Ricalcolati ad ogni richiesta (siamo in modalità stateless, un buildMcpServer() per
     // richiesta — vedi più sotto): un profilo appena registrato via /admin/profiles deve
@@ -584,6 +584,57 @@ function buildMcpServer() {
             position: z.number().int().min(1).optional(),
         },
     }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/videos/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('list_products', {
+        title: 'Elenca i prodotti del catalogo',
+        description: 'Elenca i prodotti importati dal feed del profilo (catalogo), più in evidenza e recenti prima. Ogni prodotto ha id, title, description, price_regular (prezzo di listino), price_sale (prezzo scontato, null se non scontato), has_discount, discount_percent, image_url (immagine principale, indirizzo del negozio: scaricala da lì quando serve), link (pagina prodotto), category, in_stock, featured, times_published e last_published_at. Filtri: q (testo), category (percorso o prefisso, es. "Men > Autunno/Inverno"), has_discount, in_stock (default true = solo disponibili), featured, only_unpublished (solo mai pubblicati), not_published_since_days (non pubblicati negli ultimi N giorni), post_type (limita il controllo di pubblicazione a quel tipo di post), random (ordine casuale), page, per_page (max 100).',
+        inputSchema: {
+            ...profileField,
+            q: z.string().optional(),
+            category: z.string().optional().describe('Percorso di categoria o suo prefisso (da list_product_categories)'),
+            has_discount: z.boolean().optional(),
+            in_stock: z.boolean().optional(),
+            featured: z.boolean().optional(),
+            only_unpublished: z.boolean().optional(),
+            not_published_since_days: z.number().int().min(0).optional(),
+            post_type: z.string().optional(),
+            random: z.boolean().optional(),
+            page: z.number().int().min(1).optional(),
+            per_page: z.number().int().min(1).max(100).optional(),
+        },
+    }, async ({ profile, ...filters }) => {
+        const qs = new URLSearchParams();
+        for (const [k, v] of Object.entries(filters)) {
+            if (v !== undefined) qs.set(k, String(v));
+        }
+        return toolResult(await chifacosaApi(profile, '/products/list' + (qs.toString() ? '?' + qs.toString() : '')));
+    });
+
+    server.registerTool('list_product_categories', {
+        title: 'Elenca le categorie del catalogo prodotti',
+        description: 'Restituisce i percorsi di categoria del catalogo (es. "Men > Autunno/Inverno > Cappotti", compresi i livelli intermedi) con il numero di prodotti. Usa path come filtro category di list_products.',
+        inputSchema: { ...profileField },
+    }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/products/categories')));
+
+    server.registerTool('get_product', {
+        title: 'Dettaglio di un prodotto del catalogo',
+        description: 'Restituisce un prodotto del catalogo (dati come in list_products) con lo storico delle sue pubblicazioni social.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del prodotto (da list_products)') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/products/${id}`)));
+
+    server.registerTool('mark_product_published', {
+        title: 'Registra la pubblicazione di un prodotto',
+        description: 'Registra che un prodotto è stato usato per un post social (da chiamare subito dopo aver programmato su Metricool), così non viene riproposto da only_unpublished / not_published_since_days. post_type è libero (es. special_price, novita, reel, story). published_at: data/ora ISO 8601 con fuso, anche futura (default adesso).',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID del prodotto'),
+            post_type: z.string().max(40).describe('Tipo di post, es. special_price'),
+            published_at: z.string().optional(),
+            channels: z.array(z.string()).optional().describe('Canali usati, es. ["instagram","facebook"]'),
+            metricool_post_id: z.string().optional(),
+            note: z.string().max(300).optional(),
+        },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/products/${id}/publications`, { method: 'POST', body: fields })));
 
     server.registerTool('delete_video', {
         title: 'Elimina un video',

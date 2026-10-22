@@ -313,6 +313,9 @@ if (switcherEl && navbarEl) {
     <a href="/dashboard_cinema.php" class="account-sidebar-link <?= $activeTab==='cinema'?'active':'' ?>">
       <i class="fa-solid fa-film"></i> Cinema
     </a>
+    <a href="/dashboard_products.php" class="account-sidebar-link <?= $activeTab==='products'?'active':'' ?>">
+      <i class="fa-solid fa-tags"></i> Catalogo prodotti
+    </a>
     <a href="/dashboard_invite.php" class="account-sidebar-link <?= $activeTab==='invite'?'active':'' ?>">
       <i class="fa-solid fa-user-plus"></i> Invita
     </a>

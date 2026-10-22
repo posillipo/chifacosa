@@ -100,6 +100,12 @@ RewriteRule ^api/v1/videos/(list|reorder|from-url|request-upload)/?$ api_videos.
 RewriteRule ^api/v1/videos/put/([A-Za-z0-9_.-]+)/?$ api_videos.php?action=put&token=$1 [L,QSA]
 RewriteRule ^api/v1/videos/([0-9]+)/?$ api_videos.php?action=item&id=$1 [L,QSA]
 
+# API pubblica /api/v1/products/* — catalogo prodotti importato da feed (elenco filtrato, categorie,
+# dettaglio, registro delle pubblicazioni social).
+RewriteRule ^api/v1/products/(list|categories)/?$ api_products.php?action=$1 [L,QSA]
+RewriteRule ^api/v1/products/([0-9]+)/?$ api_products.php?action=item&id=$1 [L,QSA]
+RewriteRule ^api/v1/products/([0-9]+)/publications/?$ api_products.php?action=publications&id=$1 [L,QSA]
+
 # API pubblica /api/v1/links/* — stesso token Bearer, gestione del modulo Link (link, separatori,
 # mappe, copertine, ordine, attivo/nascosto, sezioni del sito).
 RewriteRule ^api/v1/links/(list|create|reorder|sync-sections)/?$ api_links.php?action=$1 [L,QSA]
