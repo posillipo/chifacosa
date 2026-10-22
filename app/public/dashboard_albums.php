@@ -32,9 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '') {
             $error = 'Il titolo è obbligatorio.';
         } else {
-            // Caricarne di nuove sostituisce l'intero set precedente (stessa semantica già in uso
-            // per Timeline/Viaggi con più foto) — se non selezioni nuovi file in modifica, l'album
-            // resta con le foto che aveva.
+            // In modifica le nuove foto si aggiungono a quelle esistenti (vedi sotto).
             $uploadedPhotos = handleMultiCoverUpload($profile['slug'], 'images', ALBUM_MAX_PHOTOS);
             $newCoverPath = $uploadedPhotos[0] ?? null;
             $extraPhotos = array_slice($uploadedPhotos, 1);
@@ -68,30 +66,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } else {
+                // In modifica le nuove foto si AGGIUNGONO a quelle già presenti. Se l'album è senza
+                // copertina (eliminata), la prima nuova foto diventa la copertina.
                 if ($newCoverPath) {
                     $stmt = getDB()->prepare('SELECT cover_path FROM photo_albums WHERE id=? AND user_id=?');
                     $stmt->execute([$id, $profile['id']]);
-                    if ($old = $stmt->fetch()) {
-                        deleteCoverFile($old['cover_path']);
-                        deleteFeedShareImage($old['cover_path']);
-                    }
-                    foreach (getAlbumPhotos($id) as $oldExtra) {
-                        deleteCoverFile($oldExtra);
-                    }
-                    getDB()->prepare('DELETE FROM photo_album_photos WHERE album_id=?')->execute([$id]);
-
-                    $stmt = getDB()->prepare('UPDATE photo_albums SET title=?, description=?, cover_path=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-                    $stmt->execute([$title, $description ?: null, $newCoverPath, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
-                    if ($extraPhotos) {
+                    $cur = $stmt->fetch();
+                    if ($cur) {
+                        $hasCover = !empty($cur['cover_path']);
+                        $existingExtras = count(getAlbumPhotos($id));
+                        $room = max(0, ALBUM_MAX_PHOTOS - ($hasCover ? 1 : 0) - $existingExtras);
+                        $toAdd = $uploadedPhotos;
+                        if (!$hasCover) {
+                            $newCover = array_shift($toAdd);
+                            getDB()->prepare('UPDATE photo_albums SET cover_path=? WHERE id=? AND user_id=?')->execute([$newCover, $id, $profile['id']]);
+                            $room = max(0, $room - 1);
+                        }
+                        foreach (array_slice($toAdd, $room) as $excess) {
+                            deleteCoverFile($excess);
+                        }
+                        $toAdd = array_slice($toAdd, 0, $room);
+                        $maxSort = (int) getDB()->query('SELECT COALESCE(MAX(sort_order), -1) FROM photo_album_photos WHERE album_id=' . (int) $id)->fetchColumn();
                         $insPhoto = getDB()->prepare('INSERT INTO photo_album_photos (album_id, image_path, sort_order) VALUES (?,?,?)');
-                        foreach ($extraPhotos as $i => $p) {
-                            $insPhoto->execute([$id, $p, $i]);
+                        foreach ($toAdd as $i => $p) {
+                            $insPhoto->execute([$id, $p, $maxSort + 1 + $i]);
                         }
                     }
-                } else {
-                    $stmt = getDB()->prepare('UPDATE photo_albums SET title=?, description=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
-                    $stmt->execute([$title, $description ?: null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
                 }
+                $stmt = getDB()->prepare('UPDATE photo_albums SET title=?, description=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
             }
         }
     } elseif ($action === 'delete_photo') {
@@ -281,7 +284,7 @@ include __DIR__ . '/_dash_header.php';
               </div>
               <p class="alb-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
             </div>
-            <label>Aggiungi altre foto (opzionale — lascia vuoto per non cambiarle, altrimenti sostituisce l'intero set)</label>
+            <label>Aggiungi altre foto (opzionale — si aggiungono a quelle già presenti)</label>
             <input type="file" name="images[]" accept="image/*" multiple>
             <label>Privacy</label>
             <div style="display:flex;gap:16px;margin-bottom:14px;">
