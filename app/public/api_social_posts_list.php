@@ -29,21 +29,23 @@ if ($to !== '') {
     $where[] = 'created_at <= ?';
     $params[] = $to . ' 23:59:59';
 }
+if ($statusFilter === 'draft') {
+    $where[] = "visibility = 'private'";
+} elseif ($statusFilter === 'published') {
+    $where[] = "visibility = 'public' AND (publish_at IS NULL OR publish_at <= NOW())";
+} elseif ($statusFilter === 'scheduled') {
+    $where[] = "visibility = 'public' AND publish_at > NOW()";
+}
 $whereSql = implode(' AND ', $where);
 
-$stmt = getDB()->prepare("SELECT * FROM timeline_posts WHERE {$whereSql} ORDER BY created_at DESC");
-$stmt->execute($params);
-$allRows = $stmt->fetchAll();
+$countStmt = getDB()->prepare("SELECT COUNT(*) FROM timeline_posts WHERE {$whereSql}");
+$countStmt->execute($params);
+$total = (int) $countStmt->fetchColumn();
 
-// Il filtro per status è calcolato in PHP (deriva da visibility+publish_at, non una singola
-// colonna indicizzabile) — accettabile: uno stesso token pubblica al massimo poche centinaia di
-// post (vedi nota "500+ post/mese" della specifica), niente paginazione lato SQL necessaria qui.
-if ($statusFilter !== '') {
-    $allRows = array_values(array_filter($allRows, fn($p) => apiDerivePostStatus($p) === $statusFilter));
-}
-
-$total = count($allRows);
-$pageRows = array_slice($allRows, $offset, $perPage);
+$pageParams = array_merge($params, [$perPage, $offset]);
+$stmt = getDB()->prepare("SELECT * FROM timeline_posts WHERE {$whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?");
+$stmt->execute($pageParams);
+$pageRows = $stmt->fetchAll();
 
 apiRespond(200, [
     'success' => true,

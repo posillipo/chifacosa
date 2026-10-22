@@ -16,7 +16,11 @@ require_once __DIR__ . '/../src/videos.php';
 const VIDEO_UPLOAD_TTL = 1800;
 
 function videoApiSecret(): string {
-    return 'chifacosa-video-upload:' . (getenv('DB_PASS') ?: 'chifacosa-fallback-secret');
+    $cfg = getDbCredentials();
+    if ($cfg === null) {
+        throw new \RuntimeException('Database non configurato: impossibile generare il segreto per i token video.');
+    }
+    return 'chifacosa-video-upload:' . hash('sha256', $cfg['host'] . $cfg['name'] . $cfg['user'] . $cfg['pass']);
 }
 
 function videoApiB64(string $s): string {
@@ -58,8 +62,11 @@ function videoApiFields(array $d, int $tid, int $uid, bool $titleRequired): arra
     $out = [];
     if (array_key_exists('title', $d)) {
         $t = trim((string) $d['title']);
-        if ($t === '' || mb_strlen($t) > 150) {
-            apiError(422, 'Il campo "title" è obbligatorio (max 150 caratteri).', $tid, $uid);
+        if ($t === '') {
+            apiError(422, 'Il campo "title" è obbligatorio.', $tid, $uid);
+        }
+        if (mb_strlen($t) > 150) {
+            apiError(422, 'Il campo "title" supera i 150 caratteri consentiti.', $tid, $uid);
         }
         $out['title'] = $t;
     } elseif ($titleRequired) {
@@ -87,12 +94,17 @@ function videoApiLoadAll(int $uid): array {
 }
 
 function videoApiOne(int $uid, int $id, string $slug): ?array {
-    foreach (videoApiLoadAll($uid) as $i => $v) {
-        if ((int) $v['id'] === $id) {
-            return videoSerialize($v, $slug, $i + 1);
-        }
+    $stmt = getDB()->prepare('SELECT * FROM videos WHERE user_id=? AND id=?');
+    $stmt->execute([$uid, $id]);
+    $v = $stmt->fetch();
+    if (!$v) {
+        return null;
     }
-    return null;
+    // Calcola la posizione nella lista ordinata (sort_order DESC, id DESC) con una singola query.
+    $stmt = getDB()->prepare('SELECT COUNT(*)+1 FROM videos WHERE user_id=? AND (sort_order > ? OR (sort_order = ? AND id > ?))');
+    $stmt->execute([$uid, $v['sort_order'], $v['sort_order'], $id]);
+    $pos = (int) $stmt->fetchColumn();
+    return videoSerialize($v, $slug, $pos);
 }
 
 // Ora locale italiana "Y-m-d H:i:s" di un publish_at del database (fuso del server).

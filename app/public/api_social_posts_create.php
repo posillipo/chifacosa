@@ -64,7 +64,7 @@ if ($visibility === 'public' && !$publishAt) {
         telegramAutoPublishIfEnabled($auth['user_id'], 'post', [
             'title' => $v['title'] ?? null,
             'body' => $v['testo'] ?? null,
-            'image_url' => $imagePath,
+            'image_url' => $imagePath ? siteUrl('/' . $imagePath) : null,
             'public_url' => $timelineUrl,
         ]);
     }

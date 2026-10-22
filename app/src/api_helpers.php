@@ -13,8 +13,10 @@ const API_RATE_LIMIT_PER_HOUR = 500;
 function apiClientIp(): string {
     $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
     if ($forwarded !== '') {
+        // Nginx Proxy Manager appende l'IP reale del client come ultima voce — il client
+        // controlla solo le voci precedenti, quindi l'ultima è quella fidata.
         $parts = explode(',', $forwarded);
-        return trim($parts[0]);
+        return trim(end($parts));
     }
     return $_SERVER['REMOTE_ADDR'] ?? '';
 }
@@ -161,13 +163,17 @@ function downloadImageFromUrlAsCover(string $url, string $slug): ?array {
         $newWidth = max(1, (int) round($width * $scale));
         $newHeight = max(1, (int) round($height * $scale));
         $resized = imagecreatetruecolor($newWidth, $newHeight);
-        imagecopyresampled($resized, $img, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-        imagedestroy($img);
-        $thumbFname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
-        if (imagejpeg($resized, $dir . '/' . $thumbFname, 82)) {
-            $thumbPath = 'uploads/images/' . $slug . '/' . $thumbFname;
+        if ($resized === false) {
+            imagedestroy($img);
+        } else {
+            imagecopyresampled($resized, $img, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+            imagedestroy($img);
+            $thumbFname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
+            if (imagejpeg($resized, $dir . '/' . $thumbFname, 82)) {
+                $thumbPath = 'uploads/images/' . $slug . '/' . $thumbFname;
+            }
+            imagedestroy($resized);
         }
-        imagedestroy($resized);
     }
 
     return ['image_path' => $imagePath, 'thumb_path' => $thumbPath];
@@ -288,6 +294,9 @@ function apiValidateSocialPostPayload(array $data, bool $partial): array {
     if ($status === 'scheduled' && (!$hasPublicationDate || strtotime($publishAt) <= time())) {
         return ['error' => 'status "scheduled" richiede un "publication_date" nel futuro.', 'values' => []];
     }
+    if ($status === 'published' && $hasPublicationDate && strtotime($publishAt) > time()) {
+        return ['error' => 'status "published" non è compatibile con una "publication_date" nel futuro. Usa "scheduled" oppure ometti la data.', 'values' => []];
+    }
 
     if ($status !== null) {
         $values['visibility'] = $status === 'draft' ? 'private' : 'public';
@@ -321,15 +330,32 @@ function apiDeriveBlogPostStatus(array $post): string {
     return 'published';
 }
 
+// Carica in un'unica query le categorie di un insieme di articoli blog, restituendo
+// una mappa [post_id => [name, ...]] — usata dalle list endpoint per evitare N+1.
+function apiBatchLoadBlogCategories(array $postIds): array {
+    if (empty($postIds)) {
+        return [];
+    }
+    $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+    $stmt = getDB()->prepare("SELECT bpc.blog_post_id, bc.name FROM blog_post_categories bpc JOIN blog_categories bc ON bc.id = bpc.category_id WHERE bpc.blog_post_id IN ({$placeholders})");
+    $stmt->execute($postIds);
+    $map = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $map[(int) $row['blog_post_id']][] = $row['name'];
+    }
+    return $map;
+}
+
 // Trasforma una riga di blog_posts nella forma esposta dall'API pubblica.
-function apiSerializeBlogPost(array $post, string $slug): array {
+// $categories: se fornito, usa i nomi già caricati (evita la query N+1 nelle liste).
+function apiSerializeBlogPost(array $post, string $slug, ?array $categories = null): array {
     return [
         'id' => (int) $post['id'],
         'title' => $post['title'],
         'content' => $post['content'],
         'excerpt' => $post['excerpt'],
         'tags' => $post['tags'],
-        'categories' => array_column(getBlogPostCategories((int) $post['id']), 'name'),
+        'categories' => $categories ?? array_column(getBlogPostCategories((int) $post['id']), 'name'),
         'cover_image_url' => $post['cover_path'] ? siteUrl('/' . $post['cover_path']) : null,
         // Se presente, la copertina è un video e cover_image_url è il suo fotogramma di anteprima.
         'cover_video_url' => !empty($post['cover_video_path']) ? siteUrl('/' . $post['cover_video_path']) : null,

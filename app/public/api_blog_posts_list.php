@@ -45,8 +45,10 @@ if ($statusFilter !== '') {
 $total = count($allRows);
 $pageRows = array_slice($allRows, $offset, $perPage);
 
+$catMap = apiBatchLoadBlogCategories(array_column($pageRows, 'id'));
+
 apiRespond(200, [
     'success' => true,
-    'data' => array_map(fn($p) => apiSerializeBlogPost($p, $auth['slug']), $pageRows),
+    'data' => array_map(fn($p) => apiSerializeBlogPost($p, $auth['slug'], $catMap[(int) $p['id']] ?? []), $pageRows),
     'pagination' => ['page' => $page, 'per_page' => $perPage, 'total' => $total],
 ], $auth['token_id'], $auth['user_id']);
