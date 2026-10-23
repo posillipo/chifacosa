@@ -28,6 +28,9 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+# /contest -> pagina pubblica del Contest (MyBand Festival)
+RewriteRule ^contest/?$ contest.php [L,QSA]
+
 # /sitemap.xml -> sitemap dinamica per Google Search Console
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
 

@@ -446,3 +446,31 @@ function spotifyGetShowEpisodes(string $showId, int $max = 10): array {
     }
     return $episodes;
 }
+
+// Dettagli di un brano (per le candidature al Contest): nome, artisti, data di uscita, copertina.
+// release_date è normalizzata a "Y-m-d" (Spotify può restituire solo anno o anno-mese).
+function spotifyGetTrack(string $trackId): ?array {
+    $token = getSpotifyAppToken();
+    if (!$token || !preg_match('/^[A-Za-z0-9]{10,40}$/', $trackId)) {
+        return null;
+    }
+    $response = httpRequest('GET', 'https://api.spotify.com/v1/tracks/' . urlencode($trackId), ['Authorization: Bearer ' . $token]);
+    if (!$response) {
+        return null;
+    }
+    $t = json_decode($response, true);
+    if (!$t || empty($t['id'])) {
+        return null;
+    }
+    $rd = (string) ($t['album']['release_date'] ?? '');
+    $rd = match (strlen($rd)) { 4 => $rd . '-01-01', 7 => $rd . '-01', default => $rd };
+    return [
+        'id' => $t['id'],
+        'name' => $t['name'] ?? '',
+        'artist_ids' => array_map(fn ($a) => $a['id'], $t['artists'] ?? []),
+        'artist_name' => implode(', ', array_map(fn ($a) => $a['name'], $t['artists'] ?? [])),
+        'image' => $t['album']['images'][1]['url'] ?? ($t['album']['images'][0]['url'] ?? null),
+        'spotify_url' => $t['external_urls']['spotify'] ?? null,
+        'release_date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $rd) ? $rd : null,
+    ];
+}
