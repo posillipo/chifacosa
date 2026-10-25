@@ -146,3 +146,201 @@ function contestSetEntryStatus(int $entryId, string $status, ?string $note = nul
             . "Trovi la lista dei candidati qui: " . siteUrl('/contest') . "\n\nIn bocca al lupo!\n" . siteName());
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Fase 2: gruppi, voto Gmail con conferma, classifiche
+// ---------------------------------------------------------------------------------------------
+
+const CONTEST_VOTE_TTL_HOURS = 48;
+const CONTEST_GROUP_LABELS = ['big' => 'Big', 'new' => 'Nuove Proposte', 'single' => 'Classifica'];
+
+// Solo Gmail/Googlemail. Normalizza: minuscole, niente punti, niente parte dopo "+", googlemail -> gmail.
+// Ritorna l'indirizzo normalizzato o null se non è un Gmail valido.
+function contestNormalizeGmail(string $email): ?string {
+    $email = strtolower(trim($email));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return null;
+    }
+    [$local, $domain] = explode('@', $email, 2);
+    if (!in_array($domain, ['gmail.com', 'googlemail.com'], true)) {
+        return null;
+    }
+    $local = str_replace('.', '', explode('+', $local, 2)[0]);
+    return $local !== '' ? $local . '@gmail.com' : null;
+}
+
+function contestVotingOpen(array $c): bool {
+    if ($c['status'] !== 'voting' || empty($c['groups_locked_at'])) {
+        return false;
+    }
+    $now = time();
+    if (!empty($c['voting_start_at']) && strtotime($c['voting_start_at']) > $now) {
+        return false;
+    }
+    if (!empty($c['voting_end_at']) && strtotime($c['voting_end_at']) < $now) {
+        return false;
+    }
+    return true;
+}
+
+// Fotografa la popolarità Spotify dell'artista di ogni brano approvato (se Spotify non risponde
+// resta il valore letto alla candidatura). Non tocca i gruppi.
+function contestSnapshotPopularity(int $contestId): void {
+    $db = getDB();
+    $rows = $db->prepare("SELECT id, spotify_artist_id, artist_popularity FROM contest_entries WHERE contest_id = ? AND status = 'approved'");
+    $rows->execute([$contestId]);
+    $upd = $db->prepare('UPDATE contest_entries SET popularity_snapshot = ? WHERE id = ?');
+    foreach ($rows->fetchAll() as $r) {
+        $pop = $r['artist_popularity'] !== null ? (int) $r['artist_popularity'] : null;
+        if ($r['spotify_artist_id'] && ($a = spotifyGetArtist($r['spotify_artist_id'])) && isset($a['popularity'])) {
+            $pop = (int) $a['popularity'];
+        }
+        $upd->execute([$pop, (int) $r['id']]);
+    }
+}
+
+// Regola dei gruppi sui valori fotografati: due gruppi se almeno big_min_count artisti sono >= soglia
+// e almeno new_min_count restano sotto; altrimenti gruppo unico. Ritorna ['mode', 'big', 'new', 'entries'].
+function contestProposeGroups(array $c): array {
+    $stmt = getDB()->prepare("SELECT id, band_name, track_name, popularity_snapshot FROM contest_entries WHERE contest_id = ? AND status = 'approved' ORDER BY popularity_snapshot DESC, id");
+    $stmt->execute([(int) $c['id']]);
+    $entries = $stmt->fetchAll();
+    $big = 0;
+    foreach ($entries as $e) {
+        if ($e['popularity_snapshot'] !== null && (int) $e['popularity_snapshot'] >= (int) $c['big_threshold']) {
+            $big++;
+        }
+    }
+    $new = count($entries) - $big;
+    $two = $big >= (int) $c['big_min_count'] && $new >= (int) $c['new_min_count'];
+    return ['mode' => $two ? 'two' : 'single', 'big' => $big, 'new' => $new, 'entries' => $entries];
+}
+
+// Blocca i gruppi: assegna group_key a ogni brano approvato e segna il contest. Non si ricalcola più.
+function contestLockGroups(int $contestId): bool {
+    $c = contestGet($contestId);
+    if (!$c || !empty($c['groups_locked_at'])) {
+        return false;
+    }
+    $p = contestProposeGroups($c);
+    $db = getDB();
+    $upd = $db->prepare('UPDATE contest_entries SET group_key = ? WHERE id = ?');
+    $db->beginTransaction();
+    foreach ($p['entries'] as $e) {
+        $key = 'single';
+        if ($p['mode'] === 'two') {
+            $key = ($e['popularity_snapshot'] !== null && (int) $e['popularity_snapshot'] >= (int) $c['big_threshold']) ? 'big' : 'new';
+        }
+        $upd->execute([$key, (int) $e['id']]);
+    }
+    $db->prepare('UPDATE contests SET groups_mode = ?, groups_locked_at = NOW() WHERE id = ?')->execute([$p['mode'], $contestId]);
+    $db->commit();
+    return true;
+}
+
+function contestClientIpHash(): string {
+    $ip = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]) ?: ($_SERVER['REMOTE_ADDR'] ?? '');
+    return hash('sha256', 'contest-ip:' . $ip);
+}
+
+// Richiede un voto: controlla l'email, registra il voto "in attesa" e invia il link di conferma.
+function contestRequestVote(array $c, int $entryId, string $emailInput): array {
+    if (!contestVotingOpen($c)) {
+        return ['ok' => false, 'error' => 'Le votazioni non sono aperte.'];
+    }
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM contest_entries WHERE id = ? AND contest_id = ? AND status = 'approved' AND group_key IS NOT NULL");
+    $stmt->execute([$entryId, (int) $c['id']]);
+    $entry = $stmt->fetch();
+    if (!$entry) {
+        return ['ok' => false, 'error' => 'Brano non trovato tra quelli in gara.'];
+    }
+    $norm = contestNormalizeGmail($emailInput);
+    if ($norm === null) {
+        return ['ok' => false, 'error' => 'Per votare serve un indirizzo Gmail (gmail.com o googlemail.com).'];
+    }
+    $dup = $db->prepare("SELECT id FROM contest_votes WHERE contest_id = ? AND group_key = ? AND email_norm = ? AND status = 'confirmed'");
+    $dup->execute([(int) $c['id'], $entry['group_key'], $norm]);
+    if ($dup->fetch()) {
+        return ['ok' => false, 'error' => 'Hai già votato in questa classifica.'];
+    }
+    $ipHash = contestClientIpHash();
+    $recentEmail = $db->prepare('SELECT COUNT(*) FROM contest_votes WHERE contest_id = ? AND email_norm = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)');
+    $recentEmail->execute([(int) $c['id'], $norm]);
+    $recentIp = $db->prepare('SELECT COUNT(*) FROM contest_votes WHERE contest_id = ? AND ip_hash = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)');
+    $recentIp->execute([(int) $c['id'], $ipHash]);
+    if ((int) $recentEmail->fetchColumn() >= 3 || (int) $recentIp->fetchColumn() >= 10) {
+        return ['ok' => false, 'error' => 'Troppe richieste: riprova tra un po\'.'];
+    }
+    // Una sola richiesta in attesa per persona e classifica: la nuova sostituisce la precedente.
+    $db->prepare("UPDATE contest_votes SET status = 'cancelled' WHERE contest_id = ? AND group_key = ? AND email_norm = ? AND status = 'pending'")
+        ->execute([(int) $c['id'], $entry['group_key'], $norm]);
+    $token = bin2hex(random_bytes(32));
+    $db->prepare('INSERT INTO contest_votes (contest_id, entry_id, group_key, email_norm, email_to, ip_hash, token, expires_at) VALUES (?,?,?,?,?,?,?, DATE_ADD(NOW(), INTERVAL ' . CONTEST_VOTE_TTL_HOURS . ' HOUR))')
+        ->execute([(int) $c['id'], $entryId, $entry['group_key'], $norm, mb_substr(trim($emailInput), 0, 190), $ipHash, $token]);
+    $voteId = (int) $db->lastInsertId();
+
+    $link = siteUrl('/contest/vota/' . $token);
+    $sent = contestSendMail(trim($emailInput), '', 'Conferma il tuo voto — ' . $c['name'],
+        "Hai chiesto di votare \"{$entry['track_name']}\" di {$entry['band_name']} per {$c['name']}.\n\n"
+        . "Per confermare il voto clicca qui:\n{$link}\n\n"
+        . "Il link è personale, si usa una sola volta ed è valido " . CONTEST_VOTE_TTL_HOURS . " ore. Finché non confermi, il voto non viene contato. "
+        . "Se non sei stato tu, ignora questa email.\n\n" . siteName());
+    if (!$sent) {
+        $db->prepare('DELETE FROM contest_votes WHERE id = ?')->execute([$voteId]);
+        return ['ok' => false, 'error' => 'Non è stato possibile inviare l\'email di conferma. Riprova più tardi.'];
+    }
+    return ['ok' => true];
+}
+
+// Conferma un voto dal link. state: confirmed | already | expired | closed | duplicate | invalid
+function contestConfirmVote(string $token): array {
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return ['state' => 'invalid'];
+    }
+    $db = getDB();
+    $stmt = $db->prepare('SELECT v.*, e.track_name, e.band_name, c.name AS contest_name FROM contest_votes v
+        JOIN contest_entries e ON e.id = v.entry_id JOIN contests c ON c.id = v.contest_id WHERE v.token = ?');
+    $stmt->execute([$token]);
+    $v = $stmt->fetch();
+    if (!$v) {
+        return ['state' => 'invalid'];
+    }
+    if ($v['status'] === 'confirmed') {
+        return ['state' => 'already', 'vote' => $v];
+    }
+    if ($v['status'] === 'cancelled') {
+        return ['state' => 'invalid'];
+    }
+    if (strtotime($v['expires_at']) < time()) {
+        return ['state' => 'expired', 'vote' => $v];
+    }
+    $c = contestGet((int) $v['contest_id']);
+    if (!$c || !contestVotingOpen($c)) {
+        return ['state' => 'closed', 'vote' => $v];
+    }
+    try {
+        $upd = $db->prepare("UPDATE contest_votes SET status = 'confirmed', confirmed_at = NOW(), unique_key = ? WHERE id = ? AND status = 'pending'");
+        $upd->execute([$v['contest_id'] . '|' . $v['group_key'] . '|' . $v['email_norm'], (int) $v['id']]);
+    } catch (PDOException $e) {
+        return ['state' => 'duplicate', 'vote' => $v];
+    }
+    return ['state' => 'confirmed', 'vote' => $v];
+}
+
+// Classifiche per gruppo con i soli voti confermati. ['big' => ['label', 'rows' => [...]], ...]
+function contestRanking(array $c): array {
+    $stmt = getDB()->prepare("SELECT e.id, e.band_name, e.track_name, e.image_url, e.track_url, e.group_key, e.popularity_snapshot,
+            (SELECT COUNT(*) FROM contest_votes v WHERE v.entry_id = e.id AND v.status = 'confirmed') AS votes
+        FROM contest_entries e WHERE e.contest_id = ? AND e.status = 'approved' AND e.group_key IS NOT NULL
+        ORDER BY votes DESC, e.band_name ASC");
+    $stmt->execute([(int) $c['id']]);
+    $out = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $k = $r['group_key'];
+        $out[$k]['label'] = CONTEST_GROUP_LABELS[$k] ?? $k;
+        $out[$k]['rows'][] = $r;
+    }
+    uksort($out, fn ($a, $b) => array_search($a, ['big', 'new', 'single']) <=> array_search($b, ['big', 'new', 'single']));
+    return $out;
+}

@@ -21,7 +21,17 @@ if ($c && $myProfile) {
     $myEntry = $stmt->fetch() ?: null;
 }
 
-if ($c && $myProfile && $_SERVER['REQUEST_METHOD'] === 'POST') {
+$voteMessage = null;
+$voteError = null;
+if ($c && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'vote') {
+    checkCsrf();
+    $r = contestRequestVote($c, (int) ($_POST['entry_id'] ?? 0), (string) ($_POST['email'] ?? ''));
+    if ($r['ok']) {
+        $voteMessage = 'Ti abbiamo inviato una email con il link per confermare il voto: il voto conta solo dopo la conferma.';
+    } else {
+        $voteError = $r['error'];
+    }
+} elseif ($c && $myProfile && $_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $res = contestAddEntry($c, (int) $myProfile['id'], $myProfile['display_name'], $myProfile['email'], (string) ($_POST['track'] ?? ''), $myProfile['spotify_artist_id'] ?: null);
     if ($res['ok']) {
@@ -40,6 +50,8 @@ if ($c) {
     $stmt->execute([(int) $c['id']]);
     $entries = $stmt->fetchAll();
 }
+$ranking = ($c && in_array($c['status'], ['voting', 'closed'], true)) ? contestRanking($c) : [];
+$votingOpen = $c ? contestVotingOpen($c) : false;
 $q = trim($_GET['q'] ?? '');
 $results = ($c && $myProfile && !$myEntry && $q !== '' && contestCandidaturesOpen($c)) ? spotifySearchTrack($q) : [];
 $contact = getSiteSetting('contest_contact_email') ?: '';
@@ -117,6 +129,39 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
     </div>
   <?php endif; ?>
 
+  <?php if ($voteMessage): ?><div class="alert success"><?= e($voteMessage) ?></div><?php endif; ?>
+  <?php if ($voteError): ?><div class="alert error"><?= e($voteError) ?></div><?php endif; ?>
+
+  <?php if ($ranking): ?>
+    <?php if ($votingOpen): ?>
+      <p style="color:var(--text-muted)">Per votare serve un indirizzo Gmail: riceverai una email con il link per confermare il voto. Un voto per persona in ogni classifica.</p>
+    <?php endif; ?>
+    <?php foreach ($ranking as $gkey => $g): $top = $g['rows'][0]['votes'] ?? 0; ?>
+      <div class="section-title"><?= e($g['label']) ?></div>
+      <?php foreach ($g['rows'] as $i => $en): ?>
+        <div class="blog-item" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <strong style="width:28px;text-align:center;"><?= $i + 1 ?></strong>
+          <?php if ($en['image_url']): ?><img src="<?= e($en['image_url']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;" alt=""><?php endif; ?>
+          <div style="flex:1;min-width:180px;">
+            <strong><?= e($en['track_name']) ?></strong>
+            <?php if ($c['status'] === 'closed' && $top > 0 && (int) $en['votes'] === (int) $top): ?> 🏆 <em>Vincitore</em><?php endif; ?>
+            <br><span style="color:var(--text-muted)"><?= e($en['band_name']) ?></span>
+            <?php if ($en['track_url']): ?> · <a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a><?php endif; ?>
+          </div>
+          <div style="font-weight:700;"><?= (int) $en['votes'] ?> voti</div>
+          <?php if ($votingOpen): ?>
+            <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;">
+              <?= csrfField() ?>
+              <input type="hidden" name="action" value="vote">
+              <input type="hidden" name="entry_id" value="<?= (int) $en['id'] ?>">
+              <input type="email" name="email" placeholder="tuo.indirizzo@gmail.com" required style="min-width:190px;">
+              <button class="btn small" type="submit">Vota</button>
+            </form>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php else: ?>
   <div class="section-title">Candidati in gara (<?= count($entries) ?>)</div>
   <?php foreach ($entries as $en): ?>
     <div class="blog-item" style="display:flex;gap:14px;align-items:center;">
@@ -126,6 +171,7 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
     </div>
   <?php endforeach; ?>
   <?php if (!$entries): ?><p style="color:var(--text-muted)">Nessun brano ancora in gara.</p><?php endif; ?>
+  <?php endif; ?>
 <?php endif; ?>
   <p><a href="/">← Torna alla home</a></p>
 </div>

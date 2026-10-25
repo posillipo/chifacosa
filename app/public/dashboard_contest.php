@@ -55,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = $res['error'];
         }
+    } elseif ($action === 'compute_groups' && $contestId && ($cc = contestGet($contestId)) && empty($cc['groups_locked_at'])) {
+        contestSnapshotPopularity($contestId);
+        $success = 'Popolarità Spotify fotografata. Controlla l\'anteprima dei gruppi e, se va bene, bloccali.';
+    } elseif ($action === 'lock_groups' && $contestId) {
+        $success = contestLockGroups($contestId) ? 'Gruppi bloccati.' : 'I gruppi erano già bloccati.';
+    } elseif ($action === 'cancel_vote') {
+        $db->prepare("UPDATE contest_votes SET status = 'cancelled', unique_key = NULL WHERE id = ?")->execute([(int) ($_POST['vote_id'] ?? 0)]);
+        $success = 'Voto annullato.';
     } elseif ($action === 'delete_contest' && $contestId) {
         $db->prepare('DELETE FROM contests WHERE id = ?')->execute([$contestId]);
         header('Location: /dashboard_contest.php');
@@ -72,6 +80,21 @@ if ($c) {
     $stmt = $db->prepare('SELECT * FROM contest_entries WHERE contest_id = ? ORDER BY FIELD(status, "pending", "approved", "rejected"), created_at DESC');
     $stmt->execute([$contestId]);
     $entries = $stmt->fetchAll();
+}
+$proposal = null;
+$voteStats = ['confirmed' => 0, 'pending' => 0, 'expired' => 0];
+$votes = [];
+if ($c) {
+    $proposal = contestProposeGroups($c);
+    $vs = $db->prepare("SELECT status, expires_at FROM contest_votes WHERE contest_id = ?");
+    $vs->execute([$contestId]);
+    foreach ($vs->fetchAll() as $vr) {
+        if ($vr['status'] === 'confirmed') { $voteStats['confirmed']++; }
+        elseif ($vr['status'] === 'pending') { strtotime($vr['expires_at']) < time() ? $voteStats['expired']++ : $voteStats['pending']++; }
+    }
+    $vl = $db->prepare("SELECT v.*, e.track_name, e.band_name FROM contest_votes v JOIN contest_entries e ON e.id = v.entry_id WHERE v.contest_id = ? AND v.status <> 'cancelled' ORDER BY v.created_at DESC LIMIT 100");
+    $vl->execute([$contestId]);
+    $votes = $vl->fetchAll();
 }
 $statusLabels = ['draft' => 'Bozza', 'open' => 'Candidature aperte', 'voting' => 'Votazioni', 'closed' => 'Chiuso'];
 $v = fn ($k, $d = '') => e((string) ($c[$k] ?? $d));
@@ -139,6 +162,50 @@ include __DIR__ . '/_dash_header.php';
   </form>
 
   <?php if ($c): ?>
+    <div class="section-title">Gruppi Big / Nuove Proposte</div>
+    <div class="card">
+      <?php if (!empty($c['groups_locked_at'])): ?>
+        <p>Gruppi <strong>bloccati</strong> il <?= e(formatLocalDateTime($c['groups_locked_at'], $profile)) ?>:
+          <strong><?= $c['groups_mode'] === 'two' ? 'due gruppi (Big e Nuove Proposte)' : 'gruppo unico' ?></strong>.</p>
+      <?php else: ?>
+        <p style="color:var(--text-muted)">Alla chiusura delle candidature: fotografa la popolarità Spotify degli artisti approvati, controlla l'anteprima e blocca i gruppi. Dopo il blocco non si ricalcola e si possono aprire le votazioni (stato «Votazioni»).</p>
+        <form method="post" style="display:inline;">
+          <?= csrfField() ?><input type="hidden" name="action" value="compute_groups"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+          <button class="btn small" type="submit">Fotografa popolarità e calcola anteprima</button>
+        </form>
+      <?php endif; ?>
+      <?php if ($proposal && $proposal['entries']): ?>
+        <p style="margin-top:12px;">Soglia Big: <strong><?= (int) $c['big_threshold'] ?></strong> · sopra soglia: <strong><?= (int) $proposal['big'] ?></strong> (minimo <?= (int) $c['big_min_count'] ?>) · sotto: <strong><?= (int) $proposal['new'] ?></strong> (minimo <?= (int) $c['new_min_count'] ?>)
+          → <strong><?= $proposal['mode'] === 'two' ? 'due gruppi' : 'gruppo unico' ?></strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+          <?php foreach ($proposal['entries'] as $pe): $isBig = $pe['popularity_snapshot'] !== null && (int) $pe['popularity_snapshot'] >= (int) $c['big_threshold']; ?>
+            <tr><td style="padding:3px 6px;"><?= e($pe['band_name']) ?> — <?= e($pe['track_name']) ?></td>
+                <td style="padding:3px 6px;text-align:right;"><?= $pe['popularity_snapshot'] !== null ? (int) $pe['popularity_snapshot'] : '—' ?></td>
+                <td style="padding:3px 6px;"><?= $proposal['mode'] === 'two' ? ($isBig ? 'Big' : 'Nuove Proposte') : 'Unico' ?></td></tr>
+          <?php endforeach; ?>
+        </table>
+        <?php if (empty($c['groups_locked_at'])): ?>
+          <form method="post" style="margin-top:12px;" onsubmit="return confirm('Bloccare i gruppi? Dopo non si possono ricalcolare.');">
+            <?= csrfField() ?><input type="hidden" name="action" value="lock_groups"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+            <button class="btn" type="submit">Conferma e blocca i gruppi</button>
+          </form>
+        <?php endif; ?>
+      <?php endif; ?>
+    </div>
+
+    <div class="section-title">Voti — confermati <?= $voteStats['confirmed'] ?> · in attesa <?= $voteStats['pending'] ?> · scaduti <?= $voteStats['expired'] ?></div>
+    <?php foreach ($votes as $vt): ?>
+      <div class="blog-item" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13.5px;">
+        <span style="flex:1;min-width:200px;"><?= e($vt['email_norm']) ?> → <strong><?= e($vt['track_name']) ?></strong> (<?= e($vt['band_name']) ?>)</span>
+        <span style="color:var(--text-muted);"><?= $vt['status'] === 'confirmed' ? 'confermato' : (strtotime($vt['expires_at']) < time() ? 'scaduto' : 'in attesa') ?> · <?= e(formatLocalDateTime($vt['created_at'], $profile)) ?></span>
+        <form method="post" onsubmit="return confirm('Annullare questo voto?');">
+          <?= csrfField() ?><input type="hidden" name="action" value="cancel_vote"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>"><input type="hidden" name="vote_id" value="<?= (int) $vt['id'] ?>">
+          <button class="btn small secondary" type="submit">Annulla</button>
+        </form>
+      </div>
+    <?php endforeach; ?>
+    <?php if (!$votes): ?><p style="color:var(--text-muted)">Nessun voto per ora.</p><?php endif; ?>
+
     <div class="section-title">Candidature (<?= count($entries) ?>)</div>
     <?php foreach ($entries as $en): ?>
       <div class="card" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
