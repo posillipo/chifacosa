@@ -1034,3 +1034,27 @@ CREATE TABLE IF NOT EXISTS contest_entries (
     FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
+-- Contest fase 2 (vedi database/migrations/2026_10_25_contest_votes.sql): su contest_entries
+-- group_key VARCHAR(10), popularity_snapshot INT; su contests groups_mode VARCHAR(10), groups_locked_at DATETIME.
+CREATE TABLE IF NOT EXISTS contest_votes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    contest_id INT NOT NULL,
+    entry_id INT NOT NULL,
+    group_key VARCHAR(10) NOT NULL,
+    email_norm VARCHAR(190) NOT NULL,
+    email_to VARCHAR(190) NOT NULL,
+    ip_hash CHAR(64) DEFAULT NULL,
+    token CHAR(64) NOT NULL,
+    status ENUM('pending','confirmed','cancelled') NOT NULL DEFAULT 'pending',
+    unique_key VARCHAR(255) DEFAULT NULL,
+    expires_at DATETIME NOT NULL,
+    confirmed_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_vote_token (token),
+    UNIQUE KEY uniq_vote_confirmed (unique_key),
+    KEY idx_votes_entry (entry_id, status),
+    KEY idx_votes_email (contest_id, email_norm, created_at),
+    FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE,
+    FOREIGN KEY (entry_id) REFERENCES contest_entries(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

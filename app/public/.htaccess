@@ -30,6 +30,7 @@ RewriteRule ^ - [L]
 
 # /contest -> pagina pubblica del Contest (MyBand Festival)
 RewriteRule ^contest/?$ contest.php [L,QSA]
+RewriteRule ^contest/vota/([a-f0-9]{64})/?$ contest_vote_confirm.php?t=$1 [L,QSA]
 
 # /sitemap.xml -> sitemap dinamica per Google Search Console
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
