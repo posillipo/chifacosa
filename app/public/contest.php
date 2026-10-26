@@ -12,6 +12,18 @@ if ($user) {
     $stmt->execute([(int) $user['id']]);
     $myProfile = $stmt->fetch() ?: null;
 }
+// Ricerca brani senza ricaricare la pagina: risposta JSON per la candidatura.
+if ($c && isset($_GET['search'])) {
+    header('Content-Type: application/json; charset=UTF-8');
+    $out = [];
+    if ($myProfile && contestCandidaturesOpen($c) && strlen(trim((string) $_GET['search'])) >= 2) {
+        foreach (spotifySearchTrack(trim((string) $_GET['search'])) as $t) {
+            $out[] = ['id' => $t['id'], 'name' => $t['name'], 'artist' => $t['artist_name'], 'image' => $t['image']];
+        }
+    }
+    echo json_encode(['results' => $out]);
+    exit;
+}
 $message = null;
 $error = null;
 $myEntry = null;
@@ -89,10 +101,6 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
     </ul>
   </div>
 
-  <?php if ($c['regulation']): ?>
-    <div class="card"><strong>Regolamento</strong><div style="margin-top:8px;"><?= nl2br(e($c['regulation'])) ?></div></div>
-  <?php endif; ?>
-
   <?php if ($message): ?><div class="alert success"><?= e($message) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
@@ -105,11 +113,13 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
       <?php elseif ($myEntry): ?>
         <p>Hai candidato <strong><?= e($myEntry['track_name']) ?></strong> — stato: <strong><?= $myEntry['status'] === 'approved' ? 'in gara ✔' : ($myEntry['status'] === 'rejected' ? 'non approvata' : 'in attesa di approvazione') ?></strong>.</p>
       <?php else: ?>
-        <form method="get">
+        <form method="get" id="track-search">
           <label>Cerca il tuo brano su Spotify</label>
-          <input type="text" name="q" value="<?= e($q) ?>" placeholder="titolo e artista">
+          <input type="text" name="q" value="<?= e($q) ?>" placeholder="titolo e artista" autocomplete="off">
           <button class="btn small" type="submit">Cerca</button>
         </form>
+        <div id="csrf-holder" hidden><?= csrfField() ?></div>
+        <div id="track-results" aria-live="polite">
         <?php foreach ($results as $t): ?>
           <form method="post" style="display:flex;gap:10px;align-items:center;margin-top:10px;">
             <?= csrfField() ?>
@@ -119,6 +129,7 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
             <button class="btn small" type="submit">Candida questo brano</button>
           </form>
         <?php endforeach; ?>
+        </div>
         <form method="post" style="margin-top:14px;">
           <?= csrfField() ?>
           <label>Oppure incolla il link del brano</label>
@@ -172,8 +183,78 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
   <?php endforeach; ?>
   <?php if (!$entries): ?><p style="color:var(--text-muted)">Nessun brano ancora in gara.</p><?php endif; ?>
   <?php endif; ?>
+
+  <?php if ($c['regulation']): ?>
+    <div class="card" style="margin-top:24px;"><strong>Regolamento</strong><div style="margin-top:8px;"><?= nl2br(e($c['regulation'])) ?></div></div>
+  <?php endif; ?>
 <?php endif; ?>
   <p><a href="/">← Torna alla home</a></p>
 </div>
+<script>
+// Ricerca del brano senza ricaricare la pagina (senza JavaScript resta il normale invio del modulo).
+(function () {
+  var form = document.getElementById('track-search');
+  if (!form || !window.fetch) { return; }
+  var box = document.getElementById('track-results');
+  var holder = document.getElementById('csrf-holder');
+  var input = form.querySelector('input[name="q"]');
+  var button = form.querySelector('button');
+  var seq = 0;
+  function note(text) {
+    box.textContent = '';
+    var p = document.createElement('p');
+    p.style.color = 'var(--text-muted)';
+    p.textContent = text;
+    box.appendChild(p);
+  }
+  function render(items) {
+    box.textContent = '';
+    if (!items.length) { note('Nessun brano trovato.'); return; }
+    items.forEach(function (t) {
+      var f = document.createElement('form');
+      f.method = 'post';
+      f.style.cssText = 'display:flex;gap:10px;align-items:center;margin-top:10px;';
+      f.innerHTML = holder.innerHTML;
+      var h = document.createElement('input');
+      h.type = 'hidden'; h.name = 'track'; h.value = t.id;
+      f.appendChild(h);
+      if (t.image) {
+        var img = document.createElement('img');
+        img.src = t.image; img.alt = '';
+        img.style.cssText = 'width:48px;height:48px;border-radius:6px;';
+        f.appendChild(img);
+      }
+      var span = document.createElement('span');
+      span.style.flex = '1';
+      var strong = document.createElement('strong');
+      strong.textContent = t.name;
+      var small = document.createElement('small');
+      small.style.color = 'var(--text-muted)';
+      small.textContent = t.artist;
+      span.appendChild(strong);
+      span.appendChild(document.createElement('br'));
+      span.appendChild(small);
+      f.appendChild(span);
+      var b = document.createElement('button');
+      b.className = 'btn small'; b.type = 'submit'; b.textContent = 'Candida questo brano';
+      f.appendChild(b);
+      box.appendChild(f);
+    });
+  }
+  form.addEventListener('submit', function (ev) {
+    var q = input.value.trim();
+    if (q.length < 2) { return; }
+    ev.preventDefault();
+    var mine = ++seq;
+    note('Ricerca in corso…');
+    button.disabled = true;
+    fetch('/contest?search=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (mine === seq) { render(d.results || []); } })
+      .catch(function () { if (mine === seq) { note('Ricerca non riuscita: riprova.'); } })
+      .then(function () { button.disabled = false; });
+  });
+})();
+</script>
 </body>
 </html>
