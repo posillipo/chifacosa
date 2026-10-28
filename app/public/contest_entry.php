@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/contest.php';
+require_once __DIR__ . '/../src/contest_adminlte.php';
 
 $artist = contestLoadArtist((string) ($_GET['slug'] ?? ''));
 if (!$artist || !contestModuleEnabled((int) $artist['id'])) {
@@ -27,6 +28,10 @@ if (!$en) {
   <a class="btn-link primary" href="/<?= e($artist['slug']) ?>/contest"><span class="ico">🏆</span><span>Vedi i contest</span><span class="arrow">›</span></a>
 <?php
     contestPageClose($artist);
+    exit;
+}
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteContestEntryPage($artist, $c, $en);
     exit;
 }
 $contestHref = contestUrl($c);
