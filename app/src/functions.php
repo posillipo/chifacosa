@@ -8728,7 +8728,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'dashboard_fan_books','libri_che_amo','admin_googlebooks',
     'dashboard_fan_publications','pubblicazioni_che_amo','admin_crossref',
     'admin_turnstile', 'dashboard_schedule',
-    'dashboard_cinema','cron_cinema_sync','dashboard_products','contest','dashboard_contest','contest_vote_confirm','contest_entry','contest_sponsor_preview','favorite_track_item',
+    'dashboard_cinema','cron_cinema_sync','dashboard_products','contest','dashboard_contest','contest_vote_confirm','contest_entry','contest_sponsor_preview','contest_page','favorite_track_item',
     'dashboard_fan_trips','viaggi','viaggio_item','admin_geoapify',
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
     'dashboard_che_amo','che_amo',

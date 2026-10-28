@@ -1073,3 +1073,6 @@ CREATE TABLE IF NOT EXISTS contest_sponsors (
     KEY idx_sponsors_contest (contest_id),
     FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Contest: indirizzo e logo (vedi database/migrations/2026_10_29_contest_slug.sql): su contests
+-- slug VARCHAR(80) con UNIQUE KEY uniq_contest_slug, logo_path VARCHAR(255).
