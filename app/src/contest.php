@@ -131,7 +131,7 @@ function contestSetEntryStatus(int $entryId, string $status, ?string $note = nul
         return;
     }
     $db = getDB();
-    $stmt = $db->prepare('SELECT e.*, c.name AS contest_name FROM contest_entries e JOIN contests c ON c.id = e.contest_id WHERE e.id = ?');
+    $stmt = $db->prepare('SELECT e.*, c.name AS contest_name, c.slug AS contest_slug FROM contest_entries e JOIN contests c ON c.id = e.contest_id WHERE e.id = ?');
     $stmt->execute([$entryId]);
     $e = $stmt->fetch();
     if (!$e) {
@@ -143,7 +143,7 @@ function contestSetEntryStatus(int $entryId, string $status, ?string $note = nul
     if ($status === 'approved' && !$wasApproved) {
         contestSendMail($e['contact_email'], $e['band_name'], 'Il tuo brano è in gara: ' . $e['contest_name'],
             "Ciao {$e['band_name']},\n\nla candidatura del brano \"{$e['track_name']}\" è stata approvata: il brano è ufficialmente in gara per {$e['contest_name']}.\n\n"
-            . "Trovi la lista dei candidati qui: " . siteUrl('/contest') . "\n\nIn bocca al lupo!\n" . siteName());
+            . "Trovi la lista dei candidati qui: " . siteUrl('/contest/' . $e['contest_slug']) . "\n\nIn bocca al lupo!\n" . siteName());
     }
 }
 
@@ -307,7 +307,7 @@ function contestConfirmVote(string $token): array {
         return ['state' => 'invalid'];
     }
     $db = getDB();
-    $stmt = $db->prepare('SELECT v.*, e.track_name, e.band_name, c.name AS contest_name FROM contest_votes v
+    $stmt = $db->prepare('SELECT v.*, e.track_name, e.band_name, c.name AS contest_name, c.slug AS contest_slug FROM contest_votes v
         JOIN contest_entries e ON e.id = v.entry_id JOIN contests c ON c.id = v.contest_id WHERE v.token = ?');
     $stmt->execute([$token]);
     $v = $stmt->fetch();
@@ -431,4 +431,114 @@ function contestSetEntrySponsor(int $entryId, int $sponsorId): bool {
     }
     $db->prepare('UPDATE contest_entries SET sponsor_id = ? WHERE id = ?')->execute([$sponsorId > 0 ? $sponsorId : null, $entryId]);
     return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Indirizzi (slug), elenco e fasi
+// ---------------------------------------------------------------------------------------------
+
+// Parole che hanno già un significato sotto /contest/ e non possono essere uno slug.
+const CONTEST_RESERVED_SLUGS = ['brano', 'vota', 'sponsor', 'archivio', 'nuovo', 'admin'];
+
+function contestSlugAvailable(string $slug, ?int $excludeId = null): bool {
+    if ($slug === '' || strlen($slug) > 80 || in_array($slug, CONTEST_RESERVED_SLUGS, true) || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+        return false;
+    }
+    $stmt = getDB()->prepare('SELECT id FROM contests WHERE slug = ?' . ($excludeId ? ' AND id <> ' . (int) $excludeId : ''));
+    $stmt->execute([$slug]);
+    return !$stmt->fetch();
+}
+
+// Proposta di slug unico a partire dal nome (suffisso -2, -3... se serve).
+function contestUniqueSlug(string $name, ?int $excludeId = null): string {
+    $base = substr(slugify($name), 0, 70) ?: 'contest';
+    $slug = $base;
+    for ($i = 2; !contestSlugAvailable($slug, $excludeId) && $i < 200; $i++) {
+        $slug = $base . '-' . $i;
+    }
+    return $slug;
+}
+
+function contestUrl(array $c): string {
+    return '/contest/' . $c['slug'];
+}
+
+function contestGetBySlug(string $slug): ?array {
+    $stmt = getDB()->prepare('SELECT * FROM contests WHERE slug = ?');
+    $stmt->execute([$slug]);
+    return $stmt->fetch() ?: null;
+}
+
+// Contest pubblici (non in bozza): prima quelli attivi, poi i conclusi.
+function contestPublicList(): array {
+    return getDB()->query("SELECT c.*, (SELECT COUNT(*) FROM contest_entries e WHERE e.contest_id = c.id AND e.status = 'approved') AS entries_count
+        FROM contests c WHERE c.status <> 'draft' ORDER BY FIELD(c.status, 'voting', 'open', 'closed'), c.id DESC")->fetchAll();
+}
+
+// Fase corrente per la barra di avanzamento: step 0 candidature, 1 votazioni, 2 vincitori.
+function contestPhaseInfo(array $c): array {
+    if ($c['status'] === 'draft') {
+        return ['step' => 0, 'label' => 'Bozza', 'target' => null, 'countdown' => ''];
+    }
+    if ($c['status'] === 'closed') {
+        return ['step' => 2, 'label' => 'Concluso', 'target' => null, 'countdown' => ''];
+    }
+    if ($c['status'] === 'voting') {
+        $start = !empty($c['voting_start_at']) ? strtotime($c['voting_start_at']) : null;
+        if ($start && $start > time()) {
+            return ['step' => 1, 'label' => 'Votazioni in arrivo', 'target' => $start, 'countdown' => 'Le votazioni aprono tra'];
+        }
+        $end = !empty($c['voting_end_at']) ? strtotime($c['voting_end_at']) : null;
+        return ['step' => 1, 'label' => 'Votazioni aperte', 'target' => $end, 'countdown' => 'Le votazioni chiudono tra'];
+    }
+    $close = !empty($c['candidatures_close_at']) ? strtotime($c['candidatures_close_at']) : null;
+    return ['step' => 0, 'label' => 'Candidature aperte', 'target' => $close, 'countdown' => 'Le candidature chiudono tra'];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Scheletro grafico condiviso dalle pagine pubbliche del contest (stile link in bio)
+// ---------------------------------------------------------------------------------------------
+
+function contestHead(string $title, string $extraHead = '', bool $noindex = false): void {
+    ?><!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?php if ($noindex): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
+<title><?= e($title) ?> — <?= e(siteName()) ?></title>
+<?= $extraHead ?>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/contest.css') ?>">
+<?= embedPrivacyScript() ?>
+<?= embedTrackingHead() ?>
+<?= embedGoogleAnalytics() ?>
+</head>
+<body class="contest">
+<div class="wrap">
+<?php
+}
+
+function contestFoot(string $scripts = ''): void {
+    ?>
+  <div class="foot"><?= e(siteName()) ?></div>
+</div>
+<?= $scripts ?>
+</body>
+</html>
+<?php
+}
+
+// Logo del contest (immagine caricata) oppure emoji di ripiego.
+function contestLogoHtml(array $c): string {
+    return !empty($c['logo_path'])
+        ? '<img src="/' . e($c['logo_path']) . '" alt="' . e($c['name']) . '">'
+        : '🎸';
+}
+
+function contestDateRange(?string $a, ?string $b): string {
+    $f = fn ($d) => $d ? date('d/m/Y', strtotime($d)) : null;
+    if ($a && $b) {
+        return $f($a) . ' – ' . $f($b);
+    }
+    return (string) ($f($a) ?: $f($b) ?: '');
 }

@@ -27,17 +27,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $thr = max(0, min(100, (int) ($_POST['big_threshold'] ?? 40)));
         $bigMin = max(1, (int) ($_POST['big_min_count'] ?? 8));
         $newMin = max(1, (int) ($_POST['new_min_count'] ?? 4));
+        $existing = $contestId ? contestGet($contestId) : null;
+        $slugIn = slugify(trim($_POST['slug'] ?? ''));
+        $slug = null;
         if ($name === '') {
             $error = 'Il nome del contest è obbligatorio.';
+        } elseif ($slugIn === '') {
+            $slug = $existing['slug'] ?? contestUniqueSlug($name);
+        } elseif (!contestSlugAvailable($slugIn, $existing ? (int) $existing['id'] : null)) {
+            $error = 'L\'indirizzo «' . $slugIn . '» è già in uso o riservato: scegline un altro.';
         } else {
+            $slug = $slugIn;
+        }
+        if (!$error) {
+            $logoPath = $existing['logo_path'] ?? null;
+            if (!empty($_FILES['contest_logo']['name'])) {
+                if ($newLogo = contestSaveLogo('contest_logo')) {
+                    contestDeleteLogo($logoPath);
+                    $logoPath = $newLogo;
+                } else {
+                    $error = 'Il logo non è stato caricato (formato non valido o più di 5 MB). Il resto non è stato salvato.';
+                }
+            } elseif (!empty($_POST['remove_logo'])) {
+                contestDeleteLogo($logoPath);
+                $logoPath = null;
+            }
+        }
+        if (!$error) {
             $vals = [mb_substr($name, 0, 150), trim($_POST['description'] ?? '') ?: null, trim($_POST['regulation'] ?? '') ?: null,
                 $dt('candidatures_open_at'), $dt('candidatures_close_at'), $dt('voting_start_at'), $dt('voting_end_at'),
-                $age, $thr, $bigMin, $newMin, $status];
-            if ($contestId && contestGet($contestId)) {
-                $db->prepare('UPDATE contests SET name=?, description=?, regulation=?, candidatures_open_at=?, candidatures_close_at=?, voting_start_at=?, voting_end_at=?, max_track_age_months=?, big_threshold=?, big_min_count=?, new_min_count=?, status=? WHERE id=?')
+                $age, $thr, $bigMin, $newMin, $status, $slug, $logoPath];
+            if ($existing) {
+                $db->prepare('UPDATE contests SET name=?, description=?, regulation=?, candidatures_open_at=?, candidatures_close_at=?, voting_start_at=?, voting_end_at=?, max_track_age_months=?, big_threshold=?, big_min_count=?, new_min_count=?, status=?, slug=?, logo_path=? WHERE id=?')
                     ->execute(array_merge($vals, [$contestId]));
             } else {
-                $db->prepare('INSERT INTO contests (name, description, regulation, candidatures_open_at, candidatures_close_at, voting_start_at, voting_end_at, max_track_age_months, big_threshold, big_min_count, new_min_count, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+                $db->prepare('INSERT INTO contests (name, description, regulation, candidatures_open_at, candidatures_close_at, voting_start_at, voting_end_at, max_track_age_months, big_threshold, big_min_count, new_min_count, status, slug, logo_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
                     ->execute($vals);
                 $contestId = (int) $db->lastInsertId();
             }
@@ -90,6 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = contestSetEntrySponsor((int) ($_POST['entry_id'] ?? 0), (int) ($_POST['sponsor_id'] ?? 0)) ? 'Sponsor del brano aggiornato.' : null;
         $error = $success ? null : 'Abbinamento non riuscito.';
     } elseif ($action === 'delete_contest' && $contestId) {
+        if ($del = contestGet($contestId)) {
+            contestDeleteLogo($del['logo_path'] ?? null);
+            foreach (contestSponsors($contestId) as $dsp) {
+                contestDeleteLogo($dsp['logo_path']);
+            }
+        }
         $db->prepare('DELETE FROM contests WHERE id = ?')->execute([$contestId]);
         header('Location: /dashboard_contest.php');
         exit;
@@ -133,7 +163,7 @@ include __DIR__ . '/_dash_header.php';
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
       Qui configuri il contest (nome, date, regolamento) e gestisci le candidature. Un artista candida
-      un solo brano dalla pagina pubblica <a href="/contest">/contest</a>; il brano deve essere su Spotify e
+      un solo brano dalla pagina pubblica del contest (<code>/contest/<em>indirizzo</em></code>; l'elenco di tutti i contest è <a href="/contest">/contest</a>); il brano deve essere su Spotify e
       uscito entro il numero di mesi indicato prima dell'inizio delle votazioni. Una candidatura resta
       «in attesa» finché non la approvi: all'approvazione l'artista riceve la conferma e il brano entra
       nella lista ufficiale. Puoi anche inserire a mano la candidatura di chi non ha un profilo.
@@ -151,13 +181,28 @@ include __DIR__ . '/_dash_header.php';
   </p>
 
   <div class="section-title"><?= $c ? 'Configurazione' : 'Nuovo contest' ?></div>
-  <form method="post" class="card">
+  <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="save_contest">
     <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
     <input type="hidden" name="tz_offset_minutes" value="">
     <label>Nome</label>
     <input type="text" name="name" value="<?= $v('name') ?>" placeholder="es. MyBand Festival 2027" required maxlength="150">
+    <label>Indirizzo (slug) — la pagina pubblica sarà /contest/<em>indirizzo</em></label>
+    <input type="text" name="slug" value="<?= $v('slug') ?>" placeholder="si ricava dal nome, es. myband-festival-2027" maxlength="80" pattern="[A-Za-z0-9\-]*">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+      Solo lettere, numeri e trattini; deve essere unico. Lascia vuoto per generarlo dal nome.
+      <?php if ($c && $c['status'] !== 'draft'): ?><strong>Il contest è già pubblico: cambiare l'indirizzo cambia il link da condividere.</strong><?php endif; ?>
+      <?php if ($c): ?> Pagina attuale: <a href="<?= e(contestUrl($c)) ?>" target="_blank"><?= e(siteUrl(contestUrl($c))) ?></a><?php endif; ?>
+    </p>
+    <label>Logo del contest (opzionale — PNG, JPG o WebP, max 5 MB)</label>
+    <?php if (!empty($c['logo_path'])): ?>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+        <img src="/<?= e($c['logo_path']) ?>" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:normal;"><input type="checkbox" name="remove_logo" value="1" style="width:auto;"> Rimuovi il logo</label>
+      </div>
+    <?php endif; ?>
+    <input type="file" name="contest_logo" accept="image/*">
     <label>Stato</label>
     <select name="status">
       <?php foreach ($statusLabels as $k => $lbl): ?>
