@@ -63,6 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'cancel_vote') {
         $db->prepare("UPDATE contest_votes SET status = 'cancelled', unique_key = NULL WHERE id = ?")->execute([(int) ($_POST['vote_id'] ?? 0)]);
         $success = 'Voto annullato.';
+    } elseif ($action === 'add_sponsor' && $contestId && contestGet($contestId)) {
+        $sname = trim($_POST['sponsor_name'] ?? '');
+        $surl = trim($_POST['sponsor_url'] ?? '');
+        if ($sname === '') {
+            $error = 'Il nome dello sponsor è obbligatorio.';
+        } elseif ($surl !== '' && !preg_match('#^https?://#i', $surl)) {
+            $error = 'Il sito dello sponsor deve iniziare con http:// o https://.';
+        } else {
+            $logo = contestSaveLogo('sponsor_logo');
+            $db->prepare('INSERT INTO contest_sponsors (contest_id, name, website_url, logo_path, access_token) VALUES (?,?,?,?,?)')
+                ->execute([$contestId, mb_substr($sname, 0, 150), $surl !== '' ? mb_substr($surl, 0, 300) : null, $logo, bin2hex(random_bytes(16))]);
+            $success = 'Sponsor aggiunto.' . (!empty($_FILES['sponsor_logo']['name']) && !$logo ? ' Il logo non è stato caricato (formato non valido o troppo grande).' : '');
+        }
+    } elseif ($action === 'delete_sponsor') {
+        $sid = (int) ($_POST['sponsor_id'] ?? 0);
+        $row = $db->prepare('SELECT logo_path FROM contest_sponsors WHERE id = ?');
+        $row->execute([$sid]);
+        if ($r = $row->fetch()) {
+            contestDeleteLogo($r['logo_path']);
+            $db->prepare('UPDATE contest_entries SET sponsor_id = NULL WHERE sponsor_id = ?')->execute([$sid]);
+            $db->prepare('DELETE FROM contest_sponsors WHERE id = ?')->execute([$sid]);
+            $success = 'Sponsor eliminato.';
+        }
+    } elseif ($action === 'set_sponsor') {
+        $success = contestSetEntrySponsor((int) ($_POST['entry_id'] ?? 0), (int) ($_POST['sponsor_id'] ?? 0)) ? 'Sponsor del brano aggiornato.' : null;
+        $error = $success ? null : 'Abbinamento non riuscito.';
     } elseif ($action === 'delete_contest' && $contestId) {
         $db->prepare('DELETE FROM contests WHERE id = ?')->execute([$contestId]);
         header('Location: /dashboard_contest.php');
@@ -81,6 +107,7 @@ if ($c) {
     $stmt->execute([$contestId]);
     $entries = $stmt->fetchAll();
 }
+$sponsors = $c ? contestSponsors($contestId) : [];
 $proposal = null;
 $voteStats = ['confirmed' => 0, 'pending' => 0, 'expired' => 0];
 $votes = [];
@@ -162,6 +189,33 @@ include __DIR__ . '/_dash_header.php';
   </form>
 
   <?php if ($c): ?>
+    <div class="section-title">Sponsor (<?= count($sponsors) ?>)</div>
+    <?php foreach ($sponsors as $sp): ?>
+      <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <?php if ($sp['logo_path']): ?><img src="/<?= e($sp['logo_path']) ?>" alt="" style="height:44px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:4px;"><?php endif; ?>
+        <div style="flex:1;min-width:220px;">
+          <strong><?= e($sp['name']) ?></strong> <span style="color:var(--text-muted);font-size:12.5px;">· <?= (int) $sp['entries_count'] ?> brani</span>
+          <?php if ($sp['website_url']): ?><div style="font-size:12.5px;"><a href="<?= e($sp['website_url']) ?>" target="_blank" rel="noopener"><?= e($sp['website_url']) ?></a></div><?php endif; ?>
+          <div style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Link riservato per l'anteprima (da inviare allo sponsor):</div>
+          <input type="text" readonly value="<?= e(contestSponsorPreviewUrl($sp)) ?>" onclick="this.select()" style="font-size:12.5px;">
+        </div>
+        <form method="post" onsubmit="return confirm('Eliminare lo sponsor? Verrà tolto anche dagli abbinamenti.');">
+          <?= csrfField() ?><input type="hidden" name="action" value="delete_sponsor"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>"><input type="hidden" name="sponsor_id" value="<?= (int) $sp['id'] ?>">
+          <button class="btn small secondary" type="submit">Elimina</button>
+        </form>
+      </div>
+    <?php endforeach; ?>
+    <form method="post" enctype="multipart/form-data" class="card">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="add_sponsor">
+      <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+      <label>Nome dello sponsor</label><input type="text" name="sponsor_name" required maxlength="150">
+      <label>Sito (opzionale)</label><input type="url" name="sponsor_url" placeholder="https://...">
+      <label>Logo (PNG, JPG o WebP, max 5 MB — consigliato PNG con sfondo trasparente)</label>
+      <input type="file" name="sponsor_logo" accept="image/*">
+      <button type="submit" class="btn">Aggiungi sponsor</button>
+    </form>
+
     <div class="section-title">Gruppi Big / Nuove Proposte</div>
     <div class="card">
       <?php if (!empty($c['groups_locked_at'])): ?>
@@ -229,6 +283,19 @@ include __DIR__ . '/_dash_header.php';
             <?php if ($en['status'] !== 'rejected'): ?><button class="btn small secondary" name="status" value="rejected">Rifiuta</button><?php endif; ?>
             <?php if ($en['status'] !== 'pending'): ?><button class="btn small secondary" name="status" value="pending">Rimetti in attesa</button><?php endif; ?>
           </form>
+          <?php if ($sponsors): ?>
+          <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="set_sponsor">
+            <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+            <input type="hidden" name="entry_id" value="<?= (int) $en['id'] ?>">
+            <select name="sponsor_id" style="min-width:160px;">
+              <option value="0">— Nessuno sponsor —</option>
+              <?php foreach ($sponsors as $sp): ?><option value="<?= (int) $sp['id'] ?>" <?= (int) ($en['sponsor_id'] ?? 0) === (int) $sp['id'] ? 'selected' : '' ?>><?= e($sp['name']) ?></option><?php endforeach; ?>
+            </select>
+            <button class="btn small secondary" type="submit">Imposta sponsor</button>
+          </form>
+          <?php endif; ?>
         </div>
       </div>
     <?php endforeach; ?>
