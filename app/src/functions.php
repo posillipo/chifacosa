@@ -1348,6 +1348,9 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     if (!in_array('video', $hiddenKeys, true) && hasPublicVideos($uid)) {
         $navItems['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video'];
     }
+    if (!in_array('contest', $hiddenKeys, true) && hasPublicContests($uid)) {
+        $navItems['contest'] = ['label' => 'Contest', 'url' => '/' . $slug . '/contest'];
+    }
     $navItems['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog'];
     if (!in_array('menu', $hiddenKeys, true) && menuHasItems($uid)) {
         $navItems['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu'];
@@ -1408,7 +1411,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                 </ul>
               </li>
               <?php endif; ?>
-              <?php foreach (['spotify', 'podcast', 'youtube', 'video', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
+              <?php foreach (['spotify', 'podcast', 'youtube', 'video', 'contest', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
                 <?php if (isset($navItems[$key])): ?>
               <li class="nav-item">
                 <a href="<?= e($navItems[$key]['url']) ?>" class="nav-link<?= $activeKey === $key ? ' active' : '' ?>"><?= e($navItems[$key]['label']) ?></a>
@@ -6050,6 +6053,9 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     if ($ownerId && hasPublicVideos($ownerId)) {
         $tabs['video'] = ['label' => 'Video', 'url' => '/' . $slug . '/video', 'icon' => 'fas fa-video'];
     }
+    if ($ownerId && hasPublicContests($ownerId)) {
+        $tabs['contest'] = ['label' => 'Contest', 'url' => '/' . $slug . '/contest', 'icon' => 'fas fa-trophy'];
+    }
     $tabs['blog'] = ['label' => 'Blog', 'url' => '/' . $slug . '/blog', 'icon' => 'fas fa-newspaper'];
     if ($hasMenu) {
         $tabs['menu'] = ['label' => 'Menù', 'url' => '/' . $slug . '/menu', 'icon' => 'fas fa-utensils'];
@@ -7011,6 +7017,36 @@ function hasPublicPhotoContent(int $userId): bool {
 }
 
 // True se il profilo ha almeno un video caricato, pubblico e già pubblicato (modulo "Video").
+// Il modulo Contest è di un profilo: serve l'autorizzazione dell'amministratore (profiles.contest_enabled)
+// e il modulo non deve essere spento per tutto il sito (Area Admin -> Funzioni del sito).
+function contestModuleEnabled(int $userId): bool {
+    static $cache = [];
+    if (!isset($cache[$userId])) {
+        try {
+            $stmt = getDB()->prepare('SELECT contest_enabled FROM profiles WHERE user_id = ?');
+            $stmt->execute([$userId]);
+            $cache[$userId] = (int) $stmt->fetchColumn() === 1;
+        } catch (Throwable $e) {
+            $cache[$userId] = false; // migrazione non ancora eseguita
+        }
+    }
+    return $cache[$userId] && !in_array('contest', getSiteDisabledNavKeys(), true);
+}
+
+// Il profilo ha almeno un'edizione pubblica (non in bozza): decide se compare la voce di menu.
+function hasPublicContests(int $userId): bool {
+    if (!contestModuleEnabled($userId)) {
+        return false;
+    }
+    try {
+        $stmt = getDB()->prepare("SELECT COUNT(*) FROM contests WHERE user_id = ? AND status <> 'draft'");
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function hasPublicVideos(int $userId): bool {
     try {
         $stmt = getDB()->prepare("SELECT COUNT(*) c FROM videos WHERE user_id = ? AND is_public = 1 AND (publish_at IS NULL OR publish_at <= NOW())");
@@ -8951,6 +8987,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
     'Foto' => 'foto',
     'Servizi' => 'servizi',
     'Eventi' => 'eventi',
+    'Contest' => 'contest',
     'Segui' => 'segui',
     'Contatti' => 'contatti',
 ];
@@ -8996,6 +9033,7 @@ function createDefaultProfileNavMenu(int $userId, string $slug): bool {
         ['Partite che amo', 'fas fa-calendar-check', '/' . $slug . '/partite-che-amo', 27],
         ['Pubblicazioni che amo', 'fas fa-microscope', '/' . $slug . '/pubblicazioni-che-amo', 28],
         ['Video', 'fas fa-video', '/' . $slug . '/video', 29],
+        ['Contest', 'fas fa-trophy', '/' . $slug . '/contest', 30],
     ];
 
     foreach ($defaults as [$name, $icon, $url, $order]) {
@@ -9125,7 +9163,7 @@ function resetProfileNavMenuOrder(int $userId): void {
 // di Servizi/Eventi che nella barra della dashboard compaiono come tasti a sé.
 const DASHBOARD_TAB_KEYS = [
     'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
-    'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album', 'video' => 'Video',
+    'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album', 'video' => 'Video', 'contest' => 'Contest',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
     'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API', 'schedule' => 'Programmati',
 ];

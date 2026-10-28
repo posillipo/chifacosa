@@ -12,14 +12,9 @@ function contestParseTrackId(string $input): ?string {
 }
 
 function contestGet(int $id): ?array {
-    $stmt = getDB()->prepare('SELECT * FROM contests WHERE id = ?');
+    $stmt = getDB()->prepare('SELECT c.*, u.slug AS owner_slug FROM contests c JOIN users u ON u.id = c.user_id WHERE c.id = ?');
     $stmt->execute([$id]);
     return $stmt->fetch() ?: null;
-}
-
-// Il contest mostrato al pubblico: l'ultimo non in bozza.
-function contestPublicCurrent(): ?array {
-    return getDB()->query("SELECT * FROM contests WHERE status <> 'draft' ORDER BY id DESC LIMIT 1")->fetch() ?: null;
 }
 
 function contestCandidaturesOpen(array $c): bool {
@@ -131,7 +126,7 @@ function contestSetEntryStatus(int $entryId, string $status, ?string $note = nul
         return;
     }
     $db = getDB();
-    $stmt = $db->prepare('SELECT e.*, c.name AS contest_name, c.slug AS contest_slug FROM contest_entries e JOIN contests c ON c.id = e.contest_id WHERE e.id = ?');
+    $stmt = $db->prepare('SELECT e.*, c.name AS contest_name, c.slug AS contest_slug, u.slug AS owner_slug FROM contest_entries e JOIN contests c ON c.id = e.contest_id JOIN users u ON u.id = c.user_id WHERE e.id = ?');
     $stmt->execute([$entryId]);
     $e = $stmt->fetch();
     if (!$e) {
@@ -143,7 +138,7 @@ function contestSetEntryStatus(int $entryId, string $status, ?string $note = nul
     if ($status === 'approved' && !$wasApproved) {
         contestSendMail($e['contact_email'], $e['band_name'], 'Il tuo brano è in gara: ' . $e['contest_name'],
             "Ciao {$e['band_name']},\n\nla candidatura del brano \"{$e['track_name']}\" è stata approvata: il brano è ufficialmente in gara per {$e['contest_name']}.\n\n"
-            . "Trovi la lista dei candidati qui: " . siteUrl('/contest/' . $e['contest_slug']) . "\n\nIn bocca al lupo!\n" . siteName());
+            . "Trovi la lista dei candidati qui: " . siteUrl('/' . $e['owner_slug'] . '/contest/' . $e['contest_slug']) . "\n\nIn bocca al lupo!\n" . siteName());
     }
 }
 
@@ -307,8 +302,8 @@ function contestConfirmVote(string $token): array {
         return ['state' => 'invalid'];
     }
     $db = getDB();
-    $stmt = $db->prepare('SELECT v.*, e.track_name, e.band_name, c.name AS contest_name, c.slug AS contest_slug FROM contest_votes v
-        JOIN contest_entries e ON e.id = v.entry_id JOIN contests c ON c.id = v.contest_id WHERE v.token = ?');
+    $stmt = $db->prepare('SELECT v.*, e.track_name, e.band_name, c.name AS contest_name, c.slug AS contest_slug, u.slug AS owner_slug, c.user_id AS owner_id FROM contest_votes v
+        JOIN contest_entries e ON e.id = v.entry_id JOIN contests c ON c.id = v.contest_id JOIN users u ON u.id = c.user_id WHERE v.token = ?');
     $stmt->execute([$token]);
     $v = $stmt->fetch();
     if (!$v) {
@@ -437,42 +432,53 @@ function contestSetEntrySponsor(int $entryId, int $sponsorId): bool {
 // Indirizzi (slug), elenco e fasi
 // ---------------------------------------------------------------------------------------------
 
-// Parole che hanno già un significato sotto /contest/ e non possono essere uno slug.
-const CONTEST_RESERVED_SLUGS = ['brano', 'vota', 'sponsor', 'archivio', 'nuovo', 'admin'];
+// Parole non utilizzabili come slug di un'edizione.
+const CONTEST_RESERVED_SLUGS = ['archivio', 'nuovo', 'admin'];
 
-function contestSlugAvailable(string $slug, ?int $excludeId = null): bool {
+// Lo slug è unico dentro un profilo: due profili possono avere entrambi "edizione-2027".
+function contestSlugAvailable(string $slug, int $userId, ?int $excludeId = null): bool {
     if ($slug === '' || strlen($slug) > 80 || in_array($slug, CONTEST_RESERVED_SLUGS, true) || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
         return false;
     }
-    $stmt = getDB()->prepare('SELECT id FROM contests WHERE slug = ?' . ($excludeId ? ' AND id <> ' . (int) $excludeId : ''));
-    $stmt->execute([$slug]);
+    $stmt = getDB()->prepare('SELECT id FROM contests WHERE user_id = ? AND slug = ?' . ($excludeId ? ' AND id <> ' . (int) $excludeId : ''));
+    $stmt->execute([$userId, $slug]);
     return !$stmt->fetch();
 }
 
 // Proposta di slug unico a partire dal nome (suffisso -2, -3... se serve).
-function contestUniqueSlug(string $name, ?int $excludeId = null): string {
+function contestUniqueSlug(string $name, int $userId, ?int $excludeId = null): string {
     $base = substr(slugify($name), 0, 70) ?: 'contest';
     $slug = $base;
-    for ($i = 2; !contestSlugAvailable($slug, $excludeId) && $i < 200; $i++) {
+    for ($i = 2; !contestSlugAvailable($slug, $userId, $excludeId) && $i < 200; $i++) {
         $slug = $base . '-' . $i;
     }
     return $slug;
 }
 
+// Indirizzo pubblico dell'edizione: /{profilo}/contest/{slug}. $c deve avere owner_slug (contestGet lo include).
 function contestUrl(array $c): string {
-    return '/contest/' . $c['slug'];
+    return '/' . $c['owner_slug'] . '/contest/' . $c['slug'];
 }
 
-function contestGetBySlug(string $slug): ?array {
-    $stmt = getDB()->prepare('SELECT * FROM contests WHERE slug = ?');
-    $stmt->execute([$slug]);
+function contestEntryUrl(array $c, int $entryId): string {
+    return contestUrl($c) . '/brano/' . $entryId;
+}
+
+function contestGetBySlug(int $userId, string $slug): ?array {
+    $stmt = getDB()->prepare('SELECT c.*, u.slug AS owner_slug FROM contests c JOIN users u ON u.id = c.user_id WHERE c.user_id = ? AND c.slug = ?');
+    $stmt->execute([$userId, $slug]);
     return $stmt->fetch() ?: null;
 }
 
-// Contest pubblici (non in bozza): prima quelli attivi, poi i conclusi.
-function contestPublicList(): array {
-    return getDB()->query("SELECT c.*, (SELECT COUNT(*) FROM contest_entries e WHERE e.contest_id = c.id AND e.status = 'approved') AS entries_count
-        FROM contests c WHERE c.status <> 'draft' ORDER BY FIELD(c.status, 'voting', 'open', 'closed'), c.id DESC")->fetchAll();
+// Edizioni di un profilo. $publicOnly: solo quelle non in bozza, attive prima delle concluse.
+function contestListForProfile(int $userId, bool $publicOnly = true): array {
+    $stmt = getDB()->prepare("SELECT c.*, u.slug AS owner_slug,
+            (SELECT COUNT(*) FROM contest_entries e WHERE e.contest_id = c.id AND e.status = 'approved') AS entries_count
+        FROM contests c JOIN users u ON u.id = c.user_id
+        WHERE c.user_id = ?" . ($publicOnly ? " AND c.status <> 'draft'" : '') . "
+        ORDER BY FIELD(c.status, 'voting', 'open', 'draft', 'closed'), c.id DESC");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
 }
 
 // Fase corrente per la barra di avanzamento: step 0 candidature, 1 votazioni, 2 vincitori.
@@ -496,32 +502,68 @@ function contestPhaseInfo(array $c): array {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Scheletro grafico condiviso dalle pagine pubbliche del contest (stile link in bio)
+// Scheletro delle pagine pubbliche: il layout standard del profilo (tema, intestazione, menu, piè
+// di pagina), con dentro i componenti del contest. I profili con tema AdminLTE vedono questa stessa
+// versione (l'adattamento AdminLTE del contest è rimandato).
 // ---------------------------------------------------------------------------------------------
 
-function contestHead(string $title, string $extraHead = '', bool $noindex = false): void {
+// Profilo proprietario nella forma che serve al layout pubblico (stessi campi di video.php).
+function contestLoadArtist(string $slug): ?array {
+    $stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_show_id, p.genere
+        FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.slug = ? AND u.is_active = 1');
+    $stmt->execute([$slug]);
+    return $stmt->fetch() ?: null;
+}
+
+function contestLoadArtistById(int $userId): ?array {
+    $stmt = getDB()->prepare('SELECT u.slug FROM users u WHERE u.id = ?');
+    $stmt->execute([$userId]);
+    $slug = $stmt->fetchColumn();
+    return $slug ? contestLoadArtist((string) $slug) : null;
+}
+
+function contestPageOpen(array $artist, string $title, string $extraHead = '', bool $noindex = false, string $active = 'contest'): void {
+    $theme = $artist['page_theme'] ?? 'colorful';
+    if ($theme === 'adminlte-profile') {
+        $theme = 'colorful';
+    }
+    $color = $artist['theme_color'] ?: '#6C5CE7';
     ?><!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <?php if ($noindex): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-<title><?= e($title) ?> — <?= e(siteName()) ?></title>
+<title><?= e($title) ?> — <?= e($artist['display_name']) ?></title>
 <?= $extraHead ?>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/contest.css') ?>">
-<?= embedPrivacyScript() ?>
-<?= embedTrackingHead() ?>
-<?= embedGoogleAnalytics() ?>
+<style>:root { --accent: <?= e($color) ?>; --accent-text: <?= e(getContrastTextColor($artist['theme_color'])) ?>; }</style>
+<?= embedPrivacyScript($artist) ?>
+<?= embedTrackingHead($artist) ?>
+<?= embedGoogleAnalytics($artist) ?>
 </head>
-<body class="contest">
-<div class="wrap">
+<body class="<?= e(getPageThemeClass($theme)) ?>">
+<?php if (str_starts_with($theme, 'wave')): ?><?= renderWaveBackground($artist['theme_color'] ?? '#6C5CE7', $theme) ?><?php endif; ?>
+<?php if ($theme === 'circuit'): ?><?= renderCircuitBackground($artist['theme_color'] ?? '#6C5CE7') ?><?php endif; ?>
+<?php if ($theme === 'napoli'): ?><?= renderNapoliBackground() ?><?php endif; ?>
+<?php if ($theme === 'cinemapop'): ?><?= renderCinemaPopBackground() ?><?php endif; ?>
+<?php if ($theme === 'startrek'): ?><?= renderStarTrekBackground() ?><?php endif; ?>
+<?php if ($theme === 'galactic'): ?><?= renderGalacticBackground() ?><?php endif; ?>
+<?= embedTrackingBodyStart($artist) ?>
+<div class="container">
+  <?= publicProfileHeader($artist, $active) ?>
+  <div class="contest-mod">
 <?php
 }
 
-function contestFoot(string $scripts = ''): void {
+function contestPageClose(array $artist, string $scripts = ''): void {
     ?>
-  <div class="foot"><?= e(siteName()) ?></div>
+  </div>
 </div>
+<?= renderFloatingButtons() ?>
+<?= renderSiteFooterBar($artist) ?>
 <?= $scripts ?>
 </body>
 </html>
@@ -541,4 +583,50 @@ function contestDateRange(?string $a, ?string $b): string {
         return $f($a) . ' – ' . $f($b);
     }
     return (string) ($f($a) ?: $f($b) ?: '');
+}
+
+// Pagina semplice (senza layout di profilo) per i link non validi, quando non si sa di quale profilo si tratti.
+function contestPlainPage(string $title, string $text): void {
+    http_response_code(404);
+    ?><!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title><?= e($title) ?> — <?= e(siteName()) ?></title>
+<link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>"></head>
+<body><div class="container" style="max-width:520px;"><div class="card"><h1><?= e($title) ?></h1><p><?= e($text) ?></p><p><a href="/">← Torna alla home</a></p></div></div></body></html>
+<?php
+}
+
+// Chi può vedere le bozze di un profilo: l'amministratore del sito e chi gestisce quel profilo.
+function contestCanSeeDrafts(?array $viewer, int $ownerId): bool {
+    if (!$viewer) {
+        return false;
+    }
+    return !empty($viewer['is_admin']) || (int) $viewer['id'] === $ownerId || canManageProfile((int) $viewer['id'], $ownerId);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Controlli di appartenenza (la gestione è del proprietario del profilo)
+// ---------------------------------------------------------------------------------------------
+
+function contestOwned(int $contestId, int $userId): ?array {
+    $c = $contestId > 0 ? contestGet($contestId) : null;
+    return ($c && (int) $c['user_id'] === $userId) ? $c : null;
+}
+
+function contestEntryOwned(int $entryId, int $userId): bool {
+    $stmt = getDB()->prepare('SELECT 1 FROM contest_entries e JOIN contests c ON c.id = e.contest_id WHERE e.id = ? AND c.user_id = ?');
+    $stmt->execute([$entryId, $userId]);
+    return (bool) $stmt->fetchColumn();
+}
+
+function contestVoteOwned(int $voteId, int $userId): bool {
+    $stmt = getDB()->prepare('SELECT 1 FROM contest_votes v JOIN contests c ON c.id = v.contest_id WHERE v.id = ? AND c.user_id = ?');
+    $stmt->execute([$voteId, $userId]);
+    return (bool) $stmt->fetchColumn();
+}
+
+function contestSponsorOwned(int $sponsorId, int $userId): bool {
+    $stmt = getDB()->prepare('SELECT 1 FROM contest_sponsors s JOIN contests c ON c.id = s.contest_id WHERE s.id = ? AND c.user_id = ?');
+    $stmt->execute([$sponsorId, $userId]);
+    return (bool) $stmt->fetchColumn();
 }

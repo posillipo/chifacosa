@@ -5,11 +5,16 @@ require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/contest.php';
 
 $user = currentUser();
-$c = contestGetBySlug((string) ($_GET['slug'] ?? ''));
+$artist = contestLoadArtist((string) ($_GET['slug'] ?? ''));
+if (!$artist || !contestModuleEnabled((int) $artist['id'])) {
+    http_response_code(404);
+    exit('Pagina non trovata.');
+}
+$c = contestGetBySlug((int) $artist['id'], (string) ($_GET['edition'] ?? ''));
 $isDraftPreview = false;
 if ($c && $c['status'] === 'draft') {
-    // Le bozze sono visibili solo all'amministratore, come anteprima.
-    if ($user && !empty($user['is_admin'])) {
+    // Le bozze le vedono solo l'amministratore e chi gestisce il profilo, come anteprima.
+    if (contestCanSeeDrafts($user, (int) $artist['id'])) {
         $isDraftPreview = true;
     } else {
         $c = null;
@@ -17,15 +22,16 @@ if ($c && $c['status'] === 'draft') {
 }
 if (!$c) {
     http_response_code(404);
-    contestHead('Contest non trovato', '', true);
+    contestPageOpen($artist, 'Contest non trovato', '', true);
     ?>
   <header class="hero"><div class="logo">🏆</div><h1>Contest non trovato</h1><p>Questo contest non esiste o non è ancora pubblico.</p></header>
-  <a class="btn-link primary" href="/contest"><span class="ico">🏆</span><span>Vedi tutti i contest</span><span class="arrow">›</span></a>
+  <a class="btn-link primary" href="/<?= e($artist['slug']) ?>/contest"><span class="ico">🏆</span><span>Vedi i contest di <?= e($artist['display_name']) ?></span><span class="arrow">›</span></a>
 <?php
-    contestFoot();
+    contestPageClose($artist);
     exit;
 }
 $base = contestUrl($c);
+$listHref = '/' . $artist['slug'] . '/contest';
 
 $myProfile = null;
 if ($user) {
@@ -94,7 +100,7 @@ $ph = contestPhaseInfo($c);
 $range = contestDateRange($c['voting_start_at'] ?: $c['candidatures_open_at'], $c['voting_end_at'] ?: $c['candidatures_close_at']);
 $q = trim($_GET['q'] ?? '');
 $results = ($myProfile && !$myEntry && $q !== '' && $candOpen) ? spotifySearchTrack($q) : [];
-$contact = getSiteSetting('contest_contact_email') ?: '';
+$contact = (string) ($c['contact_email'] ?? '');
 
 $spons = function (array $en): string {
     if (empty($en['sponsor_name'])) {
@@ -110,9 +116,9 @@ $cover = function (array $en): string {
 $og = '<meta property="og:title" content="' . e($c['name']) . '"><meta property="og:url" content="' . e(siteUrl($base)) . '">'
     . ($c['description'] ? '<meta property="og:description" content="' . e(textExcerpt($c['description'], 160)) . '">' : '')
     . (!empty($c['logo_path']) ? '<meta property="og:image" content="' . e(siteUrl('/' . $c['logo_path'])) . '">' : '');
-contestHead($c['name'], $og, $isDraftPreview);
+contestPageOpen($artist, $c['name'], $og, $isDraftPreview);
 ?>
-  <a class="back" href="/contest">← Tutti i contest</a>
+  <a class="back" href="<?= e($listHref) ?>">← Tutti i contest</a>
   <?php if ($isDraftPreview): ?><div class="msg info">Bozza: questa pagina la vedi solo tu, come amministratore.</div><?php endif; ?>
 
   <header class="hero">
@@ -193,7 +199,7 @@ contestHead($c['name'], $og, $isDraftPreview);
             <div class="pos"><?= $i + 1 ?></div>
             <?= $cover($en) ?>
             <div class="meta">
-              <strong><a href="/contest/brano/<?= (int) $en['id'] ?>"><?= e($en['track_name']) ?></a></strong>
+              <strong><a href="<?= e(contestEntryUrl($c, (int) $en['id'])) ?>"><?= e($en['track_name']) ?></a></strong>
               <span><?= e($en['band_name']) ?></span>
               <?php if ($c['status'] === 'closed' && $top > 0 && (int) $en['votes'] === $top): ?><span class="winner">🏆 Vincitore</span><?php endif; ?>
               <?php if ($en['track_url']): ?><div class="links"><a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a></div><?php endif; ?>
@@ -221,7 +227,7 @@ contestHead($c['name'], $og, $isDraftPreview);
         <div class="song-row">
           <?= $cover($en) ?>
           <div class="meta">
-            <strong><a href="/contest/brano/<?= (int) $en['id'] ?>"><?= e($en['track_name']) ?></a></strong>
+            <strong><a href="<?= e(contestEntryUrl($c, (int) $en['id'])) ?>"><?= e($en['track_name']) ?></a></strong>
             <span><?= e($en['band_name']) ?></span>
             <?php if ($en['track_url']): ?><div class="links"><a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a></div><?php endif; ?>
             <?= $spons($en) ?>
@@ -323,4 +329,4 @@ $js = <<<'JS'
 })();
 </script>
 JS;
-contestFoot($js);
+contestPageClose($artist, $js);

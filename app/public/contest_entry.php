@@ -3,34 +3,41 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/contest.php';
 
-$id = (int) ($_GET['id'] ?? 0);
-$stmt = getDB()->prepare("SELECT e.*, c.name AS contest_name, c.slug AS contest_slug, c.status AS contest_status, s.name AS sponsor_name, s.logo_path AS sponsor_logo, s.website_url AS sponsor_url,
-        p.avatar_path AS artist_avatar
-    FROM contest_entries e JOIN contests c ON c.id = e.contest_id
-    LEFT JOIN contest_sponsors s ON s.id = e.sponsor_id
-    LEFT JOIN profiles p ON p.user_id = e.user_id
-    WHERE e.id = ? AND e.status = 'approved' AND c.status <> 'draft'");
-$stmt->execute([$id]);
-$en = $stmt->fetch();
+$artist = contestLoadArtist((string) ($_GET['slug'] ?? ''));
+if (!$artist || !contestModuleEnabled((int) $artist['id'])) {
+    http_response_code(404);
+    exit('Pagina non trovata.');
+}
+$c = contestGetBySlug((int) $artist['id'], (string) ($_GET['edition'] ?? ''));
+$en = null;
+if ($c && ($c['status'] !== 'draft' || contestCanSeeDrafts(currentUser(), (int) $artist['id']))) {
+    $stmt = getDB()->prepare("SELECT e.*, s.name AS sponsor_name, s.logo_path AS sponsor_logo, s.website_url AS sponsor_url, p.avatar_path AS artist_avatar
+        FROM contest_entries e
+        LEFT JOIN contest_sponsors s ON s.id = e.sponsor_id
+        LEFT JOIN profiles p ON p.user_id = e.user_id
+        WHERE e.id = ? AND e.contest_id = ? AND e.status = 'approved'");
+    $stmt->execute([(int) ($_GET['id'] ?? 0), (int) $c['id']]);
+    $en = $stmt->fetch() ?: null;
+}
 if (!$en) {
     http_response_code(404);
-    contestHead('Brano non trovato', '', true);
+    contestPageOpen($artist, 'Brano non trovato', '', true);
     ?>
   <header class="hero"><div class="logo">🎵</div><h1>Brano non trovato</h1></header>
-  <a class="btn-link primary" href="/contest"><span class="ico">🏆</span><span>Vedi i contest</span><span class="arrow">›</span></a>
+  <a class="btn-link primary" href="/<?= e($artist['slug']) ?>/contest"><span class="ico">🏆</span><span>Vedi i contest</span><span class="arrow">›</span></a>
 <?php
-    contestFoot();
+    contestPageClose($artist);
     exit;
 }
-$contestHref = '/contest/' . $en['contest_slug'];
+$contestHref = contestUrl($c);
 $artistImg = $en['artist_avatar'] ?: $en['image_url'];
 $og = '<meta property="og:title" content="' . e($en['track_name'] . ' — ' . $en['band_name']) . '">'
-    . '<meta property="og:description" content="' . e($en['contest_name'] . ($en['sponsor_name'] ? ' · sostenuto da ' . $en['sponsor_name'] : '')) . '">'
-    . '<meta property="og:url" content="' . e(siteUrl('/contest/brano/' . (int) $en['id'])) . '">'
+    . '<meta property="og:description" content="' . e($c['name'] . ($en['sponsor_name'] ? ' · sostenuto da ' . $en['sponsor_name'] : '')) . '">'
+    . '<meta property="og:url" content="' . e(siteUrl(contestEntryUrl($c, (int) $en['id']))) . '">'
     . ($en['image_url'] ? '<meta property="og:image" content="' . e($en['image_url']) . '">' : '');
-contestHead($en['track_name'] . ' — ' . $en['band_name'], $og);
+contestPageOpen($artist, $en['track_name'] . ' — ' . $en['band_name'], $og);
 ?>
-  <a class="back" href="<?= e($contestHref) ?>">← <?= e($en['contest_name']) ?></a>
+  <a class="back" href="<?= e($contestHref) ?>">← <?= e($c['name']) ?></a>
 
   <header class="hero">
     <h1><?= e($en['track_name']) ?></h1>
@@ -55,5 +62,5 @@ contestHead($en['track_name'] . ' — ' . $en['band_name'], $og);
   </div>
 
   <?php if ($en['track_url']): ?><a class="btn-link primary" href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener"><span class="ico">▶️</span><span>Ascolta su Spotify</span><span class="arrow">›</span></a><?php endif; ?>
-  <?php if ($en['contest_status'] === 'voting'): ?><a class="btn-link" href="<?= e($contestHref) ?>#brano-<?= (int) $en['id'] ?>"><span class="ico">🗳️</span><span>Vota questo brano</span><span class="arrow">›</span></a><?php endif; ?>
-<?php contestFoot(); ?>
+  <?php if ($c['status'] === 'voting'): ?><a class="btn-link" href="<?= e($contestHref) ?>#brano-<?= (int) $en['id'] ?>"><span class="ico">🗳️</span><span>Vota questo brano</span><span class="arrow">›</span></a><?php endif; ?>
+<?php contestPageClose($artist); ?>
