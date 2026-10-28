@@ -82,7 +82,8 @@ function contestAlShell(array $artist, string $head, string $breadcrumbCurrent, 
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug, $rightCards, true) ?>
           <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
-            <?= $center ?>
+            <?php // Un contenitore unico: le card figlie dirette di .adminlte-main-col verrebbero allungate a tutta l'altezza ?>
+            <div class="ct-center"><?= $center ?></div>
           </div>
         </div>
       </div>
@@ -115,10 +116,11 @@ function contestAlHeroCard(array $artist, array $c, array $ph, string $range, in
   <div class="card-body text-center pt-0" style="margin-top:-48px;">
     <span class="ct-logo"><?= contestAlLogo($c) ?></span>
     <h2 class="h5 mt-2 mb-1"><?= e($c['name']) ?></h2>
+    <?php if (!empty($c['description'])): ?><p class="small text-secondary mb-2"><?= nl2br(e($c['description'])) ?></p><?php endif; ?>
     <div class="d-flex flex-wrap gap-1 justify-content-center mb-3">
       <span class="badge rounded-pill ct-pill"><?= in_array($c['status'], ['open', 'voting'], true) ? '● ' : '' ?><?= e($ph['label']) ?></span>
       <?php if ($range): ?><span class="badge rounded-pill ct-pill-soft"><?= e($range) ?></span><?php endif; ?>
-      <span class="badge rounded-pill ct-pill-soft"><?= $entriesCount ?> brani</span>
+      <span class="badge rounded-pill ct-pill-soft"><?= $entriesCount === 1 ? '1 brano' : $entriesCount . ' brani' ?></span>
     </div>
     <div class="d-flex gap-1">
       <?php foreach ($steps as $i => $label): $on = $i <= $ph['step']; ?>
@@ -272,7 +274,7 @@ function renderAdminLteContestListPage(array $artist, array $contests): string {
         <div class="d-flex flex-wrap gap-1 align-items-center">
           <span class="badge rounded-pill ct-pill"><?= in_array($c['status'], ['open', 'voting'], true) ? '● ' : '' ?><?= e($ph['label']) ?></span>
           <?php if ($range): ?><span class="small text-secondary"><?= e($range) ?></span><?php endif; ?>
-          <span class="small text-secondary">· <?= (int) $c['entries_count'] ?> brani</span>
+          <span class="small text-secondary">· <?= (int) $c['entries_count'] === 1 ? '1 brano' : (int) $c['entries_count'] . ' brani' ?></span>
         </div>
       </div>
       <i class="bi bi-chevron-right text-secondary"></i>
@@ -311,10 +313,6 @@ function renderAdminLteContestPage(array $artist, array $c, array $v): string {
     foreach (['message' => 'success', 'error' => 'danger', 'voteMessage' => 'success', 'voteError' => 'danger'] as $key => $cls):
         if (!empty($v[$key])): ?><div class="alert alert-<?= $cls ?>"><?= e($v[$key]) ?></div><?php endif;
     endforeach; ?>
-
-    <?php if ($c['description']): ?>
-      <div class="card mb-3"><div class="card-body"><?= nl2br(e($c['description'])) ?></div></div>
-    <?php endif; ?>
 
     <div class="d-flex flex-wrap gap-2 mb-3">
       <?php if ($v['candOpen']): ?><a href="#candidati" class="btn ct-btn"><i class="bi bi-mic-fill me-1"></i>Candida il tuo brano</a><?php endif; ?>
