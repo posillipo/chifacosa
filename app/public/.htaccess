@@ -28,12 +28,14 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# /contest -> pagina pubblica del Contest (MyBand Festival)
-RewriteRule ^contest/?$ contest.php [L,QSA]
+# Contest: i link di conferma voto e l'anteprima sponsor portano un codice che identifica già il contest
 RewriteRule ^contest/vota/([a-f0-9]{64})/?$ contest_vote_confirm.php?t=$1 [L,QSA]
-RewriteRule ^contest/brano/([0-9]+)/?$ contest_entry.php?id=$1 [L,QSA]
 RewriteRule ^contest/sponsor/([a-f0-9]{32})/?$ contest_sponsor_preview.php?t=$1 [L,QSA]
-RewriteRule ^contest/([a-z0-9][a-z0-9-]{0,79})/?$ contest_page.php?slug=$1 [L,QSA]
+
+# Contest come modulo di profilo: /nomeartista/contest (edizioni), /nomeartista/contest/EDIZIONE e il singolo brano
+RewriteRule ^([a-zA-Z0-9_-]+)/contest/([a-z0-9][a-z0-9-]{0,79})/brano/([0-9]+)/?$ contest_entry.php?slug=$1&edition=$2&id=$3 [L,QSA]
+RewriteRule ^([a-zA-Z0-9_-]+)/contest/([a-z0-9][a-z0-9-]{0,79})/?$ contest_page.php?slug=$1&edition=$2 [L,QSA]
+RewriteRule ^([a-zA-Z0-9_-]+)/contest/?$ contest.php?slug=$1 [L,QSA]
 
 # /sitemap.xml -> sitemap dinamica per Google Search Console
 RewriteRule ^sitemap\.xml$ sitemap.php [L]

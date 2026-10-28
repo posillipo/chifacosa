@@ -86,6 +86,9 @@ $dashTabs['menu'] = ['label' => 'Menù', 'url' => '/dashboard_menu.php', 'active
 $dashTabs['offerte'] = ['label' => 'Offerte', 'url' => '/dashboard_offers.php', 'active' => 'offers', 'visible' => $navVisibility['Offerte'] ?? 1];
 $dashTabs['foto'] = ['label' => 'Album', 'url' => '/dashboard_albums.php', 'active' => 'albums', 'visible' => $navVisibility['Foto'] ?? 1];
 $dashTabs['video'] = ['label' => 'Video', 'url' => '/dashboard_videos.php', 'active' => 'videos', 'visible' => $navVisibility['Video'] ?? 1];
+// Contest: modulo di profilo, visibile solo se l'amministratore lo ha autorizzato per questo profilo
+// (e il modulo non è spento per tutto il sito).
+$dashTabs['contest'] = ['label' => 'Contest', 'url' => '/dashboard_contest.php', 'active' => 'contest', 'visible' => contestModuleEnabled((int) $countsForId) && ($navVisibility['Contest'] ?? 1)];
 $dashTabs['servizi'] = ['label' => 'Servizi', 'url' => '/dashboard_services.php', 'active' => 'services', 'visible' => $navVisibility['Servizi'] ?? 1];
 $dashTabs['service_inquiries'] = ['label' => 'Richieste', 'url' => '/dashboard_service_inquiries.php', 'active' => 'service_inquiries', 'visible' => $navVisibility['Servizi'] ?? 1];
 $dashTabs['eventi'] = ['label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
@@ -316,11 +319,6 @@ if (switcherEl && navbarEl) {
     <a href="/dashboard_products.php" class="account-sidebar-link <?= $activeTab==='products'?'active':'' ?>">
       <i class="fa-solid fa-tags"></i> Catalogo prodotti
     </a>
-    <?php if (!empty($user['is_admin'])): ?>
-    <a href="/dashboard_contest.php" class="account-sidebar-link <?= $activeTab==='contest'?'active':'' ?>">
-      <i class="fa-solid fa-trophy"></i> Contest
-    </a>
-    <?php endif; ?>
     <a href="/dashboard_invite.php" class="account-sidebar-link <?= $activeTab==='invite'?'active':'' ?>">
       <i class="fa-solid fa-user-plus"></i> Invita
     </a>

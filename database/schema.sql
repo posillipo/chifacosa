@@ -995,9 +995,13 @@ CREATE TABLE IF NOT EXISTS product_publications (
 -- Modulo Contest (vedi database/migrations/2026_10_24_contest.sql)
 CREATE TABLE IF NOT EXISTS contests (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
     name VARCHAR(150) NOT NULL,
+    slug VARCHAR(80) NOT NULL,
+    logo_path VARCHAR(255) DEFAULT NULL,
     description TEXT DEFAULT NULL,
     regulation TEXT DEFAULT NULL,
+    contact_email VARCHAR(190) DEFAULT NULL,
     candidatures_open_at DATETIME DEFAULT NULL,
     candidatures_close_at DATETIME DEFAULT NULL,
     voting_start_at DATETIME DEFAULT NULL,
@@ -1007,7 +1011,11 @@ CREATE TABLE IF NOT EXISTS contests (
     big_min_count INT NOT NULL DEFAULT 8,
     new_min_count INT NOT NULL DEFAULT 4,
     status ENUM('draft','open','voting','closed') NOT NULL DEFAULT 'draft',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    groups_mode VARCHAR(10) DEFAULT NULL,
+    groups_locked_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_contest_user_slug (user_id, slug),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS contest_entries (
@@ -1026,6 +1034,9 @@ CREATE TABLE IF NOT EXISTS contest_entries (
     artist_match TINYINT(1) NOT NULL DEFAULT 0,
     status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
     admin_note VARCHAR(300) DEFAULT NULL,
+    group_key VARCHAR(10) DEFAULT NULL,
+    popularity_snapshot INT DEFAULT NULL,
+    sponsor_id INT DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     approved_at DATETIME DEFAULT NULL,
     UNIQUE KEY uniq_contest_user (contest_id, user_id),
@@ -1076,3 +1087,6 @@ CREATE TABLE IF NOT EXISTS contest_sponsors (
 
 -- Contest: indirizzo e logo (vedi database/migrations/2026_10_29_contest_slug.sql): su contests
 -- slug VARCHAR(80) con UNIQUE KEY uniq_contest_slug, logo_path VARCHAR(255).
+
+-- Contest come modulo di profilo (vedi database/migrations/2026_10_30_contest_module.sql): su profiles
+-- contest_enabled TINYINT(1) NOT NULL DEFAULT 0 (autorizzazione dell'amministratore).

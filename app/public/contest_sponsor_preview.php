@@ -19,8 +19,13 @@ if ($sponsor && $contest) {
     $stmt->execute([(int) $contest['id']]);
     $entries = $stmt->fetchAll();
 }
-contestHead('Anteprima sponsor', '', true);
-if (!$sponsor || !$contest): ?>
+$artist = $contest ? contestLoadArtistById((int) $contest['user_id']) : null;
+if (!$sponsor || !$contest || !$artist || !contestModuleEnabled((int) $artist['id'])) {
+    contestPlainPage('Link non valido', 'Questo indirizzo non è valido. Chiedi all\'organizzatore di inviartelo di nuovo.');
+    exit;
+}
+contestPageOpen($artist, 'Anteprima sponsor', '', true);
+if (false): ?>
   <header class="hero"><div class="logo">🔒</div><h1>Link non valido</h1><p>Questo indirizzo non è valido. Chiedi a MyBand di inviartelo di nuovo.</p></header>
 <?php else: ?>
   <header class="hero">
@@ -50,4 +55,4 @@ if (!$sponsor || !$contest): ?>
   <?php endforeach; ?>
   <?php if (!$entries): ?><div class="msg info">Nessun brano ancora approvato.</div><?php endif; ?>
 <?php endif;
-contestFoot();
+contestPageClose($artist);

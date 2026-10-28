@@ -10,6 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? '';
 
+    // Autorizzazione al modulo Contest per questo profilo: vale anche per il proprio profilo di admin.
+    if ($action === 'toggle_contest') {
+        getDB()->prepare('UPDATE profiles SET contest_enabled = NOT contest_enabled WHERE user_id = ?')->execute([$id]);
+    }
+
     if ($action === 'toggle_active' && $id !== (int)$admin['id']) {
         $stmt = getDB()->prepare('UPDATE users SET is_active = NOT is_active WHERE id = ?');
         $stmt->execute([$id]);
@@ -41,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path
+$stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.contest_enabled
                           FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.id = ?');
 $stmt->execute([$id]);
 $u = $stmt->fetch();
@@ -86,6 +91,17 @@ include __DIR__ . '/_admin_header.php';
       <?= !$u['email_verified'] ? ' · Email da verificare' : '' ?>
     </p>
     <?php if ($u['bio']): ?><p><em><?= nl2br(e($u['bio'])) ?></em></p><?php endif; ?>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <form method="post">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="toggle_contest">
+        <button class="btn <?= !empty($u['contest_enabled']) ? '' : 'secondary' ?>" type="submit">
+          <?= !empty($u['contest_enabled']) ? '✔ Modulo Contest attivo — clicca per disattivare' : 'Attiva il modulo Contest per questo profilo' ?>
+        </button>
+      </form>
+      <span style="color:var(--text-muted);font-size:12.5px;">Il profilo vedrà la voce «Contest» in dashboard e nel menu pubblico.</span>
+    </div>
 
     <?php if ($u['id'] != $admin['id']): ?>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">

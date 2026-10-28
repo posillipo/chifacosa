@@ -14,8 +14,13 @@ $messages = [
     'invalid' => ['err', '⚠️', 'Link non valido', 'Il link di conferma non è valido o è stato sostituito da uno più recente.'],
 ];
 [$kind, $icon, $title, $text] = $messages[$res['state']] ?? $messages['invalid'];
-$href = !empty($v['contest_slug']) ? '/contest/' . $v['contest_slug'] : '/contest';
-contestHead($title, '', true);
+$artist = !empty($v['owner_id']) ? contestLoadArtistById((int) $v['owner_id']) : null;
+if (!$artist || !contestModuleEnabled((int) $artist['id'])) {
+    contestPlainPage($title, $text);
+    exit;
+}
+$href = '/' . $v['owner_slug'] . '/contest/' . $v['contest_slug'];
+contestPageOpen($artist, $title, '', true);
 ?>
   <header class="hero">
     <div class="logo"><?= $icon ?></div>
@@ -23,4 +28,4 @@ contestHead($title, '', true);
   </header>
   <div class="msg <?= $kind ?>"><?= e($text) ?></div>
   <a class="btn-link primary" href="<?= e($href) ?>"><span class="ico">🏆</span><span>Vai alla classifica</span><span class="arrow">›</span></a>
-<?php contestFoot(); ?>
+<?php contestPageClose($artist); ?>
