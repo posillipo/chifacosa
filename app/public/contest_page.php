@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php';
 require_once __DIR__ . '/../src/contest.php';
+require_once __DIR__ . '/../src/contest_adminlte.php';
 
 $user = currentUser();
 $artist = contestLoadArtist((string) ($_GET['slug'] ?? ''));
@@ -116,6 +117,16 @@ $cover = function (array $en): string {
 $og = '<meta property="og:title" content="' . e($c['name']) . '"><meta property="og:url" content="' . e(siteUrl($base)) . '">'
     . ($c['description'] ? '<meta property="og:description" content="' . e(textExcerpt($c['description'], 160)) . '">' : '')
     . (!empty($c['logo_path']) ? '<meta property="og:image" content="' . e(siteUrl('/' . $c['logo_path'])) . '">' : '');
+if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+    echo renderAdminLteContestPage($artist, $c, [
+        'message' => $message, 'error' => $error, 'voteMessage' => $voteMessage, 'voteError' => $voteError,
+        'myProfile' => $myProfile, 'myEntry' => $myEntry, 'entries' => $entries, 'sponsors' => $sponsors,
+        'ranking' => $ranking, 'votingOpen' => $votingOpen, 'candOpen' => $candOpen, 'ph' => $ph, 'range' => $range,
+        'q' => $q, 'results' => $results, 'contact' => $contact, 'isDraftPreview' => $isDraftPreview,
+        'listHref' => $listHref, 'og' => $og,
+    ]);
+    exit;
+}
 contestPageOpen($artist, $c['name'], $og, $isDraftPreview);
 ?>
   <a class="back" href="<?= e($listHref) ?>">← Tutti i contest</a>
