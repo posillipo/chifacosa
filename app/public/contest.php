@@ -58,16 +58,28 @@ if ($c && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 
 
 $entries = [];
 if ($c) {
-    $stmt = getDB()->prepare("SELECT band_name, track_name, image_url, track_url FROM contest_entries WHERE contest_id = ? AND status = 'approved' ORDER BY approved_at ASC, id ASC");
+    $stmt = getDB()->prepare("SELECT e.id, e.band_name, e.track_name, e.image_url, e.track_url, s.name AS sponsor_name, s.logo_path AS sponsor_logo, s.website_url AS sponsor_url
+        FROM contest_entries e LEFT JOIN contest_sponsors s ON s.id = e.sponsor_id
+        WHERE e.contest_id = ? AND e.status = 'approved' ORDER BY e.approved_at ASC, e.id ASC");
     $stmt->execute([(int) $c['id']]);
     $entries = $stmt->fetchAll();
 }
+$sponsors = $c ? array_values(array_filter(contestSponsors((int) $c['id']), fn ($sp) => !empty($sp['logo_path']) || !empty($sp['name']))) : [];
 $ranking = ($c && in_array($c['status'], ['voting', 'closed'], true)) ? contestRanking($c) : [];
 $votingOpen = $c ? contestVotingOpen($c) : false;
 $q = trim($_GET['q'] ?? '');
 $results = ($c && $myProfile && !$myEntry && $q !== '' && contestCandidaturesOpen($c)) ? spotifySearchTrack($q) : [];
 $contact = getSiteSetting('contest_contact_email') ?: '';
 $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
+?>
+<?php
+$sponsorBadge = function (array $en): string {
+    if (empty($en['sponsor_name'])) {
+        return '';
+    }
+    $logo = !empty($en['sponsor_logo']) ? '<img src="/' . e($en['sponsor_logo']) . '" alt="' . e($en['sponsor_name']) . '" style="height:22px;max-width:90px;object-fit:contain;vertical-align:middle;">' : e($en['sponsor_name']);
+    return '<div style="margin-top:4px;font-size:12.5px;color:var(--text-muted);">Sostenuto da ' . $logo . '</div>';
+};
 ?>
 <!doctype html>
 <html lang="it">
@@ -154,10 +166,11 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
           <strong style="width:28px;text-align:center;"><?= $i + 1 ?></strong>
           <?php if ($en['image_url']): ?><img src="<?= e($en['image_url']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;" alt=""><?php endif; ?>
           <div style="flex:1;min-width:180px;">
-            <strong><?= e($en['track_name']) ?></strong>
+            <strong><a href="/contest/brano/<?= (int) $en['id'] ?>" style="color:inherit;"><?= e($en['track_name']) ?></a></strong>
             <?php if ($c['status'] === 'closed' && $top > 0 && (int) $en['votes'] === (int) $top): ?> 🏆 <em>Vincitore</em><?php endif; ?>
             <br><span style="color:var(--text-muted)"><?= e($en['band_name']) ?></span>
             <?php if ($en['track_url']): ?> · <a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a><?php endif; ?>
+            <?= $sponsorBadge($en) ?>
           </div>
           <div style="font-weight:700;"><?= (int) $en['votes'] ?> voti</div>
           <?php if ($votingOpen): ?>
@@ -177,11 +190,21 @@ $fmt = fn ($d) => $d ? date('d/m/Y H:i', strtotime($d)) : null;
   <?php foreach ($entries as $en): ?>
     <div class="blog-item" style="display:flex;gap:14px;align-items:center;">
       <?php if ($en['image_url']): ?><img src="<?= e($en['image_url']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;" alt=""><?php endif; ?>
-      <div><strong><?= e($en['track_name']) ?></strong><br><span style="color:var(--text-muted)"><?= e($en['band_name']) ?></span>
-        <?php if ($en['track_url']): ?> · <a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a><?php endif; ?></div>
+      <div><strong><a href="/contest/brano/<?= (int) $en['id'] ?>" style="color:inherit;"><?= e($en['track_name']) ?></a></strong><br><span style="color:var(--text-muted)"><?= e($en['band_name']) ?></span>
+        <?php if ($en['track_url']): ?> · <a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Ascolta su Spotify</a><?php endif; ?>
+        <?= $sponsorBadge($en) ?></div>
     </div>
   <?php endforeach; ?>
   <?php if (!$entries): ?><p style="color:var(--text-muted)">Nessun brano ancora in gara.</p><?php endif; ?>
+  <?php endif; ?>
+
+  <?php if ($sponsors): ?>
+    <div class="section-title" style="margin-top:24px;">Sponsor</div>
+    <div class="card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;">
+      <?php foreach ($sponsors as $sp): $inner = !empty($sp['logo_path']) ? '<img src="/' . e($sp['logo_path']) . '" alt="' . e($sp['name']) . '" style="height:48px;max-width:160px;object-fit:contain;">' : '<strong>' . e($sp['name']) . '</strong>'; ?>
+        <?php if (!empty($sp['website_url'])): ?><a href="<?= e($sp['website_url']) ?>" target="_blank" rel="noopener sponsored" title="<?= e($sp['name']) ?>"><?= $inner ?></a><?php else: ?><span title="<?= e($sp['name']) ?>"><?= $inner ?></span><?php endif; ?>
+      <?php endforeach; ?>
+    </div>
   <?php endif; ?>
 
   <?php if ($c['regulation']): ?>

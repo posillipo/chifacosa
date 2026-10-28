@@ -281,8 +281,16 @@ function contestRequestVote(array $c, int $entryId, string $emailInput): array {
     $voteId = (int) $db->lastInsertId();
 
     $link = siteUrl('/contest/vota/' . $token);
+    $sponsorLine = '';
+    if (!empty($entry['sponsor_id'])) {
+        $sp = $db->prepare('SELECT name FROM contest_sponsors WHERE id = ?');
+        $sp->execute([(int) $entry['sponsor_id']]);
+        if ($spName = $sp->fetchColumn()) {
+            $sponsorLine = "Questo brano è sostenuto da {$spName}.\n\n";
+        }
+    }
     $sent = contestSendMail(trim($emailInput), '', 'Conferma il tuo voto — ' . $c['name'],
-        "Hai chiesto di votare \"{$entry['track_name']}\" di {$entry['band_name']} per {$c['name']}.\n\n"
+        "Hai chiesto di votare \"{$entry['track_name']}\" di {$entry['band_name']} per {$c['name']}.\n\n" . $sponsorLine
         . "Per confermare il voto clicca qui:\n{$link}\n\n"
         . "Il link è personale, si usa una sola volta ed è valido " . CONTEST_VOTE_TTL_HOURS . " ore. Finché non confermi, il voto non viene contato. "
         . "Se non sei stato tu, ignora questa email.\n\n" . siteName());
@@ -331,8 +339,10 @@ function contestConfirmVote(string $token): array {
 // Classifiche per gruppo con i soli voti confermati. ['big' => ['label', 'rows' => [...]], ...]
 function contestRanking(array $c): array {
     $stmt = getDB()->prepare("SELECT e.id, e.band_name, e.track_name, e.image_url, e.track_url, e.group_key, e.popularity_snapshot,
+            s.name AS sponsor_name, s.logo_path AS sponsor_logo, s.website_url AS sponsor_url,
             (SELECT COUNT(*) FROM contest_votes v WHERE v.entry_id = e.id AND v.status = 'confirmed') AS votes
-        FROM contest_entries e WHERE e.contest_id = ? AND e.status = 'approved' AND e.group_key IS NOT NULL
+        FROM contest_entries e LEFT JOIN contest_sponsors s ON s.id = e.sponsor_id
+        WHERE e.contest_id = ? AND e.status = 'approved' AND e.group_key IS NOT NULL
         ORDER BY votes DESC, e.band_name ASC");
     $stmt->execute([(int) $c['id']]);
     $out = [];
@@ -343,4 +353,82 @@ function contestRanking(array $c): array {
     }
     uksort($out, fn ($a, $b) => array_search($a, ['big', 'new', 'single']) <=> array_search($b, ['big', 'new', 'single']));
     return $out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase 3: sponsor
+// ---------------------------------------------------------------------------------------------
+
+// Salva il logo di uno sponsor mantenendo la trasparenza (PNG), max 600 px. Ritorna il percorso relativo o null.
+function contestSaveLogo(string $field): ?string {
+    $f = $_FILES[$field] ?? null;
+    if (!$f || empty($f['name']) || ($f['error'] ?? 1) !== UPLOAD_ERR_OK || ($f['size'] ?? 0) > 5 * 1024 * 1024) {
+        return null;
+    }
+    $raw = @file_get_contents($f['tmp_name']);
+    $img = $raw !== false ? @imagecreatefromstring($raw) : false;
+    if (!$img) {
+        return null;
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $scale = min(1, 600 / max($w, $h));
+    $nw = max(1, (int) round($w * $scale));
+    $nh = max(1, (int) round($h * $scale));
+    $out = imagecreatetruecolor($nw, $nh);
+    imagealphablending($out, false);
+    imagesavealpha($out, true);
+    imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
+    imagecopyresampled($out, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    $dir = '/var/www/html/uploads/images/contest';
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+        return null;
+    }
+    $name = bin2hex(random_bytes(8)) . '.png';
+    return imagepng($out, $dir . '/' . $name, 6) ? 'uploads/images/contest/' . $name : null;
+}
+
+function contestDeleteLogo(?string $rel): void {
+    if ($rel && str_starts_with($rel, 'uploads/images/contest/') && !str_contains($rel, '..')) {
+        @unlink('/var/www/html/' . $rel);
+    }
+}
+
+function contestSponsors(int $contestId): array {
+    $stmt = getDB()->prepare('SELECT s.*, (SELECT COUNT(*) FROM contest_entries e WHERE e.sponsor_id = s.id) AS entries_count FROM contest_sponsors s WHERE s.contest_id = ? ORDER BY s.name');
+    $stmt->execute([$contestId]);
+    return $stmt->fetchAll();
+}
+
+function contestSponsorByToken(string $token): ?array {
+    if (!preg_match('/^[a-f0-9]{32}$/', $token)) {
+        return null;
+    }
+    $stmt = getDB()->prepare('SELECT * FROM contest_sponsors WHERE access_token = ?');
+    $stmt->execute([$token]);
+    return $stmt->fetch() ?: null;
+}
+
+function contestSponsorPreviewUrl(array $sponsor): string {
+    return siteUrl('/contest/sponsor/' . $sponsor['access_token']);
+}
+
+// Abbina (o toglie, con 0) lo sponsor a un brano dello stesso contest.
+function contestSetEntrySponsor(int $entryId, int $sponsorId): bool {
+    $db = getDB();
+    $e = $db->prepare('SELECT contest_id FROM contest_entries WHERE id = ?');
+    $e->execute([$entryId]);
+    $entry = $e->fetch();
+    if (!$entry) {
+        return false;
+    }
+    if ($sponsorId > 0) {
+        $s = $db->prepare('SELECT id FROM contest_sponsors WHERE id = ? AND contest_id = ?');
+        $s->execute([$sponsorId, (int) $entry['contest_id']]);
+        if (!$s->fetch()) {
+            return false;
+        }
+    }
+    $db->prepare('UPDATE contest_entries SET sponsor_id = ? WHERE id = ?')->execute([$sponsorId > 0 ? $sponsorId : null, $entryId]);
+    return true;
 }
