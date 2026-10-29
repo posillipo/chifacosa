@@ -2056,12 +2056,14 @@ function renderAdminLteCheAmoInterstitial(int $userId, string $slug): string {
     return renderAdminLteGridCarousel('Che Amo', 'bi-heart', '/' . $slug . '/che-amo', 'Scopri tutto', $tiles, 'circle');
 }
 
+// Solo gli eventi di questo mese che devono ancora cominciare (stessa regola delle pagine Eventi: da
+// adesso in poi), più quelli permanenti: quelli già passati non compaiono.
 function renderAdminLteMonthlyEventsGrid(int $userId, string $slug, ?array $profile = null): string {
     $db = getDB();
     $stmt = $db->prepare("SELECT id, title, venue, city, cover_path, event_date, is_perpetual
         FROM events
         WHERE user_id = ? AND (
-            (event_date >= DATE_FORMAT(NOW(), '%Y-%m-01') AND event_date < DATE_FORMAT(NOW() + INTERVAL 1 MONTH, '%Y-%m-01'))
+            (event_date >= NOW() AND event_date < DATE_FORMAT(NOW() + INTERVAL 1 MONTH, '%Y-%m-01'))
             OR is_perpetual = 1
         ) AND (publish_at IS NULL OR publish_at <= NOW())
         ORDER BY is_perpetual ASC, event_date ASC
