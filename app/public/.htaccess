@@ -26,7 +26,7 @@ RewriteEngine On
 # Host ufficiale senza "www": il cookie di sessione vale per un solo host, quindi www.dominio e
 # dominio avevano sessioni separate (login perso passando da uno all'altro). Redirect permanente.
 # Le API (server MCP, routine) restano raggiungibili anche da www: un 301 trasformerebbe i POST in GET.
-RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{THE_REQUEST} !\s/api/
 RewriteCond %{HTTP:X-Forwarded-Host} ^www\.(.+)$ [NC,OR]
 RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
 RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L,NE]
