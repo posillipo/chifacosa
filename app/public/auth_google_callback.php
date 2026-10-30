@@ -107,6 +107,9 @@ if ($u) {
 // anche dopo — come su login.php/login_otp_verify.php).
 session_regenerate_id(true);
 $_SESSION['user_id'] = $userId;
+// Come "ricordami" in login.php: senza questo cookie, scaduta la sessione PHP si veniva
+// disconnessi anche se il login Google era appena stato fatto.
+issueRememberToken($userId);
 
 if ($needsAccountType) {
     header('Location: /onboarding_setup.php');

@@ -9376,3 +9376,10 @@ function syncCinemaFilms(array $profile): array {
     return ['ok' => true, 'added' => $added, 'updated' => $updated, 'removed' => $removed, 'total' => count($seenRefs)];
 }
 
+
+// Ripristina in automatico la sessione dal cookie "ricordami" su OGNI pagina: molte pagine
+// pubbliche (profilo, home, "Segui") leggono $_SESSION['user_id'] direttamente invece di passare
+// da currentUser(), quindi senza questa chiamata risultavano "non loggato" anche con il cookie valido.
+if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user_id']) && !empty($_COOKIE['remember_me'])) {
+    attemptRememberLogin();
+}
