@@ -218,8 +218,8 @@ $bandReviewers = $bandReviewers->fetchAll();
 
   <?php if (!in_array('segui', $hiddenNavKeys, true)): ?>
   <div id="segui-widget" style="text-align:center;margin-bottom:18px;scroll-margin-top:20px;">
-    <?php if (!empty($_SESSION['user_id']) && (int)$_SESSION['user_id'] !== (int)$uid): ?>
-      <?php $alreadyFollowing = isFollowingAccount((int)$_SESSION['user_id'], (int)$uid); ?>
+    <?php if (publicActingUserId() && publicActingUserId() !== (int)$uid): ?>
+      <?php $alreadyFollowing = isFollowingAccount(publicActingUserId(), (int)$uid); ?>
       <form method="post" action="/follow_account.php" style="display:inline;">
         <?= csrfField() ?>
         <input type="hidden" name="user_id" value="<?= (int)$uid ?>">
