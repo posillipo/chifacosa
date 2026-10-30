@@ -66,6 +66,8 @@ RUN { \
       echo 'session.cookie_httponly = 1'; \
       echo 'session.cookie_samesite = Lax'; \
       echo 'session.cookie_secure = 1'; \
+      echo 'session.gc_maxlifetime = 2592000'; \
+      echo 'session.cookie_lifetime = 2592000'; \
     } > /usr/local/etc/php/conf.d/session-security.ini
 
 RUN { \
