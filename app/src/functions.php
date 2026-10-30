@@ -113,6 +113,19 @@ function isSafeInternalRedirect(?string $path): bool {
         && !str_contains($path, '://');
 }
 
+// Profilo con cui si "agisce" sulle pagine pubbliche (Segui): quello scelto con lo switch in
+// dashboard se l'utente loggato può gestirlo, altrimenti l'utente loggato stesso. Senza questo,
+// "Segui" usava sempre l'account di login anche dopo lo switch su un altro profilo.
+function publicActingUserId(): ?int {
+    if (empty($_SESSION['user_id'])) return null;
+    $loggedIn = (int) $_SESSION['user_id'];
+    $acting = (int) ($_SESSION['acting_as_user_id'] ?? 0);
+    if ($acting && $acting !== $loggedIn && canManageProfile($loggedIn, $acting)) {
+        return $acting;
+    }
+    return $loggedIn;
+}
+
 function currentUser(): ?array {
     attemptRememberLogin();
     if (empty($_SESSION['user_id'])) return null;
@@ -1376,7 +1389,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     // non ha senso: diventa un accesso rapido alla dashboard di gestione. Altrimenti si comporta
     // come "Segui" negli altri temi grafici (Colorful) — riflette se lo si sta già seguendo
     // (isFollowingAccount()), stesso link all'ancora #segui-widget della Home.
-    $viewerId = $_SESSION['user_id'] ?? null;
+    $viewerId = publicActingUserId();
     $isOwnProfile = $viewerId && (int) $viewerId === $uid;
     $isFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
 
@@ -1585,8 +1598,8 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
             <?php if ($showFollowWidget && !in_array('segui', getHiddenNavKeys($uid), true)): ?>
             <div class="card mt-3" id="segui-widget">
               <div class="card-body text-center">
-                <?php if (!empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] !== $uid): ?>
-                  <?php $alreadyFollowing = isFollowingAccount((int) $_SESSION['user_id'], $uid); ?>
+                <?php if (publicActingUserId() && publicActingUserId() !== $uid): ?>
+                  <?php $alreadyFollowing = isFollowingAccount(publicActingUserId(), $uid); ?>
                   <form method="post" action="/follow_account.php" class="d-inline">
                     <?= csrfField() ?>
                     <input type="hidden" name="user_id" value="<?= $uid ?>">
@@ -6023,7 +6036,7 @@ function publicNav(string $slug, string $active, bool $hasSpotify = false, bool 
     // copre anche le integrazioni e Segui, non solo i tab "di contenuto".
     $hiddenKeys = $ownerId ? getHiddenNavKeys($ownerId) : [];
 
-    $viewerId = $_SESSION['user_id'] ?? null;
+    $viewerId = publicActingUserId();
     $seguiLabel = '✨ Segui';
     if ($viewerId && $ownerId && (int) $viewerId !== (int) $ownerId) {
         $seguiLabel = isFollowingAccount((int) $viewerId, (int) $ownerId) ? '✓ Segui già' : '✨ Segui';
