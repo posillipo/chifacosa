@@ -533,14 +533,39 @@ function buildMcpServer() {
 
     server.registerTool('update_social_queue_item', {
         title: 'Aggiorna lo stato di un elemento nella coda Metricool',
-        description: 'Segna un elemento della coda social come "done" (pubblicato con successo su Metricool) o "failed" (errore). Da chiamare dopo aver tentato la schedulazione su Metricool per ogni elemento restituito da get_social_queue.',
+        description: 'Aggiorna lo stato di un elemento della coda social: "done" (pubblicato con successo), "scheduled" (programmato su Metricool, in attesa della data), "failed" (errore) o "skipped" (volutamente non pubblicato). Da chiamare dopo aver tentato la schedulazione su Metricool per ogni elemento restituito da get_social_queue. Facoltativi: channels (canali effettivi) e scheduler_ref (id del post su Metricool).',
         inputSchema: {
             ...profileField,
             id: z.number().int().describe('ID dell\'elemento della coda (campo "id" restituito da get_social_queue)'),
-            status: z.enum(['done', 'failed']).describe('"done" = schedulato con successo su Metricool, "failed" = errore'),
-            error_msg: z.string().optional().describe('Messaggio di errore (solo se status è "failed")'),
+            status: z.enum(['done', 'scheduled', 'failed', 'skipped']).describe('"done" = pubblicato, "scheduled" = programmato su Metricool, "failed" = errore, "skipped" = saltato di proposito'),
+            error_msg: z.string().optional().describe('Messaggio di errore (solo se status è "failed") o motivo (se "skipped")'),
+            channels: z.array(z.string()).optional().describe('Canali effettivi, es. ["FB","IG","Threads"]'),
+            scheduler_ref: z.string().optional().describe('Riferimento esterno opaco dello scheduler (es. id del post su Metricool)'),
         },
-    }, async ({ profile, id, status, error_msg }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg } })));
+    }, async ({ profile, id, status, error_msg, channels, scheduler_ref }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg, channels, scheduler_ref } })));
+
+    server.registerTool('list_social_queue', {
+        title: 'Leggi il registro delle pubblicazioni social',
+        description: 'Elenca le uscite social del profilo (coda + storico) SENZA modificarle. Serve a sapere cosa è già stato pubblicato o programmato e cosa manca. Filtri: source_type (tipo dell\'elemento, es. product, album, video, track, event, che_amo, blog), source_id, scope, outcome (pending, processing, scheduled, done, failed, skipped; più valori separati da virgola), from/to (intervallo su publication_date, ISO 8601 o YYYY-MM-DD), limit (max 200), offset.',
+        inputSchema: {
+            ...profileField,
+            source_type: z.string().optional().describe('Tipo dell\'elemento sorgente (content_type)'),
+            source_id: z.number().int().optional().describe('ID dell\'elemento sorgente'),
+            scope: z.enum(['announcement', 'reminder', 'result', 'new', 'promo', 'release', 'reprise']).optional(),
+            outcome: z.string().optional().describe('Uno o più stati separati da virgola: pending, processing, scheduled, done, failed, skipped'),
+            from: z.string().optional().describe('Inizio intervallo su publication_date'),
+            to: z.string().optional().describe('Fine intervallo su publication_date (con sola data include tutto il giorno)'),
+            limit: z.number().int().min(1).max(200).optional(),
+            offset: z.number().int().min(0).optional(),
+        },
+    }, async ({ profile, ...filters }) => {
+        const qs = new URLSearchParams();
+        for (const [k, v] of Object.entries(filters)) {
+            if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+        }
+        const q = qs.toString();
+        return toolResult(await chifacosaApi(profile, '/social-queue/list' + (q ? '?' + q : '')));
+    });
 
     const videoFields = {
         title: z.string().describe('Titolo del video (max 150 caratteri)'),
@@ -790,12 +815,18 @@ function buildMcpServer() {
             image_url: z.string().optional().describe('URL immagine di copertina (opzionale)'),
             public_url: z.string().describe('URL pubblico del contenuto'),
             media_url: z.string().optional().describe('URL del file video da pubblicare (per content_type "video": è il campo video_url del video)'),
-            scheduled_for: z.string().optional().describe('Data/ora di pubblicazione programmata (formato: "YYYY-MM-DD HH:MM"). Se omesso, viene processato alla prima run disponibile.'),
+            scheduled_for: z.string().optional().describe('Data/ora di pubblicazione programmata (formato: "YYYY-MM-DD HH:MM" oppure ISO 8601 con fuso). Se omesso, viene processato alla prima run disponibile.'),
+            scope: z.enum(['announcement', 'reminder', 'result', 'new', 'promo', 'release', 'reprise']).optional().describe('Tipo di uscita. Con scope, (profilo, content_type, content_id, scope) è unico: un secondo invio risponde 409 con la riga già esistente e NON crea duplicati'),
+            format: z.enum(['feed', 'story', 'reel']).optional().describe('Formato dell\'uscita'),
+            image_story_url: z.string().optional().describe('URL immagine in formato storia'),
+            channels: z.array(z.string()).optional().describe('Canali, es. ["FB","IG","Threads"]'),
+            scheduler_ref: z.string().optional().describe('Riferimento esterno opaco dello scheduler (es. id del post su Metricool)'),
+            status: z.enum(['pending', 'scheduled', 'done', 'failed', 'skipped']).optional().describe('Default "pending" (coda da lavorare). Con scheduled/done/failed/skipped l\'uscita viene REGISTRATA a cose fatte e la routine non la riprende'),
         },
-    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for }) =>
+    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status }) =>
         toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
             method: 'POST',
-            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for }
+            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status }
         }))
     );
 

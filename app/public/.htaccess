@@ -137,6 +137,7 @@ RewriteRule ^api/v1/favorites/(track|band|playlist|album)/([0-9]+)/?$ api_favori
 # pubblicazione automatica su Metricool e aggiornare lo stato degli elementi processati.
 RewriteRule ^api/v1/social-queue/enqueue/?$ api_social_queue_enqueue.php [L,QSA]
 RewriteRule ^api/v1/social-queue/pending/?$ api_social_queue_pending.php [L,QSA]
+RewriteRule ^api/v1/social-queue/list/?$ api_social_queue_list.php [L,QSA]
 RewriteRule ^api/v1/social-queue/([0-9]+)/?$ api_social_queue_item.php?id=$1 [L,QSA]
 
 # Webhook Telegram (riceve gli aggiornamenti dal bot)
