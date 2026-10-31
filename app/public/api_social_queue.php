@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     $id     = (int) $body['id'];
-    $status = in_array($body['status'] ?? '', ['done', 'failed']) ? $body['status'] : 'failed';
+    $status = in_array($body['status'] ?? '', ['done', 'failed', 'scheduled', 'skipped'], true) ? $body['status'] : 'failed';
     $errMsg = $body['error_msg'] ?? null;
 
     $stmt = getDB()->prepare('UPDATE social_queue SET status=?, error_msg=?, processed_at=NOW() WHERE id=?');

@@ -33,11 +33,97 @@ function socialQueueBuildSq(int $userId, string $type, array $data, bool $isPubl
     ];
 }
 
+// ===== Registro delle pubblicazioni (social_queue come coda E come storico) =====
+// Valori ammessi per i campi del registro. "status" copre anche l'esito: scheduled/failed/skipped
+// descrivono cosa è successo a un'uscita già registrata, pending/processing sono la coda di lavoro.
+const SOCIAL_REGISTRY_SCOPES = ['announcement', 'reminder', 'result', 'new', 'promo', 'release', 'reprise'];
+const SOCIAL_REGISTRY_FORMATS = ['feed', 'story', 'reel'];
+const SOCIAL_REGISTRY_STATUSES = ['pending', 'processing', 'scheduled', 'done', 'failed', 'skipped'];
+// Stati con cui si può REGISTRARE un'uscita a cose fatte (non è lavoro da eseguire).
+const SOCIAL_REGISTRY_FINAL_STATUSES = ['scheduled', 'done', 'failed', 'skipped'];
+
+/**
+ * Valida e normalizza i campi del registro presenti nel payload (scope, format, image_story_url,
+ * channels, scheduler_ref). Ritorna ['error' => string|null, 'values' => [...]] con SOLO i campi
+ * effettivamente forniti: chi non li usa continua a funzionare come prima.
+ */
+function socialRegistryValidate(array $body): array {
+    $v = [];
+    if (array_key_exists('scope', $body) && $body['scope'] !== null && $body['scope'] !== '') {
+        if (!in_array($body['scope'], SOCIAL_REGISTRY_SCOPES, true)) {
+            return ['error' => 'scope deve essere uno tra: ' . implode(', ', SOCIAL_REGISTRY_SCOPES) . '.', 'values' => []];
+        }
+        $v['scope'] = $body['scope'];
+    }
+    if (array_key_exists('format', $body) && $body['format'] !== null && $body['format'] !== '') {
+        if (!in_array($body['format'], SOCIAL_REGISTRY_FORMATS, true)) {
+            return ['error' => 'format deve essere uno tra: ' . implode(', ', SOCIAL_REGISTRY_FORMATS) . '.', 'values' => []];
+        }
+        $v['format'] = $body['format'];
+    }
+    if (!empty($body['image_story_url'])) {
+        $u = trim((string) $body['image_story_url']);
+        if (!preg_match('#^https?://#i', $u) || mb_strlen($u) > 500) {
+            return ['error' => 'image_story_url non è un URL valido (max 500 caratteri).', 'values' => []];
+        }
+        $v['image_story_url'] = $u;
+    }
+    if (array_key_exists('channels', $body) && $body['channels'] !== null) {
+        if (!is_array($body['channels']) || count($body['channels']) > 20) {
+            return ['error' => 'channels deve essere un array di stringhe (es. ["FB","IG","Threads"]).', 'values' => []];
+        }
+        $clean = [];
+        foreach ($body['channels'] as $ch) {
+            if (!is_string($ch) || trim($ch) === '' || mb_strlen($ch) > 40) {
+                return ['error' => 'channels deve contenere solo stringhe non vuote (max 40 caratteri).', 'values' => []];
+            }
+            $clean[] = trim($ch);
+        }
+        $v['channels'] = json_encode(array_values(array_unique($clean)), JSON_UNESCAPED_UNICODE);
+    }
+    if (!empty($body['scheduler_ref'])) {
+        $r = trim((string) $body['scheduler_ref']);
+        if (mb_strlen($r) > 120) {
+            return ['error' => 'scheduler_ref è troppo lungo (max 120 caratteri).', 'values' => []];
+        }
+        $v['scheduler_ref'] = $r;
+    }
+    return ['error' => null, 'values' => $v];
+}
+
+/** Riga di social_queue nella forma esposta dalle API del registro. */
+function socialRegistrySerialize(array $r): array {
+    $channels = null;
+    if (isset($r['channels']) && $r['channels'] !== null && $r['channels'] !== '') {
+        $dec = json_decode((string) $r['channels'], true);
+        $channels = is_array($dec) ? $dec : null;
+    }
+    return [
+        'id'              => (int) $r['id'],
+        'source_type'     => $r['content_type'],
+        'source_id'       => (int) $r['content_id'],
+        'scope'           => $r['scope'] ?? null,
+        'format'          => $r['format'] ?? null,
+        'title'           => $r['title'] ?? null,
+        'public_url'      => $r['public_url'] ?? null,
+        'image_url'       => $r['image_url'] ?? null,
+        'image_story_url' => $r['image_story_url'] ?? null,
+        'video_url'       => $r['media_url'] ?? null,
+        'channels'        => $channels,
+        'scheduler_ref'   => $r['scheduler_ref'] ?? null,
+        'outcome'         => $r['status'],
+        'publication_date' => !empty($r['scheduled_for']) ? apiFormatDateTimeRome($r['scheduled_for']) : null,
+        'error_msg'       => $r['error_msg'] ?? null,
+        'created_at'      => apiFormatDateTimeRome($r['created_at'] ?? null),
+        'processed_at'    => !empty($r['processed_at']) ? apiFormatDateTimeRome($r['processed_at']) : null,
+    ];
+}
+
 /**
  * Inserts an item into the social queue. Does NOT check if Metricool is enabled —
  * the caller is responsible for that check (use metricoolIsEnabled() first).
  */
-function socialQueueEnqueue(int $userId, string $type, array $data, ?string $scheduledFor = null): int {
+function socialQueueEnqueue(int $userId, string $type, array $data, ?string $scheduledFor = null, array $registry = [], string $status = 'pending'): int {
     // Per i video la coda deve portare il FILE (media_url): se chi accoda non lo indica (pulsanti
     // della dashboard, enqueue_social_queue senza media_url) lo si ricava dal video stesso.
     if ($type === 'video' && empty($data['media_url']) && !empty($data['content_id'])) {
@@ -90,6 +176,22 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
     if (!empty($data['media_url'])) {
         $cols[] = 'media_url';
         $vals[] = $data['media_url'];
+    }
+    // Campi del registro (colonne create dalla migrazione 2026_10_31): aggiunti all'INSERT solo se
+    // forniti, così la coda funziona come prima anche prima che la migrazione sia stata applicata.
+    foreach (['scope', 'format', 'image_story_url', 'channels', 'scheduler_ref'] as $k) {
+        if (isset($registry[$k])) {
+            $cols[] = ($k === 'format') ? '`format`' : $k;
+            $vals[] = $registry[$k];
+        }
+    }
+    // Registrazione a cose fatte (scheduled/done/failed/skipped): non è lavoro da eseguire, quindi
+    // lo stato è quello finale e processed_at è subito valorizzato. Mai 'pending' per i registri.
+    if ($status !== 'pending') {
+        $cols[] = 'status';
+        $vals[] = $status;
+        $cols[] = 'processed_at';
+        $vals[] = date('Y-m-d H:i:s');
     }
     $ins = getDB()->prepare(
         'INSERT INTO social_queue (' . implode(', ', $cols) . ') VALUES (' . implode(',', array_fill(0, count($cols), '?')) . ')'

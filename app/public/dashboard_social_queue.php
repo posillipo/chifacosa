@@ -10,7 +10,7 @@ require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
 $statusFilter = $_GET['status'] ?? 'active';
-$validStatuses = ['active', 'pending', 'suspended', 'done', 'failed', 'all'];
+$validStatuses = ['active', 'pending', 'suspended', 'scheduled', 'done', 'skipped', 'failed', 'all'];
 if (!in_array($statusFilter, $validStatuses, true)) $statusFilter = 'active';
 
 $page = max(1, (int) ($_GET['p'] ?? 1));
@@ -66,7 +66,7 @@ include __DIR__ . '/_dash_header.php';
 
 <!-- Filtri -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-  <?php foreach (['active' => '⚡ Attivi', 'pending' => '⏳ In attesa', 'suspended' => '⏸ Sospesi', 'done' => '✅ Completati', 'failed' => '❌ Errori', 'all' => 'Tutti'] as $s => $l): ?>
+  <?php foreach (['active' => '⚡ Attivi', 'pending' => '⏳ In attesa', 'suspended' => '⏸ Sospesi', 'scheduled' => '🗓 Programmati', 'done' => '✅ Completati', 'skipped' => '⏭ Saltati', 'failed' => '❌ Errori', 'all' => 'Tutti'] as $s => $l): ?>
     <a href="?status=<?= $s ?>" class="btn small <?= $statusFilter === $s ? '' : 'secondary' ?>"><?= $l ?></a>
   <?php endforeach; ?>
 </div>
@@ -89,7 +89,7 @@ include __DIR__ . '/_dash_header.php';
       <tbody id="sq-tbody">
         <?php foreach ($items as $qi): ?>
           <?php
-          $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6'];
+          $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
           $color = $statusColors[$qi['status']] ?? '#666';
           $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 60) ?: '—';
           $isSuspended = !empty($qi['suspended']) || $qi['status'] === 'suspended';
@@ -101,6 +101,17 @@ include __DIR__ . '/_dash_header.php';
               <?php if ($qi['public_url']): ?><a href="<?= e($qi['public_url']) ?>" target="_blank" style="color:inherit;"><?= e($label) ?></a>
               <?php else: ?><?= e($label) ?>
               <?php endif; ?>
+              <?php
+              // Dati del registro (presenti solo dopo la migrazione 2026_10_31 e solo per le uscite che li usano).
+              $regBits = [];
+              if (!empty($qi['scope'])) $regBits[] = $qi['scope'];
+              if (!empty($qi['format'])) $regBits[] = $qi['format'];
+              if (!empty($qi['channels'])) {
+                  $chs = json_decode((string) $qi['channels'], true);
+                  if (is_array($chs) && $chs) $regBits[] = implode(', ', $chs);
+              }
+              ?>
+              <?php if ($regBits): ?><br><small style="color:var(--text-muted);"><?= e(implode(' · ', $regBits)) ?></small><?php endif; ?>
             </td>
             <td>
               <span class="sq-status" style="color:<?= $color ?>;"><?= e($qi['status']) ?></span>
