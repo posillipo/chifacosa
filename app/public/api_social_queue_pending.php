@@ -17,7 +17,7 @@ $stmt = getDB()->prepare(
     'SELECT q.*, p.metricool_blog_id, p.metricool_networks, p.display_name
      FROM social_queue q
      JOIN profiles p ON p.user_id = q.user_id
-     WHERE q.user_id = ? AND q.status = "pending"
+     WHERE q.user_id = ? AND q.status = "pending" AND (q.suspended = 0 OR q.suspended IS NULL)
      ORDER BY q.created_at ASC
      LIMIT 10'
 );

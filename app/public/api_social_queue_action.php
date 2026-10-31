@@ -80,24 +80,25 @@ if ($action === 'enqueue') {
 }
 
 // ── suspend / unsuspend ──────────────────────────────────────────────────────
+// "Sospeso" è SOLO il flag suspended: lo stato resta pending/processing (la colonna status è un
+// ENUM che non ha un valore "suspended", scriverlo andava in errore). Le letture che prendono
+// elementi da pubblicare escludono i sospesi con suspended = 0.
 if ($action === 'suspend') {
     $id = (int) ($body['id'] ?? 0);
     $stmt = getDB()->prepare(
-        'UPDATE social_queue SET suspended = 1 - suspended WHERE id=? AND user_id=? AND status IN ("pending","processing","suspended")'
+        'UPDATE social_queue SET suspended = 1 - suspended WHERE id=? AND user_id=? AND status IN ("pending","processing")'
     );
     $stmt->execute([$id, $profile['id']]);
     // Read back new state
     $row = getDB()->prepare('SELECT suspended, status FROM social_queue WHERE id=? AND user_id=?');
     $row->execute([$id, $profile['id']]);
     $updated = $row->fetch();
-    // Sync status column: suspended=1 → status='suspended', suspended=0 → status='pending'
-    if ($updated) {
-        $newStatus = $updated['suspended'] ? 'suspended' : 'pending';
-        getDB()->prepare('UPDATE social_queue SET status=? WHERE id=? AND user_id=? AND status != "done" AND status != "failed"')
-               ->execute([$newStatus, $id, $profile['id']]);
-        echo json_encode(['ok' => true, 'suspended' => (bool) $updated['suspended'], 'status' => $newStatus]);
+    if ($updated && in_array($updated['status'], ['pending', 'processing'], true)) {
+        $isSuspended = (bool) $updated['suspended'];
+        // "status" è l'etichetta mostrata in dashboard: sospeso oppure lo stato reale.
+        echo json_encode(['ok' => true, 'suspended' => $isSuspended, 'status' => $isSuspended ? 'suspended' : $updated['status']]);
     } else {
-        echo json_encode(['ok' => false, 'error' => 'Elemento non trovato o già completato']);
+        echo json_encode(['ok' => false, 'error' => 'Elemento non trovato o già elaborato']);
     }
     exit;
 }
@@ -111,7 +112,7 @@ if ($action === 'reschedule') {
         $scheduledFor = $dt ? $dt->format('Y-m-d H:i:s') : null;
     }
     $stmt = getDB()->prepare(
-        'UPDATE social_queue SET scheduled_for=? WHERE id=? AND user_id=? AND status IN ("pending","suspended")'
+        'UPDATE social_queue SET scheduled_for=? WHERE id=? AND user_id=? AND status IN ("pending","processing")'
     );
     $stmt->execute([$scheduledFor, $id, $profile['id']]);
     echo json_encode(['ok' => true]);
