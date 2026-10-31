@@ -113,6 +113,18 @@ function isSafeInternalRedirect(?string $path): bool {
         && !str_contains($path, '://');
 }
 
+function siteIsMyBand(): bool {
+    return stripos($_SERVER['HTTP_HOST'] ?? '', 'myband') !== false || stripos($_SERVER['HTTP_HOST'] ?? '', 'my-band') !== false;
+}
+
+// Logo testuale della barra in alto della dashboard: "CHI<FA>COSA" su chifacosa, "MY<BAND>" su myband.
+function siteBrandHtml(): string {
+    if (siteIsMyBand()) {
+        return 'MY<strong>BAND</strong>';
+    }
+    return 'CHI<strong>FA</strong>COSA';
+}
+
 // Profilo con cui si "agisce" sulle pagine pubbliche (Segui): quello scelto con lo switch in
 // dashboard se l'utente loggato può gestirlo, altrimenti l'utente loggato stesso. Senza questo,
 // "Segui" usava sempre l'account di login anche dopo lo switch su un altro profilo.
@@ -401,24 +413,7 @@ function setSiteSetting(string $key, string $value): void {
 // quello del software sottostante (eccetto Crediti e header Admin, che restano branding fisso).
 function siteName(): string {
     $name = trim(getSiteSetting('site_name') ?? '');
-    // Il codice è lo stesso su chifacosa.it e myband.it (sync): se il nome non è stato impostato,
-    // o è rimasto quello predefinito dell'installer, su myband si usa il nome di myband.
-    if (siteIsMyBand() && ($name === '' || preg_match('/^chi\s*fa\s*cosa$/i', $name))) {
-        return 'MyBand';
-    }
     return $name !== '' ? $name : 'Chi Fa Cosa';
-}
-
-function siteIsMyBand(): bool {
-    return stripos($_SERVER['HTTP_HOST'] ?? '', 'myband') !== false || stripos($_SERVER['HTTP_HOST'] ?? '', 'my-band') !== false;
-}
-
-// Logo testuale della barra in alto della dashboard: "CHI<FA>COSA" su chifacosa, "MY<BAND>" su myband.
-function siteBrandHtml(): string {
-    if (siteIsMyBand()) {
-        return 'MY<strong>BAND</strong>';
-    }
-    return 'CHI<strong>FA</strong>COSA';
 }
 
 // Se il profilo ha un link personalizzato per il feed attivo (Dashboard → Timeline) e questo
