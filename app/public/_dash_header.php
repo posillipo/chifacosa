@@ -157,7 +157,7 @@ if ($actingAsId) {
             style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:4px;">
       <i class="fa-solid fa-bars"></i>
     </button>
-    <div class="brand brand-dash"><a href="/">CHI<strong>FA</strong>COSA</a></div>
+    <div class="brand brand-dash"><a href="/"><?= siteBrandHtml() ?></a></div>
   </div>
   <nav class="dash-icons-nav">
     <?php if (!empty($user['is_admin'])): ?>

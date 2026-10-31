@@ -3,7 +3,7 @@
   </div>
 
   <footer class="main-footer">
-    <div class="float-right d-none d-sm-inline-block">CHI FA COSA</div>
+    <div class="float-right d-none d-sm-inline-block"><?= e(strtoupper(siteName())) ?></div>
     <strong>Area amministrazione</strong>
   </footer>
 </div>
