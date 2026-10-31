@@ -20,7 +20,12 @@ $offset = ($page - 1) * $perPage;
 $where = 'WHERE q.user_id = ?';
 $params = [$profile['id']];
 if ($statusFilter === 'active') {
-    $where .= ' AND q.status IN ("pending","processing","suspended")';
+    $where .= ' AND q.status IN ("pending","processing")';
+} elseif ($statusFilter === 'suspended') {
+    // Sospeso = flag suspended su un elemento ancora da lavorare.
+    $where .= ' AND q.suspended = 1 AND q.status IN ("pending","processing")';
+} elseif ($statusFilter === 'pending') {
+    $where .= ' AND q.status = "pending" AND q.suspended = 0';
 } elseif ($statusFilter !== 'all') {
     $where .= ' AND q.status = ?';
     $params[] = $statusFilter;
@@ -90,10 +95,12 @@ include __DIR__ . '/_dash_header.php';
         <?php foreach ($items as $qi): ?>
           <?php
           $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
-          $color = $statusColors[$qi['status']] ?? '#666';
+          // Stato mostrato: "suspended" se l'elemento è ancora da lavorare ma sospeso.
+          $isSuspended = !empty($qi['suspended']) && in_array($qi['status'], ['pending', 'processing'], true);
+          $shownStatus = $isSuspended ? 'suspended' : $qi['status'];
+          $color = $statusColors[$shownStatus] ?? '#666';
           $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 60) ?: '—';
-          $isSuspended = !empty($qi['suspended']) || $qi['status'] === 'suspended';
-          $isEditable = in_array($qi['status'], ['pending', 'suspended', 'processing'], true);
+          $isEditable = in_array($qi['status'], ['pending', 'processing'], true);
           ?>
           <tr id="sq-row-<?= $qi['id'] ?>">
             <td class="sq-col-tipo"><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
@@ -114,7 +121,7 @@ include __DIR__ . '/_dash_header.php';
               <?php if ($regBits): ?><br><small style="color:var(--text-muted);"><?= e(implode(' · ', $regBits)) ?></small><?php endif; ?>
             </td>
             <td>
-              <span class="sq-status" style="color:<?= $color ?>;"><?= e($qi['status']) ?></span>
+              <span class="sq-status" style="color:<?= $color ?>;"><?= e($shownStatus) ?></span>
               <?php if ($qi['error_msg']): ?><br><small style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 60)) ?></small><?php endif; ?>
             </td>
             <td>
