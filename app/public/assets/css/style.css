@@ -3118,3 +3118,59 @@ body.backstage-page::before {
     animation: none !important;
   }
 }
+
+/* ===== Barra laterale della dashboard (_dash_header.php) =====
+   Schermi larghi (>= 992px): fissa a sinistra sotto la barra in alto, il contenuto si sposta a
+   destra con un padding sul body. Sotto i 992px diventa un pannello a scomparsa (aperto dal
+   pulsante nella barra in alto) con sfondo oscurato, così non ruba spazio al contenuto. */
+:root { --dash-nav-h: 64px; --dash-side-w: 250px; }
+.dash-side-toggle {
+  background: none; border: none; cursor: pointer; color: inherit;
+  font-size: 19px; padding: 4px; display: none;
+}
+.dash-side {
+  position: fixed; top: var(--dash-nav-h); left: 0; bottom: 0;
+  width: var(--dash-side-w); overflow-y: auto; overscroll-behavior: contain;
+  background: #fff; border-right: 1px solid #e2e2e7;
+  padding: 6px 0 calc(24px + env(safe-area-inset-bottom));
+  z-index: 450;
+}
+.dash-side-head { display: none; }
+.dash-side-title {
+  padding: 16px 18px 4px; font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted);
+}
+.dash-side-link {
+  display: flex; align-items: center; gap: 12px; padding: 9px 18px 9px 15px;
+  color: #22223b; font-size: 14px; border-left: 3px solid transparent;
+  text-decoration: none; min-height: 40px;
+}
+.dash-side-link i { width: 18px; text-align: center; color: var(--text-muted); flex-shrink: 0; }
+.dash-side-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-side-link:hover { background: #f5f5f8; }
+.dash-side-link.active { background: #ece9fd; color: var(--accent); font-weight: 700; border-left-color: var(--accent); }
+.dash-side-link.active i { color: var(--accent); }
+.dash-side-overlay { display: none; }
+
+@media (min-width: 992px) {
+  body.has-dash-side { padding-left: var(--dash-side-w); }
+  /* Il contenuto resta centrato nello spazio rimasto a destra della barra. */
+}
+@media (max-width: 991px) {
+  .dash-side-toggle { display: inline-flex; }
+  .dash-side {
+    top: 0; z-index: 650; width: min(290px, 84vw);
+    transform: translateX(-102%); transition: transform 0.2s ease;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.2); visibility: hidden;
+  }
+  .dash-side.open { transform: none; visibility: visible; }
+  .dash-side-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff;
+  }
+  .dash-side-close { background: none; border: none; font-size: 24px; cursor: pointer; line-height: 1; padding: 4px 8px; }
+  .dash-side-link { min-height: 44px; }
+  .dash-side-overlay.open { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 640; }
+  body.dash-side-locked { overflow: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { .dash-side { transition: none; } }
