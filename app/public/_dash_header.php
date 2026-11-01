@@ -118,6 +118,38 @@ uksort($dashTabs, function ($a, $b) use ($dashTabOrder, $dashKeysInOrder) {
     return $posA <=> $posB;
 });
 
+// ===== Barra laterale della dashboard (voci OPERATIVE, a gruppi, ordine fisso) =====
+// Le voci vengono dalle stesse regole di visibilità di $dashTabs (tipo di profilo, Menu di
+// Navigazione, funzioni del sito, ruolo amministratore), calcolate qui lato server: una voce non
+// permessa non finisce nemmeno nell'HTML. Il riordino personale è stato tolto di proposito (ordine
+// fisso per gruppo). Voci che prima stavano solo nel menu dell'account e ora sono operative:
+// Cinema, Catalogo prodotti, Seguiti, Invita (stessa visibilità di prima: sempre mostrate).
+$dashSideExtra = [
+    'cinema'    => ['label' => 'Cinema',            'url' => '/dashboard_cinema.php',    'active' => 'cinema'],
+    'products'  => ['label' => 'Catalogo prodotti', 'url' => '/dashboard_products.php',  'active' => 'products'],
+    'following' => ['label' => 'Seguiti',           'url' => '/dashboard_following.php', 'active' => 'following'],
+    'invite'    => ['label' => 'Invita',            'url' => '/dashboard_invite.php',    'active' => 'invite'],
+];
+$dashSideAll = $dashTabs + $dashSideExtra;
+// [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
+$dashSideGroups = [
+    'Contenuti e pubblicazione' => [
+        'feed' => 'fa-list', 'timeline' => 'fa-clock', 'blog' => 'fa-newspaper', 'video' => 'fa-circle-play',
+        'foto' => 'fa-images', 'link' => 'fa-link', 'featured' => 'fa-star', 'cheamo' => 'fa-heart',
+        'contest' => 'fa-trophy', 'schedule' => 'fa-hourglass-half', 'schedule_admin' => 'fa-calendar-days', 'board' => 'fa-thumbtack',
+    ],
+    'Eventi e prenotazioni' => [
+        'eventi' => 'fa-ticket', 'reservations' => 'fa-calendar-check', 'cinema' => 'fa-film',
+    ],
+    'Business e vendite' => [
+        'products' => 'fa-tags', 'menu' => 'fa-utensils', 'offerte' => 'fa-percent', 'servizi' => 'fa-briefcase',
+        'service_inquiries' => 'fa-inbox', 'contatti' => 'fa-address-book',
+    ],
+    'Community' => [
+        'segui' => 'fa-users', 'following' => 'fa-user-check', 'invite' => 'fa-user-plus',
+    ],
+];
+
 // Avatar mostrato nella barra in alto: il proprio, a meno che non si stia gestendo un altro
 // profilo — in quel caso mostriamo l'avatar DI QUEL profilo, così è sempre chiaro a colpo
 // d'occhio su chi si sta agendo, senza dover aprire il menu.
@@ -150,9 +182,12 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?>">
+<body class="<?= e($dashTheme) ?> has-dash-side">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
+    <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
+      <i class="fa-solid fa-table-cells-large"></i>
+    </button>
     <button type="button" id="account-menu-toggle" title="Account e impostazioni"
             style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:4px;">
       <i class="fa-solid fa-bars"></i>
@@ -258,6 +293,8 @@ if ($actingAsId) {
   if (!nav) return;
   function applyOffset() {
     document.body.style.paddingTop = nav.offsetHeight + 'px';
+    // Anche la barra laterale parte sotto la barra in alto: stessa altezza, via variabile CSS.
+    document.documentElement.style.setProperty('--dash-nav-h', nav.offsetHeight + 'px');
   }
   applyOffset();
   window.addEventListener('resize', applyOffset);
@@ -287,6 +324,49 @@ if (switcherEl && navbarEl) {
 </script>
 <?php endif; ?>
 
+<!-- Barra laterale della dashboard: voci operative a gruppi (fissa su schermi larghi, a scomparsa su telefono/tablet) -->
+<div id="dash-side-overlay" class="dash-side-overlay"></div>
+<aside id="dash-side" class="dash-side" aria-label="Menu principale">
+  <div class="dash-side-head">
+    <strong>Menu</strong>
+    <button type="button" id="dash-side-close" class="dash-side-close" aria-label="Chiudi il menu">&times;</button>
+  </div>
+  <nav>
+  <?php foreach ($dashSideGroups as $groupTitle => $groupItems): ?>
+    <?php $visibleItems = array_filter($groupItems, fn ($k) => isset($dashSideAll[$k]), ARRAY_FILTER_USE_KEY); ?>
+    <?php if (!$visibleItems) continue; ?>
+    <div class="dash-side-title"><?= e($groupTitle) ?></div>
+    <?php foreach ($visibleItems as $itemKey => $itemIcon): ?>
+      <?php $it = $dashSideAll[$itemKey]; ?>
+      <a href="<?= e($it['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $it['active'] ? ' active' : '' ?>" title="<?= e($it['label']) ?>"<?= ($activeTab ?? '') === $it['active'] ? ' aria-current="page"' : '' ?>>
+        <i class="fa-solid <?= e($itemIcon) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span>
+      </a>
+    <?php endforeach; ?>
+  <?php endforeach; ?>
+  </nav>
+</aside>
+<script>
+(function () {
+  var side = document.getElementById('dash-side');
+  var overlay = document.getElementById('dash-side-overlay');
+  var toggle = document.getElementById('dash-side-toggle');
+  var closeBtn = document.getElementById('dash-side-close');
+  if (!side || !toggle) return;
+  function setOpen(open) {
+    side.classList.toggle('open', open);
+    overlay.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('dash-side-locked', open);
+  }
+  toggle.addEventListener('click', function () { setOpen(!side.classList.contains('open')); });
+  overlay.addEventListener('click', function () { setOpen(false); });
+  if (closeBtn) closeBtn.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  // Tornando a uno schermo largo il pannello torna fisso: niente stato "aperto" residuo.
+  window.addEventListener('resize', function () { if (window.innerWidth >= 992) setOpen(false); });
+})();
+</script>
+
 <!-- Pannello laterale "Account e impostazioni": Profilo, password, integrazioni esterne -->
 <div id="account-menu-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:300;"></div>
 <div id="account-menu-sidebar" style="display:none;position:fixed;top:0;left:0;bottom:0;width:260px;max-width:82vw;background:#fff;z-index:301;box-shadow:2px 0 20px rgba(0,0,0,0.2);overflow-y:auto;">
@@ -295,35 +375,25 @@ if (switcherEl && navbarEl) {
     <button type="button" id="account-menu-close" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
   </div>
   <div style="padding:8px 0;">
+    <div style="padding:6px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Il mio profilo</div>
     <a href="/dashboard_profile.php" class="account-sidebar-link <?= $activeTab==='profile'?'active':'' ?>">
       <i class="fa-solid fa-id-card"></i> Profilo e anagrafica
     </a>
     <a href="/dashboard_profiles.php" class="account-sidebar-link <?= $activeTab==='profiles'?'active':'' ?>">
       <i class="fa-solid fa-layer-group"></i> I tuoi profili
     </a>
-    <a href="/dashboard_password.php" class="account-sidebar-link <?= $activeTab==='password'?'active':'' ?>">
-      <i class="fa-solid fa-lock"></i> Cambia password
-    </a>
     <a href="/dashboard_theme.php" class="account-sidebar-link <?= $activeTab==='theme'?'active':'' ?>">
       <i class="fa-solid fa-palette"></i> Tema grafico
     </a>
+    <a href="/dashboard_password.php" class="account-sidebar-link <?= $activeTab==='password'?'active':'' ?>">
+      <i class="fa-solid fa-lock"></i> Cambia password
+    </a>
+    <div style="padding:14px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Impostazioni</div>
     <a href="/dashboard_nav_menu.php" class="account-sidebar-link <?= $activeTab==='nav_menu'?'active':'' ?>">
       <i class="fa-solid fa-bars"></i> Menu di Navigazione
     </a>
     <a href="/dashboard_privacy_tracking.php" class="account-sidebar-link <?= $activeTab==='privacy_tracking'?'active':'' ?>">
       <i class="fa-solid fa-shield-halved"></i> Privacy e Tracking
-    </a>
-    <a href="/dashboard_cinema.php" class="account-sidebar-link <?= $activeTab==='cinema'?'active':'' ?>">
-      <i class="fa-solid fa-film"></i> Cinema
-    </a>
-    <a href="/dashboard_products.php" class="account-sidebar-link <?= $activeTab==='products'?'active':'' ?>">
-      <i class="fa-solid fa-tags"></i> Catalogo prodotti
-    </a>
-    <a href="/dashboard_invite.php" class="account-sidebar-link <?= $activeTab==='invite'?'active':'' ?>">
-      <i class="fa-solid fa-user-plus"></i> Invita
-    </a>
-    <a href="/dashboard_following.php" class="account-sidebar-link <?= $activeTab==='following'?'active':'' ?>">
-      <i class="fa-solid fa-heart"></i> Seguiti
     </a>
     <?php if ($isBandOrLabel): ?>
       <a href="/dashboard_team.php" class="account-sidebar-link <?= $activeTab==='team'?'active':'' ?>">
@@ -333,6 +403,9 @@ if (switcherEl && navbarEl) {
         <i class="fa-solid fa-clock-rotate-left"></i> Log
       </a>
     <?php endif; ?>
+    <a href="/dashboard_api_tokens.php" class="account-sidebar-link <?= $activeTab==='api_tokens'?'active':'' ?>">
+      <i class="fa-solid fa-code"></i> API
+    </a>
     <?php if ($isBandOrLabel): ?>
       <div style="padding:14px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Integrazioni</div>
       <a href="/dashboard_spotify.php" class="account-sidebar-link <?= $activeTab==='spotify'?'active':'' ?>">
@@ -469,10 +542,3 @@ if (switcherEl && navbarEl) {
 <?php endif; ?>
 
 <div class="container">
-  <div class="tabs-wrap">
-  <div class="tabs" id="dash-tabs">
-    <?php foreach ($dashTabs as $t): ?>
-    <a href="<?= e($t['url']) ?>" class="<?= $activeTab===$t['active']?'active':'' ?>"><?= e($t['label']) ?></a>
-    <?php endforeach; ?>
-  </div>
-  </div>
