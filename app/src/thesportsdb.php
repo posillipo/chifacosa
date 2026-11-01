@@ -4,7 +4,7 @@ require_once __DIR__ . '/spotify.php'; // riusa la funzione httpRequest() già s
 /**
  * Client minimale per l'API di TheSportsDB — ricerca squadre sportive. Stesso approccio già
  * usato per TMDb/Google Books/Spoonacular: solo httpRequest(), nessuna libreria esterna. La
- * chiave va nel percorso dell'URL (non come parametro) — "3" è la chiave di test pubblica
+ * chiave va nel percorso dell'URL (non come parametro) — "123" è la chiave di test pubblica (la vecchia "3" è stata disattivata)
  * (limitata, va bene solo per provare), una personale si ottiene gratis su patreon.com/sportsdb.
  */
 
