@@ -57,7 +57,19 @@ include __DIR__ . '/_dash_header.php';
 .btn-xs { font-size:12px; padding:3px 9px; border-radius:4px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
 .btn-xs.danger { color:#e74c3c; border-color:#e74c3c; }
 .btn-xs.primary { color:#fff; background:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); }
-@media(max-width:600px) { .sq-col-aggiunto { display:none; } }
+/* Su telefono la tabella non entra nello schermo (e la scheda tagliava Programmato e i pulsanti):
+   ogni riga diventa una scheda con tutti i dati, uno sotto l'altro, ognuno con la sua etichetta. */
+@media(max-width:700px) {
+  .sq-table, .sq-table tbody { display:block; }
+  .sq-table thead { display:none; }
+  .sq-table tr { display:block; padding:10px 12px; }
+  .sq-table td { display:flex; gap:10px; align-items:baseline; padding:3px 0; white-space:normal; border:0; }
+  .sq-table td[data-label]::before { content:attr(data-label); flex:0 0 92px; color:var(--text-muted); font-size:12px; }
+  .sq-col-tipo { width:auto; }
+  .sq-col-contenuto { max-width:none; white-space:normal; overflow:visible; text-overflow:clip; }
+  .sq-col-azioni { padding-top:8px; }
+  .sq-scheduled-input { max-width:100%; }
+}
 </style>
 
 <?php if (!$metricoolActive): ?>
@@ -103,8 +115,8 @@ include __DIR__ . '/_dash_header.php';
           $isEditable = in_array($qi['status'], ['pending', 'processing'], true);
           ?>
           <tr id="sq-row-<?= $qi['id'] ?>">
-            <td class="sq-col-tipo"><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
-            <td class="sq-col-contenuto">
+            <td class="sq-col-tipo" data-label="Tipo"><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
+            <td class="sq-col-contenuto" data-label="Contenuto">
               <?php if ($qi['public_url']): ?><a href="<?= e($qi['public_url']) ?>" target="_blank" style="color:inherit;"><?= e($label) ?></a>
               <?php else: ?><?= e($label) ?>
               <?php endif; ?>
@@ -120,11 +132,11 @@ include __DIR__ . '/_dash_header.php';
               ?>
               <?php if ($regBits): ?><br><small style="color:var(--text-muted);"><?= e(implode(' · ', $regBits)) ?></small><?php endif; ?>
             </td>
-            <td>
+            <td data-label="Stato">
               <span class="sq-status" style="color:<?= $color ?>;"><?= e($shownStatus) ?></span>
               <?php if ($qi['error_msg']): ?><br><small style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 60)) ?></small><?php endif; ?>
             </td>
-            <td>
+            <td data-label="Programmato">
               <?php if ($isEditable): ?>
                 <input type="datetime-local" class="sq-scheduled-input" data-id="<?= $qi['id'] ?>"
                        value="<?= $qi['scheduled_for'] ? date('Y-m-d\TH:i', strtotime($qi['scheduled_for'])) : '' ?>"
@@ -133,8 +145,8 @@ include __DIR__ . '/_dash_header.php';
                 <span style="color:var(--text-muted);font-size:12.5px;"><?= $qi['scheduled_for'] ? date('d/m H:i', strtotime($qi['scheduled_for'])) : '—' ?></span>
               <?php endif; ?>
             </td>
-            <td class="sq-col-aggiunto" style="color:var(--text-muted);font-size:12.5px;"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
-            <td>
+            <td class="sq-col-aggiunto" data-label="Aggiunto" style="color:var(--text-muted);font-size:12.5px;"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
+            <td class="sq-col-azioni">
               <div class="sq-actions">
                 <?php if ($isEditable): ?>
                   <button type="button" class="btn-xs sq-suspend-btn" data-id="<?= $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>">
