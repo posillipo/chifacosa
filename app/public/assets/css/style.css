@@ -3177,7 +3177,7 @@ body.backstage-page::before {
 }
 @media (prefers-reduced-motion: reduce) { .dash-side { transition: none; } }
 .dash-side-foot { display: none; }
-.dash-side-account-btn { width: 100%; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; font: inherit; text-align: left; }
+.dash-side-account-btn { width: 100%; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; font-family: inherit; text-align: left; }
 @media (max-width: 991px) {
   .dash-side-foot { display: block; border-top: 1px solid #eee; margin-top: 8px; padding-top: 4px; }
 }
@@ -3237,3 +3237,12 @@ body.backstage-page::before {
 @media (prefers-reduced-motion: reduce) { .dash-right { transition: none; } }
 /* Anche se la libreria delle icone non si carica, i pulsanti restano toccabili. */
 .dash-side-toggle, .dash-right-toggle { min-width: 28px; min-height: 28px; align-items: center; justify-content: center; }
+
+/* Barra in alto su telefono/tablet: restano le voci da guardare al volo (menu, logo, attività,
+   campanella, messaggi, avatar); le altre (Area Admin, Coda Social, Vedi il sito, Esci) stanno in
+   fondo al pannello del menu, così la barra resta su una sola riga. */
+@media (max-width: 991px) {
+  .dash-icons-nav .dash-hide-sm { display: none !important; }
+  .dash-icons-nav { flex-wrap: nowrap; gap: 14px; }
+  .navbar.navbar-dash-sticky { padding-top: 10px; padding-bottom: 10px; }
+}
