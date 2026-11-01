@@ -3158,6 +3158,7 @@ body.backstage-page::before {
 }
 @media (max-width: 991px) {
   .dash-side-toggle { display: inline-flex; }
+  .dash-account-toggle { display: none !important; }  /* su telefono un solo hamburger: il menu account si apre dal pannello */
   .dash-side {
     top: 0; z-index: 650; width: min(290px, 84vw);
     transform: translateX(-102%); transition: transform 0.2s ease;
@@ -3175,3 +3176,8 @@ body.backstage-page::before {
   body.dash-side-locked { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .dash-side { transition: none; } }
+.dash-side-foot { display: none; }
+.dash-side-account-btn { width: 100%; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; font: inherit; text-align: left; }
+@media (max-width: 991px) {
+  .dash-side-foot { display: block; border-top: 1px solid #eee; margin-top: 8px; padding-top: 4px; }
+}

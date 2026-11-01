@@ -186,9 +186,9 @@ if ($actingAsId) {
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
-      <i class="fa-solid fa-table-cells-large"></i>
+      <i class="fa-solid fa-bars"></i>
     </button>
-    <button type="button" id="account-menu-toggle" title="Account e impostazioni"
+    <button type="button" id="account-menu-toggle" class="dash-account-toggle" title="Account e impostazioni"
             style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:4px;">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -344,6 +344,11 @@ if (switcherEl && navbarEl) {
     <?php endforeach; ?>
   <?php endforeach; ?>
   </nav>
+  <div class="dash-side-foot">
+    <button type="button" id="dash-side-account" class="dash-side-link dash-side-account-btn">
+      <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Account e impostazioni</span>
+    </button>
+  </div>
 </aside>
 <script>
 (function () {
@@ -361,6 +366,12 @@ if (switcherEl && navbarEl) {
   toggle.addEventListener('click', function () { setOpen(!side.classList.contains('open')); });
   overlay.addEventListener('click', function () { setOpen(false); });
   if (closeBtn) closeBtn.addEventListener('click', function () { setOpen(false); });
+  // Su telefono l'hamburger è uno solo: dal pannello si raggiunge anche il menu dell'account.
+  var accountBtn = document.getElementById('dash-side-account');
+  var accountToggle = document.getElementById('account-menu-toggle');
+  if (accountBtn && accountToggle) {
+    accountBtn.addEventListener('click', function () { setOpen(false); accountToggle.click(); });
+  }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
   // Tornando a uno schermo largo il pannello torna fisso: niente stato "aperto" residuo.
   window.addEventListener('resize', function () { if (window.innerWidth >= 992) setOpen(false); });
