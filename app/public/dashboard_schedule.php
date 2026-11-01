@@ -27,13 +27,23 @@ include __DIR__ . '/_dash_header.php';
     </p>
   </details>
 
+  <style>
+  /* Titolo su due righe al massimo (prima una sola, tagliata); su telefono i pulsanti vanno a
+     capo sotto al contenuto, a tutta larghezza, invece di sovrapporsi al titolo. */
+  .sched-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  @media (max-width: 600px) {
+    .sched-actions { width: 100%; }
+    .sched-actions .btn { flex: 1; text-align: center; }
+  }
+  </style>
+
   <div class="section-title">Contenuti programmati (<?= count($items) ?>)</div>
   <?php if (!$items): ?>
     <div class="alert error">Nessun contenuto programmato al momento.</div>
   <?php else: ?>
     <?php foreach ($items as $it): ?>
       <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
-        <a href="<?= e($it['edit_url']) ?>" style="display:flex;flex:1;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
+        <a href="<?= e($it['edit_url']) ?>" class="sched-main" style="display:flex;flex:1 1 240px;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
           <?php if ($it['cover']): ?>
             <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
           <?php endif; ?>
@@ -44,11 +54,11 @@ include __DIR__ . '/_dash_header.php';
               </span>
               <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;"><?= e($it['label']) ?></span>
             </div>
-            <p style="margin:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e(textExcerpt($it['title'], 120)) ?></p>
+            <p class="sched-title" style="margin:0;font-weight:600;"><?= e(textExcerpt($it['title'], 120)) ?></p>
           </div>
         </a>
         <?php if ($it['preview_url']): ?>
-          <div style="display:flex;gap:6px;flex-shrink:0;">
+          <div class="sched-actions" style="display:flex;gap:6px;flex-shrink:0;">
             <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
             <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
           </div>
