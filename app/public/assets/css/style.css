@@ -3181,3 +3181,59 @@ body.backstage-page::before {
 @media (max-width: 991px) {
   .dash-side-foot { display: block; border-top: 1px solid #eee; margin-top: 8px; padding-top: 4px; }
 }
+
+/* ===== Colonna destra della dashboard "Attività" (src/dash_right.php) =====
+   >= 1200px: fissa a destra, il contenuto resta centrato tra le due colonne.
+   < 1200px: pannello a scomparsa dal lato destro, aperto dal pulsante nella barra in alto. */
+:root { --dash-right-w: 272px; }
+.dash-right-toggle { background: none; border: none; cursor: pointer; color: inherit; font-size: 17px; padding: 0; display: none; }
+.dash-right {
+  position: fixed; top: var(--dash-nav-h); right: 0; bottom: 0; width: var(--dash-right-w);
+  overflow-y: auto; overscroll-behavior: contain; background: #fff; border-left: 1px solid #e2e2e7;
+  padding: 6px 12px calc(20px + env(safe-area-inset-bottom)); z-index: 450;
+}
+.dash-right-head { display: none; }
+.dash-right-block { padding: 10px 2px 6px; border-bottom: 1px solid #f0f0f4; }
+.dash-right-block:last-child { border-bottom: none; }
+.dash-right-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 2px 4px 6px; }
+.dash-right-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 6px; color: #22223b; font-size: 13px; text-decoration: none;
+}
+.dash-right-row:hover { background: #f5f5f8; }
+.dash-right-val { min-width: 24px; text-align: center; padding: 1px 7px; border-radius: 999px; background: #ece9fd; color: var(--accent); font-size: 12px; }
+.dash-right-val.zero { background: #f2f2f5; color: #9a9aa8; font-weight: 500; }
+.dash-right-val.bad:not(.zero) { background: #fde8e6; color: #c0392b; }
+.dash-right-val.warn:not(.zero) { background: #fff1de; color: #b9690a; }
+.dash-right-sub { font-size: 11px; color: var(--text-muted); padding: 8px 6px 2px; }
+.dash-right-line { display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px; font-size: 12.5px; color: #22223b; }
+.dash-right-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-right-line small { color: var(--text-muted); white-space: nowrap; }
+.dash-right-link { display: flex; align-items: center; gap: 8px; padding: 6px; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+.dash-right-event { display: block; padding: 6px; border-radius: 6px; color: #22223b; text-decoration: none; font-size: 12.5px; }
+.dash-right-event:hover { background: #f5f5f8; }
+.dash-right-event b { display: block; color: var(--accent); font-size: 12px; }
+.dash-right-event small { display: block; color: var(--text-muted); }
+.dash-right-empty { padding: 4px 6px; font-size: 12.5px; color: var(--text-muted); }
+.dash-right-overlay { display: none; }
+
+@media (min-width: 1200px) {
+  body.has-dash-right { padding-right: var(--dash-right-w); }
+}
+@media (max-width: 1199px) {
+  .dash-right-toggle { display: inline-flex; }
+  .dash-right {
+    top: 0; z-index: 650; width: min(300px, 86vw); transform: translateX(102%); transition: transform 0.2s ease;
+    box-shadow: -2px 0 20px rgba(0, 0, 0, 0.2); visibility: hidden;
+  }
+  .dash-right.open { transform: none; visibility: visible; }
+  .dash-right-head {
+    display: flex; justify-content: space-between; align-items: center; padding: 14px 6px; margin: 0 -12px 4px;
+    padding-left: 18px; padding-right: 12px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff;
+  }
+  .dash-right-overlay.open { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 640; }
+  .dash-right-row { padding: 9px 6px; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .dash-right { transition: none; } }
+/* Anche se la libreria delle icone non si carica, i pulsanti restano toccabili. */
+.dash-side-toggle, .dash-right-toggle { min-width: 28px; min-height: 28px; align-items: center; justify-content: center; }

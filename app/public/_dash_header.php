@@ -182,7 +182,7 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -195,6 +195,9 @@ if ($actingAsId) {
     <div class="brand brand-dash"><a href="/"><?= siteBrandHtml() ?></a></div>
   </div>
   <nav class="dash-icons-nav">
+    <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="Attività" aria-label="Apri le attività" aria-controls="dash-right" aria-expanded="false">
+      <i class="fa-solid fa-chart-simple"></i>
+    </button>
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
@@ -375,6 +378,46 @@ if (switcherEl && navbarEl) {
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
   // Tornando a uno schermo largo il pannello torna fisso: niente stato "aperto" residuo.
   window.addEventListener('resize', function () { if (window.innerWidth >= 992) setOpen(false); });
+})();
+</script>
+
+<?php
+// Colonna destra "Attività": dati del solo profilo attivo, calcolati lato server.
+require_once __DIR__ . '/../src/dash_right.php';
+echo renderDashRight([
+    'profile_id'       => (int) $countsForId,
+    'is_band_or_label' => $isBandOrLabel,
+    'nav_visibility'   => $navVisibility,
+    'queue_on'         => !empty(($profile ?? $user)['metricool_auto_social']),
+    'is_admin'         => !empty($user['is_admin']),
+    'unread_contacts'  => $unreadMessages,
+    'unread_messages'  => $unreadDirectMessages,
+    'tz_profile'       => ($profile ?? $user),
+]);
+?>
+<script>
+(function () {
+  var right = document.getElementById('dash-right');
+  var overlay = document.getElementById('dash-right-overlay');
+  var toggle = document.getElementById('dash-right-toggle');
+  var closeBtn = document.getElementById('dash-right-close');
+  if (!right || !toggle) return;
+  function setOpen(open) {
+    right.classList.toggle('open', open);
+    overlay.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('dash-side-locked', open);
+    // Un solo pannello aperto alla volta: aprendo questo si chiude quello delle voci.
+    if (open) { var sc = document.getElementById('dash-side-close'); if (sc && document.getElementById('dash-side').classList.contains('open')) sc.click(); }
+  }
+  toggle.addEventListener('click', function () { setOpen(!right.classList.contains('open')); });
+  overlay.addEventListener('click', function () { setOpen(false); });
+  if (closeBtn) closeBtn.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  window.addEventListener('resize', function () { if (window.innerWidth >= 1200) setOpen(false); });
+  // Aprendo il pannello delle voci si chiude questo.
+  var sideToggle = document.getElementById('dash-side-toggle');
+  if (sideToggle) sideToggle.addEventListener('click', function () { if (right.classList.contains('open')) setOpen(false); });
 })();
 </script>
 
