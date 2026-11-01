@@ -40,7 +40,7 @@ include __DIR__ . '/_admin_header.php';
       sulla pagina pubblica del profilo — stesso principio già usato per "Attori che amo" con TMDb.
     </p>
     <p style="color:var(--text-muted)">
-      Per provare subito senza registrarti: usa <code>3</code>, la chiave di test pubblica
+      Per provare subito senza registrarti: usa <code>123</code>, la chiave di test pubblica (la vecchia <code>3</code> è stata disattivata da TheSportsDB)
       (limitata, condivisa con tutti). Per un uso stabile, ottieni una chiave personale gratuita
       su <a href="https://www.patreon.com/sportsdb" target="_blank">patreon.com/sportsdb</a>.
     </p>
@@ -50,7 +50,7 @@ include __DIR__ . '/_admin_header.php';
     <?= csrfField() ?>
     <input type="hidden" name="action" value="save">
     <label>TheSportsDB API Key</label>
-    <input type="text" name="thesportsdb_api_key" value="<?= e($apiKey) ?>" placeholder="es. 3 (chiave di test)">
+    <input type="text" name="thesportsdb_api_key" value="<?= e($apiKey) ?>" placeholder="es. 123 (chiave di test)">
     <button type="submit" class="btn">Salva chiave</button>
   </form>
 
