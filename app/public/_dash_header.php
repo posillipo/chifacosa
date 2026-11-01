@@ -199,10 +199,10 @@ if ($actingAsId) {
       <i class="fa-solid fa-chart-simple"></i>
     </button>
     <?php if (!empty($user['is_admin'])): ?>
-      <a href="/admin_dashboard.php" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
+      <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
     <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
-      <a href="/dashboard_social_queue.php" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
+      <a href="/dashboard_social_queue.php" class="dash-hide-sm" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
         <i class="fa-solid fa-share-nodes"></i>
       </a>
     <?php endif; ?>
@@ -267,7 +267,7 @@ if ($actingAsId) {
           </a>
         </div>
       </details>
-      <a href="/<?= e($barSlug) ?>" target="_blank" title="Vedi la pagina pubblica del profilo attivo" style="font-size:17px;">
+      <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi la pagina pubblica del profilo attivo" style="font-size:17px;">
         <i class="fa-solid fa-eye"></i>
       </a>
     <?php else: ?>
@@ -281,7 +281,7 @@ if ($actingAsId) {
         <?php endif; ?>
       </a>
     <?php endif; ?>
-    <a href="/logout.php">Esci</a>
+    <a href="/logout.php" class="dash-hide-sm">Esci</a>
   </nav>
 </div>
 <script>
@@ -348,9 +348,18 @@ if (switcherEl && navbarEl) {
   <?php endforeach; ?>
   </nav>
   <div class="dash-side-foot">
+    <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
+    <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
+    <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+    <a class="dash-side-link" href="/dashboard_social_queue.php"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span>Coda Social</span></a>
+    <?php endif; ?>
+    <?php if (!empty($user['is_admin'])): ?>
+    <a class="dash-side-link" href="/admin_dashboard.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Area Admin</span></a>
+    <?php endif; ?>
     <button type="button" id="dash-side-account" class="dash-side-link dash-side-account-btn">
       <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Account e impostazioni</span>
     </button>
+    <a class="dash-side-link" href="/logout.php"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </div>
 </aside>
 <script>
