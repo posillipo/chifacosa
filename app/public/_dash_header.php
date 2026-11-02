@@ -7,7 +7,11 @@ $dashTheme = 'light-theme';
 // Usa il profilo su cui si sta agendo quando la pagina lo espone già ($profile), altrimenti
 // ricade sul proprio account — non tutte le pagine dashboard_*.php calcolano $profile (solo
 // quelle di gestione contenuti), quindi non possiamo darlo per scontato qui.
-$isBandOrLabel = in_array(($profile ?? $user)['account_type'] ?? 'band', ['band', 'label'], true);
+// Profilo ATTIVO per tutta l'intestazione: quello della pagina se lo espone già, altrimenti quello scelto
+// con lo switch. Senza questo, le poche pagine che non calcolano $profile (es. Cambia password, I tuoi
+// profili) facevano guardare alla barra sempre il profilo primario (contatori, Coda Social, integrazioni).
+$dashProfile = $profile ?? getActingProfile($user);
+$isBandOrLabel = in_array($dashProfile['account_type'] ?? 'band', ['band', 'label'], true);
 
 // Profili che questo utente co-gestisce (oltre al proprio) — se ce ne sono, mostriamo un
 // selettore per scegliere su quale si sta agendo in questo momento.
@@ -18,7 +22,7 @@ $actingAsId = $_SESSION['acting_as_user_id'] ?? null;
 // Come $isBandOrLabel sopra: usa il profilo attivo quando la pagina lo espone già, altrimenti
 // ricade sul proprio account — altrimenti il badge mostrerebbe sempre i conteggi del tuo
 // account reale anche mentre agisci su un altro profilo.
-$countsForId = (int) ($profile ?? $user)['id'];
+$countsForId = (int) $dashProfile['id'];
 
 $stmt = getDB()->prepare('SELECT COUNT(*) c FROM contact_requests WHERE user_id = ? AND is_read = 0');
 $stmt->execute([$countsForId]);
@@ -33,7 +37,7 @@ $unreadDirectMessages = (int) $stmt->fetch()['c'];
 // l'utente ha disattivato dal menu pubblico (es. "Blog" disattivato → scheda "Blog" nascosta
 // anche qui), così i due posti restano sempre coerenti tra loro.
 $navVisibility = array_column(
-    getAllProfileNavigationMenu((int) ($profile ?? $user)['id'], ($profile ?? $user)['slug']),
+    getAllProfileNavigationMenu((int) $dashProfile['id'], $dashProfile['slug']),
     'is_visible',
     'name'
 );
@@ -220,7 +224,7 @@ if ($actingAsId) {
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
-    <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
       <a href="/dashboard_social_queue.php" class="dash-hide-sm" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
         <i class="fa-solid fa-share-nodes"></i>
       </a>
@@ -385,7 +389,7 @@ if (switcherEl && navbarEl) {
   <div class="dash-side-foot">
     <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
     <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
-    <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
     <a class="dash-side-link" href="/dashboard_social_queue.php"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span>Coda Social</span></a>
     <?php endif; ?>
     <?php if (!empty($user['is_admin'])): ?>
@@ -432,18 +436,18 @@ echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
     'nav_visibility'   => $navVisibility,
-    'queue_on'         => !empty(($profile ?? $user)['metricool_auto_social']),
+    'queue_on'         => !empty($dashProfile['metricool_auto_social']),
     'is_admin'         => !empty($user['is_admin']),
     'unread_contacts'  => $unreadMessages,
     'unread_messages'  => $unreadDirectMessages,
-    'tz_profile'       => ($profile ?? $user),
+    'tz_profile'       => $dashProfile,
     // Integrazioni (prima nel menu account): solo band/etichette, come prima. Il pallino verde = collegata.
     'integrations'     => !$isBandOrLabel ? [] : [
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
         ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
         ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
-        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty(($profile ?? $user)['metricool_auto_social'])],
+        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
     ],
     'active_tab'       => $activeTab ?? '',
 ]);
@@ -524,7 +528,7 @@ echo renderDashRight([
 })();
 </script>
 
-<?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?>
+<?php if (!empty($dashProfile['metricool_auto_social'])): ?>
 <!-- ── Modale condivisione social ───────────────────────────────────────────── -->
 <dialog id="sq-share-dialog" style="border:none;border-radius:14px;padding:0;width:min(420px,94vw);box-shadow:0 8px 40px rgba(0,0,0,0.18);">
   <form method="dialog" style="padding:22px 22px 18px;">
