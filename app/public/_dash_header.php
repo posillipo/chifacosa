@@ -245,9 +245,72 @@ if ($actingAsId) {
         </span>
       <?php endif; ?>
     </a>
+    <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi il sito" style="font-size:17px;"><i class="fa-solid fa-eye"></i></a>
+  </nav>
+</div>
+<script>
+// La barra è "fixed" (vedi CSS .navbar-dash-sticky), quindi esce dal flusso normale della
+// pagina: senza compensare, il contenuto sotto salterebbe su e ci finirebbe parzialmente
+// nascosto. Riserviamo lo spazio giusto con un padding-top sul body, ricalcolato ogni volta
+// che l'altezza della barra può cambiare (es. va su due righe ruotando lo schermo, o si
+// ridimensiona la finestra) — non un valore fisso, perché su schermi stretti la barra può
+// occupare una o due righe a seconda di quante icone/notifiche mostra.
+(function () {
+  var nav = document.querySelector('.navbar-dash-sticky');
+  if (!nav) return;
+  function applyOffset() {
+    document.body.style.paddingTop = nav.offsetHeight + 'px';
+    // Anche la barra laterale parte sotto la barra in alto: stessa altezza, via variabile CSS.
+    document.documentElement.style.setProperty('--dash-nav-h', nav.offsetHeight + 'px');
+  }
+  applyOffset();
+  window.addEventListener('resize', applyOffset);
+})();
+</script>
+<?php if ($managedProfiles): ?>
+<script>
+document.addEventListener('click', function (e) {
+  document.querySelectorAll('.profile-switcher[open]').forEach(function (el) {
+    if (!el.contains(e.target)) el.removeAttribute('open');
+  });
+});
+</script>
+<?php endif; ?>
+
+<!-- Barra laterale della dashboard: voci operative a gruppi (fissa su schermi larghi, a scomparsa su telefono/tablet) -->
+<div id="dash-side-overlay" class="dash-side-overlay"></div>
+<aside id="dash-side" class="dash-side" aria-label="Menu principale">
+  <div class="dash-side-head">
+    <strong>Menu</strong>
+    <button type="button" id="dash-side-close" class="dash-side-close" aria-label="Chiudi il menu">&times;</button>
+  </div>
+  <nav>
+  <?php foreach ($dashSideGroups as $groupTitle => $groupItems): ?>
+    <?php $visibleItems = array_filter($groupItems, fn ($k) => isset($dashSideAll[$k]), ARRAY_FILTER_USE_KEY); ?>
+    <?php if (!$visibleItems) continue; ?>
+    <div class="dash-side-title"><?= e($groupTitle) ?></div>
+    <?php foreach ($visibleItems as $itemKey => $itemIcon): ?>
+      <?php $it = $dashSideAll[$itemKey]; ?>
+      <a href="<?= e($it['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $it['active'] ? ' active' : '' ?>" title="<?= e($it['label']) ?>"<?= ($activeTab ?? '') === $it['active'] ? ' aria-current="page"' : '' ?>>
+        <i class="fa-solid <?= e($itemIcon) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span>
+      </a>
+    <?php endforeach; ?>
+  <?php endforeach; ?>
+  <div class="dash-side-foot">
+    <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
+    <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
+    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
+    <a class="dash-side-link" href="/dashboard_social_queue.php"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span>Coda Social</span></a>
+    <?php endif; ?>
+    <?php if (!empty($user['is_admin'])): ?>
+    <a class="dash-side-link" href="/admin_dashboard.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Area Admin</span></a>
+    <?php endif; ?>
+  </div>
+  </nav>
+  <div class="dash-side-user">
     <?php if ($managedProfiles): ?>
-      <details class="profile-switcher">
-        <summary style="list-style:none;cursor:pointer;display:inline-flex;position:relative;align-items:center;gap:10px;">
+      <details class="profile-switcher dash-user-switcher">
+        <summary class="dash-user-summary">
           <?php if ($barAvatarPath): ?>
             <img src="/<?= e($barAvatarPath) ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
           <?php else: ?>
@@ -291,11 +354,8 @@ if ($actingAsId) {
           </a>
         </div>
       </details>
-      <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi la pagina pubblica del profilo attivo" style="font-size:17px;">
-        <i class="fa-solid fa-eye"></i>
-      </a>
     <?php else: ?>
-      <a href="/<?= e($user['slug']) ?>" target="_blank" rel="noopener" title="Vedi pagina pubblica" style="display:inline-flex;align-items:center;gap:10px;">
+      <a class="dash-user-link" href="/<?= e($user['slug']) ?>" target="_blank" rel="noopener" title="Vedi pagina pubblica">
         <?php if (!empty($user['avatar_path'])): ?>
           <img src="/<?= e($user['avatar_path']) ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
         <?php else: ?>
@@ -306,8 +366,8 @@ if ($actingAsId) {
         <span class="dash-chip-text"><b><?= e($user['display_name'] ?? '') ?></b><small>@<?= e($user['slug']) ?></small></span>
       </a>
     <?php endif; ?>
-    <span class="dash-chip-more-wrap dash-hide-sm">
-      <button type="button" id="dash-chip-more" class="dash-chip-more" title="Account e impostazioni" aria-label="Account e impostazioni" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-chip-menu">&middot;&middot;&middot;</button>
+    <span class="dash-chip-more-wrap">
+      <button type="button" id="dash-chip-more" class="dash-user-gear" title="Account e impostazioni" aria-label="Account e impostazioni" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-chip-menu"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
       <div id="dash-chip-menu" class="dash-chip-menu" role="menu" hidden>
         <?php foreach ($dashAccountGroups as $accGroup => $accItems): ?>
           <div class="dash-chip-menu-title"><?= e($accGroup) ?></div>
@@ -320,85 +380,6 @@ if ($actingAsId) {
         <a role="menuitem" href="/logout.php" class="dash-chip-menu-item"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
       </div>
     </span>
-    <a href="/logout.php" class="dash-hide-sm">Esci</a>
-  </nav>
-</div>
-<script>
-// La barra è "fixed" (vedi CSS .navbar-dash-sticky), quindi esce dal flusso normale della
-// pagina: senza compensare, il contenuto sotto salterebbe su e ci finirebbe parzialmente
-// nascosto. Riserviamo lo spazio giusto con un padding-top sul body, ricalcolato ogni volta
-// che l'altezza della barra può cambiare (es. va su due righe ruotando lo schermo, o si
-// ridimensiona la finestra) — non un valore fisso, perché su schermi stretti la barra può
-// occupare una o due righe a seconda di quante icone/notifiche mostra.
-(function () {
-  var nav = document.querySelector('.navbar-dash-sticky');
-  if (!nav) return;
-  function applyOffset() {
-    document.body.style.paddingTop = nav.offsetHeight + 'px';
-    // Anche la barra laterale parte sotto la barra in alto: stessa altezza, via variabile CSS.
-    document.documentElement.style.setProperty('--dash-nav-h', nav.offsetHeight + 'px');
-  }
-  applyOffset();
-  window.addEventListener('resize', applyOffset);
-})();
-</script>
-<?php if ($managedProfiles): ?>
-<script>
-document.addEventListener('click', function (e) {
-  document.querySelectorAll('.profile-switcher[open]').forEach(function (el) {
-    if (!el.contains(e.target)) el.removeAttribute('open');
-  });
-});
-
-// Su schermi stretti il pannello diventa "fixed" rispetto a tutta la pagina (vedi CSS) invece
-// che ancorato all'avatar, per non rischiare di partire fuori dallo schermo — ma la barra in
-// alto può andare su una o due righe a seconda del contenuto, quindi il punto esatto sotto cui
-// posizionarlo va calcolato qui, non indovinato in CSS.
-var switcherEl = document.querySelector('.profile-switcher');
-var navbarEl = document.querySelector('.navbar');
-if (switcherEl && navbarEl) {
-  switcherEl.addEventListener('toggle', function () {
-    if (!switcherEl.open || window.innerWidth > 480) return;
-    var panel = switcherEl.querySelector('.profile-switcher-panel');
-    if (panel) panel.style.top = (navbarEl.getBoundingClientRect().bottom + 8) + 'px';
-  });
-}
-</script>
-<?php endif; ?>
-
-<!-- Barra laterale della dashboard: voci operative a gruppi (fissa su schermi larghi, a scomparsa su telefono/tablet) -->
-<div id="dash-side-overlay" class="dash-side-overlay"></div>
-<aside id="dash-side" class="dash-side" aria-label="Menu principale">
-  <div class="dash-side-head">
-    <strong>Menu</strong>
-    <button type="button" id="dash-side-close" class="dash-side-close" aria-label="Chiudi il menu">&times;</button>
-  </div>
-  <nav>
-  <?php foreach ($dashSideGroups as $groupTitle => $groupItems): ?>
-    <?php $visibleItems = array_filter($groupItems, fn ($k) => isset($dashSideAll[$k]), ARRAY_FILTER_USE_KEY); ?>
-    <?php if (!$visibleItems) continue; ?>
-    <div class="dash-side-title"><?= e($groupTitle) ?></div>
-    <?php foreach ($visibleItems as $itemKey => $itemIcon): ?>
-      <?php $it = $dashSideAll[$itemKey]; ?>
-      <a href="<?= e($it['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $it['active'] ? ' active' : '' ?>" title="<?= e($it['label']) ?>"<?= ($activeTab ?? '') === $it['active'] ? ' aria-current="page"' : '' ?>>
-        <i class="fa-solid <?= e($itemIcon) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span>
-      </a>
-    <?php endforeach; ?>
-  <?php endforeach; ?>
-  </nav>
-  <div class="dash-side-foot">
-    <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
-    <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
-    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
-    <a class="dash-side-link" href="/dashboard_social_queue.php"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span>Coda Social</span></a>
-    <?php endif; ?>
-    <?php if (!empty($user['is_admin'])): ?>
-    <a class="dash-side-link" href="/admin_dashboard.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Area Admin</span></a>
-    <?php endif; ?>
-    <button type="button" id="dash-side-account" class="dash-side-link dash-side-account-btn">
-      <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Account e impostazioni</span>
-    </button>
-    <a class="dash-side-link" href="/logout.php"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </div>
 </aside>
 <script>
@@ -417,12 +398,6 @@ if (switcherEl && navbarEl) {
   toggle.addEventListener('click', function () { setOpen(!side.classList.contains('open')); });
   overlay.addEventListener('click', function () { setOpen(false); });
   if (closeBtn) closeBtn.addEventListener('click', function () { setOpen(false); });
-  // Su telefono l'hamburger è uno solo: dal pannello si raggiunge anche il menu dell'account.
-  var accountBtn = document.getElementById('dash-side-account');
-  var accountToggle = document.getElementById('account-menu-toggle');
-  if (accountBtn && accountToggle) {
-    accountBtn.addEventListener('click', function () { setOpen(false); accountToggle.click(); });
-  }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
   // Tornando a uno schermo largo il pannello torna fisso: niente stato "aperto" residuo.
   window.addEventListener('resize', function () { if (window.innerWidth >= 992) setOpen(false); });
@@ -491,7 +466,6 @@ echo renderDashRight([
   btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(menu.hidden); });
   document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target)) setOpen(false); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { setOpen(false); btn.focus(); } });
-  window.addEventListener('resize', function () { if (window.innerWidth < 992) setOpen(false); });
 })();
 </script>
 
