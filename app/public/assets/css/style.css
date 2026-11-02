@@ -3264,3 +3264,22 @@ body.backstage-page::before {
 }
 .dash-chip-more:hover { background: #ecebf8; color: var(--accent); }
 @media (min-width: 992px) { .dash-chip-text { display: flex; } }
+
+/* Tendina dei tre puntini (profilo in alto a destra): sotto al pulsante, sopra a barre e pannelli. */
+.dash-chip-more-wrap { position: relative; display: inline-flex; }
+.dash-chip-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 240px; z-index: 720;
+  background: #fff; border: 1px solid #e2e2e7; border-radius: 12px; padding: 6px 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16);
+}
+.dash-chip-menu[hidden] { display: none; }
+.dash-chip-menu-title { padding: 10px 16px 3px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.dash-chip-menu-item { display: flex; align-items: center; gap: 12px; padding: 9px 16px; color: #22223b; font-size: 14px; text-decoration: none; margin-left: 0 !important; }
+.dash-chip-menu-item i { width: 16px; text-align: center; color: var(--text-muted); }
+.dash-chip-menu-item:hover { background: #f5f5f8; color: #22223b !important; }
+.dash-chip-menu-item.active { background: #ece9fd; color: var(--accent); font-weight: 700; }
+.dash-chip-menu-item.active i { color: var(--accent); }
+.dash-chip-menu-sep { height: 1px; background: #eee; margin: 6px 0; }
+.dash-icons-nav .dash-chip-menu-item { color: #22223b; }
+.dash-icons-nav .dash-chip-menu-item.active { color: var(--accent); }
+.dash-icons-nav .dash-chip-menu-item:hover { color: #22223b; }
