@@ -173,6 +173,19 @@ function renderDashRight(array $ctx): string {
     }
     $html .= '<div class="dash-right-block"><div class="dash-right-title">Automazioni e MCP</div>' . $a . '</div>';
 
+    // --- Integrazioni (voci prima nel menu account) ---
+    if (!empty($ctx['integrations'])) {
+        $in = '';
+        foreach ($ctx['integrations'] as $it) {
+            $isActive = ($ctx['active_tab'] ?? '') === $it['tab'];
+            $in .= '<a class="dash-right-row' . ($isActive ? ' active' : '') . '" href="' . e($it['url']) . '">'
+                 . '<span class="dash-right-int"><i class="' . e($it['icon']) . '" aria-hidden="true"></i>' . e($it['label']) . '</span>'
+                 . ($it['on'] ? '<span class="dash-right-dot" title="Collegato" aria-label="Collegato"></span>' : '')
+                 . '</a>';
+        }
+        $html .= '<div class="dash-right-block"><div class="dash-right-title">Integrazioni</div>' . $in . '</div>';
+    }
+
     // --- Prossimi eventi ---
     if ($isBandOrLabel && ($nav['Eventi'] ?? 1)) {
         $ev = '';

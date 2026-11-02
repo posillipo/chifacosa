@@ -402,6 +402,15 @@ echo renderDashRight([
     'unread_contacts'  => $unreadMessages,
     'unread_messages'  => $unreadDirectMessages,
     'tz_profile'       => ($profile ?? $user),
+    // Integrazioni (prima nel menu account): solo band/etichette, come prima. Il pallino verde = collegata.
+    'integrations'     => !$isBandOrLabel ? [] : [
+        ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
+        ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
+        ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
+        ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
+        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty(($profile ?? $user)['metricool_auto_social'])],
+    ],
+    'active_tab'       => $activeTab ?? '',
 ]);
 ?>
 <script>
@@ -469,29 +478,6 @@ echo renderDashRight([
     <a href="/dashboard_api_tokens.php" class="account-sidebar-link <?= $activeTab==='api_tokens'?'active':'' ?>">
       <i class="fa-solid fa-code"></i> API
     </a>
-    <?php if ($isBandOrLabel): ?>
-      <div style="padding:14px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Integrazioni</div>
-      <a href="/dashboard_spotify.php" class="account-sidebar-link <?= $activeTab==='spotify'?'active':'' ?>">
-        <i class="fa-brands fa-spotify"></i> Account Spotify
-        <?php if (!empty($user['spotify_artist_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
-      </a>
-      <a href="/dashboard_podcast.php" class="account-sidebar-link <?= $activeTab==='podcast'?'active':'' ?>">
-        <i class="fa-solid fa-microphone"></i> Account Podcast
-        <?php if (!empty($user['spotify_show_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
-      </a>
-      <a href="/dashboard_youtube.php" class="account-sidebar-link <?= $activeTab==='youtube'?'active':'' ?>">
-        <i class="fa-brands fa-youtube"></i> Account YouTube
-        <?php if (!empty($user['youtube_channel_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
-      </a>
-      <a href="/dashboard_telegram.php" class="account-sidebar-link <?= $activeTab==='telegram'?'active':'' ?>">
-        <i class="fa-brands fa-telegram"></i> Canale Telegram
-        <?php if (!empty($user['telegram_chat_id'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
-      </a>
-      <a href="/dashboard_metricool.php" class="account-sidebar-link <?= $activeTab==='metricool'?'active':'' ?>">
-        <i class="fa-solid fa-share-nodes"></i> Social Automatico
-        <?php if (!empty(($profile ?? $user)['metricool_auto_social'])): ?><span class="account-sidebar-dot"></span><?php endif; ?>
-      </a>
-    <?php endif; ?>
   </div>
 </div>
 <script>
