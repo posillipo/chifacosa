@@ -224,7 +224,7 @@ if ($actingAsId) {
     </a>
     <?php if ($managedProfiles): ?>
       <details class="profile-switcher">
-        <summary style="list-style:none;cursor:pointer;display:inline-flex;position:relative;">
+        <summary style="list-style:none;cursor:pointer;display:inline-flex;position:relative;align-items:center;gap:10px;">
           <?php if ($barAvatarPath): ?>
             <img src="/<?= e($barAvatarPath) ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
           <?php else: ?>
@@ -235,6 +235,7 @@ if ($actingAsId) {
           <?php if ($actingAsId): ?>
             <span style="position:absolute;bottom:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid #fff;" title="Stai gestendo un profilo diverso dal tuo"></span>
           <?php endif; ?>
+          <span class="dash-chip-text"><b><?= e($barAvatarName) ?></b><small>@<?= e($barSlug) ?></small></span>
         </summary>
         <div class="profile-switcher-panel">
           <div style="padding:10px 16px 6px;color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Stai gestendo</div>
@@ -271,7 +272,7 @@ if ($actingAsId) {
         <i class="fa-solid fa-eye"></i>
       </a>
     <?php else: ?>
-      <a href="/<?= e($user['slug']) ?>" target="_blank" title="Vedi pagina pubblica" style="display:inline-flex;">
+      <a href="/<?= e($user['slug']) ?>" target="_blank" rel="noopener" title="Vedi pagina pubblica" style="display:inline-flex;align-items:center;gap:10px;">
         <?php if (!empty($user['avatar_path'])): ?>
           <img src="/<?= e($user['avatar_path']) ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
         <?php else: ?>
@@ -279,8 +280,10 @@ if ($actingAsId) {
             <?= e(mb_strtoupper(mb_substr($user['display_name'] ?? '?', 0, 1))) ?>
           </span>
         <?php endif; ?>
+        <span class="dash-chip-text"><b><?= e($user['display_name'] ?? '') ?></b><small>@<?= e($user['slug']) ?></small></span>
       </a>
     <?php endif; ?>
+    <button type="button" id="dash-chip-more" class="dash-chip-more dash-hide-sm" title="Account e impostazioni" aria-label="Account e impostazioni">&middot;&middot;&middot;</button>
     <a href="/logout.php" class="dash-hide-sm">Esci</a>
   </nav>
 </div>
@@ -489,6 +492,8 @@ echo renderDashRight([
   function open() { overlay.style.display = 'block'; sidebar.style.display = 'block'; }
   function close() { overlay.style.display = 'none'; sidebar.style.display = 'none'; }
   toggle.addEventListener('click', open);
+  var chipMore = document.getElementById('dash-chip-more');
+  if (chipMore) chipMore.addEventListener('click', open);
   overlay.addEventListener('click', close);
   closeBtn.addEventListener('click', close);
 })();
