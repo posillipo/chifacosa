@@ -2,6 +2,7 @@
 <button type="button" id="back-to-top-btn" class="floating-btn" title="Torna su" aria-label="Torna su">
   <i class="fa-solid fa-arrow-up"></i>
 </button>
+<script src="<?= assetUrl('/assets/js/upload-progress.js') ?>" defer></script>
 <script>
 // Torna su: stesso pulsante/comportamento già usato nelle pagine pubbliche (renderFloatingButtons()
 // in functions.php) — compare solo scendendo abbastanza, per non stare sempre in mezzo ai piedi.
