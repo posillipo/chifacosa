@@ -3283,3 +3283,37 @@ body.backstage-page::before {
 .dash-icons-nav .dash-chip-menu-item { color: #22223b; }
 .dash-icons-nav .dash-chip-menu-item.active { color: var(--accent); }
 .dash-icons-nav .dash-chip-menu-item:hover { color: #22223b; }
+
+/* ===== Piede della barra laterale: profilo (avatar, nome, @handle) e ingranaggio =====
+   La barra diventa una colonna: le voci scorrono, il blocco profilo resta fisso in fondo. Le tendine
+   (selettore profili e menu account) si aprono verso l'alto, sopra al blocco. */
+.dash-side { display: flex; flex-direction: column; overflow: visible; padding-bottom: 0; }
+.dash-side > nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 8px; }
+.dash-side-head { position: static; flex: 0 0 auto; }
+.dash-side-user {
+  flex: 0 0 auto; position: relative; display: flex; align-items: center; gap: 6px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e2e7; background: #fff;
+}
+.dash-user-switcher { flex: 1 1 auto; min-width: 0; position: static; }
+.dash-user-summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; position: relative; min-width: 0; border-radius: 8px; padding: 4px; }
+.dash-user-summary::-webkit-details-marker { display: none; }
+.dash-user-summary:hover, .dash-user-link:hover { background: #f5f5f8; }
+.dash-user-link { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; text-decoration: none; border-radius: 8px; padding: 4px; }
+.dash-side-user .dash-chip-text { display: flex; flex: 1 1 auto; min-width: 0; max-width: none; }
+.dash-user-gear {
+  flex: 0 0 auto; width: 34px; height: 34px; border: none; background: none; cursor: pointer; border-radius: 8px;
+  color: #536471; font-size: 16px; display: inline-flex; align-items: center; justify-content: center;
+}
+.dash-user-gear:hover, .dash-user-gear[aria-expanded="true"] { background: #ecebf8; color: var(--accent); }
+.dash-side-user .dash-chip-more-wrap { position: static; }
+.dash-side-user .dash-chip-menu {
+  top: auto; bottom: calc(100% + 8px); left: 8px; right: auto; width: 248px;
+  max-height: calc(100vh - var(--dash-nav-h) - 96px); overflow-y: auto; z-index: 720;
+}
+.dash-side-user .profile-switcher-panel {
+  position: absolute; top: auto; bottom: calc(100% + 8px); left: 8px; right: auto; width: 248px;
+  max-width: calc(100vw - 24px); max-height: calc(100vh - var(--dash-nav-h) - 96px); overflow-y: auto; z-index: 720;
+}
+@media (max-width: 991px) {
+  .dash-side-user .dash-chip-menu, .dash-side-user .profile-switcher-panel { max-height: calc(100vh - 110px); }
+}
