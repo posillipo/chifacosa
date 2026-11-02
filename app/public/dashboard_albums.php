@@ -153,7 +153,7 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
-  <form method="post" enctype="multipart/form-data" class="card">
+  <form method="post" enctype="multipart/form-data" class="card"<?= uploadProgressAttrs() ?>>
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
     <input type="hidden" name="tz_offset_minutes" value="">
@@ -263,7 +263,7 @@ include __DIR__ . '/_dash_header.php';
           </div>
           <p style="color:var(--text-muted);font-size:12px;margin:6px 0 12px;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
 
-          <form method="post" enctype="multipart/form-data">
+          <form method="post" enctype="multipart/form-data"<?= uploadProgressAttrs() ?>>
             <?= csrfField() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">

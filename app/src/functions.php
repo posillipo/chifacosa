@@ -91,6 +91,26 @@ function csrfField(): string {
     return '<input type="hidden" name="csrf" value="' . e(csrfToken()) . '">';
 }
 
+// "500M" -> 524288000 (i valori di php.ini accettano i suffissi K, M, G).
+function iniSizeToBytes(string $v): int {
+    $v = trim($v);
+    if ($v === '') return 0;
+    $n = (float) $v;
+    switch (strtoupper(substr($v, -1))) {
+        case 'G': $n *= 1024;   // no break
+        case 'M': $n *= 1024;   // no break
+        case 'K': $n *= 1024;
+    }
+    return (int) $n;
+}
+
+// Attributi da mettere su un <form enctype="multipart/form-data"> per avere la barra di avanzamento
+// (assets/js/upload-progress.js) e il controllo, prima dell'invio, di dimensione e numero di file.
+function uploadProgressAttrs(): string {
+    return ' data-upload-progress data-max-bytes="' . iniSizeToBytes((string) ini_get('post_max_size'))
+         . '" data-max-files="' . (int) ini_get('max_file_uploads') . '"';
+}
+
 function checkCsrf(): void {
     // Richiesta con un corpo ma NESSUN campo: succede quando i file inviati superano post_max_size
     // (PHP scarta in silenzio tutto, token incluso). Meglio dirlo chiaramente che mostrare "CSRF".
