@@ -92,6 +92,13 @@ function csrfField(): string {
 }
 
 function checkCsrf(): void {
+    // Richiesta con un corpo ma NESSUN campo: succede quando i file inviati superano post_max_size
+    // (PHP scarta in silenzio tutto, token incluso). Meglio dirlo chiaramente che mostrare "CSRF".
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        http_response_code(413);
+        die('Il caricamento supera il limite del server (massimo ' . e((string) ini_get('post_max_size')) . ' per invio, '
+            . e((string) ini_get('max_file_uploads')) . ' file alla volta). Riprova caricando meno foto per volta.');
+    }
     if (!isset($_POST['csrf']) || !isset($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'], $_POST['csrf'])) {
         http_response_code(403);
         die('Richiesta non valida (CSRF).');
