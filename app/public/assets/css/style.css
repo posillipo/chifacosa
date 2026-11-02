@@ -3246,3 +3246,9 @@ body.backstage-page::before {
   .dash-icons-nav { flex-wrap: nowrap; gap: 14px; }
   .navbar.navbar-dash-sticky { padding-top: 10px; padding-bottom: 10px; }
 }
+
+/* Integrazioni nella colonna destra: icona + nome, pallino verde se collegata. */
+.dash-right-int { display: flex; align-items: center; gap: 9px; }
+.dash-right-int i { width: 16px; text-align: center; color: var(--text-muted); }
+.dash-right-row.active { background: #ece9fd; color: var(--accent); font-weight: 700; }
+.dash-right-dot { width: 8px; height: 8px; border-radius: 50%; background: #1DB954; flex-shrink: 0; }
