@@ -150,6 +150,25 @@ $dashSideGroups = [
     ],
 ];
 
+// Voci "Il mio profilo" e "Impostazioni": un solo elenco, usato sia dal pannello laterale
+// (hamburger) sia dalla tendina dei tre puntini accanto al profilo. Stesse regole di visibilità
+// di prima (Team e Log solo per band/etichette).
+$dashAccountGroups = [
+    'Il mio profilo' => [
+        ['url' => '/dashboard_profile.php',  'tab' => 'profile',  'icon' => 'fa-id-card',     'label' => 'Profilo e anagrafica', 'show' => true],
+        ['url' => '/dashboard_profiles.php', 'tab' => 'profiles', 'icon' => 'fa-layer-group', 'label' => 'I tuoi profili',        'show' => true],
+        ['url' => '/dashboard_theme.php',    'tab' => 'theme',    'icon' => 'fa-palette',     'label' => 'Tema grafico',         'show' => true],
+        ['url' => '/dashboard_password.php', 'tab' => 'password', 'icon' => 'fa-lock',        'label' => 'Cambia password',      'show' => true],
+    ],
+    'Impostazioni' => [
+        ['url' => '/dashboard_nav_menu.php',         'tab' => 'nav_menu',         'icon' => 'fa-bars',           'label' => 'Menu di Navigazione', 'show' => true],
+        ['url' => '/dashboard_privacy_tracking.php', 'tab' => 'privacy_tracking', 'icon' => 'fa-shield-halved',  'label' => 'Privacy e Tracking',  'show' => true],
+        ['url' => '/dashboard_team.php',             'tab' => 'team',             'icon' => 'fa-people-group',   'label' => 'Team e co-admin',     'show' => $isBandOrLabel],
+        ['url' => '/dashboard_log.php',              'tab' => 'log',              'icon' => 'fa-clock-rotate-left', 'label' => 'Log',              'show' => $isBandOrLabel],
+        ['url' => '/dashboard_api_tokens.php',       'tab' => 'api_tokens',       'icon' => 'fa-code',           'label' => 'API',                 'show' => true],
+    ],
+];
+
 // Avatar mostrato nella barra in alto: il proprio, a meno che non si stia gestendo un altro
 // profilo — in quel caso mostriamo l'avatar DI QUEL profilo, così è sempre chiaro a colpo
 // d'occhio su chi si sta agendo, senza dover aprire il menu.
@@ -283,7 +302,20 @@ if ($actingAsId) {
         <span class="dash-chip-text"><b><?= e($user['display_name'] ?? '') ?></b><small>@<?= e($user['slug']) ?></small></span>
       </a>
     <?php endif; ?>
-    <button type="button" id="dash-chip-more" class="dash-chip-more dash-hide-sm" title="Account e impostazioni" aria-label="Account e impostazioni">&middot;&middot;&middot;</button>
+    <span class="dash-chip-more-wrap dash-hide-sm">
+      <button type="button" id="dash-chip-more" class="dash-chip-more" title="Account e impostazioni" aria-label="Account e impostazioni" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-chip-menu">&middot;&middot;&middot;</button>
+      <div id="dash-chip-menu" class="dash-chip-menu" role="menu" hidden>
+        <?php foreach ($dashAccountGroups as $accGroup => $accItems): ?>
+          <div class="dash-chip-menu-title"><?= e($accGroup) ?></div>
+          <?php foreach ($accItems as $ai): ?>
+            <?php if (!$ai['show']) continue; ?>
+            <a role="menuitem" href="<?= e($ai['url']) ?>" class="dash-chip-menu-item<?= $activeTab === $ai['tab'] ? ' active' : '' ?>"><i class="fa-solid <?= e($ai['icon']) ?>" aria-hidden="true"></i><span><?= e($ai['label']) ?></span></a>
+          <?php endforeach; ?>
+        <?php endforeach; ?>
+        <div class="dash-chip-menu-sep"></div>
+        <a role="menuitem" href="/logout.php" class="dash-chip-menu-item"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
+      </div>
+    </span>
     <a href="/logout.php" class="dash-hide-sm">Esci</a>
   </nav>
 </div>
@@ -442,6 +474,23 @@ echo renderDashRight([
 })();
 </script>
 
+<script>
+// Tendina dei tre puntini: si apre sotto al profilo, si chiude con un clic fuori, con Esc o scegliendo una voce.
+(function () {
+  var btn = document.getElementById('dash-chip-more');
+  var menu = document.getElementById('dash-chip-menu');
+  if (!btn || !menu) return;
+  function setOpen(open) {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(menu.hidden); });
+  document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { setOpen(false); btn.focus(); } });
+  window.addEventListener('resize', function () { if (window.innerWidth < 992) setOpen(false); });
+})();
+</script>
+
 <!-- Pannello laterale "Account e impostazioni": Profilo, password, integrazioni esterne -->
 <div id="account-menu-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:700;"></div>
 <div id="account-menu-sidebar" style="display:none;position:fixed;top:0;left:0;bottom:0;width:260px;max-width:82vw;background:#fff;z-index:701;box-shadow:2px 0 20px rgba(0,0,0,0.2);overflow-y:auto;">
@@ -450,37 +499,15 @@ echo renderDashRight([
     <button type="button" id="account-menu-close" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
   </div>
   <div style="padding:8px 0;">
-    <div style="padding:6px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Il mio profilo</div>
-    <a href="/dashboard_profile.php" class="account-sidebar-link <?= $activeTab==='profile'?'active':'' ?>">
-      <i class="fa-solid fa-id-card"></i> Profilo e anagrafica
-    </a>
-    <a href="/dashboard_profiles.php" class="account-sidebar-link <?= $activeTab==='profiles'?'active':'' ?>">
-      <i class="fa-solid fa-layer-group"></i> I tuoi profili
-    </a>
-    <a href="/dashboard_theme.php" class="account-sidebar-link <?= $activeTab==='theme'?'active':'' ?>">
-      <i class="fa-solid fa-palette"></i> Tema grafico
-    </a>
-    <a href="/dashboard_password.php" class="account-sidebar-link <?= $activeTab==='password'?'active':'' ?>">
-      <i class="fa-solid fa-lock"></i> Cambia password
-    </a>
-    <div style="padding:14px 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);">Impostazioni</div>
-    <a href="/dashboard_nav_menu.php" class="account-sidebar-link <?= $activeTab==='nav_menu'?'active':'' ?>">
-      <i class="fa-solid fa-bars"></i> Menu di Navigazione
-    </a>
-    <a href="/dashboard_privacy_tracking.php" class="account-sidebar-link <?= $activeTab==='privacy_tracking'?'active':'' ?>">
-      <i class="fa-solid fa-shield-halved"></i> Privacy e Tracking
-    </a>
-    <?php if ($isBandOrLabel): ?>
-      <a href="/dashboard_team.php" class="account-sidebar-link <?= $activeTab==='team'?'active':'' ?>">
-        <i class="fa-solid fa-people-group"></i> Team e co-admin
-      </a>
-      <a href="/dashboard_log.php" class="account-sidebar-link <?= $activeTab==='log'?'active':'' ?>">
-        <i class="fa-solid fa-clock-rotate-left"></i> Log
-      </a>
-    <?php endif; ?>
-    <a href="/dashboard_api_tokens.php" class="account-sidebar-link <?= $activeTab==='api_tokens'?'active':'' ?>">
-      <i class="fa-solid fa-code"></i> API
-    </a>
+    <?php foreach ($dashAccountGroups as $accGroup => $accItems): ?>
+      <div style="padding:<?= $accGroup === 'Il mio profilo' ? '6px' : '14px' ?> 18px 4px;font-size:11.5px;text-transform:uppercase;color:var(--text-muted);"><?= e($accGroup) ?></div>
+      <?php foreach ($accItems as $ai): ?>
+        <?php if (!$ai['show']) continue; ?>
+        <a href="<?= e($ai['url']) ?>" class="account-sidebar-link <?= $activeTab === $ai['tab'] ? 'active' : '' ?>">
+          <i class="fa-solid <?= e($ai['icon']) ?>"></i> <?= e($ai['label']) ?>
+        </a>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
   </div>
 </div>
 <script>
@@ -492,8 +519,6 @@ echo renderDashRight([
   function open() { overlay.style.display = 'block'; sidebar.style.display = 'block'; }
   function close() { overlay.style.display = 'none'; sidebar.style.display = 'none'; }
   toggle.addEventListener('click', open);
-  var chipMore = document.getElementById('dash-chip-more');
-  if (chipMore) chipMore.addEventListener('click', open);
   overlay.addEventListener('click', close);
   closeBtn.addEventListener('click', close);
 })();
