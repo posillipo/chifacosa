@@ -3252,3 +3252,15 @@ body.backstage-page::before {
 .dash-right-int i { width: 16px; text-align: center; color: var(--text-muted); }
 .dash-right-row.active { background: #ece9fd; color: var(--accent); font-weight: 700; }
 .dash-right-dot { width: 8px; height: 8px; border-radius: 50%; background: #1DB954; flex-shrink: 0; }
+
+/* Profilo in alto a destra (stile account): avatar, nome in grassetto, @nome sotto in grigio e
+   tre puntini che aprono il menu dell'account. Su telefono/tablet resta solo l'avatar. */
+.dash-chip-text { display: none; flex-direction: column; line-height: 1.25; text-align: left; max-width: 190px; }
+.dash-chip-text b { font-size: 14px; color: #0f1419; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-chip-text small { font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-chip-more {
+  background: none; border: none; cursor: pointer; color: #536471; font-size: 18px; line-height: 1;
+  letter-spacing: 1px; padding: 6px 10px; border-radius: 999px; margin-left: -4px;
+}
+.dash-chip-more:hover { background: #ecebf8; color: var(--accent); }
+@media (min-width: 992px) { .dash-chip-text { display: flex; } }
