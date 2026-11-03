@@ -3317,3 +3317,25 @@ body.backstage-page::before {
 @media (max-width: 991px) {
   .dash-side-user .dash-chip-menu, .dash-side-user .profile-switcher-panel { max-height: calc(100vh - 110px); }
 }
+
+/* ===== Dashboard: testo nero e un po' più marcato =====
+   Vale solo per il tema chiaro della dashboard (body.light-theme). I testi secondari restano più
+   chiari del principale ma molto più scuri di prima; le voci attive mantengono il colore d'accento. */
+body.light-theme { --text: #000; --text-muted: #3f3f46; font-weight: 500; }
+body.light-theme b, body.light-theme strong, body.light-theme th { font-weight: 700; }
+body.light-theme .dash-side-link,
+body.light-theme .dash-right-row,
+body.light-theme .dash-right-line,
+body.light-theme .dash-right-event,
+body.light-theme .dash-icons-nav .dash-chip-menu-item,
+body.light-theme .account-sidebar-link,
+body.light-theme .profile-switcher-item { color: #000; }
+body.light-theme .dash-chip-text b { color: #000; font-weight: 700; }
+body.light-theme .dash-chip-text small { color: #3f3f46; }
+body.light-theme .dash-side-link.active,
+body.light-theme .dash-right-row.active,
+body.light-theme .dash-icons-nav .dash-chip-menu-item.active,
+body.light-theme .account-sidebar-link.active,
+body.light-theme .profile-switcher-item.active { color: var(--accent); }
+body.light-theme .dash-side-link { font-weight: 600; }
+body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-weight: 700; }
