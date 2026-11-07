@@ -270,6 +270,18 @@ include __DIR__ . '/_dash_header.php';
   <?php endif; ?>
   <?php if (isset($_GET['sync_error'])): ?><div class="alert error"><?= e($_GET['sync_error']) ?></div><?php endif; ?>
 
+  <style>
+  /* Pagina a due colonne: moduli di inserimento a sinistra, elenco dei link a destra. Sotto i 760px si impilano. */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
   <div class="card">
     <strong>🧩 Tasto Speciale — Link delle sezioni del sito</strong>
     <p style="color:var(--text-muted);font-size:13px;margin:6px 0 12px;">
@@ -413,6 +425,9 @@ include __DIR__ . '/_dash_header.php';
   </details>
   <?php endif; ?>
 
+  </div>
+
+  <div class="dash-two-col-side">
   <div class="section-title">I tuoi link (<?= count($links) ?>)</div>
   <p style="color:var(--text-muted);font-size:13px;">
     Le icone (Spotify, Apple Music, Instagram, Facebook, TikTok, YouTube, LinkedIn, SoundCloud,
@@ -431,4 +446,6 @@ include __DIR__ . '/_dash_header.php';
     <div class="section-title" style="margin-top:22px;">Link e sezioni (<?= count($actionLinks) ?>)</div>
     <?php foreach ($actionLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
   <?php endif; ?>
+  </div>
+  </div>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
