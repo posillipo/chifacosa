@@ -100,6 +100,11 @@ $stmt = getDB()->prepare('SELECT id, title FROM photo_albums WHERE user_id=? ORD
 $stmt->execute([$profile['id']]);
 $albums = $stmt->fetchAll();
 
+// Ultimi articoli già inseriti (colonna destra): solo di questo profilo, i più recenti per primi.
+$stmt = getDB()->prepare('SELECT id, title, published_at, cover_path, excerpt, content, slug FROM blog_posts WHERE user_id=? ORDER BY published_at DESC, id DESC LIMIT 15');
+$stmt->execute([$profile['id']]);
+$recentPosts = $stmt->fetchAll();
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
@@ -116,6 +121,18 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
+  <style>
+  /* Pagina a due colonne: modulo a sinistra, ultimi articoli a destra. Sotto i 760px si impilano. */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
   <div class="section-title">Nuovo articolo</div>
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
@@ -180,6 +197,36 @@ include __DIR__ . '/_dash_header.php';
 
     <button type="submit" class="btn">Pubblica</button>
   </form>
+  </div>
+
+  <div class="dash-two-col-side">
+    <div class="section-title">I tuoi articoli (ultimi <?= count($recentPosts) ?>)</div>
+    <?php if (!$recentPosts): ?>
+      <div class="card" style="color:var(--text-muted);">Non hai ancora scritto nessun articolo.</div>
+    <?php endif; ?>
+    <?php foreach ($recentPosts as $rp): ?>
+      <?php $rpScheduled = strtotime($rp['published_at']) > time(); ?>
+      <div class="blog-item" style="display:flex;gap:12px;align-items:flex-start;">
+        <?php if ($rp['cover_path']): ?>
+          <img src="/<?= e($rp['cover_path']) ?>" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+        <?php endif; ?>
+        <div style="flex:1;min-width:0;">
+          <?php if ($rpScheduled): ?>
+            <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($rp['published_at'], $profile)) ?></div>
+          <?php else: ?>
+            <div class="date"><?= e(formatLocalDateTime($rp['published_at'], $profile)) ?></div>
+          <?php endif; ?>
+          <strong><?= e($rp['title']) ?></strong>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <a href="/dashboard_blog_edit.php?id=<?= (int) $rp['id'] ?>" class="btn small secondary">✏️ Modifica</a>
+            <a href="<?= e(blogPostUrl($profile['slug'], $rp)) ?>" target="_blank" class="btn small secondary">↗ Vedi online</a>
+          </div>
+        </div>
+      </div>
+    <?php endforeach; ?>
+    <p><a href="/dashboard_blog_posts.php">Tutti gli articoli →</a></p>
+  </div>
+  </div>
 
   <script>
   (function () {
