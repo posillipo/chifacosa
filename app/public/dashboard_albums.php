@@ -153,6 +153,19 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
+  <style>
+  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
+     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
   <form method="post" enctype="multipart/form-data" class="card"<?= uploadProgressAttrs() ?>>
     <?= csrfField() ?>
     <input type="hidden" name="action" value="add">
@@ -195,6 +208,9 @@ include __DIR__ . '/_dash_header.php';
     <button type="submit" class="btn" style="margin-top:10px;">Crea album</button>
   </form>
 
+  </div>
+
+  <div class="dash-two-col-side">
   <div class="section-title">I tuoi album (<?= count($albums) ?>)</div>
   <?php foreach ($albums as $al): ?>
     <?php
@@ -307,6 +323,8 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+  </div>
+  </div>
 
   <script>
   (function () {

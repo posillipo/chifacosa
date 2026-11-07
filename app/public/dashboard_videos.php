@@ -168,6 +168,19 @@ include __DIR__ . '/_dash_header.php';
   <?php if (isset($_GET['regen'])): ?>
     <div class="alert <?= (int) $_GET['regen'] > 0 ? 'success' : 'error' ?>"><?= (int) $_GET['regen'] > 0 ? 'Anteprime generate: ' . (int) $_GET['regen'] . '.' : 'Nessuna anteprima generata (controlla che i file video siano leggibili).' ?></div>
   <?php endif; ?>
+  <style>
+  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
+     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
   <?php
     $missingThumbs = count(array_filter($videos, fn($v) => empty($v['thumb_path'])));
   ?>
@@ -210,6 +223,9 @@ include __DIR__ . '/_dash_header.php';
     </div>
   </form>
 
+  </div>
+
+  <div class="dash-two-col-side">
   <div class="section-title">I tuoi video (<?= count($videos) ?>)</div>
   <?php if (!$videos): ?><div class="card">Nessun video ancora.</div><?php endif; ?>
   <?php foreach ($videos as $i => $v): ?>
@@ -282,6 +298,8 @@ include __DIR__ . '/_dash_header.php';
       </div>
     </div>
   <?php endforeach; ?>
+  </div>
+  </div>
 
   <script>
   (function () {
