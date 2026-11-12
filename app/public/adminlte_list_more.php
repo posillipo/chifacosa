@@ -32,10 +32,15 @@ $html = '';
 $count = 0;
 
 if ($type === 'blog') {
-    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW() ORDER BY published_at DESC LIMIT ? OFFSET ?');
-    $stmt->bindValue(1, $uid, PDO::PARAM_INT);
-    $stmt->bindValue(2, $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+    // Stesso filtro della pagina Blog (parola chiave + categorie), rivalidato qui sull'artista.
+    [$filterSql, $filterParams] = blogFilterSql(blogFilterFromRequest($uid, $_GET));
+    $stmt = $db->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW()' . $filterSql . ' ORDER BY published_at DESC LIMIT ? OFFSET ?');
+    $bind = array_merge([$uid], $filterParams);
+    foreach ($bind as $i => $v) {
+        $stmt->bindValue($i + 1, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stmt->bindValue(count($bind) + 1, $pageSize, PDO::PARAM_INT);
+    $stmt->bindValue(count($bind) + 2, $offset, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll();
     $html = renderAdminLteBlogRows($rows, $slug, $artist);

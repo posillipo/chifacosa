@@ -1518,7 +1518,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
 // query. Il menu di navigazione, "Segui" e Accedi/Registrati vivevano prima qui sotto le
 // statistiche: sono passati alla barra in cima alla pagina (adminLteTopNav()) — qui resta solo
 // l'identità.
-function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFollowWidget = false): string {
+function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFollowWidget = false, string $extraTopHtml = ''): string {
     $uid = (int) $artist['id'];
     $db = getDB();
 
@@ -1554,6 +1554,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
     ob_start();
     ?>
           <div class="col-lg-3 order-2 order-lg-1 adminlte-sidebar-col">
+            <?= $extraTopHtml ?>
             <div class="card widget-user-2 mb-0">
               <div class="widget-user-header text-bg-warning">
                 <div class="widget-user-image">
@@ -1870,6 +1871,104 @@ function renderAdminLtePinnedSidebarCard(array $pinnedItems): string {
                 </a>
                 <?php endforeach; ?>
               </div>
+            </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Filtro di ricerca del Blog pubblico (tema AdminLTE): parola chiave (minimo 3 caratteri, cerca in
+// titolo, riassunto e testo) + una o più categorie. Le categorie accettate sono SOLO quelle
+// dell'artista (gli id arrivati dall'URL vengono incrociati con blog_categories del suo
+// user_id), la parola chiave finisce in una query preparata con i caratteri jolly neutralizzati.
+function blogFilterFromRequest(int $userId, array $src): array {
+    $q = trim((string) ($src['q'] ?? ''));
+    if (mb_strlen($q) < 3) {
+        $q = '';
+    }
+    $q = mb_substr($q, 0, 100);
+    $cats = [];
+    $raw = $src['cat'] ?? [];
+    if (is_array($raw) && $raw) {
+        $stmt = getDB()->prepare('SELECT id FROM blog_categories WHERE user_id=?');
+        $stmt->execute([$userId]);
+        $valid = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+        $cats = array_values(array_intersect(array_unique(array_map('intval', $raw)), $valid));
+    }
+    return ['q' => $q, 'cats' => $cats];
+}
+
+// Condizioni SQL (da aggiungere a "WHERE user_id=? AND published_at <= NOW()") e parametri del filtro.
+function blogFilterSql(array $filter): array {
+    $sql = '';
+    $params = [];
+    if (($filter['q'] ?? '') !== '') {
+        $like = '%' . addcslashes($filter['q'], '\\%_') . '%';
+        $sql .= ' AND (title LIKE ? OR excerpt LIKE ? OR content LIKE ?)';
+        array_push($params, $like, $like, $like);
+    }
+    if (!empty($filter['cats'])) {
+        $ph = implode(',', array_fill(0, count($filter['cats']), '?'));
+        $sql .= " AND EXISTS (SELECT 1 FROM blog_post_categories bpc WHERE bpc.post_id = blog_posts.id AND bpc.category_id IN ($ph))";
+        foreach ($filter['cats'] as $cid) {
+            $params[] = (int) $cid;
+        }
+    }
+    return [$sql, $params];
+}
+
+// Parte di query string che riporta il filtro allo scroll infinito (adminlte_list_more.php).
+function blogFilterQueryString(array $filter): string {
+    $out = '';
+    if (($filter['q'] ?? '') !== '') {
+        $out .= '&q=' . rawurlencode($filter['q']);
+    }
+    foreach ($filter['cats'] ?? [] as $cid) {
+        $out .= '&cat[]=' . (int) $cid;
+    }
+    return $out;
+}
+
+// Card "Filtra" in cima alla colonna sinistra del Blog: ricerca per parola chiave e tipologie
+// (= categorie del blog dell'artista, quindi sempre aggiornate). Form GET: funziona anche senza
+// JavaScript e il risultato è un URL condivisibile. Senza categorie resta solo la ricerca.
+function renderAdminLteBlogFilterCard(int $userId, string $slug, array $filter, ?int $total = null): string {
+    $stmt = getDB()->prepare('SELECT id, name FROM blog_categories WHERE user_id=? ORDER BY name ASC');
+    $stmt->execute([$userId]);
+    $categories = $stmt->fetchAll();
+    $active = ($filter['q'] ?? '') !== '' || !empty($filter['cats']);
+    ob_start();
+    ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title text-uppercase small fw-bold mb-0">Filtra</h3></div>
+              <form method="get" action="<?= e('/' . $slug . '/blog') ?>" class="card-body">
+                <label for="blog-filter-q" class="form-label fw-semibold">Cerca per parola chiave</label>
+                <div class="input-group mb-3">
+                  <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search" aria-hidden="true"></i></span>
+                  <input type="search" id="blog-filter-q" name="q" class="form-control border-start-0" minlength="3" maxlength="100"
+                         placeholder="Minimo 3 caratteri" value="<?= e($filter['q'] ?? '') ?>">
+                </div>
+                <?php if ($categories): ?>
+                <fieldset class="mb-3">
+                  <legend class="form-label fw-semibold fs-6">Tipologia notizia</legend>
+                  <div class="form-text mb-2">Puoi selezionare più tipologie.</div>
+                  <div class="border rounded p-2" style="max-height:170px;overflow-y:auto;">
+                    <?php foreach ($categories as $cat): ?>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="cat[]" value="<?= (int) $cat['id'] ?>" id="blog-filter-cat-<?= (int) $cat['id'] ?>"<?= in_array((int) $cat['id'], $filter['cats'] ?? [], true) ? ' checked' : '' ?>>
+                      <label class="form-check-label" for="blog-filter-cat-<?= (int) $cat['id'] ?>"><?= e($cat['name']) ?></label>
+                    </div>
+                    <?php endforeach; ?>
+                  </div>
+                </fieldset>
+                <?php endif; ?>
+                <button type="submit" class="btn btn-primary w-100">Cerca</button>
+                <?php if ($active): ?>
+                <a href="<?= e('/' . $slug . '/blog') ?>" class="btn btn-outline-secondary w-100 mt-2">Azzera i filtri</a>
+                <?php endif; ?>
+                <?php if ($total !== null && $active): ?>
+                <div class="text-secondary small mt-3"><?= (int) $total ?> articol<?= $total === 1 ? 'o trovato' : 'i trovati' ?></div>
+                <?php endif; ?>
+              </form>
             </div>
     <?php
     return ob_get_clean();
@@ -3008,7 +3107,7 @@ function renderAdminLteTimelinePostPage(array $post, array $artist, string $slug
 
 // Pagina pubblica "Blog" (elenco) a tema AdminLTE — stesso principio "a scena" della Home, elenco
 // completo (non un'anteprima) come la pagina Blog del tema Colorful (blog_index.php).
-function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts): string {
+function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts, array $filter = ['q' => '', 'cats' => []], ?int $total = null): string {
     $pageUrl = siteUrl('/' . $slug . '/blog');
     $avatarUrl = adminLteAvatarUrl($artist);
     $pageSize = 20;
@@ -3048,7 +3147,7 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
     <div class="app-content">
       <div class="container-fluid">
         <div class="row g-3">
-          <?= renderAdminLteProfileSidebar($artist, $slug) ?>
+          <?= renderAdminLteProfileSidebar($artist, $slug, false, renderAdminLteBlogFilterCard((int) $artist['id'], $slug, $filter, $total)) ?>
           <?= renderAdminLteProfileExtras($artist, $slug, renderAdminLteBlogCategoriesNavCard((int) $artist['id'], $slug)) ?>
           <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
             <div class="card">
@@ -3064,13 +3163,13 @@ function renderAdminLteBlogIndexPage(array $artist, string $slug, array $posts):
               <div class="card-body">
 
                 <?php if (!$posts): ?>
-                  <div class="card"><div class="card-body text-secondary">Nessun articolo pubblicato ancora.</div></div>
+                  <div class="card"><div class="card-body text-secondary"><?= ($filter['q'] !== '' || $filter['cats']) ? 'Nessun articolo trovato con questi filtri.' : 'Nessun articolo pubblicato ancora.' ?></div></div>
                 <?php else: ?>
                   <div id="adminlte-list-feed"><?= renderAdminLteBlogRows($posts, $slug, $artist) ?></div>
                   <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>
                   <p id="adminlte-list-end" class="text-secondary text-center small" style="display:<?= $finished ? 'block' : 'none' ?>;">Hai visto tutto.</p>
                   <div id="adminlte-list-sentinel" style="height:1px;"></div>
-                  <?= adminLteInfiniteScrollScript('blog', $slug, count($posts), $pageSize, $finished) ?>
+                  <?= adminLteInfiniteScrollScript('blog', $slug, count($posts), $pageSize, $finished, blogFilterQueryString($filter)) ?>
                 <?php endif; ?>
 
             </div>

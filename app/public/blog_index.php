@@ -18,14 +18,23 @@ if (!$artist) {
 }
 
 $isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
-$stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW() ORDER BY published_at DESC' . ($isAdminLte ? ' LIMIT 20' : ''));
-$stmt->execute([$artist['id']]);
+// Filtro di ricerca (parola chiave + categorie): solo tema AdminLTE, validato su questo artista.
+$filter = $isAdminLte ? blogFilterFromRequest((int) $artist['id'], $_GET) : ['q' => '', 'cats' => []];
+[$filterSql, $filterParams] = blogFilterSql($filter);
+$stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE user_id=? AND published_at <= NOW()' . $filterSql . ' ORDER BY published_at DESC' . ($isAdminLte ? ' LIMIT 20' : ''));
+$stmt->execute(array_merge([$artist['id']], $filterParams));
 $posts = $stmt->fetchAll();
+$totalFound = null;
+if ($isAdminLte && ($filter['q'] !== '' || $filter['cats'])) {
+    $stmt = getDB()->prepare('SELECT COUNT(*) FROM blog_posts WHERE user_id=? AND published_at <= NOW()' . $filterSql);
+    $stmt->execute(array_merge([$artist['id']], $filterParams));
+    $totalFound = (int) $stmt->fetchColumn();
+}
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — con scroll infinito
 // (vedi adminlte_list_more.php), non solo la prima pagina.
 if ($isAdminLte) {
-    echo renderAdminLteBlogIndexPage($artist, $userSlug, $posts);
+    echo renderAdminLteBlogIndexPage($artist, $userSlug, $posts, $filter, $totalFound);
     exit;
 }
 
