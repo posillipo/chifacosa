@@ -66,7 +66,7 @@ function eventsMissingGeo(int $userId, int $limit = 0): array {
 }
 
 // Punti per la mappa pubblica: stessi filtri dell'elenco (prossimi o perpetui, già pubblicati, provincia).
-function eventMapPoints(int $userId, array $artist, ?string $provincia = null): array {
+function eventMapPoints(int $userId, array $artist, ?string $provincia = null, ?string $citta = null): array {
     try {
         $sql = 'SELECT id, title, venue, city, event_date, lat, lng FROM events WHERE user_id=? AND lat IS NOT NULL AND lng IS NOT NULL
                 AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())';
@@ -74,6 +74,10 @@ function eventMapPoints(int $userId, array $artist, ?string $provincia = null): 
         if ($provincia !== null && $provincia !== '') {
             $sql .= ' AND provincia = ?';
             $params[] = $provincia;
+        }
+        if ($citta !== null && $citta !== '') {
+            $sql .= ' AND city = ?';
+            $params[] = $citta;
         }
         $stmt = getDB()->prepare($sql . ' ORDER BY is_perpetual DESC, event_date ASC LIMIT 500');
         $stmt->execute($params);
@@ -92,4 +96,27 @@ function eventMapPoints(int $userId, array $artist, ?string $provincia = null): 
     } catch (Throwable $e) {
         return [];
     }
+}
+
+// Valori dei filtri "Provincia" e "Città" della pagina pubblica Eventi: solo quelli degli eventi
+// visibili (prossimi o perpetui, già pubblicati) del profilo, con il numero di eventi.
+// Ritorna ['province' => [[nome, n], ...], 'citta' => [[nome, provincia, n], ...]].
+function eventFilterOptions(int $userId): array {
+    $out = ['province' => [], 'citta' => []];
+    try {
+        $where = "user_id=? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())";
+        $stmt = getDB()->prepare("SELECT provincia, COUNT(*) n FROM events WHERE $where AND provincia IS NOT NULL AND provincia <> '' GROUP BY provincia ORDER BY provincia ASC");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll() as $r) {
+            $out['province'][] = [(string) $r['provincia'], (int) $r['n']];
+        }
+        $stmt = getDB()->prepare("SELECT city, COALESCE(provincia, '') provincia, COUNT(*) n FROM events WHERE $where AND city IS NOT NULL AND city <> '' GROUP BY city, provincia ORDER BY city ASC");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll() as $r) {
+            $out['citta'][] = [(string) $r['city'], (string) $r['provincia'], (int) $r['n']];
+        }
+    } catch (Throwable $e) {
+        error_log('eventFilterOptions: ' . $e->getMessage());
+    }
+    return $out;
 }

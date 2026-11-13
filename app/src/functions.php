@@ -5745,11 +5745,83 @@ function renderAdminLteEventiMapCard(array $points, string $slug, int $listedCou
     return ob_get_clean();
 }
 
-function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null, array $expiredEvents = [], array $mapPoints = []): string {
+// Filtro "Provincia" e "Città" in cima alla colonna centrale della pagina Eventi (tema AdminLTE):
+// due menu con i valori degli eventi visibili del profilo. Scegliendo una provincia l'elenco delle
+// città si restringe a quelle della provincia; il modulo si invia da solo al cambio (senza JavaScript
+// resta il pulsante "Filtra"). Nessuna card se non ci sono né province né città da scegliere.
+function renderAdminLteEventiFilterCard(string $slug, string $provincia, string $citta, array $options): string {
+    $province = $options['province'] ?? [];
+    $cities = $options['citta'] ?? [];
+    if (!$province && !$cities) {
+        return '';
+    }
+    ob_start();
+    ?>
+            <form method="get" action="<?= e('/' . $slug . '/eventi') ?>" class="card mb-3" id="eventi-filter">
+              <div class="card-body">
+                <div class="row g-2 align-items-end">
+                  <?php if ($province): ?>
+                  <div class="col-sm-6">
+                    <label for="eventi-f-prov" class="form-label small fw-semibold mb-1">Provincia</label>
+                    <select name="provincia" id="eventi-f-prov" class="form-select">
+                      <option value="">Tutte le province</option>
+                      <?php foreach ($province as [$name, $n]): ?>
+                      <option value="<?= e($name) ?>"<?= $name === $provincia ? ' selected' : '' ?>><?= e($name) ?> (<?= (int) $n ?>)</option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <?php endif; ?>
+                  <?php if ($cities): ?>
+                  <div class="col-sm-6">
+                    <label for="eventi-f-citta" class="form-label small fw-semibold mb-1">Città</label>
+                    <select name="citta" id="eventi-f-citta" class="form-select">
+                      <option value="">Tutte le città</option>
+                      <?php foreach ($cities as [$name, $prov, $n]): ?>
+                      <option value="<?= e($name) ?>" data-prov="<?= e($prov) ?>"<?= $name === $citta ? ' selected' : '' ?>><?= e($name) ?> (<?= (int) $n ?>)</option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <?php endif; ?>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+                  <?php if ($provincia !== '' || $citta !== ''): ?>
+                  <a href="<?= e('/' . $slug . '/eventi') ?>" class="btn btn-outline-secondary btn-sm">Azzera i filtri</a>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </form>
+            <script>
+            (function () {
+              var f = document.getElementById('eventi-filter');
+              var prov = document.getElementById('eventi-f-prov');
+              var city = document.getElementById('eventi-f-citta');
+              function narrow() {
+                if (!city) return;
+                var p = prov ? prov.value : '';
+                Array.prototype.forEach.call(city.options, function (o) {
+                  if (!o.value) return;
+                  var show = !p || o.getAttribute('data-prov') === p;
+                  o.hidden = !show; o.disabled = !show;
+                });
+                if (city.selectedOptions[0] && city.selectedOptions[0].disabled) city.value = '';
+              }
+              narrow();
+              if (prov) prov.addEventListener('change', function () { narrow(); if (city) city.value = ''; f.submit(); });
+              if (city) city.addEventListener('change', function () { f.submit(); });
+            })();
+            </script>
+    <?php
+    return ob_get_clean();
+}
+
+function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null, array $expiredEvents = [], array $mapPoints = [], string $cittaFilter = '', array $filterOptions = []): string {
     $pageUrl = siteUrl('/' . $slug . '/eventi');
     $pageSize = 20;
     $finished = count($events) < $pageSize;
-    $extraQuery = $provinciaFilter !== null && $provinciaFilter !== '' ? '&provincia=' . urlencode($provinciaFilter) : '';
+    $extraQuery = ($provinciaFilter !== null && $provinciaFilter !== '' ? '&provincia=' . urlencode($provinciaFilter) : '')
+                . ($cittaFilter !== '' ? '&citta=' . urlencode($cittaFilter) : '');
+    $filterLabel = trim(($cittaFilter !== '' ? $cittaFilter : '') . ($cittaFilter !== '' && (string) $provinciaFilter !== '' ? ' · ' : '') . ((string) $provinciaFilter !== '' ? 'provincia di ' . $provinciaFilter : ''));
     ob_start();
     ?>
 <!doctype html>
@@ -5781,9 +5853,10 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
           <div class="col-lg-9 order-1 order-lg-2 adminlte-main-col">
           <div class="row g-3">
           <div class="col-md-6">
+            <?= renderAdminLteEventiFilterCard($slug, (string) $provinciaFilter, $cittaFilter, $filterOptions) ?>
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title"><?= e('Eventi') ?><?php if ($extraQuery !== ''): ?> <span class="fw-normal text-secondary">— provincia di <?= e($provinciaFilter) ?></span><?php endif; ?></h3>
+                <h3 class="card-title"><?= e('Eventi') ?><?php if ($extraQuery !== ''): ?> <span class="fw-normal text-secondary">— <?= e($filterLabel) ?></span><?php endif; ?></h3>
                 <div class="card-tools">
                   <?php if ($extraQuery !== ''): ?>
                   <a href="/<?= e($slug) ?>/eventi" class="btn btn-tool" title="Togli il filtro"><i class="bi bi-x-lg"></i></a>
@@ -5796,7 +5869,7 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
               </div>
               <div class="card-body">
             <?php if (!$events): ?>
-              <div class="card"><div class="card-body text-secondary"><?= $extraQuery !== '' ? 'Nessun evento in questa provincia.' : 'Nessun evento in programma al momento.' ?></div></div>
+              <div class="card"><div class="card-body text-secondary"><?= $extraQuery !== '' ? 'Nessun evento con questi filtri.' : 'Nessun evento in programma al momento.' ?></div></div>
             <?php else: ?>
               <div id="adminlte-list-feed"><?= renderAdminLteEventiRows($events, $slug, $artist) ?></div>
               <p id="adminlte-list-loading" class="text-secondary text-center small" style="display:none;">Caricamento...</p>

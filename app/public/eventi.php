@@ -25,12 +25,18 @@ $isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
 // (renderAdminLteEventiByProvinciaCard()) — stesso valore esatto salvato in dashboard_events.php,
 // confronto diretto (non LIKE), niente normalizzazione maiuscole/minuscole.
 $provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
+// città (opzionale): secondo filtro della pagina (menu in alto), combinabile con la provincia; confronto esatto.
+$cittaFilter = trim((string) ($_GET['citta'] ?? ''));
 
 $sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())';
 $params = [$artist['id']];
 if ($provinciaFilter !== '') {
     $sql .= ' AND provincia = ?';
     $params[] = $provinciaFilter;
+}
+if ($cittaFilter !== '') {
+    $sql .= ' AND city = ?';
+    $params[] = $cittaFilter;
 }
 $sql .= ' ORDER BY is_perpetual DESC, event_date ASC' . ($isAdminLte ? ' LIMIT 20' : '');
 $events = getDB()->prepare($sql);
@@ -40,15 +46,19 @@ $events = $events->fetchAll();
 // Eventi già passati della stessa provincia: spariscono dall'elenco principale appena scaduti,
 // ma restano consultabili sotto un separatore solo quando si sta filtrando per provincia.
 $expiredEvents = [];
-if ($isAdminLte && $provinciaFilter !== '') {
-    $expiredStmt = getDB()->prepare('SELECT * FROM events WHERE user_id=? AND provincia = ? AND event_date < NOW() AND is_perpetual = 0 AND (publish_at IS NULL OR publish_at <= NOW()) ORDER BY event_date DESC LIMIT 20');
-    $expiredStmt->execute([$artist['id'], $provinciaFilter]);
+if ($isAdminLte && ($provinciaFilter !== '' || $cittaFilter !== '')) {
+    $expSql = 'SELECT * FROM events WHERE user_id=? AND event_date < NOW() AND is_perpetual = 0 AND (publish_at IS NULL OR publish_at <= NOW())';
+    $expParams = [$artist['id']];
+    if ($provinciaFilter !== '') { $expSql .= ' AND provincia = ?'; $expParams[] = $provinciaFilter; }
+    if ($cittaFilter !== '') { $expSql .= ' AND city = ?'; $expParams[] = $cittaFilter; }
+    $expiredStmt = getDB()->prepare($expSql . ' ORDER BY event_date DESC LIMIT 20');
+    $expiredStmt->execute($expParams);
     $expiredEvents = $expiredStmt->fetchAll();
 }
 
 if ($isAdminLte) {
     require_once __DIR__ . '/../src/event_geo.php';
-    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null, $expiredEvents, eventMapPoints((int) $artist['id'], $artist, $provinciaFilter !== '' ? $provinciaFilter : null));
+    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null, $expiredEvents, eventMapPoints((int) $artist['id'], $artist, $provinciaFilter !== '' ? $provinciaFilter : null, $cittaFilter !== '' ? $cittaFilter : null), $cittaFilter, eventFilterOptions((int) $artist['id']));
     exit;
 }
 
