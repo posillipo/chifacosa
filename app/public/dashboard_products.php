@@ -19,15 +19,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'save_feed') {
         $url = trim($_POST['feed_url'] ?? '');
+        $type = array_key_exists($_POST['feed_type'] ?? '', PRODUCT_FEED_TYPES) ? $_POST['feed_type'] : 'google';
         if ($url === '') {
             getDB()->prepare('DELETE FROM product_feeds WHERE user_id = ?')->execute([$uid]);
         } elseif (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
             $error = 'L\'URL del feed non è valido.';
         } else {
-            getDB()->prepare('INSERT INTO product_feeds (user_id, feed_url) VALUES (?, ?) ON DUPLICATE KEY UPDATE feed_url = VALUES(feed_url)')->execute([$uid, $url]);
+            try {
+                getDB()->prepare('INSERT INTO product_feeds (user_id, feed_url, feed_type) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE feed_url = VALUES(feed_url), feed_type = VALUES(feed_type)')->execute([$uid, $url, $type]);
+            } catch (Throwable $ex) {
+                // Colonna feed_type assente (migrazione non ancora eseguita): resta valido solo il tipo Google Shopping.
+                if ($type !== 'google') {
+                    $error = 'Per usare WooCommerce esegui prima la migrazione 2026_11_14_product_feed_type.sql sul database.';
+                } else {
+                    getDB()->prepare('INSERT INTO product_feeds (user_id, feed_url) VALUES (?, ?) ON DUPLICATE KEY UPDATE feed_url = VALUES(feed_url)')->execute([$uid, $url]);
+                }
+            }
         }
     } elseif ($action === 'sync' && $feed) {
-        $syncResult = syncProductFeed($uid, $feed['feed_url']);
+        $syncResult = syncProductFeed($uid, $feed['feed_url'], $feed['feed_type'] ?? 'google');
         $msg = $syncResult['ok']
             ? $syncResult['added'] . ' aggiunti, ' . $syncResult['updated'] . ' aggiornati, ' . $syncResult['hidden'] . ' nascosti (' . $syncResult['total'] . ' totali)'
             : $syncResult['error'];
@@ -63,7 +73,7 @@ include __DIR__ . '/_dash_header.php';
   <details class="help-box">
     <summary>ℹ️ Come funziona</summary>
     <p style="color:var(--text-muted)">
-      Incolla l'URL di un feed prodotti in formato Google Shopping (RSS) e premi
+      Scegli il tipo di feed (Google Shopping / PrestaShop oppure WooCommerce), incolla l'URL e premi
       <strong>Aggiorna prodotti</strong>: vengono importati nome, descrizione, prezzo di listino e
       scontato, link alla pagina e immagine principale. Le immagini <strong>non</strong> vengono
       scaricate: si salva solo il loro indirizzo. Le taglie sono ignorate (un prodotto per modello).
@@ -85,8 +95,27 @@ include __DIR__ . '/_dash_header.php';
   <form method="post" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="save_feed">
-    <label>URL del feed (Google Shopping, XML)</label>
-    <input type="url" name="feed_url" value="<?= e($feed['feed_url'] ?? '') ?>" placeholder="https://esempio.it/feed-google-shopping.xml">
+    <label>Tipo di feed</label>
+    <select name="feed_type" id="feed-type">
+      <?php foreach (PRODUCT_FEED_TYPES as $k => $label): ?>
+        <option value="<?= e($k) ?>" <?= ($feed['feed_type'] ?? 'google') === $k ? 'selected' : '' ?>><?= e($label) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label id="feed-url-label">URL del feed</label>
+    <input type="url" name="feed_url" id="feed-url" value="<?= e($feed['feed_url'] ?? '') ?>">
+    <span id="feed-url-help" style="display:block;color:var(--text-muted);font-size:12.5px;margin:-4px 0 10px;"></span>
+    <script>
+    (function () {
+      var sel = document.getElementById('feed-type'), inp = document.getElementById('feed-url'),
+          lab = document.getElementById('feed-url-label'), help = document.getElementById('feed-url-help');
+      var txt = {
+        google: ['URL del feed (Google Shopping, XML)', 'https://esempio.it/feed-google-shopping.xml', 'Feed prodotti in formato Google Shopping (RSS), come quello di PrestaShop.'],
+        woocommerce: ['Indirizzo del sito WooCommerce', 'https://www.esempio.it', 'Basta l\'indirizzo del sito: i prodotti si leggono dalla sua API pubblica (prezzi, immagini, categorie). Senza API si usa il feed RSS, con meno dati.']
+      };
+      function upd() { var t = txt[sel.value] || txt.google; lab.textContent = t[0]; inp.placeholder = t[1]; help.textContent = t[2]; }
+      sel.addEventListener('change', upd); upd();
+    })();
+    </script>
     <button type="submit" class="btn">Salva</button>
     <span style="color:var(--text-muted);font-size:12.5px;">Lascia vuoto e salva per scollegare il feed (i prodotti già importati restano).</span>
   </form>

@@ -57,8 +57,11 @@ function productFeedDownload(string $url): array {
 
 // Sincronizza il catalogo del profilo con il feed. Ritorna ['ok'=>true, added, updated, hidden, total]
 // oppure ['ok'=>false, 'error'=>...].
-function syncProductFeed(int $userId, string $feedUrl): array {
+function syncProductFeed(int $userId, string $feedUrl, string $type = 'google'): array {
     @set_time_limit(300);
+    if ($type === 'woocommerce') {
+        return syncWooCommerceFeed($userId, $feedUrl);
+    }
     $dl = productFeedDownload($feedUrl);
     if (isset($dl['error'])) {
         return ['ok' => false, 'error' => $dl['error']];
@@ -119,7 +122,12 @@ function syncProductFeed(int $userId, string $feedUrl): array {
     if (!$products) {
         return ['ok' => false, 'error' => 'Nessun prodotto trovato nel feed (formato Google Shopping atteso).'];
     }
+    return productFeedSave($userId, $products);
+}
 
+// Scrive nel catalogo i prodotti letti da un feed (qualunque tipo): inserisce/aggiorna per
+// external_ref e nasconde quelli spariti. Ritorna ['ok'=>true, added, updated, hidden, total].
+function productFeedSave(int $userId, array $products): array {
     $db = getDB();
     $now = date('Y-m-d H:i:s');
     $stmt = $db->prepare('SELECT external_ref FROM products WHERE user_id = ?');
@@ -151,6 +159,129 @@ function syncProductFeed(int $userId, string $feedUrl): array {
         return ['ok' => false, 'error' => 'Errore durante il salvataggio dei prodotti.'];
     }
     return ['ok' => true, 'added' => $added, 'updated' => $updated, 'hidden' => $hidden, 'total' => count($products)];
+}
+
+// Tipi di feed selezionabili in dashboard_products.php.
+const PRODUCT_FEED_TYPES = [
+    'google' => 'Google Shopping / PrestaShop (feed XML)',
+    'woocommerce' => 'WooCommerce (indirizzo del sito)',
+];
+
+// Testo semplice da un frammento HTML di WordPress ("&#8217;" -> "’", niente tag).
+function productPlainText(string $html): string {
+    $t = html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>', '</li>', '</h3>'], "\n", $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return trim(preg_replace("/[ \t]+/", ' ', preg_replace("/\n{3,}/", "\n\n", $t)));
+}
+
+// Scarica un indirizzo e ritorna il corpo (con gli stessi controlli di sicurezza del feed
+// Google Shopping: solo URL pubblici, dimensione massima), oppure null.
+function productHttpGet(string $url): ?string {
+    $dl = productFeedDownload($url);
+    if (isset($dl['path'])) {
+        $body = (string) file_get_contents($dl['path']);
+        @unlink($dl['path']);
+        return $body;
+    }
+    return null;
+}
+
+// Sincronizza con un sito WooCommerce. Si parte dall'indirizzo del sito (anche se è stato
+// incollato quello del feed RSS: se ne usa solo la radice) e si usa la Store API pubblica
+// (/wp-json/wc/store/v1/products, nessuna chiave): nome, descrizione, prezzi, immagine,
+// categoria, disponibilità. Se la Store API non risponde si ricade sul feed RSS di WordPress
+// (solo titolo, descrizione e link). I prezzi a 0 o assenti restano "senza prezzo".
+function syncWooCommerceFeed(int $userId, string $siteUrl): array {
+    @set_time_limit(300);
+    $parts = parse_url(trim($siteUrl));
+    if (!$parts || empty($parts['host']) || !in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)) {
+        return ['ok' => false, 'error' => 'Indirizzo del sito non valido.'];
+    }
+    $origin = strtolower($parts['scheme']) . '://' . $parts['host'] . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
+
+    $products = [];
+    $apiOk = false;
+    for ($page = 1; $page <= 50; $page++) {
+        $body = productHttpGet($origin . '/wp-json/wc/store/v1/products?per_page=100&page=' . $page);
+        $rows = $body !== null ? json_decode($body, true) : null;
+        if (!is_array($rows) || ($rows && !isset($rows[0]['id']))) {
+            break;
+        }
+        $apiOk = true;
+        foreach ($rows as $r) {
+            $title = trim(productPlainText((string) ($r['name'] ?? '')));
+            if ($title === '' || empty($r['id'])) {
+                continue;
+            }
+            $pr = $r['prices'] ?? [];
+            $div = 10 ** max(0, (int) ($pr['currency_minor_unit'] ?? 2));
+            $regular = isset($pr['regular_price']) && $pr['regular_price'] !== '' ? round((float) $pr['regular_price'] / $div, 2) : null;
+            $sale = isset($pr['sale_price']) && $pr['sale_price'] !== '' ? round((float) $pr['sale_price'] / $div, 2) : null;
+            if ($regular !== null && $regular <= 0) {
+                $regular = null;
+            }
+            if ($sale !== null && ($sale <= 0 || $regular === null || $sale >= $regular)) {
+                $sale = null;
+            }
+            $desc = productPlainText((string) (($r['short_description'] ?? '') !== '' ? $r['short_description'] : ($r['description'] ?? '')));
+            $img = $r['images'][0]['src'] ?? '';
+            $cat = $r['categories'][0]['name'] ?? '';
+            $products['w' . (int) $r['id']] = [
+                'title' => mb_substr($title, 0, 255),
+                'description' => $desc !== '' ? mb_substr($desc, 0, 5000) : null,
+                'link' => mb_substr(trim((string) ($r['permalink'] ?? '')), 0, 600) ?: null,
+                'image_url' => $img !== '' ? mb_substr($img, 0, 600) : null,
+                'price_regular' => $regular,
+                'price_sale' => $sale,
+                'currency' => strtoupper((string) ($pr['currency_code'] ?? 'EUR')) ?: 'EUR',
+                'category_path' => $cat !== '' ? mb_substr(productPlainText($cat), 0, 255) : null,
+                'in_stock' => !isset($r['is_in_stock']) || (bool) $r['is_in_stock'],
+                'featured' => false,
+            ];
+        }
+        if (count($rows) < 100) {
+            break;
+        }
+    }
+
+    if (!$apiOk) {
+        // Ripiego: feed RSS dei prodotti. Si prova l'indirizzo incollato, poi /feed/?post_type=product.
+        foreach ([trim($siteUrl), $origin . '/feed/?post_type=product'] as $candidate) {
+            $body = productHttpGet($candidate);
+            if ($body === null || stripos($body, '<item') === false) {
+                continue;
+            }
+            $prev = libxml_use_internal_errors(true);
+            $xml = simplexml_load_string($body, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA);
+            libxml_use_internal_errors($prev);
+            if (!$xml || !isset($xml->channel->item)) {
+                continue;
+            }
+            foreach ($xml->channel->item as $it) {
+                $title = productPlainText((string) $it->title);
+                $guid = (string) $it->guid;
+                $link = trim((string) $it->link);
+                if ($title === '' || $link === '') {
+                    continue;
+                }
+                $ref = preg_match('/[?&]p=(\d+)/', html_entity_decode($guid), $m) ? 'w' . $m[1] : 'w' . substr(sha1($link), 0, 16);
+                $content = (string) $it->children('http://purl.org/rss/1.0/modules/content/')->encoded;
+                $desc = productPlainText($content !== '' ? $content : (string) $it->description);
+                $products[$ref] = [
+                    'title' => mb_substr($title, 0, 255), 'description' => $desc !== '' ? mb_substr($desc, 0, 5000) : null,
+                    'link' => mb_substr($link, 0, 600), 'image_url' => null, 'price_regular' => null, 'price_sale' => null,
+                    'currency' => 'EUR', 'category_path' => null, 'in_stock' => true, 'featured' => false,
+                ];
+            }
+            if ($products) {
+                break;
+            }
+        }
+    }
+
+    if (!$products) {
+        return ['ok' => false, 'error' => 'Nessun prodotto trovato: controlla l\'indirizzo del sito WooCommerce (la Store API e il feed RSS non rispondono).'];
+    }
+    return productFeedSave($userId, $products);
 }
 
 function productDiscountPercent(array $p): ?int {

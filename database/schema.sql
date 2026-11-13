@@ -947,6 +947,7 @@ CREATE TABLE IF NOT EXISTS product_feeds (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     feed_url VARCHAR(500) NOT NULL,
+    feed_type ENUM('google','woocommerce') NOT NULL DEFAULT 'google',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     last_synced_at DATETIME DEFAULT NULL,
     last_result VARCHAR(500) DEFAULT NULL,
