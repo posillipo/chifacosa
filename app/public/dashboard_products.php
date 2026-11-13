@@ -36,6 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+    } elseif ($action === 'delete_all_products') {
+        // Svuota il catalogo del PROFILO ATTIVO (mai di altri: user_id preso dalla sessione, non dal modulo).
+        // Il registro delle pubblicazioni dei prodotti si cancella con loro (ON DELETE CASCADE).
+        $del = getDB()->prepare('DELETE FROM products WHERE user_id = ?');
+        $del->execute([$uid]);
+        $deletedCount = $del->rowCount();
+        getDB()->prepare('UPDATE product_feeds SET last_synced_at = NULL, last_result = NULL WHERE user_id = ?')->execute([$uid]);
     } elseif ($action === 'sync' && $feed) {
         $syncResult = syncProductFeed($uid, $feed['feed_url'], $feed['feed_type'] ?? 'google');
         $msg = $syncResult['ok']
@@ -44,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         getDB()->prepare('UPDATE product_feeds SET last_synced_at = ?, last_result = ? WHERE user_id = ?')
             ->execute([$syncResult['ok'] ? date('Y-m-d H:i:s') : ($feed['last_synced_at'] ?? null), mb_substr($msg, 0, 500), $uid]);
     }
-    if ($action === 'save_feed' || $action === 'sync') {
+    if ($action === 'save_feed' || $action === 'sync' || $action === 'delete_all_products') {
         $stmt = getDB()->prepare('SELECT * FROM product_feeds WHERE user_id = ?');
         $stmt->execute([$uid]);
         $feed = $stmt->fetch() ?: null;
@@ -83,6 +90,9 @@ include __DIR__ . '/_dash_header.php';
   </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if (isset($deletedCount)): ?>
+    <div class="alert success"><?= (int) $deletedCount ?> prodotti eliminati da questo profilo. Ora puoi ripetere l'importazione con <strong>Aggiorna prodotti</strong>.</div>
+  <?php endif; ?>
   <?php if ($syncResult): ?>
     <div class="alert <?= $syncResult['ok'] ? 'success' : 'error' ?>">
       <?= $syncResult['ok']
@@ -139,6 +149,27 @@ include __DIR__ . '/_dash_header.php';
   <?php endif; ?>
 
   <?php if ($totalAll > 0): ?>
+    <?php
+      $stmtPub = getDB()->prepare('SELECT COUNT(*) FROM product_publications WHERE user_id = ?');
+      $stmtPub->execute([$uid]);
+      $pubCount = (int) $stmtPub->fetchColumn();
+      $delMsg = 'Eliminare TUTTI i ' . $totalAll . ' prodotti del profilo "' . ($profile['display_name'] ?? $profile['slug'] ?? '') . '"?'
+              . ($pubCount > 0 ? ' Verranno cancellate anche ' . $pubCount . ' registrazioni di pubblicazioni social collegate.' : '')
+              . ' L\'operazione non si può annullare, ma potrai importare di nuovo il feed.';
+    ?>
+    <div class="card" style="border:1px solid #e0b4b4;">
+      <strong>Elimina i prodotti importati</strong>
+      <p style="color:var(--text-muted);margin:6px 0 12px;font-size:13.5px;">
+        Svuota il catalogo di questo profilo (<?= (int) $totalAll ?> prodotti). Il feed resta collegato: dopo puoi ripetere l'importazione con <em>Aggiorna prodotti</em>.
+        Gli altri profili non vengono toccati.
+      </p>
+      <form method="post" onsubmit="return confirm(<?= e(json_encode($delMsg, JSON_UNESCAPED_UNICODE)) ?>);">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="delete_all_products">
+        <button type="submit" class="btn danger">Elimina tutti i prodotti</button>
+      </form>
+    </div>
+
     <div class="section-title">Prodotti (<?= (int) $res['total'] ?>)</div>
     <form method="get" class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
       <div style="flex:1;min-width:160px;"><label>Cerca</label><input type="text" name="q" value="<?= e($filters['q']) ?>"></div>
