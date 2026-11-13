@@ -91,9 +91,13 @@ if ($type === 'blog') {
     // provincia" della colonna destra) — lo scroll infinito deve rispettarlo, non ricadere
     // sull'elenco completo dalla seconda pagina in poi.
     $provinciaFilter = trim((string) ($_GET['provincia'] ?? ''));
+    $cittaFilter = trim((string) ($_GET['citta'] ?? ''));
     $sql = 'SELECT * FROM events WHERE user_id=? AND (event_date >= NOW() OR is_perpetual = 1) AND (publish_at IS NULL OR publish_at <= NOW())';
     if ($provinciaFilter !== '') {
         $sql .= ' AND provincia = ?';
+    }
+    if ($cittaFilter !== '') {
+        $sql .= ' AND city = ?';
     }
     $sql .= ' ORDER BY is_perpetual DESC, event_date ASC LIMIT ? OFFSET ?';
     $stmt = $db->prepare($sql);
@@ -101,6 +105,9 @@ if ($type === 'blog') {
     $stmt->bindValue($i++, $uid, PDO::PARAM_INT);
     if ($provinciaFilter !== '') {
         $stmt->bindValue($i++, $provinciaFilter, PDO::PARAM_STR);
+    }
+    if ($cittaFilter !== '') {
+        $stmt->bindValue($i++, $cittaFilter, PDO::PARAM_STR);
     }
     $stmt->bindValue($i++, $pageSize, PDO::PARAM_INT);
     $stmt->bindValue($i++, $offset, PDO::PARAM_INT);
