@@ -47,7 +47,8 @@ if ($isAdminLte && $provinciaFilter !== '') {
 }
 
 if ($isAdminLte) {
-    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null, $expiredEvents);
+    require_once __DIR__ . '/../src/event_geo.php';
+    echo renderAdminLteEventiListPage($artist, $slug, $events, $provinciaFilter !== '' ? $provinciaFilter : null, $expiredEvents, eventMapPoints((int) $artist['id'], $artist, $provinciaFilter !== '' ? $provinciaFilter : null));
     exit;
 }
 
