@@ -2831,7 +2831,7 @@ function renderAdminLteEventiRows(array $events, string $slug, array $artist): s
         $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false));
         ob_start();
         ?>
-              <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body">
+              <a href="/<?= e($slug) ?>/eventi/<?= (int) $ev['id'] ?>" class="card mb-3 text-decoration-none text-body" data-event-id="<?= (int) $ev['id'] ?>">
                 <div class="card-body d-flex gap-3 adminlte-eventi-row">
                   <?php if ($ev['cover_path']): ?><img src="/<?= e($ev['cover_path']) ?>" alt="" class="adminlte-eventi-thumb"><?php endif; ?>
                   <div class="flex-grow-1" style="min-width:0;">
@@ -5667,7 +5667,85 @@ function renderAdminLteServizioDetailPage(array $artist, string $slug, array $se
 // spariscono dall'elenco principale (e dal conteggio del widget laterale) appena scaduti, ma qui
 // restano visibili sotto un separatore così chi consulta la pagina di una provincia può comunque
 // trovarli.
-function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null, array $expiredEvents = []): string {
+// Mappa degli eventi (pagina Eventi, tema AdminLTE): OpenStreetMap con Leaflet, un punto per ogni
+// evento con posizione. Passando il mouse su un evento dell'elenco il punto si evidenzia (e viceversa:
+// cliccando un punto si apre la scheda con il link). Funziona anche per le righe caricate dallo scroll
+// infinito (delegazione degli eventi). Senza punti la scheda non compare.
+function renderAdminLteEventiMapCard(array $points, string $slug, int $listedCount): string {
+    if (!$points) {
+        return '';
+    }
+    $json = json_encode($points, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    ob_start();
+    ?>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+            <style>
+              #eventi-map-card { position: sticky; top: 70px; }
+              #eventi-map { height: calc(100vh - 150px); min-height: 380px; border-radius: 0 0 .375rem .375rem; z-index: 0; }
+              @media (max-width: 991.98px) { #eventi-map-card { position: static; } #eventi-map { height: 380px; } }
+              [data-event-id].eventi-hl { box-shadow: 0 0 0 2px var(--bs-primary, #0d6efd); }
+            </style>
+            <div class="card" id="eventi-map-card">
+              <div class="card-header"><h3 class="card-title"><i class="bi bi-geo-alt me-1"></i>Mappa degli eventi</h3></div>
+              <div id="eventi-map" aria-label="Mappa degli eventi"></div>
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+            <script>
+            (function () {
+              if (!window.L) return;
+              var points = <?= $json ?>;
+              var slug = <?= json_encode($slug) ?>;
+              var map = L.map('eventi-map', { scrollWheelZoom: false });
+              L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+              }).addTo(map);
+              map.on('click', function () { map.scrollWheelZoom.enable(); });
+              var base = { radius: 9, color: '#fff', weight: 2, fillColor: '#0d6efd', fillOpacity: 0.9 };
+              var hot = { radius: 13, color: '#fff', weight: 3, fillColor: '#dc3545', fillOpacity: 1 };
+              var markers = {}, bounds = [];
+              points.forEach(function (p) {
+                var m = L.circleMarker([p.lat, p.lng], base).addTo(map);
+                var box = document.createElement('div');
+                var t = document.createElement('strong'); t.textContent = p.title; box.appendChild(t);
+                if (p.date) { var d = document.createElement('div'); d.textContent = p.date; box.appendChild(d); }
+                if (p.where) { var w = document.createElement('div'); w.textContent = p.where; box.appendChild(w); }
+                var a = document.createElement('a'); a.href = '/' + slug + '/eventi/' + p.id; a.textContent = 'Vai all\'evento'; box.appendChild(a);
+                m.bindPopup(box);
+                m.on('click', function () {
+                  var row = document.querySelector('[data-event-id="' + p.id + '"]');
+                  if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+                markers[p.id] = m; bounds.push([p.lat, p.lng]);
+              });
+              if (bounds.length === 1) map.setView(bounds[0], 14); else map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+
+              var current = null;
+              function highlight(id) {
+                if (current && markers[current]) markers[current].setStyle(base);
+                current = id;
+                var m = id ? markers[id] : null;
+                if (m) { m.setStyle(hot); m.bringToFront(); if (!map.getBounds().contains(m.getLatLng())) map.panTo(m.getLatLng()); }
+              }
+              var feed = document.getElementById('adminlte-list-feed') || document;
+              feed.addEventListener('mouseover', function (e) {
+                var row = e.target.closest ? e.target.closest('[data-event-id]') : null;
+                if (!row) return;
+                row.classList.add('eventi-hl');
+                highlight(row.getAttribute('data-event-id') | 0);
+              });
+              feed.addEventListener('mouseout', function (e) {
+                var row = e.target.closest ? e.target.closest('[data-event-id]') : null;
+                if (!row) return;
+                row.classList.remove('eventi-hl');
+                highlight(null);
+              });
+            })();
+            </script>
+    <?php
+    return ob_get_clean();
+}
+
+function renderAdminLteEventiListPage(array $artist, string $slug, array $events, ?string $provinciaFilter = null, array $expiredEvents = [], array $mapPoints = []): string {
     $pageUrl = siteUrl('/' . $slug . '/eventi');
     $pageSize = 20;
     $finished = count($events) < $pageSize;
@@ -5699,8 +5777,10 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
       <div class="container-fluid">
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
-          <?= renderAdminLteProfileExtras($artist, $slug) ?>
-          <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
+          <?php /* Pagina Eventi: elenco a sinistra (scorre) e mappa a destra (fissa) al posto della terza colonna. */ ?>
+          <div class="col-lg-9 order-1 order-lg-2 adminlte-main-col">
+          <div class="row g-3">
+          <div class="col-md-6">
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title"><?= e('Eventi') ?><?php if ($extraQuery !== ''): ?> <span class="fw-normal text-secondary">— provincia di <?= e($provinciaFilter) ?></span><?php endif; ?></h3>
@@ -5731,6 +5811,11 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
             <?php endif; ?>
             </div>
             </div>
+          </div>
+          <div class="col-md-6">
+            <?= renderAdminLteEventiMapCard($mapPoints, $slug, count($events)) ?>
+          </div>
+          </div>
           </div>
         </div>
       </div>

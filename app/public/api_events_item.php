@@ -52,6 +52,10 @@ if ($method === 'PUT') {
     if ($sets) {
         $params[] = $id;
         getDB()->prepare('UPDATE events SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+        if (array_key_exists('venue', $v) || array_key_exists('city', $v) || array_key_exists('provincia', $v)) {
+            require_once __DIR__ . '/../src/event_geo.php';
+            eventGeocodeAndSave((int) $id, (int) $auth['user_id']); // ricalcola la posizione solo se l'indirizzo è cambiato
+        }
     }
 
     $stmt = getDB()->prepare('SELECT * FROM events WHERE id = ?');

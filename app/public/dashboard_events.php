@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/event_geo.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 requireBandOrLabel($profile);
@@ -35,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
             $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations, $publishAt]);
             $newEventId = (int) getDB()->lastInsertId();
+            eventGeocodeAndSave($newEventId, (int) $profile['id']); // posizione sulla mappa pubblica
 
             $isScheduledForFuture = $publishAt !== null && strtotime($publishAt) > time();
             if (!$isScheduledForFuture) {
@@ -83,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = getDB()->prepare('UPDATE events SET title=?, venue=?, city=?, provincia=?, event_date=?, ticket_url=?, description=?, is_perpetual=?, recurrence=?, accepts_reservations=?, publish_at=? WHERE id=? AND user_id=?');
                 $stmt->execute([$title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $acceptsReservations, $publishAt, $id, $profile['id']]);
             }
+            eventGeocodeAndSave($id, (int) $profile['id']); // ricalcola solo se l'indirizzo è cambiato
         }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
@@ -93,6 +96,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt = getDB()->prepare('DELETE FROM events WHERE id=? AND user_id=?');
         $stmt->execute([$id, $profile['id']]);
+    } elseif ($action === 'geocode_missing') {
+        // Calcola la posizione degli eventi già presenti, a piccoli gruppi: OpenStreetMap chiede al
+        // massimo una richiesta al secondo. Si può premere più volte finché non ne restano.
+        @set_time_limit(60);
+        $done = 0;
+        $notFound = 0;
+        foreach (eventsMissingGeo((int) $profile['id'], 8) as $evId) {
+            $r = eventGeocodeAndSave($evId, (int) $profile['id']);
+            $r === 'ok' ? $done++ : ($r === 'notfound' ? $notFound++ : null);
+            usleep(1200000);
+        }
+        $left = count(eventsMissingGeo((int) $profile['id']));
+        header('Location: /dashboard_events.php?geo=' . $done . '-' . $notFound . '-' . $left);
+        exit;
     } elseif ($action === 'toggle_reservations') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('UPDATE events SET accepts_reservations = NOT accepts_reservations WHERE id=? AND user_id=?');
@@ -111,6 +128,24 @@ $events = $stmt->fetchAll();
 include __DIR__ . '/_dash_header.php';
 ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if (isset($_GET['geo']) && preg_match('/^(\d+)-(\d+)-(\d+)$/', $_GET['geo'], $gm)): ?>
+    <div class="alert success"><?= (int) $gm[1] ?> posizioni calcolate<?= (int) $gm[2] ? ', ' . (int) $gm[2] . ' indirizzi non trovati (controlla locale e città)' : '' ?><?= (int) $gm[3] ? '. Ne restano ' . (int) $gm[3] . ': premi di nuovo il pulsante.' : '. Tutti gli eventi con indirizzo hanno ora una posizione.' ?></div>
+  <?php endif; ?>
+  <?php $geoMissing = count(eventsMissingGeo((int) $profile['id'])); ?>
+  <?php if ($geoMissing > 0): ?>
+    <div class="card">
+      <strong>📍 Mappa degli eventi</strong>
+      <p style="color:var(--text-muted);margin:6px 0 12px;font-size:13.5px;">
+        <?= $geoMissing ?> event<?= $geoMissing === 1 ? 'o' : 'i' ?> senza posizione sulla mappa pubblica. La posizione si calcola da locale, città e provincia (OpenStreetMap, gratuito):
+        qui si elaborano 8 eventi per volta, ci vuole circa un secondo ciascuno. I nuovi eventi vengono posizionati da soli al salvataggio.
+      </p>
+      <form method="post" onsubmit="var b=this.querySelector('button');b.disabled=true;b.textContent='Calcolo in corso… (circa 10 secondi)';">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="geocode_missing">
+        <button type="submit" class="btn">Calcola le posizioni</button>
+      </form>
+    </div>
+  <?php endif; ?>
 
   <style>
   /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
@@ -137,7 +172,7 @@ include __DIR__ . '/_dash_header.php';
     <input type="text" name="city">
     <label>Provincia (opzionale)</label>
     <input type="text" name="provincia" placeholder="es. Napoli">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Usata per raggruppare i tuoi eventi nel riquadro "Eventi per provincia".</p>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Usata per raggruppare i tuoi eventi nel riquadro "Eventi per provincia" e, con locale e città, per mostrare l'evento sulla mappa.</p>
     <label>Data e ora</label>
     <input type="datetime-local" name="event_date" required>
     <label>Link biglietti (opzionale)</label>

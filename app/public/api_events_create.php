@@ -47,6 +47,8 @@ $stmt->execute([
     $v['publish_at'] ?? null,
 ]);
 $eventId = (int) getDB()->lastInsertId();
+require_once __DIR__ . '/../src/event_geo.php';
+eventGeocodeAndSave($eventId, (int) $auth['user_id']); // posizione sulla mappa (best effort, mai bloccante)
 
 $publishAt = $v['publish_at'] ?? null;
 $isScheduledForFuture = $publishAt !== null && strtotime($publishAt) > time();
