@@ -133,6 +133,14 @@ RewriteRule ^api/v1/links/([0-9]+)/?$ api_links.php?action=item&id=$1 [L,QSA]
 RewriteRule ^api/v1/favorites/(track|band|playlist|album)/(search|add|list)/?$ api_favorites.php?kind=$1&action=$2 [L,QSA]
 RewriteRule ^api/v1/favorites/(track|band|playlist|album)/([0-9]+)/?$ api_favorites.php?kind=$1&action=item&id=$2 [L,QSA]
 
+# API /api/v1/marketing/* — modulo Marketing > Pianificate (progetti con passi in sequenza), usata
+# dagli strumenti MCP *_marketing_*.
+RewriteRule ^api/v1/marketing/projects/?$ api_marketing.php?r=projects [L,QSA]
+RewriteRule ^api/v1/marketing/projects/([0-9]+)/?$ api_marketing.php?r=project&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/projects/([0-9]+)/steps/?$ api_marketing.php?r=project_steps&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/steps/([0-9]+)/?$ api_marketing.php?r=step&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/steps/([0-9]+)/complete/?$ api_marketing.php?r=step_complete&id=$1 [L,QSA]
+
 # API /api/v1/social-queue/* — usata dalla Routine Claude (via MCP) per leggere la coda di
 # pubblicazione automatica su Metricool e aggiornare lo stato degli elementi processati.
 RewriteRule ^api/v1/social-queue/enqueue/?$ api_social_queue_enqueue.php [L,QSA]
