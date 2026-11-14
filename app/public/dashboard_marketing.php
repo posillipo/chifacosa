@@ -145,7 +145,7 @@ include __DIR__ . '/_dash_header.php';
   </script>
 
   <div class="dash-two-col">
-  <div>
+  <div class="dash-two-col-main">
     <form method="post" class="card">
       <?= csrfField() ?>
       <input type="hidden" name="action" value="create_project">
