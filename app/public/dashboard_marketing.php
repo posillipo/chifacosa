@@ -9,21 +9,35 @@ $pageTitle = 'Marketing';
 $uid = (int) $profile['id'];
 $error = null;
 
+const MKT_URL = '/dashboard_marketing.php';
+function mktUrl(int $pid = 0, int $run = 0, string $extra = ''): string {
+    $q = [];
+    if ($pid) { $q[] = 'id=' . $pid; }
+    if ($run) { $q[] = 'run=' . $run; }
+    return MKT_URL . ($q ? '?' . implode('&', $q) : '') . $extra;
+}
+function mktWho(?string $a): string { return $a === 'ai' ? 'IA' : 'Utente'; }
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $action = $_POST['action'] ?? '';
     $pid = (int) ($_POST['project_id'] ?? 0);
     $sid = (int) ($_POST['step_id'] ?? 0);
+    $goRun = 0;
     try {
         if ($action === 'create_project') {
             $r = marketingCreateProject($uid, (string) ($_POST['title'] ?? ''), (string) ($_POST['description'] ?? ''), 'user');
-            if (isset($r['error'])) { $error = $r['error']; } else { header('Location: /dashboard_marketing.php?stato=active&open=' . $r['id'] . '#p' . $r['id']); exit; }
+            if (isset($r['error'])) { $error = $r['error']; } else { header('Location: ' . mktUrl($r['id'])); exit; }
         } elseif ($action === 'update_project') {
             $error = marketingUpdateProject($uid, $pid, ['title' => $_POST['title'] ?? '', 'description' => $_POST['description'] ?? '']);
+        } elseif ($action === 'set_active') {
+            $error = marketingUpdateProject($uid, $pid, ['active' => !empty($_POST['active'])]);
         } elseif ($action === 'archive_project' || $action === 'unarchive_project') {
             $error = marketingUpdateProject($uid, $pid, ['archived' => $action === 'archive_project']);
         } elseif ($action === 'delete_project') {
             marketingDeleteProject($uid, $pid);
+            header('Location: ' . MKT_URL);
+            exit;
         } elseif ($action === 'add_step' || $action === 'add_final') {
             $r = marketingAddStep($uid, $pid, (string) ($_POST['title'] ?? ''), (string) ($_POST['instructions'] ?? ''), $action === 'add_final', 'user');
             $error = $r['error'] ?? null;
@@ -31,80 +45,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = marketingUpdateStep($uid, $sid, ['title' => $_POST['title'] ?? '', 'instructions' => $_POST['instructions'] ?? '']);
         } elseif ($action === 'delete_step') {
             $error = marketingDeleteStep($uid, $sid);
+        } elseif ($action === 'start_run') {
+            $r = marketingStartRun($uid, $pid, 'user');
+            if (isset($r['error'])) { $error = $r['error']; } else { $goRun = (int) $r['run_id']; }
         } elseif ($action === 'complete_step') {
-            $error = marketingCompleteStep($uid, $sid, (string) ($_POST['result'] ?? ''), 'user');
-        } elseif ($action === 'reopen_step') {
-            $error = marketingReopenStep($uid, $sid);
+            $error = marketingCompleteStep($uid, $sid, (string) ($_POST['note'] ?? ''), 'user');
+            $open = marketingOpenRun($uid, $pid);
+            $goRun = $open ? (int) $open['id'] : (int) ($_POST['run_id'] ?? 0);
+        } elseif ($action === 'add_note') {
+            $error = marketingAddNote($uid, $pid, (string) ($_POST['text'] ?? ''), $sid ?: null, 'user');
+            $goRun = (int) ($_POST['run_id'] ?? 0);
+        } elseif ($action === 'interrupt_run') {
+            $error = marketingInterruptRun($uid, $pid, (string) ($_POST['reason'] ?? ''), 'user');
+            $goRun = (int) ($_POST['run_id'] ?? 0);
         }
     } catch (PDOException $ex) {
-        $error = $ex->getCode() === '42S02' ? 'Il modulo Marketing non è ancora attivo su questo database: applicare la migrazione 2026_11_21_marketing_plans.sql.' : 'Errore durante il salvataggio.';
+        $error = in_array($ex->getCode(), ['42S02', '42S22'], true) ? 'Il modulo Marketing non è aggiornato su questo database: applicare la migrazione 2026_11_22_marketing_runs.sql.' : 'Errore durante il salvataggio.';
         error_log('dashboard_marketing: ' . $ex->getMessage());
     }
     if ($error === null) {
-        // Dopo l'azione si torna alla scheda dello stato in cui il progetto si trova adesso
-        // (es. completato il Finale -> "Completati"), con il progetto aperto.
-        $after = ($pid && $action !== 'delete_project') ? marketingGetProject($uid, $pid) : null;
-        header('Location: /dashboard_marketing.php' . ($after ? '?stato=' . $after['status'] . '&open=' . $pid . '#p' . $pid : ''));
+        header('Location: ' . mktUrl($pid, $goRun));
         exit;
     }
+    $_GET['id'] = $pid; // in caso di errore resta sulla stessa pagina
+    if (!empty($_POST['run_id'])) { $_GET['run'] = (int) $_POST['run_id']; }
 }
 
-$stato = $_GET['stato'] ?? (!empty($_GET['archived']) ? 'archived' : 'active');
-if (!in_array($stato, ['active', 'completed', 'archived', 'all'], true)) {
-    $stato = 'active';
-}
-$counts = ['active' => 0, 'completed' => 0, 'archived' => 0];
+$detailId = (int) ($_GET['id'] ?? 0);
+$project = null;
+$runs = [];
+$selRun = null;
+$openRun = null;
+$projects = [];
+$counts = ['active' => 0, 'inactive' => 0, 'archived' => 0];
+$stato = 'active';
 try {
-    $allProjects = marketingListProjects($uid, true);
-    foreach ($allProjects as $p0) {
-        $counts[$p0['status']]++;
+    if ($detailId) {
+        $project = marketingGetProject($uid, $detailId);
+        if ($project) {
+            $runs = marketingListRuns($uid, $detailId, 100);
+            $openRun = marketingOpenRun($uid, $detailId);
+            $wantRun = (int) ($_GET['run'] ?? 0);
+            if ($wantRun) {
+                $selRun = marketingGetRun($uid, $wantRun);
+                if ($selRun && (int) $selRun['project_id'] !== $detailId) { $selRun = null; }
+            } elseif ($openRun) {
+                $selRun = marketingGetRun($uid, (int) $openRun['id']);
+            }
+        }
     }
-    $projects = array_values(array_filter($allProjects, fn ($p) => $stato === 'all' || $p['status'] === $stato));
+    if (!$project) {
+        $stato = $_GET['stato'] ?? 'active';
+        if (!in_array($stato, ['active', 'inactive', 'archived', 'all'], true)) { $stato = 'active'; }
+        $all = marketingListProjects($uid, true);
+        foreach ($all as $p0) {
+            $k = $p0['status'] === 'archived' ? 'archived' : ($p0['is_active'] ? 'active' : 'inactive');
+            $counts[$k]++;
+        }
+        $projects = array_values(array_filter($all, function ($p) use ($stato) {
+            $k = $p['status'] === 'archived' ? 'archived' : ($p['is_active'] ? 'active' : 'inactive');
+            return $stato === 'all' || $k === $stato;
+        }));
+    }
 } catch (Throwable $ex) {
+    error_log('dashboard_marketing: ' . $ex->getMessage());
+    $project = null;
     $projects = [];
-    $error = $error ?? 'Il modulo Marketing non è ancora attivo su questo database: applicare la migrazione 2026_11_21_marketing_plans.sql.';
+    $error = $error ?? 'Il modulo Marketing non è aggiornato su questo database: applicare la migrazione 2026_11_22_marketing_runs.sql.';
 }
-$openId = (int) ($_GET['open'] ?? 0);
+if ($detailId && !$project && !$error) {
+    $error = 'Progetto non trovato.';
+}
 
 include __DIR__ . '/_dash_header.php';
 ?>
-
   <style>
   .container { max-width: 1240px; }
   .dash-two-col { display: block; }
   .dash-two-col > div { min-width: 0; }
   @media (min-width: 760px) {
     .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 20px; align-items: start; }
+    .mkt-detail-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 28px; align-items: start; }
   }
-  .mkt-step { border-left: 3px solid #c9c9d6; padding: 8px 0 8px 12px; margin: 10px 0; }
-  .mkt-step.done { border-left-color: #2e9e5b; }
-  .mkt-step.next { border-left-color: var(--accent); background: rgba(108,92,231,.06); border-radius: 0 8px 8px 0; }
-  .mkt-step.final { border-left-style: double; border-left-width: 5px; }
-  .mkt-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
   .mkt-badge { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; white-space: nowrap; }
-  .mkt-instr { white-space: pre-wrap; margin: 4px 0 6px; font-size: 14px; }
-  .mkt-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .mkt-id { display: inline-block; background: #ecebf8; color: #4b3fc4; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .mkt-instr { white-space: pre-wrap; margin: 4px 0 6px; font-size: 14px; overflow-wrap: anywhere; }
+  .mkt-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
   .mkt-actions form { display: inline; }
-  /* Elenco compatto: ogni progetto è una riga che si apre al clic. */
-  .mkt-proj { border: 1px solid var(--border, #e5e5ee); border-radius: 12px; margin-bottom: 10px; background: var(--card-bg, #fff); }
-  .mkt-proj > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: block; }
-  .mkt-proj > summary::-webkit-details-marker { display: none; }
-  .mkt-proj[open] > summary { border-bottom: 1px solid var(--border, #e5e5ee); }
-  .mkt-proj-body { padding: 4px 14px 14px; }
-  .mkt-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .mkt-row .mkt-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
-  .mkt-id { display: inline-block; background: #ecebf8; color: #4b3fc4; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; margin-right: 6px; white-space: nowrap; }
-  .mkt-chev::before { content: '▸'; display: inline-block; margin-right: 6px; transition: transform .15s; }
-  .mkt-proj[open] .mkt-chev::before { transform: rotate(90deg); }
-  .mkt-bar { height: 6px; border-radius: 999px; background: #e5e5ee; overflow: hidden; margin-top: 8px; }
-  .mkt-bar > i { display: block; height: 100%; background: #2e9e5b; }
-  .mkt-next { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; }
   .mkt-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
   .mkt-tabs a { border: 1px solid var(--border, #d6d6e2); border-radius: 999px; padding: 4px 12px; font-size: 13px; text-decoration: none; color: inherit; }
   .mkt-tabs a.on { background: var(--accent); color: var(--accent-text, #fff); border-color: var(--accent); font-weight: 700; }
   .mkt-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
   .mkt-tools input { margin: 0; flex: 1; min-width: 160px; }
-  .mkt-instr.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mkt-row-link { display: block; text-decoration: none; color: inherit; border: 1px solid var(--border, #e5e5ee); border-radius: 12px; margin-bottom: 10px; padding: 12px 14px; background: var(--card-bg, #fff); }
+  .mkt-row-link:hover { border-color: var(--accent); }
+  .mkt-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .mkt-line .mkt-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+  .mkt-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; }
+  /* pagina del progetto */
+  .mkt-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; margin-bottom: 6px; }
+  .mkt-head h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
+  .mkt-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-muted); }
+  .mkt-switch button { position: relative; width: 42px; height: 24px; border-radius: 999px; border: 0; cursor: pointer; background: #c9c9d6; padding: 0; }
+  .mkt-switch button::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .mkt-switch.on button { background: var(--accent); }
+  .mkt-switch.on button::after { left: 21px; }
+  .mkt-h { font-size: 14px; font-weight: 700; margin: 6px 0 8px; }
+  .mkt-run { border-bottom: 1px solid #eee; }
+  .mkt-run > a { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 11px 2px; text-decoration: none; color: inherit; }
+  .mkt-run > a:hover { background: rgba(108,92,231,.05); }
+  .mkt-run.sel > a { font-weight: 700; }
+  .mkt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .mkt-run-meta { font-size: 12.5px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+  .mkt-tag { font-size: 11.5px; color: var(--text-muted); }
+  .mkt-run-detail { padding: 4px 4px 14px 14px; border-left: 3px solid var(--accent); margin: 0 0 12px 4px; }
+  .mkt-ev { display: flex; gap: 10px; padding: 6px 0; font-size: 14px; }
+  .mkt-ev time { flex: 0 0 96px; font-size: 12.5px; color: var(--text-muted); padding-top: 1px; }
+  .mkt-ev .mkt-evtxt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mkt-ev .mkt-evstep { font-size: 12.5px; color: var(--text-muted); display: block; }
+  .mkt-ev .mkt-evbody { white-space: pre-wrap; display: block; }
+  .mkt-now { background: rgba(108,92,231,.07); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+  .mkt-step { border-left: 3px solid #c9c9d6; padding: 6px 0 6px 12px; margin: 10px 0; }
+  .mkt-step.done { border-left-color: #2e9e5b; }
+  .mkt-step.next { border-left-color: var(--accent); }
+  .mkt-step.final { border-left-style: double; border-left-width: 5px; }
+  .mkt-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
   </style>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -113,24 +178,29 @@ include __DIR__ . '/_dash_header.php';
     Marketing
     <button type="button" id="mkt-help-btn" title="Come funziona" aria-label="Come funziona" style="border:0;background:none;cursor:pointer;font-size:20px;line-height:1;padding:0;">❓</button>
   </div>
-  <dialog id="mkt-help" style="max-width:560px;width:calc(100% - 32px);border:0;border-radius:14px;padding:20px 22px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+  <dialog id="mkt-help" style="max-width:600px;width:calc(100% - 32px);border:0;border-radius:14px;padding:20px 22px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
       <strong style="font-size:17px;">Come funziona Marketing</strong>
       <button type="button" id="mkt-help-close" aria-label="Chiudi" style="border:0;background:none;cursor:pointer;font-size:24px;line-height:1;">&times;</button>
     </div>
-    <p style="margin:0 0 10px;">Ogni <strong>progetto</strong> è una serie di passi da eseguire in ordine — Passo 1, Passo 2, Passo 3… — chiusa dal <strong>Finale</strong>.</p>
-    <p style="margin:0 0 10px;">Aggiungi tutti i passi che servono; quando hai finito premi <em>Inserisci Finale</em> per l'ultimo passo. Per ogni passo scrivi un titolo e le istruzioni, per te o per un'intelligenza artificiale.</p>
-    <p style="margin:0 0 10px;">Le IA collegate tramite i server MCP leggono i progetti del profilo, possono crearne di nuovi e segnano i passi come completati: <strong>sempre nell'ordine</strong>, un passo alla volta, senza saltare avanti.</p>
-    <p style="margin:0 0 10px;">Ogni progetto ha un <strong>ID</strong> (per esempio <code>ID 12</code>): è lo stesso numero che le IA usano per leggerlo e aggiornarlo, quindi puoi passarlo a un'altra IA per farle continuare il lavoro.</p>
+    <p style="margin:0 0 10px;">Un <strong>progetto</strong> è un modello riutilizzabile: una serie di passi — Passo 1, Passo 2, Passo 3… — chiusa dal <strong>Finale</strong>. Ogni passo ha un titolo e le istruzioni, per te o per un'intelligenza artificiale. Aggiungi i passi che servono e premi <em>Inserisci Finale</em> per l'ultimo.</p>
+    <p style="margin:0 0 10px;">Ogni volta che il progetto viene usato (<strong>Esegui ora</strong>, oppure un'IA via MCP) nasce un'<strong>esecuzione</strong>: i passi si completano in ordine e la <strong>Cronologia</strong> registra giorno e ora, chi (Utente o IA) e cosa è stato fatto. Completando il Finale l'esecuzione è conclusa e il progetto si può riusare.</p>
+    <p style="margin:0 0 10px;">L'interruttore <strong>Attivo</strong> decide se il progetto si può usare: spento, nessuno può avviare esecuzioni.</p>
+    <p style="margin:0 0 10px;">Ogni progetto ha un <strong>ID</strong> (per esempio <code>ID 12</code>): è lo stesso numero che le IA usano, quindi puoi passarlo a un'altra IA per farle continuare il lavoro.</p>
     <div style="font-weight:700;margin:0 0 6px;">Strumenti MCP disponibili alle IA</div>
     <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.55;">
-      <li><code>list_marketing_projects</code> — elenca i progetti e il passo da fare adesso</li>
-      <li><code>get_marketing_project</code> — legge un progetto con tutti i passi (per ID)</li>
+      <li><code>list_marketing_projects</code> — elenca i progetti attivi e l'esecuzione in corso</li>
+      <li><code>get_marketing_project</code> — legge un progetto (per ID) con passi ed esecuzioni</li>
       <li><code>create_marketing_project</code> — crea un progetto, con passi e Finale</li>
-      <li><code>update_marketing_project</code> — cambia titolo e descrizione, archivia o ripristina</li>
+      <li><code>update_marketing_project</code> — titolo, descrizione, archivia, interruttore Attivo</li>
       <li><code>add_marketing_step</code> — aggiunge un passo (o il Finale)</li>
       <li><code>update_marketing_step</code> — cambia titolo e istruzioni di un passo</li>
-      <li><code>complete_marketing_step</code> — segna completato il passo da fare, con l'esito</li>
+      <li><code>start_marketing_run</code> — avvia (o riprende) un'esecuzione</li>
+      <li><code>add_marketing_note</code> — scrive una nota nella cronologia</li>
+      <li><code>complete_marketing_step</code> — completa il passo da fare, con una nota</li>
+      <li><code>interrupt_marketing_run</code> — interrompe l'esecuzione, con il motivo</li>
+      <li><code>list_marketing_runs</code> — elenca le esecuzioni di un progetto</li>
+      <li><code>get_marketing_run</code> — legge una esecuzione con la cronologia completa</li>
     </ul>
     <p style="margin:10px 0 0;font-size:13px;color:#666;">Le IA non possono eliminare progetti o passi: l'eliminazione si fa solo da qui.</p>
   </dialog>
@@ -144,6 +214,191 @@ include __DIR__ . '/_dash_header.php';
   })();
   </script>
 
+<?php if ($project): /* ============================ PAGINA DI UN PROGETTO ============================ */
+    $steps = $project['steps'];
+    $isArch = $project['status'] === 'archived';
+    $hasFinal = false;
+    foreach ($steps as $s) { $hasFinal = $hasFinal || (int) $s['is_final']; }
+    $openDone = $openRun ? marketingRunDone($uid, (int) $openRun['id']) : [];
+    $openNext = $openRun ? marketingRunNextStep($project, $openDone) : null;
+    $dotColor = ['running' => '#2d7ff9', 'completed' => '#2e9e5b', 'interrupted' => '#e08a1e'];
+    $stLabel = ['running' => 'In corso', 'completed' => 'Completata', 'interrupted' => 'Interrotta'];
+?>
+  <p style="margin:0 0 8px;"><a href="<?= MKT_URL ?>">← Tutti i progetti</a></p>
+
+  <div class="mkt-head">
+    <div style="min-width:0;flex:1;">
+      <h2><span class="mkt-id">ID <?= (int) $project['id'] ?></span> <?= e($project['title']) ?></h2>
+      <div class="mkt-sub" style="margin-top:6px;">
+        <?php if ($isArch): ?><span class="mkt-badge" style="background:#6c757d;">Archiviato</span> <?php endif; ?>
+        <?php if ($project['created_by'] === 'ai'): ?><span class="mkt-badge" style="background:#0d9488;" title="Creato da un'intelligenza artificiale tramite MCP">IA</span> <?php endif; ?>
+        <?php if ($runs): ?>Ultima esecuzione: <?= e(formatLocalDateTime($runs[0]['started_at'], $profile, 'd/m/Y H:i')) ?> · <?= e($stLabel[$runs[0]['status']]) ?><?php else: ?>Mai eseguito<?php endif; ?>
+      </div>
+    </div>
+    <?php if (!$isArch): ?>
+    <div class="mkt-actions" style="margin:0;">
+      <form method="post" class="mkt-switch<?= $project['is_active'] ? ' on' : '' ?>" title="Se spento, il progetto non si può usare">
+        <?= csrfField() ?><input type="hidden" name="action" value="set_active"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+        <?php if (!$project['is_active']): ?><input type="hidden" name="active" value="1"><?php endif; ?>
+        <span><?= $project['is_active'] ? 'Attivo' : 'Disattivato' ?></span>
+        <button type="submit" aria-label="<?= $project['is_active'] ? 'Disattiva' : 'Attiva' ?> il progetto"></button>
+      </form>
+      <?php if ($project['is_active'] && $steps && !$openRun): ?>
+      <form method="post">
+        <?= csrfField() ?><input type="hidden" name="action" value="start_run"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+        <button class="btn" type="submit">▶ Esegui ora</button>
+      </form>
+      <?php elseif ($openRun): ?>
+        <a class="btn" href="<?= e(mktUrl((int) $project['id'], (int) $openRun['id'])) ?>">▶ Esecuzione in corso</a>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+  </div>
+  <hr style="border:0;border-top:1px solid #e5e5ee;margin:12px 0 16px;">
+
+  <div class="mkt-detail-cols">
+  <div>
+    <div class="mkt-h">Cronologia</div>
+    <?php if (!$runs): ?>
+      <p style="color:var(--text-muted);font-size:14px;">Nessuna esecuzione ancora.<?= $project['is_active'] && $steps && !$isArch ? ' Premi <strong>Esegui ora</strong> per avviarne una, oppure lascia che lo faccia un\'IA.' : '' ?></p>
+    <?php endif; ?>
+    <?php foreach ($runs as $r):
+      $isSel = $selRun && (int) $selRun['id'] === (int) $r['id'];
+      $tot = $r['status'] === 'running' ? count($steps) : (int) $r['steps_total'];
+    ?>
+    <div class="mkt-run<?= $isSel ? ' sel' : '' ?>" id="r<?= (int) $r['id'] ?>">
+      <a href="<?= e($isSel ? mktUrl((int) $project['id'], 0, '#r' . (int) $r['id']) : mktUrl((int) $project['id'], (int) $r['id'], '#r' . (int) $r['id'])) ?>">
+        <span><?= e(formatLocalDateTime($r['started_at'], $profile, 'd/m/Y \a\l\l\e H:i')) ?></span>
+        <span class="mkt-tag">· <?= e(mktWho($r['started_by'])) ?></span>
+        <span class="mkt-run-meta"><span class="mkt-dot" style="background:<?= e($dotColor[$r['status']]) ?>;display:inline-block;" aria-hidden="true"></span> <?= e($stLabel[$r['status']]) ?> · <?= (int) $r['done_count'] ?>/<?= (int) $tot ?></span>
+      </a>
+      <?php if ($isSel): $sr = $selRun; ?>
+      <div class="mkt-run-detail">
+        <?php foreach ($sr['events'] as $ev):
+          $icon = ['started' => '▶', 'note' => '📝', 'step_done' => '✅', 'finished' => '🏁', 'interrupted' => '⏹'][$ev['kind']] ?? '•';
+          $verb = ['started' => 'Esecuzione avviata', 'note' => '', 'step_done' => 'Passo completato', 'finished' => '', 'interrupted' => 'Esecuzione interrotta'][$ev['kind']] ?? '';
+        ?>
+        <div class="mkt-ev">
+          <time><?= e(formatLocalDateTime($ev['created_at'], $profile, 'd/m H:i')) ?></time>
+          <div class="mkt-evtxt">
+            <?= $icon ?> <strong><?= e(mktWho($ev['actor'])) ?></strong><?= $verb !== '' ? ' · ' . e($verb) : '' ?>
+            <?php if ($ev['step_label']): ?><span class="mkt-evstep"><?= e($ev['step_label']) ?></span><?php endif; ?>
+            <?php if ($ev['body']): ?><span class="mkt-evbody"><?= e($ev['body']) ?></span><?php endif; ?>
+          </div>
+        </div>
+        <?php endforeach; ?>
+
+        <?php if ($sr['status'] === 'running' && !$isArch): ?>
+        <div class="mkt-now">
+          <?php if ($sr['next_step']): $ns = $sr['next_step']; ?>
+            <div class="mkt-label">▶ Da fare adesso · <?= e(marketingStepLabel($steps, (int) $ns['id'])) ?></div>
+            <div style="font-weight:600;"><?= e($ns['title']) ?></div>
+            <?php if ($ns['instructions']): ?><div class="mkt-instr"><?= e($ns['instructions']) ?></div><?php endif; ?>
+            <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+              <?= csrfField() ?><input type="hidden" name="action" value="complete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $ns['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+              <input type="text" name="note" maxlength="2000" placeholder="Nota (facoltativa): cosa è stato fatto" style="margin:0;flex:1;min-width:180px;">
+              <button class="btn small" type="submit">✔ Segna completato</button>
+            </form>
+          <?php else: ?>
+            <div style="font-size:13.5px;">Tutti i passi sono completati: manca solo il <strong>Finale</strong>. Inseriscilo dal riquadro Istruzioni per poter concludere.</div>
+          <?php endif; ?>
+          <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13.5px;">📝 Aggiungi una nota</summary>
+            <form method="post" style="margin-top:6px;">
+              <?= csrfField() ?><input type="hidden" name="action" value="add_note"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+              <textarea name="text" rows="2" required placeholder="Cosa hai fatto o deciso"></textarea>
+              <button class="btn small secondary" type="submit">Aggiungi alla cronologia</button>
+            </form>
+          </details>
+          <form method="post" style="margin-top:8px;" onsubmit="return confirm('Interrompere questa esecuzione? Non si potrà più proseguire: potrai avviarne una nuova.');">
+            <?= csrfField() ?><input type="hidden" name="action" value="interrupt_run"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+            <input type="text" name="reason" maxlength="500" placeholder="Motivo (facoltativo)" style="margin:0 6px 0 0;width:auto;min-width:160px;">
+            <button class="btn small danger" type="submit">⏹ Interrompi</button>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+  </div>
+
+  <div>
+    <div class="mkt-h">Istruzioni</div>
+    <?php if ($project['description']): ?><p class="mkt-instr" style="color:var(--text-muted);"><?= e($project['description']) ?></p><?php endif; ?>
+    <?php if (!$steps): ?><p style="color:var(--text-muted);font-size:14px;">Nessun passo ancora: aggiungi il Passo 1 qui sotto.</p><?php endif; ?>
+    <?php foreach ($steps as $s):
+      $label = marketingStepLabel($steps, (int) $s['id']);
+      $stDone = isset($openDone[(int) $s['id']]);
+      $stNext = $openNext && (int) $openNext['id'] === (int) $s['id'];
+    ?>
+    <div class="mkt-step<?= (int) $s['is_final'] ? ' final' : '' ?><?= $stDone ? ' done' : '' ?><?= $stNext ? ' next' : '' ?>">
+      <div class="mkt-label"><?= e($label) ?><?= $stDone ? ' · ✅ fatto' : ($stNext ? ' · ▶ da fare adesso' : '') ?></div>
+      <div style="font-weight:600;"><?= e($s['title']) ?></div>
+      <?php if ($s['instructions']): ?><div class="mkt-instr"><?= e($s['instructions']) ?></div><?php endif; ?>
+      <?php if (!$isArch): ?>
+      <div class="mkt-actions">
+        <details style="display:inline-block;">
+          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
+          <form method="post" style="margin-top:8px;">
+            <?= csrfField() ?><input type="hidden" name="action" value="update_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
+            <input type="text" name="title" maxlength="150" required value="<?= e($s['title']) ?>">
+            <textarea name="instructions" rows="3"><?= e($s['instructions'] ?? '') ?></textarea>
+            <button class="btn small" type="submit">Salva passo</button>
+          </form>
+        </details>
+        <form method="post" onsubmit="return confirm('Eliminare questo passo? Le cronologie passate restano leggibili.');">
+          <?= csrfField() ?><input type="hidden" name="action" value="delete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
+          <button class="btn small danger" type="submit">Elimina</button>
+        </form>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+
+    <?php if (!$isArch): ?>
+      <?php if (!$hasFinal): ?>
+      <details style="margin-top:10px;"<?= !$steps ? ' open' : '' ?>>
+        <summary style="cursor:pointer;font-weight:600;">➕ Aggiungi un passo</summary>
+        <form method="post" style="margin-top:8px;">
+          <?= csrfField() ?><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+          <label>Titolo del <?= $steps ? 'passo ' . (count($steps) + 1) : 'Passo 1' ?></label>
+          <input type="text" name="title" maxlength="150" required>
+          <label>Istruzioni (per te o per l'IA)</label>
+          <textarea name="instructions" rows="3" placeholder="Cosa va fatto in questo passo, con quali contenuti, quando…"></textarea>
+          <button class="btn" type="submit" name="action" value="add_step">Aggiungi passo</button>
+          <button class="btn secondary" type="submit" name="action" value="add_final" title="Aggiunge l'ultimo passo e chiude il progetto">🏁 Inserisci Finale</button>
+        </form>
+      </details>
+      <?php else: ?>
+        <p style="color:var(--text-muted);font-size:12.5px;margin:10px 0 0;">Il Finale è inserito: per aggiungere altri passi elimina prima il Finale.</p>
+      <?php endif; ?>
+    <?php endif; ?>
+
+    <div class="mkt-actions" style="margin-top:16px;border-top:1px solid #e5e5ee;padding-top:12px;">
+      <?php if (!$isArch): ?>
+      <details style="display:inline-block;">
+        <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica progetto</summary>
+        <form method="post" style="margin-top:8px;">
+          <?= csrfField() ?><input type="hidden" name="action" value="update_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+          <input type="text" name="title" maxlength="150" required value="<?= e($project['title']) ?>">
+          <textarea name="description" rows="3"><?= e($project['description'] ?? '') ?></textarea>
+          <button class="btn small" type="submit">Salva progetto</button>
+        </form>
+      </details>
+      <?php endif; ?>
+      <form method="post">
+        <?= csrfField() ?><input type="hidden" name="action" value="<?= $isArch ? 'unarchive_project' : 'archive_project' ?>"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+        <button class="btn small secondary" type="submit"><?= $isArch ? 'Ripristina' : 'Archivia' ?></button>
+      </form>
+      <form method="post" onsubmit="return confirm('Eliminare il progetto con tutti i passi e tutta la cronologia? Non si può annullare.');">
+        <?= csrfField() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+        <button class="btn small danger" type="submit">Elimina progetto</button>
+      </form>
+    </div>
+  </div>
+  </div>
+
+<?php else: /* ============================ ELENCO DEI PROGETTI ============================ */ ?>
   <div class="dash-two-col">
   <div>
     <form method="post" class="card">
@@ -161,10 +416,10 @@ include __DIR__ . '/_dash_header.php';
 
   <div>
     <div class="mkt-tabs">
-      <?php foreach (['active' => 'In corso', 'completed' => 'Completati', 'archived' => 'Archiviati'] as $k => $lbl): ?>
-        <a href="/dashboard_marketing.php?stato=<?= $k ?>" class="<?= $stato === $k ? 'on' : '' ?>"><?= e($lbl) ?> (<?= (int) $counts[$k] ?>)</a>
+      <?php foreach (['active' => 'Attivi', 'inactive' => 'Disattivati', 'archived' => 'Archiviati'] as $k => $lbl): ?>
+        <a href="<?= MKT_URL ?>?stato=<?= $k ?>" class="<?= $stato === $k ? 'on' : '' ?>"><?= e($lbl) ?> (<?= (int) $counts[$k] ?>)</a>
       <?php endforeach; ?>
-      <a href="/dashboard_marketing.php?stato=all" class="<?= $stato === 'all' ? 'on' : '' ?>">Tutti (<?= array_sum($counts) ?>)</a>
+      <a href="<?= MKT_URL ?>?stato=all" class="<?= $stato === 'all' ? 'on' : '' ?>">Tutti (<?= array_sum($counts) ?>)</a>
     </div>
     <?php if (count($projects) > 1): ?>
     <div class="mkt-tools">
@@ -175,145 +430,43 @@ include __DIR__ . '/_dash_header.php';
         <option value="name_asc">Nome: A → Z</option>
         <option value="name_desc">Nome: Z → A</option>
       </select>
-      <button type="button" class="btn small secondary" id="mkt-expand">Apri tutti</button>
-      <button type="button" class="btn small secondary" id="mkt-collapse">Chiudi tutti</button>
     </div>
     <?php endif; ?>
     <?php if (!$projects): ?>
       <div class="card" style="color:var(--text-muted);"><?= array_sum($counts) ? 'Nessun progetto in questo elenco.' : 'Nessun progetto ancora: creane uno qui a sinistra.' ?></div>
     <?php endif; ?>
-
+    <div id="mkt-list">
     <?php foreach ($projects as $p):
-      $steps = $p['steps'];
-      $next = marketingNextStep($p);
-      $hasFinal = false; $doneN = 0;
-      foreach ($steps as $s) { $hasFinal = $hasFinal || (int) $s['is_final']; $doneN += $s['status'] === 'done' ? 1 : 0; }
-      $badge = ['active' => ['In corso', '#6c5ce7'], 'completed' => ['Completato', '#2e9e5b'], 'archived' => ['Archiviato', '#6c757d']][$p['status']];
-      $pct = $steps ? (int) round($doneN / count($steps) * 100) : 0;
-      $isOpen = $openId === (int) $p['id'] || count($projects) === 1;
+      $isArchP = $p['status'] === 'archived';
+      $openP = marketingOpenRun($uid, (int) $p['id']);
+      $lastP = marketingListRuns($uid, (int) $p['id'], 1);
+      $stLabel = ['running' => 'In corso', 'completed' => 'completata', 'interrupted' => 'interrotta'];
     ?>
-    <details class="mkt-proj" id="p<?= (int) $p['id'] ?>" data-title="<?= e(mb_strtolower($p['title']) . ' id ' . (int) $p['id']) ?>" data-name="<?= e(mb_strtolower($p['title'])) ?>" data-date="<?= (int) strtotime($p['created_at']) ?>" data-id="<?= (int) $p['id'] ?>"<?= $isOpen ? ' open' : '' ?>>
-      <summary>
-        <div class="mkt-row">
-          <span class="mkt-name"><span class="mkt-chev"></span><span class="mkt-id" title="ID del progetto: lo stesso che usano le IA (MCP)">ID <?= (int) $p['id'] ?></span> <?= e($p['title']) ?></span>
-          <span class="mkt-badge" style="background:<?= e($badge[1]) ?>;"><?= e($badge[0]) ?></span>
-          <?php if ($p['created_by'] === 'ai'): ?><span class="mkt-badge" style="background:#0d9488;" title="Creato da un'intelligenza artificiale tramite MCP">IA</span><?php endif; ?>
-          <span style="font-size:12.5px;color:var(--text-muted);white-space:nowrap;"><?= $doneN ?>/<?= count($steps) ?> passi</span>
-        </div>
-        <?php if ($steps): ?><div class="mkt-bar" aria-hidden="true"><i style="width:<?= $pct ?>%;"></i></div><?php endif; ?>
-        <?php if ($next && $p['status'] === 'active'): ?>
-          <div class="mkt-next">▶ Prossimo: <strong><?= e(marketingStepLabel($steps, (int) $next['id'])) ?></strong> — <?= e(mb_strimwidth($next['title'], 0, 90, '…')) ?></div>
-        <?php elseif (!$steps): ?>
-          <div class="mkt-next">Nessun passo ancora</div>
-        <?php endif; ?>
-        <div class="mkt-next" style="margin-top:2px;">Creato il <?= e(formatLocalDateTime($p['created_at'], $profile)) ?></div>
-      </summary>
-
-      <div class="mkt-proj-body">
-      <?php if ($p['description']): ?>
-        <details style="margin:8px 0;"><summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">Obiettivo del progetto</summary><p class="mkt-instr" style="color:var(--text-muted);"><?= e($p['description']) ?></p></details>
-      <?php endif; ?>
-
-      <?php foreach ($steps as $s):
-        $isDone = $s['status'] === 'done';
-        $isNext = $next && (int) $next['id'] === (int) $s['id'] && $p['status'] !== 'archived';
-        $label = marketingStepLabel($steps, (int) $s['id']);
-      ?>
-      <div class="mkt-step<?= $isDone ? ' done' : '' ?><?= $isNext ? ' next' : '' ?><?= (int) $s['is_final'] ? ' final' : '' ?>">
-        <div class="mkt-label">
-          <?= e($label) ?>
-          <?= $isDone ? '· ✅ completato' . ($s['completed_by'] === 'ai' ? ' dall\'IA' : '') . ($s['completed_at'] ? ' il ' . e(formatLocalDateTime($s['completed_at'], $profile)) : '') : ($isNext ? '· ▶ da fare adesso' : '· in attesa') ?>
-        </div>
-        <div style="font-weight:600;"><?= e($s['title']) ?></div>
-        <?php if ($s['instructions']): ?>
-          <?php if ($isNext): ?>
-            <div class="mkt-instr"><?= e($s['instructions']) ?></div>
-          <?php else: ?>
-            <details class="mkt-instr-more"><summary style="cursor:pointer;color:var(--text-muted);font-size:12.5px;">Istruzioni</summary><div class="mkt-instr"><?= e($s['instructions']) ?></div></details>
-          <?php endif; ?>
-        <?php endif; ?>
-        <?php if ($s['result']): ?><div class="mkt-instr" style="color:#2e9e5b;"><strong>Esito:</strong> <?= e($s['result']) ?></div><?php endif; ?>
-        <div class="mkt-actions">
-          <?php if ($p['status'] !== 'archived'): ?>
-            <?php if (!$isDone && $isNext): ?>
-              <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                <?= csrfField() ?><input type="hidden" name="action" value="complete_step"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-                <input type="text" name="result" maxlength="500" placeholder="Esito (facoltativo)" style="margin:0;min-width:160px;">
-                <button class="btn small" type="submit">✔ Segna completato</button>
-              </form>
-            <?php elseif ($isDone): ?>
-              <form method="post" onsubmit="return confirm('Riaprire questo passo? Anche i passi successivi tornano da fare.');">
-                <?= csrfField() ?><input type="hidden" name="action" value="reopen_step"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-                <button class="btn small secondary" type="submit">↺ Riapri</button>
-              </form>
-            <?php endif; ?>
-            <details style="display:inline-block;">
-              <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-              <form method="post" style="margin-top:8px;">
-                <?= csrfField() ?><input type="hidden" name="action" value="update_step"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-                <input type="text" name="title" maxlength="150" required value="<?= e($s['title']) ?>">
-                <textarea name="instructions" rows="3"><?= e($s['instructions'] ?? '') ?></textarea>
-                <button class="btn small" type="submit">Salva passo</button>
-              </form>
-            </details>
-            <form method="post" onsubmit="return confirm('Eliminare questo passo?');">
-              <?= csrfField() ?><input type="hidden" name="action" value="delete_step"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-              <button class="btn small danger" type="submit">Elimina</button>
-            </form>
-          <?php endif; ?>
-        </div>
+    <a class="mkt-row-link mkt-proj" href="<?= e(mktUrl((int) $p['id'])) ?>" data-title="<?= e(mb_strtolower($p['title']) . ' id ' . (int) $p['id']) ?>" data-name="<?= e(mb_strtolower($p['title'])) ?>" data-date="<?= (int) strtotime($p['created_at']) ?>" data-id="<?= (int) $p['id'] ?>">
+      <div class="mkt-line">
+        <span class="mkt-name"><span class="mkt-id">ID <?= (int) $p['id'] ?></span> <?= e($p['title']) ?></span>
+        <?php if ($isArchP): ?><span class="mkt-badge" style="background:#6c757d;">Archiviato</span>
+        <?php elseif (!$p['is_active']): ?><span class="mkt-badge" style="background:#9a9aab;">Disattivato</span>
+        <?php else: ?><span class="mkt-badge" style="background:#6c5ce7;">Attivo</span><?php endif; ?>
+        <?php if ($p['created_by'] === 'ai'): ?><span class="mkt-badge" style="background:#0d9488;" title="Creato da un'intelligenza artificiale tramite MCP">IA</span><?php endif; ?>
+        <span style="font-size:12.5px;color:var(--text-muted);white-space:nowrap;"><?= count($p['steps']) ?> passi</span>
       </div>
-      <?php endforeach; ?>
-
-      <?php if ($p['status'] !== 'archived'): ?>
-        <?php if (!$hasFinal): ?>
-        <details style="margin-top:10px;">
-          <summary style="cursor:pointer;font-weight:600;">➕ Aggiungi un passo</summary>
-          <form method="post" style="margin-top:8px;">
-            <?= csrfField() ?><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>">
-            <label>Titolo del <?= $steps ? 'passo ' . (count($steps) + 1) : 'Passo 1' ?></label>
-            <input type="text" name="title" maxlength="150" required>
-            <label>Istruzioni (per te o per l'IA)</label>
-            <textarea name="instructions" rows="3" placeholder="Cosa va fatto in questo passo, con quali contenuti, quando…"></textarea>
-            <button class="btn" type="submit" name="action" value="add_step">Aggiungi passo</button>
-            <button class="btn secondary" type="submit" name="action" value="add_final" title="Aggiunge l'ultimo passo e chiude il progetto">🏁 Inserisci Finale</button>
-          </form>
-        </details>
-        <?php else: ?>
-          <p style="color:var(--text-muted);font-size:12.5px;margin:10px 0 0;">Il Finale è stato inserito: per aggiungere altri passi elimina prima il Finale.</p>
-        <?php endif; ?>
-      <?php endif; ?>
-
-      <div class="mkt-actions" style="margin-top:12px;border-top:1px solid #e5e5ee;padding-top:10px;">
-        <?php if ($p['status'] !== 'archived'): ?>
-        <details style="display:inline-block;">
-          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica progetto</summary>
-          <form method="post" style="margin-top:8px;">
-            <?= csrfField() ?><input type="hidden" name="action" value="update_project"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>">
-            <input type="text" name="title" maxlength="150" required value="<?= e($p['title']) ?>">
-            <textarea name="description" rows="3"><?= e($p['description'] ?? '') ?></textarea>
-            <button class="btn small" type="submit">Salva progetto</button>
-          </form>
-        </details>
-        <?php endif; ?>
-        <form method="post">
-          <?= csrfField() ?><input type="hidden" name="action" value="<?= $p['status'] === 'archived' ? 'unarchive_project' : 'archive_project' ?>"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>">
-          <button class="btn small secondary" type="submit"><?= $p['status'] === 'archived' ? 'Ripristina' : 'Archivia' ?></button>
-        </form>
-        <form method="post" onsubmit="return confirm('Eliminare il progetto e tutti i suoi passi? Non si può annullare.');">
-          <?= csrfField() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="project_id" value="<?= (int) $p['id'] ?>">
-          <button class="btn small danger" type="submit">Elimina progetto</button>
-        </form>
+      <div class="mkt-sub">
+        <?php if ($openP): ?>▶ Esecuzione in corso dal <?= e(formatLocalDateTime($openP['started_at'], $profile, 'd/m H:i')) ?>
+        <?php elseif ($lastP): ?>Ultima esecuzione: <?= e(formatLocalDateTime($lastP[0]['started_at'], $profile, 'd/m/Y H:i')) ?> · <?= e($stLabel[$lastP[0]['status']]) ?>
+        <?php else: ?>Mai eseguito<?php endif; ?>
+        · creato il <?= e(formatLocalDateTime($p['created_at'], $profile, 'd/m/Y')) ?>
       </div>
-      </div>
-    </details>
+    </a>
     <?php endforeach; ?>
+    </div>
   </div>
   </div>
   <script>
   (function () {
+    var list = document.getElementById('mkt-list');
+    var items = list ? Array.prototype.slice.call(list.querySelectorAll('.mkt-proj')) : [];
     var q = document.getElementById('mkt-search');
-    var items = Array.prototype.slice.call(document.querySelectorAll('.mkt-proj'));
     if (q) q.addEventListener('input', function () {
       var t = q.value.trim().toLowerCase();
       items.forEach(function (d) { d.style.display = !t || (d.getAttribute('data-title') || '').indexOf(t) !== -1 ? '' : 'none'; });
@@ -321,21 +474,18 @@ include __DIR__ . '/_dash_header.php';
     // Ordinamento: per data di creazione o per nome, crescente/decrescente; la scelta si ricorda nel browser.
     var sel = document.getElementById('mkt-sort');
     if (sel && items.length) {
-      var parent = items[0].parentNode;
       var apply = function () {
         var v = sel.value, dir = /_desc$/.test(v) ? -1 : 1, byName = /^name/.test(v);
         items.slice().sort(function (a, b) {
           if (byName) return dir * (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '', 'it', { sensitivity: 'base' });
           return dir * (((+a.getAttribute('data-date')) - (+b.getAttribute('data-date'))) || ((+a.getAttribute('data-id')) - (+b.getAttribute('data-id'))));
-        }).forEach(function (d) { parent.appendChild(d); });
+        }).forEach(function (d) { list.appendChild(d); });
       };
       try { var saved = localStorage.getItem('mktSort'); if (saved && sel.querySelector('option[value="' + saved + '"]')) sel.value = saved; } catch (e) {}
       sel.addEventListener('change', function () { try { localStorage.setItem('mktSort', sel.value); } catch (e) {} apply(); });
       apply();
     }
-    var ex = document.getElementById('mkt-expand'), co = document.getElementById('mkt-collapse');
-    if (ex) ex.addEventListener('click', function () { items.forEach(function (d) { d.open = true; }); });
-    if (co) co.addEventListener('click', function () { items.forEach(function (d) { d.open = false; }); });
   })();
   </script>
+<?php endif; ?>
 <?php include __DIR__ . '/_dash_footer.php'; ?>

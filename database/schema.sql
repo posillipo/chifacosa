@@ -1104,6 +1104,7 @@ CREATE TABLE IF NOT EXISTS marketing_projects (
     title VARCHAR(150) NOT NULL,
     description TEXT DEFAULT NULL,
     status ENUM('active','completed','archived') NOT NULL DEFAULT 'active',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_by ENUM('user','ai') NOT NULL DEFAULT 'user',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1129,5 +1130,38 @@ CREATE TABLE IF NOT EXISTS marketing_steps (
     KEY idx_mkt_steps_project (project_id, position),
     KEY idx_mkt_steps_user (user_id),
     FOREIGN KEY (project_id) REFERENCES marketing_projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Marketing > Pianificate: esecuzioni e cronologia (vedi database/migrations/2026_11_22_marketing_runs.sql)
+CREATE TABLE IF NOT EXISTS marketing_runs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    project_id INT NOT NULL,
+    user_id INT NOT NULL,
+    started_by ENUM('user','ai') NOT NULL DEFAULT 'user',
+    status ENUM('running','completed','interrupted') NOT NULL DEFAULT 'running',
+    steps_total INT NOT NULL DEFAULT 0,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at DATETIME DEFAULT NULL,
+    KEY idx_mkt_runs_project (project_id, id),
+    KEY idx_mkt_runs_user (user_id, status),
+    FOREIGN KEY (project_id) REFERENCES marketing_projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS marketing_run_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    run_id INT NOT NULL,
+    project_id INT NOT NULL,
+    user_id INT NOT NULL,
+    step_id INT DEFAULT NULL,
+    step_label VARCHAR(200) DEFAULT NULL,
+    kind ENUM('started','note','step_done','finished','interrupted') NOT NULL,
+    actor ENUM('user','ai') NOT NULL DEFAULT 'user',
+    body TEXT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_mkt_events_run (run_id, id),
+    KEY idx_mkt_events_step (run_id, step_id, kind),
+    FOREIGN KEY (run_id) REFERENCES marketing_runs(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
