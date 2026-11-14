@@ -567,6 +567,86 @@ function buildMcpServer() {
         return toolResult(await chifacosaApi(profile, '/social-queue/list' + (q ? '?' + q : '')));
     });
 
+    // ---- Marketing > Pianificate: progetti con passi in sequenza (Passo 1, 2, ... e Finale) ----
+    // Le IA devono eseguire i passi NELL'ORDINE: l'API rifiuta (409) il completamento di un passo
+    // se i precedenti non sono completati. L'eliminazione di progetti/passi si fa solo dalla dashboard.
+    const marketingStepInput = z.object({
+        title: z.string().min(1).max(150).describe('Titolo del passo'),
+        instructions: z.string().max(20000).optional().describe('Istruzioni: cosa va fatto in questo passo'),
+    });
+
+    server.registerTool('list_marketing_projects', {
+        title: 'Elenca i progetti Marketing > Pianificate',
+        description: 'Elenca i progetti pianificati del profilo (Marketing > Pianificate). Ogni progetto è una serie ordinata di passi (Passo 1, Passo 2, … e Finale) e riporta "next_step", il passo da eseguire ADESSO. Da chiamare all\'inizio di ogni lavoro di marketing sul profilo: segui i passi nell\'ordine, uno alla volta, senza saltare avanti. Filtro status: active (default: tutti tranne archiviati), completed, archived o all.',
+        inputSchema: {
+            ...profileField,
+            status: z.enum(['active', 'completed', 'archived', 'all']).optional().describe('Filtra per stato (default: non archiviati)'),
+        },
+    }, async ({ profile, status }) => toolResult(await chifacosaApi(profile, '/marketing/projects' + (status ? `?status=${status}` : ''))));
+
+    server.registerTool('get_marketing_project', {
+        title: 'Leggi un progetto Marketing',
+        description: 'Dettaglio di un progetto Marketing > Pianificate con tutti i passi (titolo, istruzioni, stato, esito) e il "next_step" da eseguire adesso.',
+        inputSchema: { ...profileField, id: z.number().int().describe('ID del progetto') },
+    }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/marketing/projects/${id}`)));
+
+    server.registerTool('create_marketing_project', {
+        title: 'Crea un progetto Marketing > Pianificate',
+        description: 'Crea un nuovo progetto pianificato. Facoltativi: "steps" (elenco di passi in ordine: Passo 1, Passo 2, …) e "final" (il passo Finale, che chiude il progetto: dopo il Finale non si aggiungono altri passi). Se non dai i passi, aggiungili dopo con add_marketing_step. I progetti creati da un\'IA sono contrassegnati "IA" nella dashboard.',
+        inputSchema: {
+            ...profileField,
+            title: z.string().min(1).max(150).describe('Titolo del progetto'),
+            description: z.string().max(20000).optional().describe('Obiettivo / descrizione del progetto'),
+            steps: z.array(marketingStepInput).max(50).optional().describe('Passi in ordine (diventano Passo 1, Passo 2, …)'),
+            final: marketingStepInput.optional().describe('Passo Finale (ultimo passo del progetto)'),
+        },
+    }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/marketing/projects', { method: 'POST', body: fields })));
+
+    server.registerTool('update_marketing_project', {
+        title: 'Modifica un progetto Marketing',
+        description: 'Cambia titolo e/o descrizione di un progetto, oppure lo archivia/ripristina con archived (true/false). Non elimina progetti: l\'eliminazione si fa dalla dashboard.',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID del progetto'),
+            title: z.string().min(1).max(150).optional(),
+            description: z.string().max(20000).optional(),
+            archived: z.boolean().optional().describe('true = archivia, false = ripristina'),
+        },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/marketing/projects/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('add_marketing_step', {
+        title: 'Aggiungi un passo a un progetto Marketing',
+        description: 'Aggiunge un passo in fondo al progetto (diventa il Passo successivo). Con final=true aggiunge il Finale ("Inserisci Finale"): dopo il Finale il progetto è chiuso e non si possono aggiungere altri passi.',
+        inputSchema: {
+            ...profileField,
+            project_id: z.number().int().describe('ID del progetto'),
+            title: z.string().min(1).max(150).describe('Titolo del passo'),
+            instructions: z.string().max(20000).optional().describe('Istruzioni del passo'),
+            final: z.boolean().optional().describe('true = questo è il passo Finale'),
+        },
+    }, async ({ profile, project_id, ...fields }) => toolResult(await chifacosaApi(profile, `/marketing/projects/${project_id}/steps`, { method: 'POST', body: fields })));
+
+    server.registerTool('update_marketing_step', {
+        title: 'Modifica un passo di un progetto Marketing',
+        description: 'Cambia titolo e/o istruzioni di un passo (id del passo dal progetto). Non cambia l\'ordine né lo stato del passo.',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID del passo'),
+            title: z.string().min(1).max(150).optional(),
+            instructions: z.string().max(20000).optional(),
+        },
+    }, async ({ profile, id, ...fields }) => toolResult(await chifacosaApi(profile, `/marketing/steps/${id}`, { method: 'PUT', body: fields })));
+
+    server.registerTool('complete_marketing_step', {
+        title: 'Segna come completato un passo di un progetto Marketing',
+        description: 'Segna un passo come completato, con un esito facoltativo (result: cosa è stato fatto). Si può completare SOLO il passo indicato da "next_step" del progetto: se i passi precedenti non sono completati l\'API risponde 409 con il passo da fare prima. Esegui il lavoro del passo, poi chiama questo strumento; solo dopo passa al passo successivo. Completando il Finale il progetto risulta completato.',
+        inputSchema: {
+            ...profileField,
+            id: z.number().int().describe('ID del passo'),
+            result: z.string().max(20000).optional().describe('Esito: cosa è stato fatto in questo passo'),
+        },
+    }, async ({ profile, id, result }) => toolResult(await chifacosaApi(profile, `/marketing/steps/${id}/complete`, { method: 'POST', body: { result } })));
+
     const videoFields = {
         title: z.string().describe('Titolo del video (max 150 caratteri)'),
         description: z.string().optional().describe('Descrizione del video'),

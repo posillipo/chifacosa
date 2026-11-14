@@ -407,6 +407,7 @@ document.addEventListener('click', function (e) {
 <?php
 // Colonna destra "Attività": dati del solo profilo attivo, calcolati lato server.
 require_once __DIR__ . '/../src/dash_right.php';
+require_once __DIR__ . '/../src/marketing.php';
 echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
@@ -417,13 +418,16 @@ echo renderDashRight([
     'unread_messages'  => $unreadDirectMessages,
     'tz_profile'       => $dashProfile,
     // Integrazioni (prima nel menu account): solo band/etichette, come prima. Il pallino verde = collegata.
-    'integrations'     => !$isBandOrLabel ? [] : [
+    'integrations'     => array_merge(!$isBandOrLabel ? [] : [
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
         ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
         ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
         ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
-    ],
+    ], [
+        // Marketing (tutti i profili): progetti pianificati a passi. Pallino = ci sono progetti in corso.
+        ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
+    ]),
     'active_tab'       => $activeTab ?? '',
 ]);
 ?>
