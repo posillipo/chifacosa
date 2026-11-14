@@ -56,34 +56,18 @@ if (!in_array($stato, ['active', 'completed', 'archived', 'all'], true)) {
 $counts = ['active' => 0, 'completed' => 0, 'archived' => 0];
 try {
     $allProjects = marketingListProjects($uid, true);
-    $numbers = [];
-    foreach (array_reverse($allProjects) as $i => $p0) { // "Progetto N": numero in ordine di creazione
-        $numbers[(int) $p0['id']] = $i + 1;
-    }
     foreach ($allProjects as $p0) {
         $counts[$p0['status']]++;
     }
     $projects = array_values(array_filter($allProjects, fn ($p) => $stato === 'all' || $p['status'] === $stato));
 } catch (Throwable $ex) {
     $projects = [];
-    $numbers = [];
     $error = $error ?? 'Il modulo Marketing non è ancora attivo su questo database: applicare la migrazione 2026_11_21_marketing_plans.sql.';
 }
 $openId = (int) ($_GET['open'] ?? 0);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      <strong>Marketing &gt; Pianificate</strong>: ogni <strong>progetto</strong> è una serie di passi da eseguire
-      in ordine — Passo 1, Passo 2, Passo 3… — chiusa dal <strong>Finale</strong>. Aggiungi tutti i passi che servono;
-      quando hai finito premi <em>Inserisci Finale</em> per l'ultimo passo. Per ogni passo scrivi un titolo e le
-      istruzioni (per te o per un'intelligenza artificiale). Le IA collegate tramite i server MCP leggono i progetti
-      del profilo, possono crearne di nuovi e segnano i passi come completati: <strong>sempre nell'ordine</strong>, un
-      passo alla volta, senza saltare avanti.
-    </p>
-  </details>
 
   <style>
   .container { max-width: 1240px; }
@@ -92,8 +76,6 @@ include __DIR__ . '/_dash_header.php';
   @media (min-width: 760px) {
     .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 20px; align-items: start; }
   }
-  .mkt-area { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
-  .mkt-area span { background: var(--accent); color: var(--accent-text, #fff); border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: 13.5px; }
   .mkt-step { border-left: 3px solid #c9c9d6; padding: 8px 0 8px 12px; margin: 10px 0; }
   .mkt-step.done { border-left-color: #2e9e5b; }
   .mkt-step.next { border-left-color: var(--accent); background: rgba(108,92,231,.06); border-radius: 0 8px 8px 0; }
@@ -111,6 +93,7 @@ include __DIR__ . '/_dash_header.php';
   .mkt-proj-body { padding: 4px 14px 14px; }
   .mkt-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .mkt-row .mkt-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+  .mkt-id { display: inline-block; background: #ecebf8; color: #4b3fc4; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; margin-right: 6px; white-space: nowrap; }
   .mkt-chev::before { content: '▸'; display: inline-block; margin-right: 6px; transition: transform .15s; }
   .mkt-proj[open] .mkt-chev::before { transform: rotate(90deg); }
   .mkt-bar { height: 6px; border-radius: 999px; background: #e5e5ee; overflow: hidden; margin-top: 8px; }
@@ -126,8 +109,29 @@ include __DIR__ . '/_dash_header.php';
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
-  <div class="section-title">Marketing</div>
-  <div class="mkt-area"><span>Pianificate</span></div>
+  <div class="section-title" style="display:flex;align-items:center;gap:8px;">
+    Marketing
+    <button type="button" id="mkt-help-btn" title="Come funziona" aria-label="Come funziona" style="border:0;background:none;cursor:pointer;font-size:20px;line-height:1;padding:0;">❓</button>
+  </div>
+  <dialog id="mkt-help" style="max-width:560px;width:calc(100% - 32px);border:0;border-radius:14px;padding:20px 22px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+      <strong style="font-size:17px;">Come funziona Marketing</strong>
+      <button type="button" id="mkt-help-close" aria-label="Chiudi" style="border:0;background:none;cursor:pointer;font-size:24px;line-height:1;">&times;</button>
+    </div>
+    <p style="margin:0 0 10px;">Ogni <strong>progetto</strong> è una serie di passi da eseguire in ordine — Passo 1, Passo 2, Passo 3… — chiusa dal <strong>Finale</strong>.</p>
+    <p style="margin:0 0 10px;">Aggiungi tutti i passi che servono; quando hai finito premi <em>Inserisci Finale</em> per l'ultimo passo. Per ogni passo scrivi un titolo e le istruzioni, per te o per un'intelligenza artificiale.</p>
+    <p style="margin:0 0 10px;">Le IA collegate tramite i server MCP leggono i progetti del profilo, possono crearne di nuovi e segnano i passi come completati: <strong>sempre nell'ordine</strong>, un passo alla volta, senza saltare avanti.</p>
+    <p style="margin:0;">Ogni progetto ha un <strong>ID</strong> (per esempio <code>ID 12</code>): è lo stesso numero che le IA usano per leggerlo e aggiornarlo, quindi puoi passarlo a un'altra IA per farle continuare il lavoro.</p>
+  </dialog>
+  <script>
+  (function () {
+    var d = document.getElementById('mkt-help'), b = document.getElementById('mkt-help-btn'), c = document.getElementById('mkt-help-close');
+    if (!d || !b) return;
+    b.addEventListener('click', function () { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
+    c.addEventListener('click', function () { d.close ? d.close() : d.removeAttribute('open'); });
+    d.addEventListener('click', function (e) { if (e.target === d && d.close) d.close(); });
+  })();
+  </script>
 
   <div class="dash-two-col">
   <div>
@@ -153,7 +157,7 @@ include __DIR__ . '/_dash_header.php';
     </div>
     <?php if (count($projects) > 1): ?>
     <div class="mkt-tools">
-      <input type="search" id="mkt-search" placeholder="Cerca un progetto per titolo…" aria-label="Cerca un progetto">
+      <input type="search" id="mkt-search" placeholder="Cerca per titolo o ID…" aria-label="Cerca un progetto">
       <button type="button" class="btn small secondary" id="mkt-expand">Apri tutti</button>
       <button type="button" class="btn small secondary" id="mkt-collapse">Chiudi tutti</button>
     </div>
@@ -171,10 +175,10 @@ include __DIR__ . '/_dash_header.php';
       $pct = $steps ? (int) round($doneN / count($steps) * 100) : 0;
       $isOpen = $openId === (int) $p['id'] || count($projects) === 1;
     ?>
-    <details class="mkt-proj" id="p<?= (int) $p['id'] ?>" data-title="<?= e(mb_strtolower($p['title'])) ?>"<?= $isOpen ? ' open' : '' ?>>
+    <details class="mkt-proj" id="p<?= (int) $p['id'] ?>" data-title="<?= e(mb_strtolower($p['title']) . ' id ' . (int) $p['id']) ?>"<?= $isOpen ? ' open' : '' ?>>
       <summary>
         <div class="mkt-row">
-          <span class="mkt-name"><span class="mkt-chev"></span>Progetto <?= (int) ($numbers[(int) $p['id']] ?? 0) ?> — <?= e($p['title']) ?></span>
+          <span class="mkt-name"><span class="mkt-chev"></span><span class="mkt-id" title="ID del progetto: lo stesso che usano le IA (MCP)">ID <?= (int) $p['id'] ?></span> <?= e($p['title']) ?></span>
           <span class="mkt-badge" style="background:<?= e($badge[1]) ?>;"><?= e($badge[0]) ?></span>
           <?php if ($p['created_by'] === 'ai'): ?><span class="mkt-badge" style="background:#0d9488;" title="Creato da un'intelligenza artificiale tramite MCP">IA</span><?php endif; ?>
           <span style="font-size:12.5px;color:var(--text-muted);white-space:nowrap;"><?= $doneN ?>/<?= count($steps) ?> passi</span>
