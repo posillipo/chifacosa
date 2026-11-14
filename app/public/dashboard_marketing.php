@@ -121,7 +121,18 @@ include __DIR__ . '/_dash_header.php';
     <p style="margin:0 0 10px;">Ogni <strong>progetto</strong> è una serie di passi da eseguire in ordine — Passo 1, Passo 2, Passo 3… — chiusa dal <strong>Finale</strong>.</p>
     <p style="margin:0 0 10px;">Aggiungi tutti i passi che servono; quando hai finito premi <em>Inserisci Finale</em> per l'ultimo passo. Per ogni passo scrivi un titolo e le istruzioni, per te o per un'intelligenza artificiale.</p>
     <p style="margin:0 0 10px;">Le IA collegate tramite i server MCP leggono i progetti del profilo, possono crearne di nuovi e segnano i passi come completati: <strong>sempre nell'ordine</strong>, un passo alla volta, senza saltare avanti.</p>
-    <p style="margin:0;">Ogni progetto ha un <strong>ID</strong> (per esempio <code>ID 12</code>): è lo stesso numero che le IA usano per leggerlo e aggiornarlo, quindi puoi passarlo a un'altra IA per farle continuare il lavoro.</p>
+    <p style="margin:0 0 10px;">Ogni progetto ha un <strong>ID</strong> (per esempio <code>ID 12</code>): è lo stesso numero che le IA usano per leggerlo e aggiornarlo, quindi puoi passarlo a un'altra IA per farle continuare il lavoro.</p>
+    <div style="font-weight:700;margin:0 0 6px;">Strumenti MCP disponibili alle IA</div>
+    <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.55;">
+      <li><code>list_marketing_projects</code> — elenca i progetti e il passo da fare adesso</li>
+      <li><code>get_marketing_project</code> — legge un progetto con tutti i passi (per ID)</li>
+      <li><code>create_marketing_project</code> — crea un progetto, con passi e Finale</li>
+      <li><code>update_marketing_project</code> — cambia titolo e descrizione, archivia o ripristina</li>
+      <li><code>add_marketing_step</code> — aggiunge un passo (o il Finale)</li>
+      <li><code>update_marketing_step</code> — cambia titolo e istruzioni di un passo</li>
+      <li><code>complete_marketing_step</code> — segna completato il passo da fare, con l'esito</li>
+    </ul>
+    <p style="margin:10px 0 0;font-size:13px;color:#666;">Le IA non possono eliminare progetti o passi: l'eliminazione si fa solo da qui.</p>
   </dialog>
   <script>
   (function () {
@@ -158,6 +169,12 @@ include __DIR__ . '/_dash_header.php';
     <?php if (count($projects) > 1): ?>
     <div class="mkt-tools">
       <input type="search" id="mkt-search" placeholder="Cerca per titolo o ID…" aria-label="Cerca un progetto">
+      <select id="mkt-sort" aria-label="Ordina i progetti" style="margin:0;width:auto;">
+        <option value="date_desc">Data: più recenti prima</option>
+        <option value="date_asc">Data: più vecchi prima</option>
+        <option value="name_asc">Nome: A → Z</option>
+        <option value="name_desc">Nome: Z → A</option>
+      </select>
       <button type="button" class="btn small secondary" id="mkt-expand">Apri tutti</button>
       <button type="button" class="btn small secondary" id="mkt-collapse">Chiudi tutti</button>
     </div>
@@ -175,7 +192,7 @@ include __DIR__ . '/_dash_header.php';
       $pct = $steps ? (int) round($doneN / count($steps) * 100) : 0;
       $isOpen = $openId === (int) $p['id'] || count($projects) === 1;
     ?>
-    <details class="mkt-proj" id="p<?= (int) $p['id'] ?>" data-title="<?= e(mb_strtolower($p['title']) . ' id ' . (int) $p['id']) ?>"<?= $isOpen ? ' open' : '' ?>>
+    <details class="mkt-proj" id="p<?= (int) $p['id'] ?>" data-title="<?= e(mb_strtolower($p['title']) . ' id ' . (int) $p['id']) ?>" data-name="<?= e(mb_strtolower($p['title'])) ?>" data-date="<?= (int) strtotime($p['created_at']) ?>" data-id="<?= (int) $p['id'] ?>"<?= $isOpen ? ' open' : '' ?>>
       <summary>
         <div class="mkt-row">
           <span class="mkt-name"><span class="mkt-chev"></span><span class="mkt-id" title="ID del progetto: lo stesso che usano le IA (MCP)">ID <?= (int) $p['id'] ?></span> <?= e($p['title']) ?></span>
@@ -189,6 +206,7 @@ include __DIR__ . '/_dash_header.php';
         <?php elseif (!$steps): ?>
           <div class="mkt-next">Nessun passo ancora</div>
         <?php endif; ?>
+        <div class="mkt-next" style="margin-top:2px;">Creato il <?= e(formatLocalDateTime($p['created_at'], $profile)) ?></div>
       </summary>
 
       <div class="mkt-proj-body">
@@ -300,6 +318,21 @@ include __DIR__ . '/_dash_header.php';
       var t = q.value.trim().toLowerCase();
       items.forEach(function (d) { d.style.display = !t || (d.getAttribute('data-title') || '').indexOf(t) !== -1 ? '' : 'none'; });
     });
+    // Ordinamento: per data di creazione o per nome, crescente/decrescente; la scelta si ricorda nel browser.
+    var sel = document.getElementById('mkt-sort');
+    if (sel && items.length) {
+      var parent = items[0].parentNode;
+      var apply = function () {
+        var v = sel.value, dir = /_desc$/.test(v) ? -1 : 1, byName = /^name/.test(v);
+        items.slice().sort(function (a, b) {
+          if (byName) return dir * (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '', 'it', { sensitivity: 'base' });
+          return dir * (((+a.getAttribute('data-date')) - (+b.getAttribute('data-date'))) || ((+a.getAttribute('data-id')) - (+b.getAttribute('data-id'))));
+        }).forEach(function (d) { parent.appendChild(d); });
+      };
+      try { var saved = localStorage.getItem('mktSort'); if (saved && sel.querySelector('option[value="' + saved + '"]')) sel.value = saved; } catch (e) {}
+      sel.addEventListener('change', function () { try { localStorage.setItem('mktSort', sel.value); } catch (e) {} apply(); });
+      apply();
+    }
     var ex = document.getElementById('mkt-expand'), co = document.getElementById('mkt-collapse');
     if (ex) ex.addEventListener('click', function () { items.forEach(function (d) { d.open = true; }); });
     if (co) co.addEventListener('click', function () { items.forEach(function (d) { d.open = false; }); });
