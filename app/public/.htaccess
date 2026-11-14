@@ -138,6 +138,10 @@ RewriteRule ^api/v1/favorites/(track|band|playlist|album)/([0-9]+)/?$ api_favori
 RewriteRule ^api/v1/marketing/projects/?$ api_marketing.php?r=projects [L,QSA]
 RewriteRule ^api/v1/marketing/projects/([0-9]+)/?$ api_marketing.php?r=project&id=$1 [L,QSA]
 RewriteRule ^api/v1/marketing/projects/([0-9]+)/steps/?$ api_marketing.php?r=project_steps&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/projects/([0-9]+)/runs/?$ api_marketing.php?r=project_runs&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/projects/([0-9]+)/notes/?$ api_marketing.php?r=project_notes&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/projects/([0-9]+)/interrupt/?$ api_marketing.php?r=project_interrupt&id=$1 [L,QSA]
+RewriteRule ^api/v1/marketing/runs/([0-9]+)/?$ api_marketing.php?r=run&id=$1 [L,QSA]
 RewriteRule ^api/v1/marketing/steps/([0-9]+)/?$ api_marketing.php?r=step&id=$1 [L,QSA]
 RewriteRule ^api/v1/marketing/steps/([0-9]+)/complete/?$ api_marketing.php?r=step_complete&id=$1 [L,QSA]
 
