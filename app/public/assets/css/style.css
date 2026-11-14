@@ -3339,3 +3339,8 @@ body.light-theme .account-sidebar-link.active,
 body.light-theme .profile-switcher-item.active { color: var(--accent); }
 body.light-theme .dash-side-link { font-weight: 600; }
 body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-weight: 700; }
+
+/* Barra laterale sinistra e colonna destra della dashboard: niente barra di scorrimento visibile
+   (era invadente). Lo scorrimento resta attivo con rotellina, trackpad e dito. */
+.dash-side, .dash-side > nav, .dash-right { scrollbar-width: none; -ms-overflow-style: none; }
+.dash-side::-webkit-scrollbar, .dash-side > nav::-webkit-scrollbar, .dash-right::-webkit-scrollbar { display: none; width: 0; height: 0; }
