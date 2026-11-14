@@ -3339,18 +3339,3 @@ body.light-theme .account-sidebar-link.active,
 body.light-theme .profile-switcher-item.active { color: var(--accent); }
 body.light-theme .dash-side-link { font-weight: 600; }
 body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-weight: 700; }
-
-/* Pagine di inserimento a due colonne (Timeline, Blog, Album, Link, Eventi, Video, Offerte, Marketing):
-   scorrendo, il modulo di inserimento (sinistra) resta fermo sotto la barra in alto e scorre solo
-   l'elenco di quanto già inserito (destra). Se il modulo è più alto dello schermo scorre al suo
-   interno, così nessun campo resta irraggiungibile. Sotto i 760px le colonne si impilano e non c'è nulla di fisso. */
-@media (min-width: 760px) {
-  .dash-two-col > .dash-two-col-main {
-    position: sticky;
-    top: calc(var(--dash-nav-h, 56px) + 12px);
-    max-height: calc(100vh - var(--dash-nav-h, 56px) - 24px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    margin: -2px; padding: 2px; /* non taglia bordi e focus dei campi */
-  }
-}
