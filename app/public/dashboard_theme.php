@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/theme_access.php';
 $user = requireLogin();
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'theme';
@@ -15,7 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Handle user profile theme selection
     $theme = $_POST['page_theme'] ?? 'colorful';
-    if (array_key_exists($theme, PAGE_THEMES)) {
+    // Chi può scegliere cosa lo decide l'amministratore (Area Admin > Temi grafici). Il tema già in uso
+    // resta sempre selezionabile.
+    $accessIds = array_values(array_unique([(int) $user['id'], (int) $profile['id']]));
+    if (array_key_exists($theme, PAGE_THEMES) && $theme !== ($profile['page_theme'] ?? 'colorful') && !themeIsAllowed($theme, $accessIds, !empty($user['is_admin']))) {
+        $error = 'Questo tema non è disponibile per il tuo account.';
+    } elseif (array_key_exists($theme, PAGE_THEMES)) {
         $stmt = $pdo->prepare('UPDATE profiles SET page_theme = ? WHERE user_id = ?');
         $stmt->execute([$theme, $profile['id']]);
         $success = 'Tema della tua pagina aggiornato.';
@@ -67,6 +73,9 @@ $themePickerBackgrounds = [
     'pa-italia' => 'linear-gradient(160deg, #0059b3 0%, #0066cc 100%)',
 ];
 
+// Temi che questo utente può scegliere (più quello già in uso, anche se nel frattempo è stato limitato).
+$visibleThemes = themesVisibleFor(array_values(array_unique([(int) $user['id'], (int) $profile['id']])), !empty($user['is_admin']), $profile['page_theme'] ?? 'colorful');
+
 include __DIR__ . '/_dash_header.php';
 ?>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
@@ -91,7 +100,7 @@ include __DIR__ . '/_dash_header.php';
   </div>
 
   <div class="theme-picker hidden" id="theme-picker">
-    <?php foreach (PAGE_THEMES as $key => $theme): ?>
+    <?php foreach ($visibleThemes as $key => $theme): ?>
       <?php $isSelected = ($profile['page_theme'] ?? 'colorful') === $key; ?>
       <div class="theme-picker__item" data-theme-key="<?= e($key) ?>">
         <div class="theme-picker__item-inner" style="background:<?= e($themePickerBackgrounds[$key] ?? '#333') ?>;">
@@ -108,7 +117,7 @@ include __DIR__ . '/_dash_header.php';
   <form method="post">
     <?= csrfField() ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-      <?php foreach (PAGE_THEMES as $key => $theme): ?>
+      <?php foreach ($visibleThemes as $key => $theme): ?>
         <?php $isSelected = ($profile['page_theme'] ?? 'colorful') === $key; ?>
         <label style="display:block;cursor:pointer;">
           <input type="radio" id="theme-radio-<?= e($key) ?>" name="page_theme" value="<?= e($key) ?>" <?= $isSelected ? 'checked' : '' ?> onchange="this.form.submit()" style="display:none;">

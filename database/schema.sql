@@ -1165,3 +1165,18 @@ CREATE TABLE IF NOT EXISTS marketing_run_events (
     FOREIGN KEY (run_id) REFERENCES marketing_runs(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Visibilità dei temi grafici per utente (vedi database/migrations/2026_11_23_theme_visibility.sql)
+CREATE TABLE IF NOT EXISTS theme_visibility (
+    theme_key VARCHAR(40) NOT NULL PRIMARY KEY,
+    mode ENUM('all','admins','selected') NOT NULL DEFAULT 'all',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS theme_visibility_users (
+    theme_key VARCHAR(40) NOT NULL,
+    user_id INT NOT NULL,
+    PRIMARY KEY (theme_key, user_id),
+    KEY idx_theme_vis_user (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
