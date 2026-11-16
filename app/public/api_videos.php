@@ -108,6 +108,7 @@ function videoApiQueueTime(?string $publishAt): ?string {
 // Crea il record dal file già salvato e, se richiesto e il video è pubblico, lo accoda per Metricool.
 function videoApiFinish(array $auth, string $rel, string $mime, int $size, array $meta): array {
     $id = videoCreateRecord($auth['user_id'], $auth['slug'], $rel, $mime, $size, $meta);
+    setContentAuthor('videos', $id, $meta['created_by'] ?? null);
     $stmt = getDB()->prepare('SELECT * FROM videos WHERE id=?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
@@ -238,6 +239,7 @@ if ($action === 'request-upload') {
         'in_feed' => $f['in_feed'] ?? true,
         'publish_at' => $f['publish_at'] ?? null,
         'queue_social' => !empty($d['queue_social']),
+        'created_by' => apiAuthorSignature($auth, $d),
     ];
     $token = videoApiMakeToken(['u' => $uid, 'x' => $ext, 'm' => $meta]);
     apiRespond(200, [
@@ -284,6 +286,7 @@ if ($action === 'from-url') {
         'in_feed' => $f['in_feed'] ?? true,
         'publish_at' => $f['publish_at'] ?? null,
         'queue_social' => !empty($d['queue_social']),
+        'created_by' => apiAuthorSignature($auth, $d),
     ];
     $res = videoApiFinish($auth, $rel, $check['mime'], $size, $meta);
     apiRespond(201, ['success' => true, 'message' => 'Video creato.', 'data' => $res['video'], 'queue_id' => $res['queue_id']], $tid, $uid);

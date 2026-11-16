@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'in_feed' => !empty($_POST['in_feed']),
             'publish_at' => $publishAt,
         ]);
+        setContentAuthor('videos', $id, dashboardAuthorSignature($user));
         $stmt = getDB()->prepare('SELECT * FROM videos WHERE id=?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
@@ -240,7 +241,7 @@ include __DIR__ . '/_dash_header.php';
         <div style="width:112px;height:64px;border-radius:8px;background:#222;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-film"></i></div>
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
-        <strong><?= e($v['title']) ?></strong>
+        <strong><?= e($v['title']) ?></strong> <?= authorBadgeHtml($v['created_by'] ?? null) ?>
         <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $dur ? e($dur) . ' · ' : '' ?><?= number_format((int) $v['size_bytes'] / 1048576, 1, ',', '') ?> MB</span>
         <?php if (!(int) $v['is_public']): ?>
           <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-lock"></i> Solo io</div>

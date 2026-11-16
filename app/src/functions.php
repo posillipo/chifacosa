@@ -7529,6 +7529,37 @@ function formatItalianDate(?string $datetime, ?array $profile): string {
 // visualizzazione: non tocca mai il valore salvato. Nata da una segnalazione utente ("l'orario è
 // sballato, forse perché il server non è in Italia") — prima ogni pagina ristampava la data così
 // com'è, nel fuso del server, chiunque fosse il proprietario del profilo.
+// ===== Firma dell'autore dei contenuti (solo dashboard) =====
+// Salva chi ha creato un contenuto (colonna created_by): persona in dashboard, Telegram o IA via API/MCP.
+// Solo tabelle ammesse (nome tabella mai preso da input).
+function setContentAuthor(string $table, int $id, ?string $by): void {
+    if (!$by || $id <= 0 || !in_array($table, ['timeline_posts', 'photo_albums', 'events', 'services', 'videos', 'blog_posts'], true)) {
+        return;
+    }
+    try {
+        getDB()->prepare("UPDATE `$table` SET created_by = ? WHERE id = ?")->execute([mb_substr($by, 0, 160), $id]);
+    } catch (Throwable $e) {
+        // Colonna non ancora migrata: la firma è un extra, non deve bloccare la creazione.
+    }
+}
+
+function dashboardAuthorSignature(array $user): string {
+    return 'Dashboard · ' . mb_substr((string) (($user['display_name'] ?? '') ?: ($user['slug'] ?? 'utente')), 0, 100);
+}
+
+// Firma per le richieste API/MCP: etichetta del token + eventuale nome dichiarato dall'IA ("author").
+function apiAuthorSignature(array $auth, array $data): string {
+    $decl = trim((string) ($data['author'] ?? ''));
+    return mb_substr('API · ' . ($auth['token_label'] ?? 'token') . ($decl !== '' ? ' · ' . $decl : ''), 0, 160);
+}
+
+function authorBadgeHtml(?string $by): string {
+    if ($by === null || $by === '') {
+        return '';
+    }
+    return '<span style="background:#f1f3f5;color:#495057;border:1px solid #ced4da;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Autore (visibile solo qui)"><i class="fa-solid fa-pen-nib"></i> ' . e($by) . '</span>';
+}
+
 function formatLocalDateTime(?string $datetime, ?array $profile, string $format = 'd/m/Y H:i'): string {
     if (!$datetime) {
         return '';

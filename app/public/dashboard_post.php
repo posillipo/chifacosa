@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, in_feed, publish_at) VALUES (?,?,?,?,?,?,?)');
             $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $inFeed, $publishAt]);
             $newPostId = (int) getDB()->lastInsertId();
+            setContentAuthor('timeline_posts', $newPostId, dashboardAuthorSignature($user));
 
             if ($extraPhotos) {
                 $insPhoto = getDB()->prepare('INSERT INTO timeline_post_photos (post_id, image_path, sort_order) VALUES (?,?,?)');
@@ -263,6 +264,7 @@ include __DIR__ . '/_dash_header.php';
           <?php elseif (!(int) ($p['in_feed'] ?? 1)): ?>
             <span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
           <?php endif; ?>
+          <?= authorBadgeHtml($p['created_by'] ?? null) ?>
           <?php if ($extraPhotoCount > 0): ?>
             <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
           <?php endif; ?>

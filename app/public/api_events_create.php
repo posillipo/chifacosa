@@ -47,6 +47,7 @@ $stmt->execute([
     $v['publish_at'] ?? null,
 ]);
 $eventId = (int) getDB()->lastInsertId();
+setContentAuthor('events', $eventId, apiAuthorSignature($auth, $data));
 require_once __DIR__ . '/../src/event_geo.php';
 eventGeocodeAndSave($eventId, (int) $auth['user_id']); // posizione sulla mappa (best effort, mai bloccante)
 
