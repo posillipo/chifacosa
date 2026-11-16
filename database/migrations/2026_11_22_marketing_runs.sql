@@ -56,7 +56,7 @@ GROUP BY p.id, p.user_id, p.status, p.completed_at, p.created_at;
 
 INSERT INTO marketing_run_events (run_id, project_id, user_id, step_id, step_label, kind, actor, body, created_at)
 SELECT r.id, s.project_id, s.user_id, s.id,
-       CONCAT(IF(s.is_final = 1, 'Finale', CONCAT('Passo ', (SELECT COUNT(*) FROM marketing_steps s4 WHERE s4.project_id = s.project_id AND s4.is_final = 0 AND s4.position <= s.position))), ' — ', LEFT(s.title, 150)),
+       CONCAT(IF(s.is_final = 1, 'Finale', CONCAT('Passo ', (SELECT COUNT(*) FROM marketing_steps s4 WHERE s4.project_id = s.project_id AND s4.is_final = 0 AND s4.position <= s.position))), ' ', CONVERT(0xE28094 USING utf8mb4), ' ', LEFT(s.title, 150)),
        'step_done', COALESCE(s.completed_by, 'user'), s.result, COALESCE(s.completed_at, r.started_at)
 FROM marketing_steps s JOIN marketing_runs r ON r.project_id = s.project_id
 WHERE s.status = 'done'
