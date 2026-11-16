@@ -63,6 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'image_url'  => $newCoverPath ? siteUrl($newCoverPath) : null,
                             'public_url' => $albumUrl,
                         ]);
+                    } elseif ($visibility === 'public' && $publishAt) {
+                        // Programmato: si accoda subito con la data di pubblicazione (prima restava fuori dalla coda).
+                        $queueUrl = siteUrl('/' . $profile['slug'] . '/album/' . $newId);
+                        require_once __DIR__ . '/../src/metricool_queue.php';
+                        socialQueueEnqueueIfEnabled((int) $profile['id'], 'album', [
+                            'content_id' => $newId,
+                            'title'      => $title,
+                            'body'       => $description,
+                            'image_url'  => $newCoverPath ? siteUrl($newCoverPath) : null,
+                            'public_url' => $queueUrl,
+                        ], $publishAt);
                     }
                 }
             } else {

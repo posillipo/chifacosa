@@ -106,6 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'public_url' => $timelineUrl,
                 ]);
             }
+            // Pubblicazione programmata: l'uscita social si accoda subito con la data prevista (prima
+            // restava fuori dalla coda e non veniva mai pubblicata sui social).
+            if ($visibility === 'public' && $publishAt) {
+                require_once __DIR__ . '/../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'timeline', [
+                    'content_id' => $newPostId,
+                    'body'       => $testo,
+                    'image_url'  => $imagePath ? siteUrl($imagePath) : null,
+                    'public_url' => siteUrl('/' . $profile['slug'] . '/timeline'),
+                ], $publishAt);
+            }
         }
     }
     // Modifica, eliminazione e gestione foto di un post già esistente vivono ora in una pagina
