@@ -140,6 +140,9 @@ include __DIR__ . '/_dash_header.php';
         <?php if (isset($queueByPost[(int) $p['id']])): $qr = $queueByPost[(int) $p['id']]; $ql = $queueLabels[$qr['status']] ?? [$qr['status'], '#6c757d', 'fa-share-nodes']; ?>
           <span style="background:<?= $ql[1] ?>;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Coda social"><i class="fa-solid <?= $ql[2] ?>"></i> <?= e($ql[0]) ?><?= !empty($qr['scheduled_for']) ? ' · ' . e(formatLocalDateTime($qr['scheduled_for'], $profile)) : '' ?></span>
         <?php endif; ?>
+        <?php if (!empty($p['created_by'])): ?>
+          <span style="background:#f1f3f5;color:#495057;border:1px solid #ced4da;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Autore (visibile solo qui)"><i class="fa-solid fa-pen-nib"></i> <?= e($p['created_by']) ?></span>
+        <?php endif; ?>
         <strong><?= e($p['title']) ?></strong>
         <p style="color:var(--text-muted);font-size:13px;margin:4px 0;"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
         <?php $pCats = array_filter($categories, fn ($c) => in_array((int) $c['id'], $postCategoryIds[(int) $p['id']], true)); ?>

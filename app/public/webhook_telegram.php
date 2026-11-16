@@ -188,8 +188,8 @@ function handleCallbackQuery(array $cq): void {
         $content = $caption ?: '';
         $excerpt = textExcerpt($content, 200);
         $slug = generateUniquePostSlug((int) $profile['user_id'], $title);
-        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, published_at, in_feed) VALUES (?,?,?,?,?,?,NOW(),?)');
-        $stmt->execute([$profile['user_id'], $title, $slug, $excerpt, $content, $imagePath, 1]);
+        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, published_at, in_feed, created_by) VALUES (?,?,?,?,?,?,NOW(),?,?)');
+        $stmt->execute([$profile['user_id'], $title, $slug, $excerpt, $content, $imagePath, 1, 'Telegram']);
         $postId = (int) getDB()->lastInsertId();
         $publishedAt = date('Y-m-d H:i:s');
         $url = siteUrl(blogPostUrl($profile['slug'], ['published_at' => $publishedAt, 'slug' => $slug]));
