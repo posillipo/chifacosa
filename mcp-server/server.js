@@ -159,6 +159,7 @@ const blogPostFieldsSchema = {
     image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e usare come copertina (in alternativa a cover_video_url)'),
     cover_video_url: z.string().url().optional().describe('URL pubblico di un VIDEO (MP4/MOV/WebM, max 200 MB) da usare come copertina al posto dell\'immagine: viene scaricato e salvato, e ne viene ricavato il fotogramma di anteprima. Per un video locale: request_video_upload, poi usa come cover_video_url l\'URL video_url restituito. Non combinabile con image_url.'),
     publication_date: z.string().optional().describe('Data/ora di pubblicazione in ISO 8601 con fuso orario esplicito, es. 2026-09-24T08:00:00+02:00 — se futura l\'articolo resta programmato fino ad allora, se omessa si pubblica subito'),
+    author: z.string().max(100).optional().describe('Chi sta creando l\'articolo (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
     include_in_feed: z.boolean().optional().describe('true (default) = compare anche nel feed RSS del profilo, letto dalle automazioni social come Metricool. false = resta pubblico sul sito ma non finisce nel feed. Non riguarda la visibilità dell\'articolo sul sito, solo la pubblicazione automatica sui social.'),
 };
 

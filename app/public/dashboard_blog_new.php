@@ -57,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!$error) {
         $slug = generateUniquePostSlug((int) $profile['id'], $title);
-        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, cover_video_path, album_id, tags, published_at, in_feed) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $coverVideoPath, $albumId, $tags, $publishedAt, $inFeed]);
+        $stmt = getDB()->prepare('INSERT INTO blog_posts (user_id, title, slug, excerpt, content, cover_path, cover_video_path, album_id, tags, published_at, in_feed, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$profile['id'], $title, $slug, $excerpt, $content, $coverPath, $coverVideoPath, $albumId, $tags, $publishedAt, $inFeed, 'Dashboard · ' . mb_substr((string) ($user['display_name'] ?: $user['slug']), 0, 100)]);
         $newId = (int) getDB()->lastInsertId();
         if ($categoryIds) {
             $insCat = getDB()->prepare('INSERT INTO blog_post_categories (post_id, category_id) VALUES (?,?)');

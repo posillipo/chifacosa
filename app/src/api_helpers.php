@@ -77,7 +77,7 @@ function authenticateApiRequest(): array {
     $token = $m[1];
     $hash = hash('sha256', $token);
 
-    $stmt = getDB()->prepare('SELECT at.id, at.user_id, at.is_active, at.expires_at, u.slug
+    $stmt = getDB()->prepare('SELECT at.id, at.user_id, at.is_active, at.expires_at, at.label, at.mcp_name, u.slug
                               FROM api_tokens at JOIN users u ON u.id = at.user_id
                               WHERE at.token_hash = ?');
     $stmt->execute([$hash]);
@@ -107,7 +107,7 @@ function authenticateApiRequest(): array {
     // Il logging della richiesta vera e propria (con lo status code reale) spetta a chi chiama
     // apiRespond()/apiError() più avanti — qui logghiamo solo quanto serve per il rate limiting,
     // che conta le righe già presenti PRIMA di questa richiesta.
-    return ['user_id' => $userId, 'token_id' => $tokenId, 'slug' => $row['slug']];
+    return ['user_id' => $userId, 'token_id' => $tokenId, 'slug' => $row['slug'], 'token_label' => (string) ($row['mcp_name'] ?: $row['label'])];
 }
 
 // Legge e decodifica il body JSON della richiesta corrente. Termina con un errore 400 se il
