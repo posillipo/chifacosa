@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pid = (int) ($_POST['project_id'] ?? 0);
     $sid = (int) ($_POST['step_id'] ?? 0);
     $goRun = 0;
+    // Dopo un'azione si torna alla scheda in cui è stata fatta.
+    $tabAfter = in_array($action, ['add_step', 'add_final', 'update_step', 'delete_step'], true) ? 'istruzioni'
+        : (in_array($action, ['update_project', 'archive_project', 'unarchive_project'], true) ? 'impostazioni' : '');
     try {
         if ($action === 'create_project') {
             $r = marketingCreateProject($uid, (string) ($_POST['title'] ?? ''), (string) ($_POST['description'] ?? ''), 'user');
@@ -64,9 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('dashboard_marketing: ' . $ex->getMessage());
     }
     if ($error === null) {
-        header('Location: ' . mktUrl($pid, $goRun));
+        $u = mktUrl($pid, $goRun);
+        if ($tabAfter && !$goRun) { $u .= (strpos($u, '?') === false ? '?' : '&') . 'tab=' . $tabAfter; }
+        header('Location: ' . $u);
         exit;
     }
+    if ($tabAfter) { $_GET['tab'] = $tabAfter; }
     $_GET['id'] = $pid; // in caso di errore resta sulla stessa pagina
     if (!empty($_POST['run_id'])) { $_GET['run'] = (int) $_POST['run_id']; }
 }
@@ -89,7 +95,8 @@ try {
             if ($wantRun) {
                 $selRun = marketingGetRun($uid, $wantRun);
                 if ($selRun && (int) $selRun['project_id'] !== $detailId) { $selRun = null; }
-            } elseif ($openRun) {
+            } elseif ($openRun && !isset($_GET['tab'])) {
+                // Atterrando sul progetto con un'esecuzione in corso si apre direttamente quella.
                 $selRun = marketingGetRun($uid, (int) $openRun['id']);
             }
         }
@@ -117,6 +124,13 @@ if ($detailId && !$project && !$error) {
     $error = 'Progetto non trovato.';
 }
 
+$tab = $_GET['tab'] ?? '';
+if (!in_array($tab, ['cronologia', 'istruzioni', 'impostazioni'], true)) {
+    // Si apre dove c'è qualcosa da vedere: la cronologia se il progetto è già stato usato, altrimenti le istruzioni.
+    $tab = $runs ? 'cronologia' : 'istruzioni';
+}
+if ($selRun) { $tab = 'cronologia'; }
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <style>
@@ -125,7 +139,6 @@ include __DIR__ . '/_dash_header.php';
   .dash-two-col > div { min-width: 0; }
   @media (min-width: 760px) {
     .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 20px; align-items: start; }
-    .mkt-detail-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 28px; align-items: start; }
   }
   .mkt-badge { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; white-space: nowrap; }
   .mkt-id { display: inline-block; background: #ecebf8; color: #4b3fc4; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -142,34 +155,66 @@ include __DIR__ . '/_dash_header.php';
   .mkt-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .mkt-line .mkt-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
   .mkt-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; }
-  /* pagina del progetto */
-  .mkt-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; margin-bottom: 6px; }
+  /* pagina del progetto: testata + schede separate (Cronologia / Istruzioni / Impostazioni) */
+  .mkt-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; margin-bottom: 4px; }
   .mkt-head h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
   .mkt-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-muted); }
   .mkt-switch button { position: relative; width: 42px; height: 24px; border-radius: 999px; border: 0; cursor: pointer; background: #c9c9d6; padding: 0; }
   .mkt-switch button::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
   .mkt-switch.on button { background: var(--accent); }
   .mkt-switch.on button::after { left: 21px; }
-  .mkt-h { font-size: 14px; font-weight: 700; margin: 6px 0 8px; }
-  .mkt-run { border-bottom: 1px solid #eee; }
-  .mkt-run > a { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 11px 2px; text-decoration: none; color: inherit; }
-  .mkt-run > a:hover { background: rgba(108,92,231,.05); }
-  .mkt-run.sel > a { font-weight: 700; }
-  .mkt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .mkt-run-meta { font-size: 12.5px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
-  .mkt-tag { font-size: 11.5px; color: var(--text-muted); }
-  .mkt-run-detail { padding: 4px 4px 14px 14px; border-left: 3px solid var(--accent); margin: 0 0 12px 4px; }
-  .mkt-ev { display: flex; gap: 10px; padding: 6px 0; font-size: 14px; }
-  .mkt-ev time { flex: 0 0 96px; font-size: 12.5px; color: var(--text-muted); padding-top: 1px; }
-  .mkt-ev .mkt-evtxt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .mkt-ev .mkt-evstep { font-size: 12.5px; color: var(--text-muted); display: block; }
-  .mkt-ev .mkt-evbody { white-space: pre-wrap; display: block; }
-  .mkt-now { background: rgba(108,92,231,.07); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
-  .mkt-step { border-left: 3px solid #c9c9d6; padding: 6px 0 6px 12px; margin: 10px 0; }
-  .mkt-step.done { border-left-color: #2e9e5b; }
-  .mkt-step.next { border-left-color: var(--accent); }
-  .mkt-step.final { border-left-style: double; border-left-width: 5px; }
+  .mkt-ptabs { display: flex; gap: 4px; border-bottom: 2px solid #e5e5ee; margin: 14px 0 18px; overflow-x: auto; }
+  .mkt-ptabs a { padding: 9px 16px; text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: 14.5px; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+  .mkt-ptabs a.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .mkt-ptabs small { font-weight: 400; margin-left: 4px; }
+  .mkt-panel { max-width: 860px; }
+  .mkt-h { font-size: 14px; font-weight: 700; margin: 4px 0 12px; }
   .mkt-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
+  .mkt-run-meta { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  .mkt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .mkt-tag { font-size: 12px; color: var(--text-muted); }
+  /* elenco esecuzioni */
+  .mkt-runs { border: 1px solid #e5e5ee; border-radius: 12px; overflow: hidden; background: var(--card-bg, #fff); }
+  .mkt-runrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 13px 16px; text-decoration: none; color: inherit; border-bottom: 1px solid #eee; }
+  .mkt-runrow:last-child { border-bottom: 0; }
+  .mkt-runrow:hover { background: rgba(108,92,231,.05); }
+  .mkt-runrow .when { font-weight: 600; }
+  .mkt-runrow .meta { margin-left: auto; display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  .mkt-minibar { width: 70px; height: 6px; border-radius: 999px; background: #e5e5ee; overflow: hidden; }
+  .mkt-minibar > i { display: block; height: 100%; background: #2e9e5b; }
+  /* pagina di una esecuzione */
+  .mkt-runhead { border: 1px solid #e5e5ee; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; background: var(--card-bg, #fff); }
+  .mkt-stepper { display: flex; gap: 0; align-items: center; margin-top: 12px; flex-wrap: wrap; row-gap: 8px; }
+  .mkt-stepper .st { display: flex; align-items: center; }
+  .mkt-stepper .st b { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; background: #e5e5ee; color: #666; }
+  .mkt-stepper .st.done b { background: #2e9e5b; color: #fff; }
+  .mkt-stepper .st.next b { background: var(--accent); color: #fff; }
+  .mkt-stepper .st i { width: 22px; height: 2px; background: #e5e5ee; display: inline-block; }
+  .mkt-stepper .st.done i { background: #2e9e5b; }
+  .mkt-timeline { border-left: 3px solid #e5e5ee; margin-left: 6px; padding-left: 0; }
+  .mkt-ev { position: relative; padding: 0 0 18px 20px; }
+  .mkt-ev::before { content: ''; position: absolute; left: -8px; top: 3px; width: 13px; height: 13px; border-radius: 50%; background: #c9c9d6; border: 2px solid #fff; }
+  .mkt-ev.k-step_done::before, .mkt-ev.k-finished::before { background: #2e9e5b; }
+  .mkt-ev.k-note::before { background: #6c5ce7; }
+  .mkt-ev.k-interrupted::before { background: #e08a1e; }
+  .mkt-ev .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .mkt-ev .what { font-weight: 700; font-size: 14px; }
+  .mkt-ev time { font-size: 12.5px; color: var(--text-muted); }
+  .mkt-ev .stepname { font-size: 13px; color: var(--text-muted); }
+  .mkt-ev .body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; margin-top: 4px; background: #f7f7fb; border-radius: 8px; padding: 8px 10px; }
+  .mkt-ev .body.long { max-height: 7.2em; overflow: hidden; position: relative; }
+  .mkt-ev details.more summary { cursor: pointer; font-size: 12.5px; color: var(--accent); margin-top: 3px; }
+  .mkt-now { background: rgba(108,92,231,.07); border: 1px solid rgba(108,92,231,.25); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+  /* istruzioni (passi) */
+  .mkt-stepcard { border: 1px solid #e5e5ee; border-radius: 12px; margin-bottom: 10px; background: var(--card-bg, #fff); }
+  .mkt-stepcard > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .mkt-stepcard > summary::-webkit-details-marker { display: none; }
+  .mkt-stepcard[open] > summary { border-bottom: 1px solid #eee; }
+  .mkt-stepcard .num { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); min-width: 56px; }
+  .mkt-stepcard .ttl { font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mkt-stepcard.final { border-color: var(--accent); }
+  .mkt-stepbody { padding: 10px 16px 14px; }
+  .mkt-danger { border: 1px solid #f0c4c4; border-radius: 12px; padding: 14px 16px; margin-top: 16px; }
   </style>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -219,10 +264,9 @@ include __DIR__ . '/_dash_header.php';
     $isArch = $project['status'] === 'archived';
     $hasFinal = false;
     foreach ($steps as $s) { $hasFinal = $hasFinal || (int) $s['is_final']; }
-    $openDone = $openRun ? marketingRunDone($uid, (int) $openRun['id']) : [];
-    $openNext = $openRun ? marketingRunNextStep($project, $openDone) : null;
     $dotColor = ['running' => '#2d7ff9', 'completed' => '#2e9e5b', 'interrupted' => '#e08a1e'];
     $stLabel = ['running' => 'In corso', 'completed' => 'Completata', 'interrupted' => 'Interrotta'];
+    $tabUrl = fn (string $t) => mktUrl((int) $project['id']) . (strpos(mktUrl((int) $project['id']), '?') === false ? '?' : '&') . 'tab=' . $t;
 ?>
   <p style="margin:0 0 8px;"><a href="<?= MKT_URL ?>">← Tutti i progetti</a></p>
 
@@ -254,148 +298,193 @@ include __DIR__ . '/_dash_header.php';
     </div>
     <?php endif; ?>
   </div>
-  <hr style="border:0;border-top:1px solid #e5e5ee;margin:12px 0 16px;">
 
-  <div class="mkt-detail-cols">
-  <div>
-    <div class="mkt-h">Cronologia</div>
-    <?php if (!$runs): ?>
-      <p style="color:var(--text-muted);font-size:14px;">Nessuna esecuzione ancora.<?= $project['is_active'] && $steps && !$isArch ? ' Premi <strong>Esegui ora</strong> per avviarne una, oppure lascia che lo faccia un\'IA.' : '' ?></p>
-    <?php endif; ?>
-    <?php foreach ($runs as $r):
-      $isSel = $selRun && (int) $selRun['id'] === (int) $r['id'];
-      $tot = $r['status'] === 'running' ? count($steps) : (int) $r['steps_total'];
-    ?>
-    <div class="mkt-run<?= $isSel ? ' sel' : '' ?>" id="r<?= (int) $r['id'] ?>">
-      <a href="<?= e($isSel ? mktUrl((int) $project['id'], 0, '#r' . (int) $r['id']) : mktUrl((int) $project['id'], (int) $r['id'], '#r' . (int) $r['id'])) ?>">
-        <span><?= e(formatLocalDateTime($r['started_at'], $profile, 'd/m/Y \a\l\l\e H:i')) ?></span>
-        <span class="mkt-tag">· <?= e(mktWho($r['started_by'])) ?></span>
-        <span class="mkt-run-meta"><span class="mkt-dot" style="background:<?= e($dotColor[$r['status']]) ?>;display:inline-block;" aria-hidden="true"></span> <?= e($stLabel[$r['status']]) ?> · <?= (int) $r['done_count'] ?>/<?= (int) $tot ?></span>
-      </a>
-      <?php if ($isSel): $sr = $selRun; ?>
-      <div class="mkt-run-detail">
-        <?php foreach ($sr['events'] as $ev):
-          $icon = ['started' => '▶', 'note' => '📝', 'step_done' => '✅', 'finished' => '🏁', 'interrupted' => '⏹'][$ev['kind']] ?? '•';
-          $verb = ['started' => 'Esecuzione avviata', 'note' => '', 'step_done' => 'Passo completato', 'finished' => '', 'interrupted' => 'Esecuzione interrotta'][$ev['kind']] ?? '';
-        ?>
-        <div class="mkt-ev">
-          <time><?= e(formatLocalDateTime($ev['created_at'], $profile, 'd/m H:i')) ?></time>
-          <div class="mkt-evtxt">
-            <?= $icon ?> <strong><?= e(mktWho($ev['actor'])) ?></strong><?= $verb !== '' ? ' · ' . e($verb) : '' ?>
-            <?php if ($ev['step_label']): ?><span class="mkt-evstep"><?= e($ev['step_label']) ?></span><?php endif; ?>
-            <?php if ($ev['body']): ?><span class="mkt-evbody"><?= e($ev['body']) ?></span><?php endif; ?>
-          </div>
-        </div>
+  <nav class="mkt-ptabs" aria-label="Sezioni del progetto">
+    <a href="<?= e($tabUrl('cronologia')) ?>" class="<?= $tab === 'cronologia' ? 'on' : '' ?>">Cronologia <small>(<?= count($runs) ?>)</small></a>
+    <a href="<?= e($tabUrl('istruzioni')) ?>" class="<?= $tab === 'istruzioni' ? 'on' : '' ?>">Istruzioni <small>(<?= count($steps) ?> passi)</small></a>
+    <a href="<?= e($tabUrl('impostazioni')) ?>" class="<?= $tab === 'impostazioni' ? 'on' : '' ?>">Impostazioni</a>
+  </nav>
+
+  <div class="mkt-panel">
+  <?php if ($tab === 'cronologia' && $selRun): /* ---------- una esecuzione ---------- */
+      $sr = $selRun;
+      $srTotal = $sr['status'] === 'running' ? count($steps) : max((int) $sr['steps_total'], count($sr['done']));
+      $dur = '';
+      if ($sr['finished_at']) {
+          $sec = max(0, strtotime($sr['finished_at']) - strtotime($sr['started_at']));
+          $dur = $sec < 60 ? $sec . ' s' : ($sec < 3600 ? floor($sec / 60) . ' min' : floor($sec / 3600) . ' h ' . floor(($sec % 3600) / 60) . ' min');
+      }
+  ?>
+    <p style="margin:0 0 10px;"><a href="<?= e($tabUrl('cronologia')) ?>">← Tutte le esecuzioni</a></p>
+    <div class="mkt-runhead">
+      <div class="mkt-line">
+        <span class="mkt-name" style="font-size:17px;"><?= e(formatLocalDateTime($sr['started_at'], $profile, 'd/m/Y \a\l\l\e H:i')) ?></span>
+        <span class="mkt-tag">avviata da <strong><?= e(mktWho($sr['started_by'])) ?></strong></span>
+        <span class="mkt-run-meta" style="margin-left:auto;"><span class="mkt-dot" style="background:<?= e($dotColor[$sr['status']]) ?>;" aria-hidden="true"></span> <strong><?= e($stLabel[$sr['status']]) ?></strong> · <?= count($sr['done']) ?>/<?= (int) $srTotal ?> passi<?= $dur ? ' · ' . e($dur) : '' ?></span>
+      </div>
+      <?php if ($steps): ?>
+      <div class="mkt-stepper" aria-label="Avanzamento">
+        <?php $nextId = $sr['next_step'] ? (int) $sr['next_step']['id'] : 0; $nSt = count($steps); foreach ($steps as $k => $s2):
+            $isD = isset($sr['done'][(int) $s2['id']]); ?>
+          <span class="st<?= $isD ? ' done' : '' ?><?= (int) $s2['id'] === $nextId ? ' next' : '' ?>" title="<?= e(marketingStepLabel($steps, (int) $s2['id']) . ' — ' . $s2['title']) ?>"><b><?= (int) $s2['is_final'] ? '🏁' : ($k + 1) ?></b><?php if ($k < $nSt - 1): ?><i></i><?php endif; ?></span>
         <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+    </div>
 
-        <?php if ($sr['status'] === 'running' && !$isArch): ?>
-        <div class="mkt-now">
-          <?php if ($sr['next_step']): $ns = $sr['next_step']; ?>
-            <div class="mkt-label">▶ Da fare adesso · <?= e(marketingStepLabel($steps, (int) $ns['id'])) ?></div>
-            <div style="font-weight:600;"><?= e($ns['title']) ?></div>
-            <?php if ($ns['instructions']): ?><div class="mkt-instr"><?= e($ns['instructions']) ?></div><?php endif; ?>
-            <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-              <?= csrfField() ?><input type="hidden" name="action" value="complete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $ns['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
-              <input type="text" name="note" maxlength="2000" placeholder="Nota (facoltativa): cosa è stato fatto" style="margin:0;flex:1;min-width:180px;">
-              <button class="btn small" type="submit">✔ Segna completato</button>
-            </form>
+    <?php if ($sr['status'] === 'running' && !$isArch): ?>
+    <div class="mkt-now">
+      <?php if ($sr['next_step']): $ns = $sr['next_step']; ?>
+        <div class="mkt-label">▶ Da fare adesso · <?= e(marketingStepLabel($steps, (int) $ns['id'])) ?></div>
+        <div style="font-weight:700;font-size:15.5px;margin:2px 0 4px;"><?= e($ns['title']) ?></div>
+        <?php if ($ns['instructions']): ?>
+          <details class="mkt-instr-more"><summary style="cursor:pointer;font-size:13px;color:var(--accent);">Mostra le istruzioni del passo</summary><div class="mkt-instr"><?= e($ns['instructions']) ?></div></details>
+        <?php endif; ?>
+        <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+          <?= csrfField() ?><input type="hidden" name="action" value="complete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $ns['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+          <input type="text" name="note" maxlength="2000" placeholder="Nota (facoltativa): cosa è stato fatto" style="margin:0;flex:1;min-width:200px;">
+          <button class="btn small" type="submit">✔ Segna completato</button>
+        </form>
+      <?php else: ?>
+        <div style="font-size:14px;">Tutti i passi sono completati: manca solo il <strong>Finale</strong>. Inseriscilo dalla scheda <a href="<?= e($tabUrl('istruzioni')) ?>">Istruzioni</a> per poter concludere.</div>
+      <?php endif; ?>
+      <div class="mkt-actions" style="margin-top:10px;">
+        <details><summary class="btn small secondary" style="display:inline-block;cursor:pointer;">📝 Aggiungi una nota</summary>
+          <form method="post" style="margin-top:8px;">
+            <?= csrfField() ?><input type="hidden" name="action" value="add_note"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+            <textarea name="text" rows="2" required placeholder="Cosa hai fatto o deciso"></textarea>
+            <button class="btn small" type="submit">Aggiungi alla cronologia</button>
+          </form>
+        </details>
+        <form method="post" onsubmit="return confirm('Interrompere questa esecuzione? Non si potrà più proseguire: potrai avviarne una nuova.');">
+          <?= csrfField() ?><input type="hidden" name="action" value="interrupt_run"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
+          <input type="text" name="reason" maxlength="500" placeholder="Motivo (facoltativo)" style="margin:0 6px 0 0;width:auto;min-width:150px;display:inline-block;">
+          <button class="btn small danger" type="submit">⏹ Interrompi</button>
+        </form>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="mkt-h">Cosa è successo</div>
+    <div class="mkt-timeline">
+      <?php foreach ($sr['events'] as $ev):
+        $what = ['started' => 'Esecuzione avviata', 'note' => 'Nota', 'step_done' => 'Passo completato', 'finished' => 'Esecuzione completata', 'interrupted' => 'Esecuzione interrotta'][$ev['kind']] ?? $ev['kind'];
+        $body = (string) ($ev['body'] ?? '');
+        $isLong = mb_strlen($body) > 320;
+      ?>
+      <div class="mkt-ev k-<?= e($ev['kind']) ?>">
+        <div class="top"><span class="what"><?= e($what) ?></span><span class="mkt-tag">· <?= e(mktWho($ev['actor'])) ?></span><time><?= e(formatLocalDateTime($ev['created_at'], $profile, 'd/m/Y H:i')) ?></time></div>
+        <?php if ($ev['step_label']): ?><div class="stepname"><?= e($ev['step_label']) ?></div><?php endif; ?>
+        <?php if ($body !== '' && $ev['kind'] !== 'finished'): ?>
+          <?php if ($isLong): ?>
+            <div class="body"><?= e(mb_strimwidth($body, 0, 320, '…')) ?></div>
+            <details class="more"><summary>Mostra il testo completo</summary><div class="body"><?= e($body) ?></div></details>
           <?php else: ?>
-            <div style="font-size:13.5px;">Tutti i passi sono completati: manca solo il <strong>Finale</strong>. Inseriscilo dal riquadro Istruzioni per poter concludere.</div>
+            <div class="body"><?= e($body) ?></div>
           <?php endif; ?>
-          <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13.5px;">📝 Aggiungi una nota</summary>
-            <form method="post" style="margin-top:6px;">
-              <?= csrfField() ?><input type="hidden" name="action" value="add_note"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
-              <textarea name="text" rows="2" required placeholder="Cosa hai fatto o deciso"></textarea>
-              <button class="btn small secondary" type="submit">Aggiungi alla cronologia</button>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+  <?php elseif ($tab === 'cronologia'): /* ---------- elenco esecuzioni ---------- */ ?>
+    <?php if (!$runs): ?>
+      <div class="card" style="color:var(--text-muted);">Nessuna esecuzione ancora.<?= $project['is_active'] && $steps && !$isArch ? ' Premi <strong>Esegui ora</strong> per avviarne una, oppure lascia che lo faccia un\'IA.' : ($steps ? '' : ' Aggiungi prima i passi nella scheda <a href="' . e($tabUrl('istruzioni')) . '">Istruzioni</a>.') ?></div>
+    <?php else: ?>
+      <div class="mkt-runs">
+      <?php foreach ($runs as $r):
+          $tot = $r['status'] === 'running' ? count($steps) : max((int) $r['steps_total'], (int) $r['done_count']);
+          $pctR = $tot ? (int) round(((int) $r['done_count']) / $tot * 100) : 0;
+      ?>
+        <a class="mkt-runrow" href="<?= e(mktUrl((int) $project['id'], (int) $r['id'])) ?>">
+          <span class="mkt-dot" style="background:<?= e($dotColor[$r['status']]) ?>;" aria-hidden="true"></span>
+          <span class="when"><?= e(formatLocalDateTime($r['started_at'], $profile, 'd/m/Y \a\l\l\e H:i')) ?></span>
+          <span class="mkt-tag"><?= e(mktWho($r['started_by'])) ?></span>
+          <span class="meta"><span><?= e($stLabel[$r['status']]) ?></span><span class="mkt-minibar" aria-hidden="true"><i style="width:<?= $pctR ?>%;"></i></span><span><?= (int) $r['done_count'] ?>/<?= (int) $tot ?></span><span aria-hidden="true">›</span></span>
+        </a>
+      <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
+  <?php elseif ($tab === 'istruzioni'): /* ---------- passi (modello) ---------- */ ?>
+    <?php if ($project['description']): ?><div class="card"><div class="mkt-label">Obiettivo</div><p class="mkt-instr" style="margin:4px 0 0;"><?= e($project['description']) ?></p></div><?php endif; ?>
+    <?php if (!$steps): ?><p style="color:var(--text-muted);font-size:14px;">Nessun passo ancora: aggiungi il Passo 1 qui sotto.</p><?php endif; ?>
+    <?php foreach ($steps as $s):
+      $label = marketingStepLabel($steps, (int) $s['id']);
+    ?>
+    <details class="mkt-stepcard<?= (int) $s['is_final'] ? ' final' : '' ?>"<?= count($steps) <= 2 ? ' open' : '' ?>>
+      <summary><span class="num"><?= e($label) ?></span><span class="ttl"><?= e($s['title']) ?></span></summary>
+      <div class="mkt-stepbody">
+        <?php if ($s['instructions']): ?><div class="mkt-instr" style="margin-top:0;"><?= e($s['instructions']) ?></div><?php else: ?><p style="color:var(--text-muted);font-size:13.5px;margin:0;">Nessuna istruzione.</p><?php endif; ?>
+        <?php if (!$isArch): ?>
+        <div class="mkt-actions">
+          <details style="display:inline-block;">
+            <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
+            <form method="post" style="margin-top:8px;">
+              <?= csrfField() ?><input type="hidden" name="action" value="update_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
+              <input type="text" name="title" maxlength="150" required value="<?= e($s['title']) ?>">
+              <textarea name="instructions" rows="6"><?= e($s['instructions'] ?? '') ?></textarea>
+              <button class="btn small" type="submit">Salva passo</button>
             </form>
           </details>
-          <form method="post" style="margin-top:8px;" onsubmit="return confirm('Interrompere questa esecuzione? Non si potrà più proseguire: potrai avviarne una nuova.');">
-            <?= csrfField() ?><input type="hidden" name="action" value="interrupt_run"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="run_id" value="<?= (int) $sr['id'] ?>">
-            <input type="text" name="reason" maxlength="500" placeholder="Motivo (facoltativo)" style="margin:0 6px 0 0;width:auto;min-width:160px;">
-            <button class="btn small danger" type="submit">⏹ Interrompi</button>
+          <form method="post" onsubmit="return confirm('Eliminare questo passo? Le cronologie passate restano leggibili.');">
+            <?= csrfField() ?><input type="hidden" name="action" value="delete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
+            <button class="btn small danger" type="submit">Elimina</button>
           </form>
         </div>
         <?php endif; ?>
       </div>
-      <?php endif; ?>
-    </div>
-    <?php endforeach; ?>
-  </div>
-
-  <div>
-    <div class="mkt-h">Istruzioni</div>
-    <?php if ($project['description']): ?><p class="mkt-instr" style="color:var(--text-muted);"><?= e($project['description']) ?></p><?php endif; ?>
-    <?php if (!$steps): ?><p style="color:var(--text-muted);font-size:14px;">Nessun passo ancora: aggiungi il Passo 1 qui sotto.</p><?php endif; ?>
-    <?php foreach ($steps as $s):
-      $label = marketingStepLabel($steps, (int) $s['id']);
-      $stDone = isset($openDone[(int) $s['id']]);
-      $stNext = $openNext && (int) $openNext['id'] === (int) $s['id'];
-    ?>
-    <div class="mkt-step<?= (int) $s['is_final'] ? ' final' : '' ?><?= $stDone ? ' done' : '' ?><?= $stNext ? ' next' : '' ?>">
-      <div class="mkt-label"><?= e($label) ?><?= $stDone ? ' · ✅ fatto' : ($stNext ? ' · ▶ da fare adesso' : '') ?></div>
-      <div style="font-weight:600;"><?= e($s['title']) ?></div>
-      <?php if ($s['instructions']): ?><div class="mkt-instr"><?= e($s['instructions']) ?></div><?php endif; ?>
-      <?php if (!$isArch): ?>
-      <div class="mkt-actions">
-        <details style="display:inline-block;">
-          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-          <form method="post" style="margin-top:8px;">
-            <?= csrfField() ?><input type="hidden" name="action" value="update_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-            <input type="text" name="title" maxlength="150" required value="<?= e($s['title']) ?>">
-            <textarea name="instructions" rows="3"><?= e($s['instructions'] ?? '') ?></textarea>
-            <button class="btn small" type="submit">Salva passo</button>
-          </form>
-        </details>
-        <form method="post" onsubmit="return confirm('Eliminare questo passo? Le cronologie passate restano leggibili.');">
-          <?= csrfField() ?><input type="hidden" name="action" value="delete_step"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>"><input type="hidden" name="step_id" value="<?= (int) $s['id'] ?>">
-          <button class="btn small danger" type="submit">Elimina</button>
-        </form>
-      </div>
-      <?php endif; ?>
-    </div>
+    </details>
     <?php endforeach; ?>
 
     <?php if (!$isArch): ?>
       <?php if (!$hasFinal): ?>
-      <details style="margin-top:10px;"<?= !$steps ? ' open' : '' ?>>
-        <summary style="cursor:pointer;font-weight:600;">➕ Aggiungi un passo</summary>
-        <form method="post" style="margin-top:8px;">
+      <div class="card">
+        <strong>➕ Aggiungi un passo</strong>
+        <form method="post" style="margin-top:6px;">
           <?= csrfField() ?><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
           <label>Titolo del <?= $steps ? 'passo ' . (count($steps) + 1) : 'Passo 1' ?></label>
           <input type="text" name="title" maxlength="150" required>
           <label>Istruzioni (per te o per l'IA)</label>
-          <textarea name="instructions" rows="3" placeholder="Cosa va fatto in questo passo, con quali contenuti, quando…"></textarea>
+          <textarea name="instructions" rows="4" placeholder="Cosa va fatto in questo passo, con quali contenuti, quando…"></textarea>
           <button class="btn" type="submit" name="action" value="add_step">Aggiungi passo</button>
           <button class="btn secondary" type="submit" name="action" value="add_final" title="Aggiunge l'ultimo passo e chiude il progetto">🏁 Inserisci Finale</button>
         </form>
-      </details>
+      </div>
       <?php else: ?>
-        <p style="color:var(--text-muted);font-size:12.5px;margin:10px 0 0;">Il Finale è inserito: per aggiungere altri passi elimina prima il Finale.</p>
+        <p style="color:var(--text-muted);font-size:12.5px;">Il Finale è inserito: per aggiungere altri passi elimina prima il Finale.</p>
       <?php endif; ?>
     <?php endif; ?>
 
-    <div class="mkt-actions" style="margin-top:16px;border-top:1px solid #e5e5ee;padding-top:12px;">
-      <?php if (!$isArch): ?>
-      <details style="display:inline-block;">
-        <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica progetto</summary>
-        <form method="post" style="margin-top:8px;">
-          <?= csrfField() ?><input type="hidden" name="action" value="update_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
-          <input type="text" name="title" maxlength="150" required value="<?= e($project['title']) ?>">
-          <textarea name="description" rows="3"><?= e($project['description'] ?? '') ?></textarea>
-          <button class="btn small" type="submit">Salva progetto</button>
-        </form>
-      </details>
-      <?php endif; ?>
+  <?php else: /* ---------- impostazioni ---------- */ ?>
+    <?php if (!$isArch): ?>
+    <form method="post" class="card">
+      <?= csrfField() ?><input type="hidden" name="action" value="update_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+      <strong>Dati del progetto</strong>
+      <label>Titolo</label>
+      <input type="text" name="title" maxlength="150" required value="<?= e($project['title']) ?>">
+      <label>Obiettivo / descrizione</label>
+      <textarea name="description" rows="5"><?= e($project['description'] ?? '') ?></textarea>
+      <button class="btn" type="submit">Salva</button>
+    </form>
+    <?php endif; ?>
+    <div class="card">
+      <strong>Archivio</strong>
+      <p style="color:var(--text-muted);font-size:13.5px;margin:6px 0 10px;"><?= $isArch ? 'Il progetto è archiviato: non si può usare finché non lo ripristini. La cronologia resta consultabile.' : 'Archiviare toglie il progetto dall\'elenco principale e interrompe l\'eventuale esecuzione in corso. La cronologia resta consultabile e puoi ripristinarlo.' ?></p>
       <form method="post">
         <?= csrfField() ?><input type="hidden" name="action" value="<?= $isArch ? 'unarchive_project' : 'archive_project' ?>"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
-        <button class="btn small secondary" type="submit"><?= $isArch ? 'Ripristina' : 'Archivia' ?></button>
-      </form>
-      <form method="post" onsubmit="return confirm('Eliminare il progetto con tutti i passi e tutta la cronologia? Non si può annullare.');">
-        <?= csrfField() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
-        <button class="btn small danger" type="submit">Elimina progetto</button>
+        <button class="btn secondary" type="submit"><?= $isArch ? 'Ripristina il progetto' : 'Archivia il progetto' ?></button>
       </form>
     </div>
-  </div>
+    <div class="mkt-danger">
+      <strong>Zona pericolosa</strong>
+      <p style="color:var(--text-muted);font-size:13.5px;margin:6px 0 10px;">Elimina il progetto con tutti i passi e tutta la cronologia. Non si può annullare.</p>
+      <form method="post" onsubmit="return confirm('Eliminare il progetto con tutti i passi e tutta la cronologia? Non si può annullare.');">
+        <?= csrfField() ?><input type="hidden" name="action" value="delete_project"><input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
+        <button class="btn danger" type="submit">Elimina progetto</button>
+      </form>
+    </div>
+  <?php endif; ?>
   </div>
 
 <?php else: /* ============================ ELENCO DEI PROGETTI ============================ */ ?>
