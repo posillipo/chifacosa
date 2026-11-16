@@ -73,6 +73,27 @@ foreach ($posts as $p) {
     $postCategoryIds[(int) $p['id']] = array_column(getBlogPostCategories((int) $p['id']), 'id');
 }
 
+// Stato nella coda social per ogni articolo (ultima riga per articolo): così si vede subito se è
+// già in coda o già programmato su Metricool, anche quando l'ha inserito un'IA.
+$queueByPost = [];
+if ($posts) {
+    $ids = array_map(fn ($p) => (int) $p['id'], $posts);
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $qs = getDB()->prepare("SELECT content_id, status, scheduled_for FROM social_queue WHERE user_id=? AND content_type='blog' AND content_id IN ($in) ORDER BY id ASC");
+    $qs->execute(array_merge([$profile['id']], $ids));
+    foreach ($qs->fetchAll() as $r) {
+        $queueByPost[(int) $r['content_id']] = $r; // l'ultima riga prevale
+    }
+}
+$queueLabels = [
+    'pending'    => ['In coda social', '#6c5ce7', 'fa-hourglass-half'],
+    'processing' => ['In elaborazione', '#6c5ce7', 'fa-gear'],
+    'scheduled'  => ['Programmato su Metricool', '#00a65a', 'fa-circle-check'],
+    'done'       => ['Programmato su Metricool', '#00a65a', 'fa-circle-check'],
+    'failed'     => ['Coda social: errore', '#dd4b39', 'fa-triangle-exclamation'],
+    'skipped'    => ['Coda social: saltato', '#6c757d', 'fa-forward'],
+];
+
 include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
@@ -115,6 +136,9 @@ include __DIR__ . '/_dash_header.php';
         <?php endif; ?>
         <?php if (!(int) ($p['in_feed'] ?? 1)): ?>
           <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
+        <?php endif; ?>
+        <?php if (isset($queueByPost[(int) $p['id']])): $qr = $queueByPost[(int) $p['id']]; $ql = $queueLabels[$qr['status']] ?? [$qr['status'], '#6c757d', 'fa-share-nodes']; ?>
+          <span style="background:<?= $ql[1] ?>;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Coda social"><i class="fa-solid <?= $ql[2] ?>"></i> <?= e($ql[0]) ?><?= !empty($qr['scheduled_for']) ? ' · ' . e(formatLocalDateTime($qr['scheduled_for'], $profile)) : '' ?></span>
         <?php endif; ?>
         <strong><?= e($p['title']) ?></strong>
         <p style="color:var(--text-muted);font-size:13px;margin:4px 0;"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
