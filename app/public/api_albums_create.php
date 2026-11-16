@@ -46,6 +46,7 @@ $stmt->execute([
     $sortOrder,
 ]);
 $albumId = (int) getDB()->lastInsertId();
+setContentAuthor('photo_albums', $albumId, apiAuthorSignature($auth, $data));
 
 $photoWarnings = [];
 if (!empty($v['extra_photo_urls'])) {

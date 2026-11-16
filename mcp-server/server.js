@@ -139,6 +139,7 @@ function toolResult(apiResult) {
 // Campi comuni a create/update — stessa forma esposta dall'API REST, vedi
 // app/src/api_helpers.php::apiValidateSocialPostPayload().
 const postFieldsSchema = {
+    author: z.string().max(100).optional().describe('Chi sta creando il contenuto (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
     title: z.string().max(100).optional().describe('Titolo del post (max 100 caratteri)'),
     description: z.string().optional().describe('Testo/corpo del post'),
     image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da scaricare e allegare al post'),
@@ -168,6 +169,7 @@ const blogPostFieldsSchema = {
 // ha un concetto di programmazione/bozza: è sempre visibile subito, event_date è solo quando si
 // terrà, non quando pubblicarlo.
 const eventFieldsSchema = {
+    author: z.string().max(100).optional().describe('Chi sta creando il contenuto (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
     title: z.string().max(150).optional().describe('Nome dell\'evento (max 150 caratteri)'),
     venue: z.string().max(150).optional().describe('Nome del locale/luogo (opzionale)'),
     city: z.string().max(100).optional().describe('Città (opzionale)'),
@@ -375,6 +377,7 @@ function buildMcpServer() {
     // flag is_public dell'album (le immagini restano raggiungibili via URL, la privacy riguarda
     // solo la pagina pubblica che le mostra).
     const albumFieldsSchema = {
+    author: z.string().max(100).optional().describe('Chi sta creando il contenuto (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
         title: z.string().max(150).optional().describe('Titolo dell\'album (max 150 caratteri)'),
         description: z.string().optional().describe('Descrizione dell\'album (opzionale)'),
         cover_image_url: z.string().url().optional().describe('URL pubblico di un\'immagine da usare come copertina dell\'album'),
@@ -694,6 +697,7 @@ function buildMcpServer() {
     }, async ({ profile, id }) => toolResult(await chifacosaApi(profile, `/marketing/runs/${id}`)));
 
     const videoFields = {
+    author: z.string().max(100).optional().describe('Chi sta creando il contenuto (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
         title: z.string().describe('Titolo del video (max 150 caratteri)'),
         description: z.string().optional().describe('Descrizione del video'),
         is_public: z.boolean().optional().describe('true (default) = visibile nella sezione Video, false = solo per te (il file resta raggiungibile da chi ha l\'indirizzo)'),

@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
             $stmt->execute([$profile['id'], $title, $venue ?: null, $city ?: null, $provincia ?: null, $date, $ticketUrl ?: null, $description ?: null, $isPerpetual, $recurrence, $coverPath, $acceptsReservations, $publishAt]);
             $newEventId = (int) getDB()->lastInsertId();
+            setContentAuthor('events', $newEventId, dashboardAuthorSignature($user));
             eventGeocodeAndSave($newEventId, (int) $profile['id']); // posizione sulla mappa pubblica
 
             $isScheduledForFuture = $publishAt !== null && strtotime($publishAt) > time();
@@ -241,7 +242,7 @@ include __DIR__ . '/_dash_header.php';
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
         <div class="date"><?= e(formatLocalDateTime($ev['event_date'], $profile)) ?></div>
-        <strong><?= e($ev['title']) ?></strong>
+        <strong><?= e($ev['title']) ?></strong> <?= authorBadgeHtml($ev['created_by'] ?? null) ?>
         <?php if ($ev['venue'] || $ev['city']): ?>
           <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>
         <?php endif; ?>

@@ -48,6 +48,7 @@ $stmt->execute([
     $publishAt,
 ]);
 $postId = (int) getDB()->lastInsertId();
+setContentAuthor('timeline_posts', $postId, apiAuthorSignature($auth, $data));
 
 // Stessa regola della dashboard (dashboard_post.php): niente notifica ai follower se il post è
 // privato o programmato per il futuro.

@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS audio_tracks (
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    created_by VARCHAR(160) DEFAULT NULL,
     title VARCHAR(150) NOT NULL,
     venue VARCHAR(150),
     city VARCHAR(100),
@@ -146,6 +147,7 @@ CREATE TABLE IF NOT EXISTS special_offers (
 CREATE TABLE IF NOT EXISTS photo_albums (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    created_by VARCHAR(160) DEFAULT NULL,
     title VARCHAR(150) NOT NULL,
     description TEXT DEFAULT NULL,
     cover_path VARCHAR(255) DEFAULT NULL,
@@ -170,6 +172,7 @@ CREATE TABLE IF NOT EXISTS photo_album_photos (
 CREATE TABLE IF NOT EXISTS videos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    created_by VARCHAR(160) DEFAULT NULL,
     title VARCHAR(150) NOT NULL,
     description TEXT DEFAULT NULL,
     video_path VARCHAR(255) NOT NULL,
@@ -194,6 +197,7 @@ CREATE TABLE IF NOT EXISTS videos (
 CREATE TABLE IF NOT EXISTS services (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    created_by VARCHAR(160) DEFAULT NULL,
     title VARCHAR(150) NOT NULL,
     description TEXT DEFAULT NULL,
     cover_path VARCHAR(255) DEFAULT NULL,
@@ -634,6 +638,7 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 CREATE TABLE IF NOT EXISTS timeline_posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    created_by VARCHAR(160) DEFAULT NULL,
     title VARCHAR(100) DEFAULT NULL,
     testo TEXT DEFAULT NULL,
     image_path VARCHAR(255) DEFAULT NULL,

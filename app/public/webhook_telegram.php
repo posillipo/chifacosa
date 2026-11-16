@@ -181,6 +181,7 @@ function handleCallbackQuery(array $cq): void {
         $stmt->execute([$profile['user_id'], $caption ?: null, $imagePath, 'public', 1, 'telegram']);
         $result = '📱 Pubblicato in Timeline!';
         $postId = (int) getDB()->lastInsertId();
+        setContentAuthor('timeline_posts', $postId, 'Telegram');
         $url = siteUrl('/' . $profile['slug'] . '/timeline/' . $postId);
     } else {
         // Crea articolo Blog

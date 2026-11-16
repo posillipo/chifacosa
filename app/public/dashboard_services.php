@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM services WHERE user_id=?) t))');
                     $stmt->execute([$profile['id'], $title, $description ?: null, $newCoverPath, $acceptsInquiries, $isPublic, $inFeed, $publishAt, $profile['id']]);
                     $newId = (int) getDB()->lastInsertId();
+                    setContentAuthor('services', $newId, dashboardAuthorSignature($user));
                     if ($extraPhotos) {
                         $insPhoto = getDB()->prepare('INSERT INTO service_photos (service_id, image_path, sort_order) VALUES (?,?,?)');
                         foreach ($extraPhotos as $i => $p) {
@@ -225,7 +226,7 @@ include __DIR__ . '/_dash_header.php';
         <img src="/<?= e($sv['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
       <?php endif; ?>
       <div style="flex:1;min-width:0;">
-        <strong><?= e($sv['title']) ?></strong>
+        <strong><?= e($sv['title']) ?></strong> <?= authorBadgeHtml($sv['created_by'] ?? null) ?>
         <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $photoCount ?> foto</span>
         <?php if (!(int) $sv['is_public']): ?>
           <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-lock"></i> Solo io</div>
