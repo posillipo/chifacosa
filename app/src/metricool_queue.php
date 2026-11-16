@@ -204,9 +204,12 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
  * @deprecated Use socialQueueBuildSq() + the JS modal for user-controlled queueing.
  * Kept for any callers that haven't been updated yet.
  */
-function socialQueueEnqueueIfEnabled(int $userId, string $type, array $data): void {
+function socialQueueEnqueueIfEnabled(int $userId, string $type, array $data, ?string $scheduledFor = null): void {
     if (!metricoolIsEnabled($userId)) {
         return;
     }
-    socialQueueEnqueue($userId, $type, $data);
+    // $scheduledFor: contenuto con pubblicazione programmata sul sito. L'uscita social si accoda subito con
+    // quella data (scheduled_for): la routine la programma su Metricool alla stessa data/ora, quando il
+    // contenuto diventa pubblico. Senza data (NULL) l'uscita è immediata, come sempre.
+    socialQueueEnqueue($userId, $type, $data, $scheduledFor);
 }

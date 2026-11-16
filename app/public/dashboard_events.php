@@ -50,6 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'image_url'  => $coverPath ? siteUrl($coverPath) : null,
                     'public_url' => $eventUrl,
                 ]);
+            } else {
+                // Programmato: si accoda subito con la data di pubblicazione (prima restava fuori dalla coda).
+                require_once __DIR__ . '/../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'event', [
+                    'content_id' => $newEventId,
+                    'title'      => $title,
+                    'body'       => $description,
+                    'image_url'  => $coverPath ? siteUrl($coverPath) : null,
+                    'public_url' => siteUrl('/' . $profile['slug'] . '/eventi/' . $newEventId),
+                ], $publishAt);
             }
         }
     } elseif ($action === 'edit') {
