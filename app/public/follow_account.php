@@ -10,7 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
     $targetId = (int) ($_POST['user_id'] ?? 0);
     $action = $_POST['action'] ?? '';
-    $redirect = $_POST['redirect'] ?? '/';
+    $redirect = (string) ($_POST['redirect'] ?? '/');
+    // Solo percorsi interni del sito (evita redirect verso indirizzi esterni).
+    if ($redirect === '' || $redirect[0] !== '/' || str_starts_with($redirect, '//') || str_contains($redirect, "\\") || preg_match('/[\r\n]/', $redirect)) {
+        $redirect = '/';
+    }
 
     if ($targetId && $targetId !== $actingId) {
         if ($action === 'follow') {
