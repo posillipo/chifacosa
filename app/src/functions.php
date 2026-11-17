@@ -1493,9 +1493,16 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                   <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Dashboard
                 </a>
                 <?php if ($showSegui): ?>
-                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-outline-primary btn-sm my-2 my-lg-0">
-                  <i class="bi bi-person-check-fill me-1" aria-hidden="true"></i>Segui già
-                </a>
+                <?php // Già seguito: il pulsante smette di seguire (con conferma). Prima era solo un link alla Home e non faceva nulla. ?>
+                <form method="post" action="/follow_account.php" class="d-inline" onsubmit="return confirm('Vuoi smettere di seguire <?= e(addslashes((string) $artist['display_name'])) ?>?');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="user_id" value="<?= $uid ?>">
+                  <input type="hidden" name="action" value="unfollow">
+                  <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+                  <button type="submit" class="btn btn-outline-primary btn-sm my-2 my-lg-0" title="Smetti di seguire">
+                    <i class="bi bi-person-check-fill me-1" aria-hidden="true"></i>Segui già
+                  </button>
+                </form>
                 <?php endif; ?>
                 <?php else: ?>
                 <?php if (!empty($_SESSION['user_id'])): ?>
@@ -1670,7 +1677,7 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
               <div class="card-body text-center">
                 <?php if (publicActingUserId() && publicActingUserId() !== $uid): ?>
                   <?php $alreadyFollowing = isFollowingAccount(publicActingUserId(), $uid); ?>
-                  <form method="post" action="/follow_account.php" class="d-inline">
+                  <form method="post" action="/follow_account.php" class="d-inline"<?= $alreadyFollowing ? ' onsubmit="return confirm(\'Vuoi smettere di seguire questo profilo?\');"' : '' ?>>
                     <?= csrfField() ?>
                     <input type="hidden" name="user_id" value="<?= $uid ?>">
                     <input type="hidden" name="action" value="<?= $alreadyFollowing ? 'unfollow' : 'follow' ?>">
