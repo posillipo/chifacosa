@@ -27,7 +27,7 @@ class SimpleSmtpMailer {
      * scrive il dettaglio nei log PHP del container (visibili da Portainer) senza
      * interrompere l'esecuzione della pagina chiamante.
      */
-    public function send(string $fromEmail, string $fromName, string $toEmail, string $toName, string $subject, string $body): bool {
+    public function send(string $fromEmail, string $fromName, string $toEmail, string $toName, string $subject, string $body, ?string $replyTo = null): bool {
         try {
             // $fromEmail/$toEmail finiscono grezzi negli envelope SMTP MAIL FROM/RCPT TO (righe
             // sotto): a differenza degli header (From/To/Subject, già protetti perché codificati
@@ -89,6 +89,9 @@ class SimpleSmtpMailer {
                 "Content-Type: text/plain; charset=UTF-8",
                 "Content-Transfer-Encoding: base64",
             ];
+            if ($replyTo !== null && $replyTo !== '' && !preg_match('/[\r\n]/', $replyTo) && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
+                array_splice($headers, 2, 0, ["Reply-To: <{$replyTo}>"]);
+            }
             $encodedBody = chunk_split(base64_encode($body));
             $message = implode("\r\n", $headers) . "\r\n\r\n" . $encodedBody . "\r\n.";
 
