@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $auth = authenticateApiRequest();
 $data = apiReadJsonBody();
+apiRequireAuthor($auth, $data);
 
 $validated = apiValidateSocialPostPayload($data, false);
 if ($validated['error'] !== null) {

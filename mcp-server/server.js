@@ -138,6 +138,8 @@ function toolResult(apiResult) {
 
 // Campi comuni a create/update — stessa forma esposta dall'API REST, vedi
 // app/src/api_helpers.php::apiValidateSocialPostPayload().
+const authorRequired = z.string().min(1).max(100).describe('OBBLIGATORIO in creazione: il tuo nome (nome dell\'IA o della routine che crea il contenuto). Viene scritto come firma, visibile solo al proprietario nella dashboard.');
+
 const postFieldsSchema = {
     author: z.string().max(100).optional().describe('Chi sta creando il contenuto (es. nome dell\'IA o della routine): viene salvato come firma visibile solo al proprietario nella dashboard. Compilalo sempre in creazione.'),
     title: z.string().max(100).optional().describe('Titolo del post (max 100 caratteri)'),
@@ -218,7 +220,7 @@ function buildMcpServer() {
     server.registerTool('create_social_post', {
         title: 'Crea un post sulla Timeline di un profilo CHIFACOSA',
         description: 'Crea un nuovo post (subito pubblicato, programmato per una data futura, o come bozza) sulla Timeline pubblica del profilo CHIFACOSA scelto.',
-        inputSchema: { ...profileField, ...postFieldsSchema },
+        inputSchema: { ...profileField, ...postFieldsSchema, author: authorRequired },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/social-posts/create', { method: 'POST', body: fields })));
 
     server.registerTool('list_social_posts', {
@@ -262,7 +264,7 @@ function buildMcpServer() {
     server.registerTool('create_blog_post', {
         title: 'Crea un articolo sul Blog di un profilo CHIFACOSA',
         description: 'Crea un nuovo articolo (subito pubblicato, o programmato per una data futura) sul Blog del profilo CHIFACOSA scelto. Richiede title e content. La copertina può essere un\'immagine (image_url) OPPURE un video (cover_video_url).',
-        inputSchema: { ...profileField, ...blogPostFieldsSchema },
+        inputSchema: { ...profileField, ...blogPostFieldsSchema, author: authorRequired },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/blog-posts/create', { method: 'POST', body: fields })));
 
     server.registerTool('list_blog_posts', {
@@ -414,7 +416,7 @@ function buildMcpServer() {
     server.registerTool('create_album', {
         title: 'Crea un album fotografico su un profilo CHIFACOSA',
         description: 'Crea un nuovo album fotografico (pubblico o privato, subito o programmato). Richiede title. Usa cover_image_url per la copertina e extra_photo_urls per le foto aggiuntive: verranno scaricate e salvate nel profilo.',
-        inputSchema: { ...profileField, ...albumFieldsSchema },
+        inputSchema: { ...profileField, ...albumFieldsSchema, author: authorRequired },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/albums/create', { method: 'POST', body: fields })));
 
     server.registerTool('update_album', {
@@ -432,7 +434,7 @@ function buildMcpServer() {
     server.registerTool('create_event', {
         title: 'Crea un evento su un profilo CHIFACOSA',
         description: 'Crea un nuovo evento (sempre visibile subito, nessun concetto di bozza/programmazione) sul profilo CHIFACOSA scelto. Richiede title e event_date.',
-        inputSchema: { ...profileField, ...eventFieldsSchema },
+        inputSchema: { ...profileField, ...eventFieldsSchema, author: authorRequired },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/events/create', { method: 'POST', body: fields })));
 
     server.registerTool('list_events', {
@@ -715,13 +717,13 @@ function buildMcpServer() {
     server.registerTool('request_video_upload', {
         title: 'Richiedi un indirizzo per caricare un video',
         description: 'Per caricare un file video già presente nella sandbox (fino a 200 MB, MP4/MOV/WebM). Crea il video con titolo e descrizione e restituisce un indirizzo di caricamento monouso (30 minuti). Poi invia il file con Bash: curl -sS -X PUT --data-binary @video.mp4 "<upload_url>". La risposta del PUT contiene il video creato (video_url, thumbnail_url, url pagina). Passa filename con l\'estensione giusta (es. "clip.mov"). Il caricamento richiede che l\'ambiente raggiunga il dominio del sito.',
-        inputSchema: { ...profileField, ...videoFields, filename: z.string().optional().describe('Nome del file con estensione (mp4, mov, webm). Default video.mp4') },
+        inputSchema: { ...profileField, ...videoFields, author: authorRequired, filename: z.string().optional().describe('Nome del file con estensione (mp4, mov, webm). Default video.mp4') },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/videos/request-upload', { method: 'POST', body: fields })));
 
     server.registerTool('add_video_from_url', {
         title: 'Crea un video scaricandolo da un URL pubblico',
         description: 'Se il video è già online (indirizzo pubblico, max 200 MB, MP4/MOV/WebM) il server lo scarica e lo salva nel profilo, con titolo e descrizione. Genera da solo anteprima e durata.',
-        inputSchema: { ...profileField, ...videoFields, video_url: z.string().describe('URL pubblico del file video') },
+        inputSchema: { ...profileField, ...videoFields, author: authorRequired, video_url: z.string().describe('URL pubblico del file video') },
     }, async ({ profile, ...fields }) => toolResult(await chifacosaApi(profile, '/videos/from-url', { method: 'POST', body: fields })));
 
     server.registerTool('update_video', {

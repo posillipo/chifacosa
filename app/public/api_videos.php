@@ -227,6 +227,7 @@ if ($action === 'request-upload') {
         apiError(405, 'Metodo non permesso, usa POST.', $tid, $uid);
     }
     $d = apiReadJsonBody();
+    apiRequireAuthor($auth, $d);
     $f = videoApiFields($d, $tid, $uid, true);
     $ext = strtolower(pathinfo((string) ($d['filename'] ?? 'video.mp4'), PATHINFO_EXTENSION)) ?: 'mp4';
     if (!isset(VIDEO_ALLOWED_EXT[$ext])) {
@@ -257,6 +258,7 @@ if ($action === 'from-url') {
         apiError(405, 'Metodo non permesso, usa POST.', $tid, $uid);
     }
     $d = apiReadJsonBody();
+    apiRequireAuthor($auth, $d);
     $f = videoApiFields($d, $tid, $uid, true);
     $url = trim((string) ($d['video_url'] ?? ''));
     if ($url === '') {
