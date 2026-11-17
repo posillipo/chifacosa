@@ -1435,6 +1435,9 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     $viewerId = publicActingUserId();
     $isOwnProfile = $viewerId && (int) $viewerId === $uid;
     $isFollowing = ($viewerId && !$isOwnProfile) ? isFollowingAccount((int) $viewerId, $uid) : false;
+    // Se il profilo ha nascosto "Segui" dal menu non esiste nemmeno il modulo a cui il pulsante
+    // punta: meglio non mostrare un pulsante che non porta da nessuna parte.
+    $showSegui = !in_array('segui', getHiddenNavKeys($uid), true);
 
     ob_start();
     ?>
@@ -1489,18 +1492,33 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                 <a href="/dashboard.php" class="btn btn-outline-secondary btn-sm my-2 my-lg-0 me-1">
                   <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Dashboard
                 </a>
+                <?php if ($showSegui): ?>
                 <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-outline-primary btn-sm my-2 my-lg-0">
                   <i class="bi bi-person-check-fill me-1" aria-hidden="true"></i>Segui già
                 </a>
+                <?php endif; ?>
                 <?php else: ?>
                 <?php if (!empty($_SESSION['user_id'])): ?>
                 <a href="/dashboard.php" class="btn btn-outline-secondary btn-sm my-2 my-lg-0 me-1">
                   <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Dashboard
                 </a>
                 <?php endif; ?>
-                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary btn-sm my-2 my-lg-0">
+                <?php if ($showSegui && !empty($_SESSION['user_id'])): ?>
+                <?php // Già loggato: un solo clic per seguire (prima serviva andare in fondo alla Home e cliccare di nuovo). ?>
+                <form method="post" action="/follow_account.php" class="d-inline">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="user_id" value="<?= $uid ?>">
+                  <input type="hidden" name="action" value="follow">
+                  <input type="hidden" name="redirect" value="/<?= e($slug) ?>">
+                  <button type="submit" class="btn btn-primary btn-sm my-2 my-lg-0">
+                    <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
+                  </button>
+                </form>
+                <?php elseif ($showSegui): ?>
+                <a href="/<?= e($slug) ?>#segui-widget" class="btn btn-primary btn-sm my-2 my-lg-0 js-segui-link">
                   <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Segui
                 </a>
+                <?php endif; ?>
                 <?php endif; ?>
               </li>
             </ul>
@@ -1697,8 +1715,8 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
               // (/slug#segui-widget), anche da un'altra pagina: se il modulo email esiste
               // (visitatore non loggato), lo apre subito e ci mette il focus, invece di lasciare
               // un secondo click per aprirlo dopo lo scroll.
-              function openFollowWidget() {
-                if (window.location.hash !== '#segui-widget') return;
+              function openFollowWidget(force) {
+                if (force !== true && window.location.hash !== '#segui-widget') return;
                 var details = document.getElementById('segui-follow-details');
                 if (details && !details.open) {
                   details.open = true;
@@ -1708,8 +1726,19 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
                 var widget = document.getElementById('segui-widget');
                 if (widget) { widget.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
               }
-              document.addEventListener('DOMContentLoaded', openFollowWidget);
-              window.addEventListener('hashchange', openFollowWidget);
+              document.addEventListener('DOMContentLoaded', function () { openFollowWidget(); });
+              window.addEventListener('hashchange', function () { openFollowWidget(); });
+              // Ad ogni clic su un link "Segui" (barra in alto, "+" del profilo): se si è già in
+              // questa pagina l'ancora c'è già e il browser non genera più hashchange, quindi il
+              // modulo non si riapriva più dopo il primo clic.
+              document.querySelectorAll('a[href$="#segui-widget"]').forEach(function (a) {
+                a.addEventListener('click', function (ev) {
+                  if (a.pathname.replace(/\/$/, '') !== window.location.pathname.replace(/\/$/, '')) return;
+                  ev.preventDefault();
+                  if (window.location.hash !== '#segui-widget') { history.replaceState(null, '', '#segui-widget'); }
+                  openFollowWidget(true);
+                });
+              });
             })();
             </script>
             <?php endif; ?>
