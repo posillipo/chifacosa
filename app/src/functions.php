@@ -6785,6 +6785,33 @@ function notifyNewFollower(string $toEmail, string $toName, string $followerSlug
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
 }
 
+// Risposta a una richiesta di contatto: testo scritto dal proprietario + messaggio originale citato +
+// invito a creare un profilo sul portale. Reply-To = email del proprietario, così il mittente
+// può rispondere direttamente. Ritorna true se l'SMTP ha accettato il messaggio.
+function notifyContactReply(array $request, array $owner, string $replyText): bool {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return false;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+
+    $ownerName = (string) ($owner['display_name'] ?? '') ?: (string) ($owner['slug'] ?? '');
+    $quoted = '> ' . str_replace("\n", "\n> ", trim(str_replace("\r", '', (string) $request['message'])));
+    $subject = 'Risposta da ' . $ownerName . ' su ' . siteName();
+    $body = "Ciao {$request['sender_name']},\n\n"
+          . trim($replyText) . "\n\n"
+          . $ownerName . "\n" . siteUrl('/' . ($owner['slug'] ?? '')) . "\n\n"
+          . "----------------------------------------\n"
+          . "Il tuo messaggio del " . date('d/m/Y H:i', strtotime((string) $request['created_at'])) . ":\n{$quoted}\n\n"
+          . "----------------------------------------\n"
+          . "Non perderti nessuna risposta: crea gratis il tuo profilo su " . siteName() . ".\n"
+          . "Con un profilo puoi seguire gli artisti, ricevere i loro aggiornamenti e scrivere direttamente dalla piattaforma.\n"
+          . "Registrati qui: " . siteUrl('/register.php');
+
+    return $mailer->send($cfg['from'], $cfg['fromName'], (string) $request['sender_email'], (string) $request['sender_name'], $subject, $body, (string) ($owner['email'] ?? ''));
+}
+
 // Invia l'email di conferma registrazione con il link di verifica. Come per le notifiche di
 // contatto: se l'SMTP non è configurato non fa nulla (nessun errore).
 function notifyEmailVerification(string $toEmail, string $toName, string $token): bool {
