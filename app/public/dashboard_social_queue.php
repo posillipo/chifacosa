@@ -45,28 +45,34 @@ $items = $stmt->fetchAll();
 include __DIR__ . '/_dash_header.php';
 ?>
 <style>
-.sq-table td, .sq-table th { padding: 9px 12px; white-space:nowrap; }
-.sq-table { width:100%; border-collapse:collapse; font-size:13.5px; table-layout:auto; }
-.sq-table tr { border-top:1px solid var(--border-color,#e0e0e0); }
-.sq-table thead tr { background:var(--bg-alt,#f5f5f5); border-top:none; }
-.sq-table th { white-space:nowrap; }
-.sq-col-tipo { width:90px; }
-.sq-col-contenuto { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sq-status { font-weight:600; white-space:nowrap; }
-.sq-actions { display:flex; gap:6px; align-items:center; }
+.sq-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.sq-table th { padding:10px 12px; text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); white-space:nowrap; }
+.sq-table td { padding:12px; vertical-align:top; }
+.sq-table tbody tr { border-top:1px solid var(--border-color,#e0e0e0); }
+.sq-table thead tr { background:var(--bg-alt,#f5f5f5); }
+.sq-thumb { width:56px; height:56px; border-radius:8px; object-fit:cover; display:block; background:var(--bg-alt,#f0f0f0); }
+.sq-thumb-empty { width:56px; height:56px; border-radius:8px; background:var(--bg-alt,#f0f0f0); display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
+.sq-title { font-weight:700; color:inherit; text-decoration:none; display:block; line-height:1.3; }
+a.sq-title:hover { text-decoration:underline; }
+.sq-excerpt { color:var(--text-muted); font-size:12.5px; margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:420px; }
+.sq-pill { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; color:#fff; white-space:nowrap; }
+.sq-chip { display:inline-block; font-size:11px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--border-color,#d0d0d0); color:var(--text-muted); background:var(--bg-alt,#fafafa); margin:0 4px 4px 0; white-space:nowrap; }
+.sq-chip.ch { color:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); background:transparent; }
+.sq-type { font-size:12px; font-weight:700; white-space:nowrap; }
+.sq-meta { color:var(--text-muted); font-size:12px; margin-top:4px; }
+.sq-when { font-weight:700; white-space:nowrap; }
+.sq-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .btn-xs { font-size:12px; padding:3px 9px; border-radius:4px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
 .btn-xs.danger { color:#e74c3c; border-color:#e74c3c; }
 .btn-xs.primary { color:#fff; background:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); }
-/* Su telefono la tabella non entra nello schermo (e la scheda tagliava Programmato e i pulsanti):
-   ogni riga diventa una scheda con tutti i dati, uno sotto l'altro, ognuno con la sua etichetta. */
-@media(max-width:700px) {
+/* Su schermi stretti ogni riga diventa una scheda con tutti i dati, uno sotto l'altro. */
+@media(max-width:900px) {
   .sq-table, .sq-table tbody { display:block; }
   .sq-table thead { display:none; }
-  .sq-table tr { display:block; padding:10px 12px; }
-  .sq-table td { display:flex; gap:10px; align-items:baseline; padding:3px 0; white-space:normal; border:0; }
-  .sq-table td[data-label]::before { content:attr(data-label); flex:0 0 92px; color:var(--text-muted); font-size:12px; }
-  .sq-col-tipo { width:auto; }
-  .sq-col-contenuto { max-width:none; white-space:normal; overflow:visible; text-overflow:clip; }
+  .sq-table tr { display:block; padding:12px; }
+  .sq-table td { display:flex; gap:10px; align-items:baseline; padding:4px 0; border:0; }
+  .sq-table td[data-label]::before { content:attr(data-label); flex:0 0 84px; color:var(--text-muted); font-size:12px; }
+  .sq-excerpt { max-width:none; }
   .sq-col-azioni { padding-top:8px; }
   .sq-scheduled-input { max-width:100%; }
 }
@@ -95,57 +101,73 @@ include __DIR__ . '/_dash_header.php';
     <table class="sq-table">
       <thead>
         <tr>
-          <th class="sq-col-tipo" style="text-align:left;">Tipo</th>
-          <th style="text-align:left;">Contenuto</th>
-          <th style="text-align:left;">Stato</th>
-          <th style="text-align:left;">Programmato</th>
-          <th class="sq-col-aggiunto" style="text-align:left;">Aggiunto</th>
+          <th style="width:68px;"></th>
+          <th>Contenuto</th>
+          <th>Canali e formato</th>
+          <th>Stato</th>
+          <th>Uscita</th>
           <th></th>
         </tr>
       </thead>
       <tbody id="sq-tbody">
+        <?php
+        $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
+        $statusNames  = ['pending' => 'In attesa', 'processing' => 'In elaborazione', 'done' => 'Completato', 'failed' => 'Errore', 'suspended' => 'Sospeso', 'scheduled' => 'Programmato', 'skipped' => 'Saltato'];
+        $typeNames = ['blog' => ['📝', 'Blog'], 'timeline' => ['💬', 'Timeline'], 'album' => ['🖼', 'Album'], 'service' => ['🛠', 'Servizio'], 'event' => ['📅', 'Evento'], 'video' => ['🎬', 'Video'], 'product' => ['🛍', 'Prodotto'], 'offer' => ['🏷', 'Offerta']];
+        $scopeNames = ['announcement' => 'Annuncio', 'reminder' => 'Promemoria', 'result' => 'Risultato', 'new' => 'Novità', 'promo' => 'Promo', 'release' => 'Uscita', 'reprise' => 'Ripresa'];
+        $formatNames = ['feed' => 'Feed', 'story' => 'Story', 'reel' => 'Reel'];
+        ?>
         <?php foreach ($items as $qi): ?>
           <?php
-          $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
           // Stato mostrato: "suspended" se l'elemento è ancora da lavorare ma sospeso.
           $isSuspended = !empty($qi['suspended']) && in_array($qi['status'], ['pending', 'processing'], true);
           $shownStatus = $isSuspended ? 'suspended' : $qi['status'];
           $color = $statusColors[$shownStatus] ?? '#666';
-          $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 60) ?: '—';
+          $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 90) ?: '—';
+          $bodyText = trim(preg_replace('/\s+/', ' ', strip_tags((string) ($qi['body'] ?? ''))));
+          $bodyText = str_replace('**', '', $bodyText);
           $isEditable = in_array($qi['status'], ['pending', 'processing'], true);
+          [$typeIcon, $typeLabel] = $typeNames[$qi['content_type']] ?? ['📄', ucfirst((string) $qi['content_type'])];
+          $chs = [];
+          if (!empty($qi['channels'])) {
+              $dec = json_decode((string) $qi['channels'], true);
+              if (is_array($dec)) $chs = $dec;
+          }
+          $img = $qi['image_url'] ?? '';
           ?>
           <tr id="sq-row-<?= $qi['id'] ?>">
-            <td class="sq-col-tipo" data-label="Tipo"><span style="font-size:12px;color:var(--text-muted);"><?= e($qi['content_type']) ?></span></td>
+            <td data-label="">
+              <?php if ($img): ?><img class="sq-thumb" src="<?= e($img) ?>" alt="" loading="lazy">
+              <?php else: ?><div class="sq-thumb-empty"><?= $typeIcon ?></div><?php endif; ?>
+            </td>
             <td class="sq-col-contenuto" data-label="Contenuto">
-              <?php if ($qi['public_url']): ?><a href="<?= e($qi['public_url']) ?>" target="_blank" style="color:inherit;"><?= e($label) ?></a>
-              <?php else: ?><?= e($label) ?>
-              <?php endif; ?>
-              <?php
-              // Dati del registro (presenti solo dopo la migrazione 2026_10_31 e solo per le uscite che li usano).
-              $regBits = [];
-              if (!empty($qi['scope'])) $regBits[] = $qi['scope'];
-              if (!empty($qi['format'])) $regBits[] = $qi['format'];
-              if (!empty($qi['channels'])) {
-                  $chs = json_decode((string) $qi['channels'], true);
-                  if (is_array($chs) && $chs) $regBits[] = implode(', ', $chs);
-              }
-              ?>
-              <?php if ($regBits): ?><br><small style="color:var(--text-muted);"><?= e(implode(' · ', $regBits)) ?></small><?php endif; ?>
+              <div class="sq-type" style="color:var(--text-muted);"><?= $typeIcon ?> <?= e($typeLabel) ?> <span style="font-weight:400;">· #<?= (int) $qi['content_id'] ?></span></div>
+              <?php if ($qi['public_url']): ?><a class="sq-title" href="<?= e($qi['public_url']) ?>" target="_blank"><?= e($label) ?></a>
+              <?php else: ?><span class="sq-title"><?= e($label) ?></span><?php endif; ?>
+              <?php if ($bodyText !== '' && $bodyText !== $label): ?><div class="sq-excerpt"><?= e(mb_substr($bodyText, 0, 220)) ?></div><?php endif; ?>
+              <div class="sq-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?></div>
+            </td>
+            <td data-label="Canali">
+              <?php foreach ($chs as $ch): ?><span class="sq-chip ch"><?= e($ch) ?></span><?php endforeach; ?>
+              <?php if (!empty($qi['format'])): ?><span class="sq-chip"><?= e($formatNames[$qi['format']] ?? $qi['format']) ?></span><?php endif; ?>
+              <?php if (!empty($qi['scope'])): ?><span class="sq-chip"><?= e($scopeNames[$qi['scope']] ?? $qi['scope']) ?></span><?php endif; ?>
+              <?php if (!$chs && empty($qi['format']) && empty($qi['scope'])): ?><span style="color:var(--text-muted);">—</span><?php endif; ?>
             </td>
             <td data-label="Stato">
-              <span class="sq-status" style="color:<?= $color ?>;"><?= e($shownStatus) ?></span>
-              <?php if ($qi['error_msg']): ?><br><small style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 60)) ?></small><?php endif; ?>
+              <span class="sq-pill sq-status" style="background:<?= $color ?>;"><?= e($statusNames[$shownStatus] ?? $shownStatus) ?></span>
+              <?php if (!empty($qi['scheduler_ref'])): ?><div class="sq-meta" title="Riferimento su Metricool">Metricool: <?= e($qi['scheduler_ref']) ?></div><?php endif; ?>
+              <?php if (!empty($qi['processed_at'])): ?><div class="sq-meta">Elaborato il <?= date('d/m H:i', strtotime($qi['processed_at'])) ?></div><?php endif; ?>
+              <?php if ($qi['error_msg']): ?><div class="sq-meta" style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 120)) ?></div><?php endif; ?>
             </td>
-            <td data-label="Programmato">
+            <td data-label="Uscita">
               <?php if ($isEditable): ?>
                 <input type="datetime-local" class="sq-scheduled-input" data-id="<?= $qi['id'] ?>"
                        value="<?= $qi['scheduled_for'] ? date('Y-m-d\TH:i', strtotime($qi['scheduled_for'])) : '' ?>"
-                       style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;max-width:160px;">
-              <?php else: ?>
-                <span style="color:var(--text-muted);font-size:12.5px;"><?= $qi['scheduled_for'] ? date('d/m H:i', strtotime($qi['scheduled_for'])) : '—' ?></span>
-              <?php endif; ?>
+                       style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;max-width:170px;">
+              <?php elseif ($qi['scheduled_for']): ?>
+                <span class="sq-when"><?= date('d/m/Y', strtotime($qi['scheduled_for'])) ?></span><div class="sq-meta" style="margin-top:0;">ore <?= date('H:i', strtotime($qi['scheduled_for'])) ?></div>
+              <?php else: ?><span style="color:var(--text-muted);">—</span><?php endif; ?>
             </td>
-            <td class="sq-col-aggiunto" data-label="Aggiunto" style="color:var(--text-muted);font-size:12.5px;"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
             <td class="sq-col-azioni">
               <div class="sq-actions">
                 <?php if ($isEditable): ?>
@@ -198,8 +220,9 @@ include __DIR__ . '/_dash_header.php';
         if (row) {
           const statusEl = row.querySelector('.sq-status');
           const colors = { pending: '#e67e22', suspended: '#95a5a6' };
-          statusEl.textContent = data.status;
-          statusEl.style.color = colors[data.status] || '#666';
+          const names = { pending: 'In attesa', suspended: 'Sospeso' };
+          statusEl.textContent = names[data.status] || data.status;
+          statusEl.style.background = colors[data.status] || '#666';
         }
       }).catch(function () { btn.disabled = false; alert('Errore di connessione'); });
     });
