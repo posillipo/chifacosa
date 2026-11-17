@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $auth = authenticateApiRequest();
 $data = apiReadJsonBody();
+apiRequireAuthor($auth, $data);
 
 $validated = apiValidateEventPayload($data, false);
 if ($validated['error'] !== null) {

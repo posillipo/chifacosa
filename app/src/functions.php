@@ -7548,9 +7548,18 @@ function dashboardAuthorSignature(array $user): string {
 }
 
 // Firma per le richieste API/MCP: etichetta del token + eventuale nome dichiarato dall'IA ("author").
+// Nessuna verifica: si scrive il nome che l'IA dichiara. Senza nome (non dovrebbe accadere, il campo è
+// obbligatorio in creazione) si ripiega sull'etichetta del token.
 function apiAuthorSignature(array $auth, array $data): string {
     $decl = trim((string) ($data['author'] ?? ''));
-    return mb_substr('API · ' . ($auth['token_label'] ?? 'token') . ($decl !== '' ? ' · ' . $decl : ''), 0, 160);
+    return mb_substr($decl !== '' ? 'IA · ' . $decl : 'API · ' . ($auth['token_label'] ?? 'token'), 0, 160);
+}
+
+// In creazione da API/MCP la firma è obbligatoria: senza "author" la richiesta viene rifiutata con un messaggio chiaro.
+function apiRequireAuthor(array $auth, array $data): void {
+    if (trim((string) ($data['author'] ?? '')) === '') {
+        apiError(422, 'Il campo "author" è obbligatorio in creazione: indica chi sta creando il contenuto (es. il nome dell\'IA o della routine).', $auth['token_id'] ?? null, $auth['user_id'] ?? null);
+    }
 }
 
 function authorBadgeHtml(?string $by): string {
