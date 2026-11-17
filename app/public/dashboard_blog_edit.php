@@ -33,6 +33,22 @@ $selectedCategoryIds = $_SERVER['REQUEST_METHOD'] === 'POST'
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
+    if (($_POST['action'] ?? '') === 'delete') {
+        require_once __DIR__ . '/../src/videos.php';
+        blogCoverDeleteAll($post);
+        if (empty($post['cover_video_path'])) {
+            deleteCoverFile($post['cover_path']);
+        }
+        getDB()->prepare('DELETE FROM blog_posts WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
+        // Toglie dalla coda social le uscite non ancora elaborate di questo articolo (quelle già
+        // programmate su Metricool restano, vanno tolte da lì).
+        try {
+            getDB()->prepare("DELETE FROM social_queue WHERE user_id=? AND content_type='blog' AND content_id=? AND status IN ('pending','processing')")->execute([$profile['id'], $id]);
+        } catch (Throwable $e) {
+        }
+        header('Location: /dashboard_blog_posts.php');
+        exit;
+    }
     if (($_POST['action'] ?? '') === 'send_telegram') {
         require_once __DIR__ . '/../src/telegram.php';
         if (empty($profile['telegram_chat_id'])) {
@@ -209,6 +225,17 @@ include __DIR__ . '/_dash_header.php';
     <button type="submit" class="btn">Salva modifiche</button>
     <a href="/dashboard_blog_posts.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
   </form>
+
+  <div class="card" style="margin-top:14px;border:1px solid #e74c3c33;">
+    <div class="section-title" style="margin-top:0;color:#e74c3c;">Elimina articolo</div>
+    <p style="color:var(--text-muted);font-size:13px;">Elimina definitivamente questo articolo e la sua copertina. Se è in coda social e non è ancora stato elaborato, viene tolto anche dalla coda; se è già programmato su Metricool va tolto da lì.</p>
+    <form method="post" onsubmit="return confirm('Eliminare definitivamente questo articolo?');">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
+      <button class="btn danger" type="submit"><i class="fa-solid fa-trash"></i> Elimina articolo</button>
+    </form>
+  </div>
 
   <?php if (!empty($profile['telegram_chat_id'])): ?>
   <div class="card" style="margin-top:14px;">

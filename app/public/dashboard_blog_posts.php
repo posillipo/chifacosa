@@ -21,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         getDB()->prepare('DELETE FROM blog_posts WHERE id=? AND user_id=?')->execute([$id, $profile['id']]);
+        try {
+            getDB()->prepare("DELETE FROM social_queue WHERE user_id=? AND content_type='blog' AND content_id=? AND status IN ('pending','processing')")->execute([$profile['id'], $id]);
+        } catch (Throwable $e) {
+        }
     }
     // Riporta alla stessa ricerca/filtro che si stava usando, invece di azzerarla dopo ogni eliminazione.
     $backQs = (trim($_POST['q'] ?? '') !== '' || (int) ($_POST['category'] ?? 0) > 0)
