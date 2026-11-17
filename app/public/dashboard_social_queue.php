@@ -69,37 +69,31 @@ foreach ($idsByType as $type => $ids) {
 include __DIR__ . '/_dash_header.php';
 ?>
 <style>
-.sq-table { width:100%; border-collapse:collapse; font-size:13.5px; }
-.sq-table th { padding:10px 12px; text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); white-space:nowrap; }
-.sq-table td { padding:12px; vertical-align:top; }
-.sq-table tbody tr { border-top:1px solid var(--border-color,#e0e0e0); }
-.sq-table thead tr { background:var(--bg-alt,#f5f5f5); }
-.sq-thumb { width:56px; height:56px; border-radius:8px; object-fit:cover; display:block; background:var(--bg-alt,#f0f0f0); }
-.sq-thumb-empty { width:56px; height:56px; border-radius:8px; background:var(--bg-alt,#f0f0f0); display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
-.sq-title { font-weight:700; color:inherit; text-decoration:none; display:block; line-height:1.3; }
+.sq-list { display:flex; flex-direction:column; gap:12px; }
+.sq-item { background:var(--card-bg,#fff); border:1px solid var(--border-color,#e3e3ea); border-radius:14px; padding:14px; display:grid; grid-template-columns:64px minmax(0,1fr); gap:14px; }
+.sq-thumb { width:64px; height:64px; border-radius:10px; object-fit:cover; display:block; background:var(--bg-alt,#f0f0f0); }
+.sq-thumb-empty { width:64px; height:64px; border-radius:10px; background:var(--bg-alt,#f0f0f0); display:flex; align-items:center; justify-content:center; font-size:22px; }
+.sq-main { min-width:0; }
+.sq-type { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; }
+.sq-title { font-weight:700; font-size:15px; color:inherit; text-decoration:none; display:block; line-height:1.35; margin:2px 0; overflow-wrap:anywhere; }
 a.sq-title:hover { text-decoration:underline; }
-.sq-excerpt { color:var(--text-muted); font-size:12.5px; margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:420px; }
-.sq-pill { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; color:#fff; white-space:nowrap; }
-.sq-chip { display:inline-block; font-size:11px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--border-color,#d0d0d0); color:var(--text-muted); background:var(--bg-alt,#fafafa); margin:0 4px 4px 0; white-space:nowrap; }
+.sq-excerpt { color:var(--text-muted); font-size:13px; margin:2px 0 6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.sq-row { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; margin-top:6px; }
+.sq-label { color:var(--text-muted); font-size:12px; }
+.sq-meta { color:var(--text-muted); font-size:12px; }
+.sq-pill { display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:999px; color:#fff; white-space:nowrap; }
+.sq-chip { display:inline-block; font-size:11px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--border-color,#d0d0d0); color:var(--text-muted); background:var(--bg-alt,#fafafa); white-space:nowrap; }
 .sq-chip.ch { color:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); background:transparent; }
-.sq-type { font-size:12px; font-weight:700; white-space:nowrap; }
-.sq-meta { color:var(--text-muted); font-size:12px; margin-top:4px; }
-.sq-when { font-weight:700; white-space:nowrap; }
-.sq-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-.btn-xs { font-size:12px; padding:3px 9px; border-radius:4px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
+.sq-side { grid-column:1 / -1; border-top:1px dashed var(--border-color,#e0e0e0); padding-top:10px; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; }
+.sq-side-info { display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; min-width:0; }
+.sq-when { font-weight:700; font-size:13.5px; }
+.sq-actions { display:flex; gap:6px; align-items:center; margin-left:auto; }
+.btn-xs { font-size:12px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
 .btn-xs.danger { color:#e74c3c; border-color:#e74c3c; }
 .btn-xs.primary { color:#fff; background:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); }
-/* Su schermi stretti ogni riga diventa una scheda con tutti i dati, uno sotto l'altro. */
-@media(max-width:900px) {
-  .sq-table, .sq-table tbody { display:block; }
-  .sq-table thead { display:none; }
-  .sq-table tr { display:block; padding:12px; }
-  .sq-table td { display:flex; gap:10px; align-items:baseline; padding:4px 0; border:0; }
-  .sq-table td[data-label]::before { content:attr(data-label); flex:0 0 84px; color:var(--text-muted); font-size:12px; }
-  .sq-excerpt { max-width:none; }
-  .sq-col-azioni { padding-top:8px; }
-  .sq-scheduled-input { max-width:100%; }
-}
+.sq-scheduled-input { font-size:12.5px; padding:3px 6px; border:1px solid #ccc; border-radius:6px; max-width:100%; }
+/* Le etichette autore non vanno a capo a metà: restano intere e, se serve, si accorciano. */
+.sq-item .sq-main span[title^="Autore"] { white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:middle; }
 </style>
 
 <?php if (!$metricoolActive): ?>
@@ -121,97 +115,83 @@ a.sq-title:hover { text-decoration:underline; }
 <?php if (!$items): ?>
   <div class="card" style="color:var(--text-muted);text-align:center;">Nessun elemento in questa visualizzazione.</div>
 <?php else: ?>
-  <div class="card" style="padding:0;overflow:hidden;">
-    <table class="sq-table">
-      <thead>
-        <tr>
-          <th style="width:68px;"></th>
-          <th>Contenuto</th>
-          <th>Canali e formato</th>
-          <th>Stato</th>
-          <th>Uscita</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="sq-tbody">
-        <?php
-        $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
-        $statusNames  = ['pending' => 'In attesa', 'processing' => 'In elaborazione', 'done' => 'Completato', 'failed' => 'Errore', 'suspended' => 'Sospeso', 'scheduled' => 'Programmato', 'skipped' => 'Saltato'];
-        $typeNames = ['blog' => ['📝', 'Blog'], 'timeline' => ['💬', 'Timeline'], 'album' => ['🖼', 'Album'], 'service' => ['🛠', 'Servizio'], 'event' => ['📅', 'Evento'], 'video' => ['🎬', 'Video'], 'product' => ['🛍', 'Prodotto'], 'offer' => ['🏷', 'Offerta']];
-        $scopeNames = ['announcement' => 'Annuncio', 'reminder' => 'Promemoria', 'result' => 'Risultato', 'new' => 'Novità', 'promo' => 'Promo', 'release' => 'Uscita', 'reprise' => 'Ripresa'];
-        $formatNames = ['feed' => 'Feed', 'story' => 'Story', 'reel' => 'Reel'];
-        ?>
-        <?php foreach ($items as $qi): ?>
-          <?php
-          // Stato mostrato: "suspended" se l'elemento è ancora da lavorare ma sospeso.
-          $isSuspended = !empty($qi['suspended']) && in_array($qi['status'], ['pending', 'processing'], true);
-          $shownStatus = $isSuspended ? 'suspended' : $qi['status'];
-          $color = $statusColors[$shownStatus] ?? '#666';
-          $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 90) ?: '—';
-          $bodyText = trim(preg_replace('/\s+/', ' ', strip_tags((string) ($qi['body'] ?? ''))));
-          $bodyText = str_replace('**', '', $bodyText);
-          $isEditable = in_array($qi['status'], ['pending', 'processing'], true);
-          [$typeIcon, $typeLabel] = $typeNames[$qi['content_type']] ?? ['📄', ucfirst((string) $qi['content_type'])];
-          $chs = [];
-          if (!empty($qi['channels'])) {
-              $dec = json_decode((string) $qi['channels'], true);
-              if (is_array($dec)) $chs = $dec;
-          }
-          $img = $qi['image_url'] ?? '';
-          ?>
-          <tr id="sq-row-<?= $qi['id'] ?>">
-            <td data-label="">
-              <?php if ($img): ?><img class="sq-thumb" src="<?= e($img) ?>" alt="" loading="lazy">
-              <?php else: ?><div class="sq-thumb-empty"><?= $typeIcon ?></div><?php endif; ?>
-            </td>
-            <td class="sq-col-contenuto" data-label="Contenuto">
-              <div class="sq-type" style="color:var(--text-muted);"><?= $typeIcon ?> <?= e($typeLabel) ?> <span style="font-weight:400;">· #<?= (int) $qi['content_id'] ?></span></div>
-              <?php if ($qi['public_url']): ?><a class="sq-title" href="<?= e($qi['public_url']) ?>" target="_blank"><?= e($label) ?></a>
-              <?php else: ?><span class="sq-title"><?= e($label) ?></span><?php endif; ?>
-              <?php if ($bodyText !== '' && $bodyText !== $label): ?><div class="sq-excerpt"><?= e(mb_substr($bodyText, 0, 220)) ?></div><?php endif; ?>
-              <?php if (isset($authorTables[$qi['content_type']])): $au = $authorsByItem[$qi['content_type']][(int) $qi['content_id']] ?? null; ?>
-                <div style="margin-top:5px;"><?= $au ? authorBadgeHtml($au) : (empty($qi['created_by']) ? '<span class="sq-meta" style="margin:0;"><i class="fa-solid fa-pen-nib"></i> Autore non registrato</span>' : '') ?></div>
-              <?php endif; ?>
-              <?php if (!empty($qi['created_by'])): ?>
-                <div class="sq-meta" style="margin-top:5px;">Accodato da <?= authorBadgeHtml($qi['created_by']) ?></div>
-              <?php endif; ?>
-              <div class="sq-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?></div>
-            </td>
-            <td data-label="Canali">
+  <?php
+  $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c', 'suspended' => '#95a5a6', 'scheduled' => '#8e44ad', 'skipped' => '#7f8c8d'];
+  $statusNames  = ['pending' => 'In attesa', 'processing' => 'In elaborazione', 'done' => 'Completato', 'failed' => 'Errore', 'suspended' => 'Sospeso', 'scheduled' => 'Programmato', 'skipped' => 'Saltato'];
+  $typeNames = ['blog' => ['📝', 'Blog'], 'timeline' => ['💬', 'Timeline'], 'album' => ['🖼', 'Album'], 'service' => ['🛠', 'Servizio'], 'event' => ['📅', 'Evento'], 'video' => ['🎬', 'Video'], 'product' => ['🛍', 'Prodotto'], 'offer' => ['🏷', 'Offerta']];
+  $scopeNames = ['announcement' => 'Annuncio', 'reminder' => 'Promemoria', 'result' => 'Risultato', 'new' => 'Novità', 'promo' => 'Promo', 'release' => 'Uscita', 'reprise' => 'Ripresa'];
+  $formatNames = ['feed' => 'Feed', 'story' => 'Story', 'reel' => 'Reel'];
+  ?>
+  <div class="sq-list" id="sq-tbody">
+    <?php foreach ($items as $qi): ?>
+      <?php
+      // Stato mostrato: "suspended" se l'elemento è ancora da lavorare ma sospeso.
+      $isSuspended = !empty($qi['suspended']) && in_array($qi['status'], ['pending', 'processing'], true);
+      $shownStatus = $isSuspended ? 'suspended' : $qi['status'];
+      $color = $statusColors[$shownStatus] ?? '#666';
+      $label = mb_substr($qi['title'] ?: ($qi['body'] ?? ''), 0, 120) ?: '—';
+      $bodyText = str_replace('**', '', trim(preg_replace('/\s+/', ' ', strip_tags((string) ($qi['body'] ?? '')))));
+      $isEditable = in_array($qi['status'], ['pending', 'processing'], true);
+      [$typeIcon, $typeLabel] = $typeNames[$qi['content_type']] ?? ['📄', ucfirst((string) $qi['content_type'])];
+      $chs = [];
+      if (!empty($qi['channels'])) {
+          $dec = json_decode((string) $qi['channels'], true);
+          if (is_array($dec)) $chs = $dec;
+      }
+      $img = $qi['image_url'] ?? '';
+      $au = isset($authorTables[$qi['content_type']]) ? ($authorsByItem[$qi['content_type']][(int) $qi['content_id']] ?? null) : null;
+      ?>
+      <div class="sq-item" id="sq-row-<?= $qi['id'] ?>">
+        <div>
+          <?php if ($img): ?><img class="sq-thumb" src="<?= e($img) ?>" alt="" loading="lazy">
+          <?php else: ?><div class="sq-thumb-empty"><?= $typeIcon ?></div><?php endif; ?>
+        </div>
+        <div class="sq-main">
+          <div class="sq-type"><?= $typeIcon ?> <?= e($typeLabel) ?> <span style="font-weight:400;text-transform:none;">· #<?= (int) $qi['content_id'] ?></span></div>
+          <?php if ($qi['public_url']): ?><a class="sq-title" href="<?= e($qi['public_url']) ?>" target="_blank"><?= e($label) ?></a>
+          <?php else: ?><span class="sq-title"><?= e($label) ?></span><?php endif; ?>
+          <?php if ($bodyText !== '' && $bodyText !== $label): ?><div class="sq-excerpt"><?= e(mb_substr($bodyText, 0, 220)) ?></div><?php endif; ?>
+          <?php if ($chs || !empty($qi['format']) || !empty($qi['scope'])): ?>
+            <div class="sq-row">
               <?php foreach ($chs as $ch): ?><span class="sq-chip ch"><?= e($ch) ?></span><?php endforeach; ?>
               <?php if (!empty($qi['format'])): ?><span class="sq-chip"><?= e($formatNames[$qi['format']] ?? $qi['format']) ?></span><?php endif; ?>
               <?php if (!empty($qi['scope'])): ?><span class="sq-chip"><?= e($scopeNames[$qi['scope']] ?? $qi['scope']) ?></span><?php endif; ?>
-              <?php if (!$chs && empty($qi['format']) && empty($qi['scope'])): ?><span style="color:var(--text-muted);">—</span><?php endif; ?>
-            </td>
-            <td data-label="Stato">
-              <span class="sq-pill sq-status" style="background:<?= $color ?>;"><?= e($statusNames[$shownStatus] ?? $shownStatus) ?></span>
-              <?php if (!empty($qi['scheduler_ref'])): ?><div class="sq-meta" title="Riferimento su Metricool">Metricool: <?= e($qi['scheduler_ref']) ?></div><?php endif; ?>
-              <?php if (!empty($qi['processed_at'])): ?><div class="sq-meta">Elaborato il <?= date('d/m H:i', strtotime($qi['processed_at'])) ?></div><?php endif; ?>
-              <?php if ($qi['error_msg']): ?><div class="sq-meta" style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 120)) ?></div><?php endif; ?>
-            </td>
-            <td data-label="Uscita">
-              <?php if ($isEditable): ?>
+            </div>
+          <?php endif; ?>
+          <?php if (isset($authorTables[$qi['content_type']]) && ($au || empty($qi['created_by']))): ?>
+            <div class="sq-row"><span class="sq-label">Scritto da</span>
+              <?= $au ? authorBadgeHtml($au) : '<span class="sq-meta"><i class="fa-solid fa-pen-nib"></i> non registrato</span>' ?></div>
+          <?php endif; ?>
+          <?php if (!empty($qi['created_by'])): ?>
+            <div class="sq-row"><span class="sq-label">Accodato da</span> <?= authorBadgeHtml($qi['created_by']) ?></div>
+          <?php endif; ?>
+        </div>
+        <div class="sq-side">
+          <div class="sq-side-info">
+            <span class="sq-pill sq-status" style="background:<?= $color ?>;"><?= e($statusNames[$shownStatus] ?? $shownStatus) ?></span>
+            <?php if ($isEditable): ?>
+              <span><span class="sq-label">Uscita</span>
                 <input type="datetime-local" class="sq-scheduled-input" data-id="<?= $qi['id'] ?>"
-                       value="<?= $qi['scheduled_for'] ? date('Y-m-d\TH:i', strtotime($qi['scheduled_for'])) : '' ?>"
-                       style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;max-width:170px;">
-              <?php elseif ($qi['scheduled_for']): ?>
-                <span class="sq-when"><?= date('d/m/Y', strtotime($qi['scheduled_for'])) ?></span><div class="sq-meta" style="margin-top:0;">ore <?= date('H:i', strtotime($qi['scheduled_for'])) ?></div>
-              <?php else: ?><span style="color:var(--text-muted);">—</span><?php endif; ?>
-            </td>
-            <td class="sq-col-azioni">
-              <div class="sq-actions">
-                <?php if ($isEditable): ?>
-                  <button type="button" class="btn-xs sq-suspend-btn" data-id="<?= $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>">
-                    <?= $isSuspended ? '▶ Riattiva' : '⏸ Sospendi' ?>
-                  </button>
-                <?php endif; ?>
-                <button type="button" class="btn-xs danger sq-delete-btn" data-id="<?= $qi['id'] ?>">✕</button>
-              </div>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
+                       value="<?= $qi['scheduled_for'] ? date('Y-m-d\TH:i', strtotime($qi['scheduled_for'])) : '' ?>"></span>
+            <?php elseif ($qi['scheduled_for']): ?>
+              <span><span class="sq-label">Uscita</span> <span class="sq-when"><?= date('d/m/Y H:i', strtotime($qi['scheduled_for'])) ?></span></span>
+            <?php endif; ?>
+            <span class="sq-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?></span>
+            <?php if (!empty($qi['processed_at'])): ?><span class="sq-meta">Elaborato il <?= date('d/m H:i', strtotime($qi['processed_at'])) ?></span><?php endif; ?>
+            <?php if (!empty($qi['scheduler_ref'])): ?><span class="sq-meta" title="Riferimento su Metricool">Metricool: <?= e($qi['scheduler_ref']) ?></span><?php endif; ?>
+            <?php if ($qi['error_msg']): ?><span class="sq-meta" style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 140)) ?></span><?php endif; ?>
+          </div>
+          <div class="sq-actions">
+            <?php if ($isEditable): ?>
+              <button type="button" class="btn-xs sq-suspend-btn" data-id="<?= $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>">
+                <?= $isSuspended ? '▶ Riattiva' : '⏸ Sospendi' ?>
+              </button>
+            <?php endif; ?>
+            <button type="button" class="btn-xs danger sq-delete-btn" data-id="<?= $qi['id'] ?>">✕ Rimuovi</button>
+          </div>
+        </div>
+      </div>
+    <?php endforeach; ?>
   </div>
 
   <?php if ($totalPages > 1): ?>
