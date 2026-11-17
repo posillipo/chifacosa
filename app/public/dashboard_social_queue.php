@@ -42,6 +42,30 @@ $stmt = getDB()->prepare(
 $stmt->execute($params);
 $items = $stmt->fetchAll();
 
+// Autore di ogni elemento: la firma sta sul contenuto di origine (colonna created_by), la si legge
+// qui in blocco per tipo. Offerte e tipi sconosciuti non hanno firma.
+$authorTables = ['blog' => 'blog_posts', 'timeline' => 'timeline_posts', 'album' => 'photo_albums', 'service' => 'services', 'event' => 'events', 'video' => 'videos'];
+$authorsByItem = [];
+$idsByType = [];
+foreach ($items as $qi) {
+    if (isset($authorTables[$qi['content_type']]) && (int) $qi['content_id'] > 0) {
+        $idsByType[$qi['content_type']][] = (int) $qi['content_id'];
+    }
+}
+foreach ($idsByType as $type => $ids) {
+    try {
+        $ids = array_values(array_unique($ids));
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $as = getDB()->prepare('SELECT id, created_by FROM `' . $authorTables[$type] . "` WHERE user_id = ? AND id IN ($in)");
+        $as->execute(array_merge([$profile['id']], $ids));
+        foreach ($as->fetchAll() as $r) {
+            $authorsByItem[$type][(int) $r['id']] = $r['created_by'];
+        }
+    } catch (Throwable $e) {
+        // Colonna non ancora migrata: la pagina funziona lo stesso, senza autore.
+    }
+}
+
 include __DIR__ . '/_dash_header.php';
 ?>
 <style>
@@ -145,6 +169,9 @@ a.sq-title:hover { text-decoration:underline; }
               <?php if ($qi['public_url']): ?><a class="sq-title" href="<?= e($qi['public_url']) ?>" target="_blank"><?= e($label) ?></a>
               <?php else: ?><span class="sq-title"><?= e($label) ?></span><?php endif; ?>
               <?php if ($bodyText !== '' && $bodyText !== $label): ?><div class="sq-excerpt"><?= e(mb_substr($bodyText, 0, 220)) ?></div><?php endif; ?>
+              <?php if (isset($authorTables[$qi['content_type']])): $au = $authorsByItem[$qi['content_type']][(int) $qi['content_id']] ?? null; ?>
+                <div style="margin-top:5px;"><?= $au ? authorBadgeHtml($au) : '<span class="sq-meta" style="margin:0;"><i class="fa-solid fa-pen-nib"></i> Autore non registrato</span>' ?></div>
+              <?php endif; ?>
               <div class="sq-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?></div>
             </td>
             <td data-label="Canali">
