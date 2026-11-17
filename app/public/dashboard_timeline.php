@@ -17,7 +17,7 @@ if (isset($_GET['view'])) {
 
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
-$feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0);
+$feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0, (int) $profile['id']);
 require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
