@@ -350,9 +350,10 @@ if ($action === 'item') {
             $params[] = $id;
             $params[] = $uid;
             getDB()->prepare('UPDATE videos SET ' . implode(', ', $sets) . ' WHERE id=? AND user_id=?')->execute($params);
-        } elseif (!isset($d['position'])) {
+        } elseif (!isset($d['position']) && trim((string) ($d['author'] ?? '')) === '') {
             apiError(422, 'Nessun campo da modificare.', $tid, $uid);
         }
+        apiApplyAuthorOnUpdate('videos', (int) $id, ['token_id' => $tid, 'user_id' => $uid, 'token_label' => (string) ($auth['token_label'] ?? 'token')], $d);
         if (isset($d['position'])) {
             $ids = array_map('intval', array_column(videoApiLoadAll($uid), 'id'));
             $ids = array_values(array_filter($ids, fn($x) => $x !== $id));

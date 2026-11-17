@@ -58,6 +58,7 @@ if ($method === 'PUT') {
         }
     }
 
+    apiApplyAuthorOnUpdate('events', (int) $id, $auth, $data);
     $stmt = getDB()->prepare('SELECT * FROM events WHERE id = ?');
     $stmt->execute([$id]);
     $updated = $stmt->fetch();

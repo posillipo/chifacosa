@@ -61,6 +61,7 @@ if ($method === 'PUT') {
         getDB()->prepare('UPDATE timeline_posts SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
     }
 
+    apiApplyAuthorOnUpdate('timeline_posts', (int) $id, $auth, $data);
     $stmt = getDB()->prepare('SELECT * FROM timeline_posts WHERE id = ?');
     $stmt->execute([$id]);
     $updated = $stmt->fetch();

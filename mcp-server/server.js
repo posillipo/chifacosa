@@ -543,12 +543,13 @@ function buildMcpServer() {
         inputSchema: {
             ...profileField,
             id: z.number().int().describe('ID dell\'elemento della coda (campo "id" restituito da get_social_queue)'),
-            status: z.enum(['done', 'scheduled', 'failed', 'skipped']).describe('"done" = pubblicato, "scheduled" = programmato su Metricool, "failed" = errore, "skipped" = saltato di proposito'),
+            status: z.enum(['done', 'scheduled', 'failed', 'skipped']).optional().describe('"done" = pubblicato, "scheduled" = programmato su Metricool, "failed" = errore, "skipped" = saltato di proposito. Obbligatorio, tranne quando passi SOLO "author" (aggiorna la firma "Accodato da" senza toccare lo stato)'),
+            author: z.string().max(100).optional().describe('Chi sta accodando/aggiornando l\'uscita (nome dell\'IA o della routine): firma "Accodato da" visibile in dashboard. Da solo, senza status, aggiorna soltanto la firma.'),
             error_msg: z.string().optional().describe('Messaggio di errore (solo se status è "failed") o motivo (se "skipped")'),
             channels: z.array(z.string()).optional().describe('Canali effettivi, es. ["FB","IG","Threads"]'),
             scheduler_ref: z.string().optional().describe('Riferimento esterno opaco dello scheduler (es. id del post su Metricool)'),
         },
-    }, async ({ profile, id, status, error_msg, channels, scheduler_ref }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, error_msg, channels, scheduler_ref } })));
+    }, async ({ profile, id, status, author, error_msg, channels, scheduler_ref }) => toolResult(await chifacosaApi(profile, `/social-queue/${id}`, { method: 'POST', body: { status, author, error_msg, channels, scheduler_ref } })));
 
     server.registerTool('list_social_queue', {
         title: 'Leggi il registro delle pubblicazioni social',
@@ -953,12 +954,13 @@ function buildMcpServer() {
             image_story_url: z.string().optional().describe('URL immagine in formato storia'),
             channels: z.array(z.string()).optional().describe('Canali, es. ["FB","IG","Threads"]'),
             scheduler_ref: z.string().optional().describe('Riferimento esterno opaco dello scheduler (es. id del post su Metricool)'),
+            author: z.string().max(100).optional().describe('Chi sta accodando l\'elemento (nome dell\'IA o della routine): firma "Accodato da" visibile in dashboard. Consigliato.'),
             status: z.enum(['pending', 'scheduled', 'done', 'failed', 'skipped']).optional().describe('Default "pending" (coda da lavorare). Con scheduled/done/failed/skipped l\'uscita viene REGISTRATA a cose fatte e la routine non la riprende'),
         },
-    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status }) =>
+    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }) =>
         toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
             method: 'POST',
-            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status }
+            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }
         }))
     );
 

@@ -106,6 +106,7 @@ if ($method === 'PUT') {
         }
     }
 
+    apiApplyAuthorOnUpdate('blog_posts', (int) $id, $auth, $data);
     $stmt = getDB()->prepare('SELECT * FROM blog_posts WHERE id = ?');
     $stmt->execute([$id]);
     $updated = $stmt->fetch();

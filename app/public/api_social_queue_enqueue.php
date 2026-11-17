@@ -116,6 +116,12 @@ if ($status === 'pending' && !isset($registry['scope']) && ($existing = $dup->fe
     if ($scheduledFor) {
         getDB()->prepare('UPDATE social_queue SET scheduled_for=? WHERE id=?')->execute([$scheduledFor, $existing['id']]);
     }
+    if (trim((string) ($body['author'] ?? '')) !== '') {
+        try {
+            getDB()->prepare('UPDATE social_queue SET created_by = ? WHERE id = ? AND user_id = ?')->execute([apiAuthorSignature($auth, $body), $existing['id'], $userId]);
+        } catch (Throwable $e) {
+        }
+    }
     apiRespond(200, ['success' => true, 'id' => $existing['id'], 'updated' => true], $auth['token_id'], $userId);
     exit;
 }
@@ -140,4 +146,11 @@ try {
     throw $e;
 }
 
+if (trim((string) ($body['author'] ?? '')) !== '') {
+    try {
+        getDB()->prepare('UPDATE social_queue SET created_by = ? WHERE id = ? AND user_id = ?')->execute([apiAuthorSignature($auth, $body), $id, $userId]);
+    } catch (Throwable $e) {
+        // Colonna non ancora migrata (2026_11_26): la firma è un extra, non blocca l'accodamento.
+    }
+}
 apiRespond(201, ['success' => true, 'id' => $id], $auth['token_id'], $userId);

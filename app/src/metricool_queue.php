@@ -112,6 +112,8 @@ function socialRegistrySerialize(array $r): array {
         'channels'        => $channels,
         'scheduler_ref'   => $r['scheduler_ref'] ?? null,
         'outcome'         => $r['status'],
+        'author'          => $r['created_by'] ?? null,        // chi ha accodato l'uscita ("Accodato da")
+        'source_author'   => $r['source_author'] ?? null,     // chi ha scritto il contenuto di origine ("Scritto da")
         'publication_date' => !empty($r['scheduled_for']) ? apiFormatDateTimeRome($r['scheduled_for']) : null,
         'error_msg'       => $r['error_msg'] ?? null,
         'created_at'      => apiFormatDateTimeRome($r['created_at'] ?? null),
@@ -212,4 +214,36 @@ function socialQueueEnqueueIfEnabled(int $userId, string $type, array $data, ?st
     // quella data (scheduled_for): la routine la programma su Metricool alla stessa data/ora, quando il
     // contenuto diventa pubblico. Senza data (NULL) l'uscita è immediata, come sempre.
     socialQueueEnqueue($userId, $type, $data, $scheduledFor);
+}
+
+/**
+ * Aggiunge a ogni riga della coda 'source_author' = firma (created_by) del contenuto di origine,
+ * letta in blocco per tipo. Tipi senza firma (offerte, sconosciuti) restano null.
+ */
+function socialQueueAttachSourceAuthors(array $rows, int $userId): array {
+    $tables = ['blog' => 'blog_posts', 'timeline' => 'timeline_posts', 'album' => 'photo_albums', 'service' => 'services', 'event' => 'events', 'video' => 'videos'];
+    $ids = [];
+    foreach ($rows as $r) {
+        if (isset($tables[$r['content_type']]) && (int) $r['content_id'] > 0) {
+            $ids[$r['content_type']][] = (int) $r['content_id'];
+        }
+    }
+    $authors = [];
+    foreach ($ids as $type => $list) {
+        try {
+            $list = array_values(array_unique($list));
+            $in = implode(',', array_fill(0, count($list), '?'));
+            $st = getDB()->prepare('SELECT id, created_by FROM `' . $tables[$type] . "` WHERE user_id = ? AND id IN ($in)");
+            $st->execute(array_merge([$userId], $list));
+            foreach ($st->fetchAll() as $x) {
+                $authors[$type][(int) $x['id']] = $x['created_by'];
+            }
+        } catch (Throwable $e) {
+        }
+    }
+    foreach ($rows as &$r) {
+        $r['source_author'] = $authors[$r['content_type']][(int) $r['content_id']] ?? null;
+    }
+    unset($r);
+    return $rows;
 }
