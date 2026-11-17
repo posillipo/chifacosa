@@ -100,5 +100,5 @@ apiRespond(200, [
     'total'   => $total,
     'limit'   => $limit,
     'offset'  => $offset,
-    'items'   => array_map('socialRegistrySerialize', $rows),
+    'items'   => array_map('socialRegistrySerialize', socialQueueAttachSourceAuthors($rows, (int) $auth['user_id'])),
 ], $auth['token_id'], $userId);

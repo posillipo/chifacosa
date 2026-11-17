@@ -2,7 +2,8 @@
 /**
  * POST /api/v1/social-queue/{id}
  * Marks a social queue item as done, scheduled, failed or skipped.
- * Body JSON: { status: "done"|"scheduled"|"failed"|"skipped", error_msg?: string,
+ * Body JSON: { status: "done"|"scheduled"|"failed"|"skipped", error_msg?: string, author?: string,
+ *   ("author" da solo, senza status, aggiorna soltanto la firma "Accodato da"),
  *              channels?: string[], scheduler_ref?: string }
  * channels / scheduler_ref (registro): canali effettivi e riferimento dello scheduler (es. id del
  * post su Metricool). Se omessi non vengono toccati.
@@ -27,7 +28,23 @@ if (!is_array($body)) {
     apiError(400, 'Body JSON non valido.', $auth['token_id'], $auth['user_id']);
 }
 
+$hasAuthor = trim((string) ($body['author'] ?? '')) !== '';
 $status = $body['status'] ?? '';
+// Solo firma ("author" senza "status"): aggiorna "Accodato da" e non tocca stato, canali o date.
+if ($hasAuthor && $status === '') {
+    try {
+        $st = getDB()->prepare('UPDATE social_queue SET created_by=? WHERE id=? AND user_id=?');
+        $st->execute([apiAuthorSignature($auth, $body), $id, $auth['user_id']]);
+        $chk = getDB()->prepare('SELECT id FROM social_queue WHERE id=? AND user_id=?');
+        $chk->execute([$id, $auth['user_id']]);
+    } catch (PDOException $e) {
+        apiError(503, 'Firma non ancora attiva su questo database: applicare la migrazione 2026_11_26_social_queue_created_by.sql.', $auth['token_id'], $auth['user_id']);
+    }
+    if (!$chk->fetch()) {
+        apiError(404, 'Elemento non trovato o non appartiene a questo profilo.', $auth['token_id'], $auth['user_id']);
+    }
+    apiRespond(200, ['success' => true, 'author' => apiAuthorSignature($auth, $body)], $auth['token_id'], $auth['user_id']);
+}
 if (!in_array($status, SOCIAL_REGISTRY_FINAL_STATUSES, true)) {
     apiError(422, 'Il campo "status" deve essere uno tra: ' . implode(', ', SOCIAL_REGISTRY_FINAL_STATUSES) . '.', $auth['token_id'], $auth['user_id']);
 }
@@ -62,4 +79,10 @@ if ($stmt->rowCount() === 0) {
     apiError(404, 'Elemento non trovato o non appartiene a questo profilo.', $auth['token_id'], $auth['user_id']);
 }
 
+if ($hasAuthor) {
+    try {
+        getDB()->prepare('UPDATE social_queue SET created_by=? WHERE id=? AND user_id=?')->execute([apiAuthorSignature($auth, $body), $id, $auth['user_id']]);
+    } catch (Throwable $e) {
+    }
+}
 apiRespond(200, ['success' => true], $auth['token_id'], $auth['user_id']);

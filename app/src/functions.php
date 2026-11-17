@@ -7618,6 +7618,13 @@ function apiAuthorSignature(array $auth, array $data): string {
     return mb_substr($decl !== '' ? 'IA · ' . $decl : 'API · ' . ($auth['token_label'] ?? 'token'), 0, 160);
 }
 
+// In modifica da API/MCP la firma è facoltativa: se "author" è presente (non vuoto) sostituisce quella salvata.
+function apiApplyAuthorOnUpdate(string $table, int $id, array $auth, array $data): void {
+    if (trim((string) ($data['author'] ?? '')) !== '') {
+        setContentAuthor($table, $id, apiAuthorSignature($auth, $data));
+    }
+}
+
 // In creazione da API/MCP la firma è obbligatoria: senza "author" la richiesta viene rifiutata con un messaggio chiaro.
 function apiRequireAuthor(array $auth, array $data): void {
     if (trim((string) ($data['author'] ?? '')) === '') {

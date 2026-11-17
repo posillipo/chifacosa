@@ -203,6 +203,7 @@ function apiDerivePostStatus(array $post): string {
 function apiSerializePost(array $post, string $slug): array {
     return [
         'id' => (int) $post['id'],
+        'author' => $post['created_by'] ?? null,
         'title' => $post['title'] ?? null,
         'description' => $post['testo'] ?? null,
         'image_url' => $post['image_path'] ? siteUrl('/' . $post['image_path']) : null,
@@ -325,6 +326,7 @@ function apiDeriveBlogPostStatus(array $post): string {
 function apiSerializeBlogPost(array $post, string $slug): array {
     return [
         'id' => (int) $post['id'],
+        'author' => $post['created_by'] ?? null,
         'title' => $post['title'],
         'content' => $post['content'],
         'excerpt' => $post['excerpt'],
@@ -456,6 +458,7 @@ function apiValidateBlogPostPayload(array $data, bool $partial): array {
 function apiSerializeEvent(array $event, string $slug): array {
     return [
         'id' => (int) $event['id'],
+        'author' => $event['created_by'] ?? null,
         'title' => $event['title'],
         'venue' => $event['venue'],
         'city' => $event['city'],
@@ -804,6 +807,7 @@ function apiSerializeAlbum(array $album, string $slug): array {
         $photos[] = siteUrl('/' . $p);
     }
     return [
+        'author' => $album['created_by'] ?? null,
         'id' => (int) $album['id'],
         'title' => $album['title'],
         'description' => $album['description'] ?? null,

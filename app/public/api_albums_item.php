@@ -75,6 +75,7 @@ if ($method === 'PUT') {
         getDB()->prepare('UPDATE photo_albums SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
     }
 
+    apiApplyAuthorOnUpdate('photo_albums', (int) $id, $auth, $data);
     $stmt = getDB()->prepare('SELECT * FROM photo_albums WHERE id = ?');
     $stmt->execute([$id]);
     $updated = $stmt->fetch();

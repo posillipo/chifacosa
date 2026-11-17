@@ -281,6 +281,7 @@ function videoEnqueueSocial(int $userId, string $slug, array $row, ?string $sche
 function videoSerialize(array $v, string $slug, int $position): array {
     return [
         'id' => (int) $v['id'],
+        'author' => $v['created_by'] ?? null,
         'position' => $position,
         'title' => $v['title'],
         'description' => $v['description'] ?? null,
