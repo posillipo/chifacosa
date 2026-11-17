@@ -72,6 +72,23 @@ include __DIR__ . '/_dash_header.php';
 .sq-list { display:flex; flex-direction:column; gap:12px; }
 .sq-item { background:var(--card-bg,#fff); border:1px solid var(--border-color,#e3e3ea); border-radius:14px; padding:14px; display:grid; grid-template-columns:64px minmax(0,1fr); gap:14px; }
 .sq-thumb { width:64px; height:64px; border-radius:10px; object-fit:cover; display:block; background:var(--bg-alt,#f0f0f0); }
+.sq-prev { all:unset; cursor:zoom-in; position:relative; display:block; border-radius:10px; }
+.sq-prev:focus-visible { outline:2px solid var(--accent,#6c5ce7); outline-offset:2px; }
+.sq-prev .sq-play { position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.65); color:#fff; border-radius:999px; font-size:11px; padding:1px 6px; }
+.sq-media-chips { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; max-width:64px; }
+.sq-dlg { border:none; border-radius:16px; padding:0; width:min(760px,96vw); max-height:92vh; box-shadow:0 12px 50px rgba(0,0,0,.35); }
+.sq-dlg::backdrop { background:rgba(0,0,0,.6); }
+.sq-dlg-in { padding:18px; max-height:92vh; overflow:auto; }
+.sq-dlg-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:10px; }
+.sq-dlg-head strong { font-size:16px; line-height:1.35; overflow-wrap:anywhere; }
+.sq-dlg-close { background:none; border:none; font-size:24px; cursor:pointer; color:var(--text-muted); line-height:1; }
+.sq-dlg-media { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
+.sq-dlg-media figure { margin:0; flex:1 1 280px; min-width:0; }
+.sq-dlg-media figcaption { font-size:12px; color:var(--text-muted); margin-bottom:4px; font-weight:700; }
+.sq-dlg-media img, .sq-dlg-media video { width:100%; max-height:60vh; object-fit:contain; background:#111; border-radius:10px; display:block; }
+.sq-dlg-media figure.story { flex:0 1 240px; }
+.sq-dlg-text { white-space:pre-wrap; font-size:14px; line-height:1.5; margin:0 0 10px; overflow-wrap:anywhere; }
+.sq-dlg-meta { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--text-muted); }
 .sq-thumb-empty { width:64px; height:64px; border-radius:10px; background:var(--bg-alt,#f0f0f0); display:flex; align-items:center; justify-content:center; font-size:22px; }
 .sq-main { min-width:0; }
 .sq-type { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; }
@@ -143,8 +160,37 @@ a.sq-title:hover { text-decoration:underline; }
       ?>
       <div class="sq-item" id="sq-row-<?= $qi['id'] ?>">
         <div>
-          <?php if ($img): ?><img class="sq-thumb" src="<?= e($img) ?>" alt="" loading="lazy">
+          <?php
+          $okUrl = fn($u) => is_string($u) && $u !== '' && (preg_match('#^https?://#i', $u) || ($u[0] === '/' && !str_starts_with($u, '//'))) ? $u : '';
+          $storyImg = $okUrl($qi['image_story_url'] ?? '');
+          $videoUrl = $okUrl($qi['media_url'] ?? '');
+          $mainImg = $okUrl($img);
+          $prev = [
+              'title' => $label,
+              'text' => str_replace('**', '', trim(strip_tags((string) ($qi['body'] ?? '')))),
+              'image' => $mainImg, 'story' => $storyImg, 'video' => $videoUrl,
+              'meta' => array_values(array_filter([
+                  $typeLabel . ' #' . (int) $qi['content_id'],
+                  $chs ? 'Canali: ' . implode(', ', $chs) : '',
+                  !empty($qi['format']) ? 'Formato: ' . ($formatNames[$qi['format']] ?? $qi['format']) : '',
+                  $qi['scheduled_for'] ? 'Uscita: ' . date('d/m/Y H:i', strtotime($qi['scheduled_for'])) : 'Uscita: appena possibile',
+                  'Stato: ' . ($statusNames[$shownStatus] ?? $shownStatus),
+              ])),
+          ];
+          $hasPrev = $mainImg || $storyImg || $videoUrl || $prev['text'] !== '';
+          ?>
+          <?php if ($hasPrev): ?><button type="button" class="sq-prev" data-prev="<?= e(json_encode($prev, JSON_UNESCAPED_UNICODE)) ?>" title="Anteprima di ciò che è in programma"><?php endif; ?>
+          <?php if ($mainImg): ?><img class="sq-thumb" src="<?= e($mainImg) ?>" alt="" loading="lazy">
+          <?php elseif ($videoUrl): ?><div class="sq-thumb-empty">🎬</div>
           <?php else: ?><div class="sq-thumb-empty"><?= $typeIcon ?></div><?php endif; ?>
+          <?php if ($videoUrl): ?><span class="sq-play">▶ Video</span><?php endif; ?>
+          <?php if ($hasPrev): ?></button><?php endif; ?>
+          <?php if ($storyImg || ($videoUrl && $mainImg)): ?>
+            <div class="sq-media-chips">
+              <?php if ($storyImg): ?><span class="sq-chip">Story</span><?php endif; ?>
+              <?php if ($videoUrl && $mainImg): ?><span class="sq-chip">Video</span><?php endif; ?>
+            </div>
+          <?php endif; ?>
         </div>
         <div class="sq-main">
           <div class="sq-type"><?= $typeIcon ?> <?= e($typeLabel) ?> <span style="font-weight:400;text-transform:none;">· #<?= (int) $qi['content_id'] ?></span></div>
@@ -203,7 +249,42 @@ a.sq-title:hover { text-decoration:underline; }
   <?php endif; ?>
 <?php endif; ?>
 
+<dialog class="sq-dlg" id="sq-dlg">
+  <div class="sq-dlg-in">
+    <div class="sq-dlg-head"><strong id="sq-dlg-title"></strong><button type="button" class="sq-dlg-close" id="sq-dlg-x" aria-label="Chiudi">&times;</button></div>
+    <div class="sq-dlg-media" id="sq-dlg-media"></div>
+    <p class="sq-dlg-text" id="sq-dlg-text"></p>
+    <div class="sq-dlg-meta" id="sq-dlg-meta"></div>
+  </div>
+</dialog>
 <script>
+(function () {
+  // Anteprima di ciò che è in programma: immagine, immagine Story, video (con lettore) e testo.
+  var dlg = document.getElementById('sq-dlg');
+  var mediaBox = document.getElementById('sq-dlg-media');
+  function fig(cap, el, cls) {
+    var f = document.createElement('figure'); if (cls) f.className = cls;
+    var c = document.createElement('figcaption'); c.textContent = cap; f.appendChild(c); f.appendChild(el); return f;
+  }
+  function stopVideo() { mediaBox.querySelectorAll('video').forEach(function (v) { v.pause(); }); }
+  document.querySelectorAll('.sq-prev').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var d; try { d = JSON.parse(b.getAttribute('data-prev')); } catch (e) { return; }
+      document.getElementById('sq-dlg-title').textContent = d.title || '';
+      document.getElementById('sq-dlg-text').textContent = d.text || '';
+      var meta = document.getElementById('sq-dlg-meta'); meta.textContent = '';
+      (d.meta || []).forEach(function (m) { var s = document.createElement('span'); s.textContent = m; meta.appendChild(s); });
+      mediaBox.textContent = '';
+      if (d.image) { var i = document.createElement('img'); i.src = d.image; i.alt = ''; mediaBox.appendChild(fig('Immagine', i)); }
+      if (d.story) { var j = document.createElement('img'); j.src = d.story; j.alt = ''; mediaBox.appendChild(fig('Immagine Story', j, 'story')); }
+      if (d.video) { var v = document.createElement('video'); v.src = d.video; v.controls = true; v.preload = 'metadata'; v.playsInline = true; mediaBox.appendChild(fig('Video', v)); }
+      dlg.showModal();
+    });
+  });
+  dlg.addEventListener('close', stopVideo);
+  document.getElementById('sq-dlg-x').addEventListener('click', function () { dlg.close(); });
+  dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
+})();
 (function () {
   const apiUrl = '/api_social_queue_action.php';
 
