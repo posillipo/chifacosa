@@ -156,6 +156,11 @@ include __DIR__ . '/_dash_header.php';
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <a href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>" class="btn small secondary">✏️ Modifica</a>
           <a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank" class="btn small secondary">↗ Vedi online</a>
+          <?php if (!empty($dashProfile['metricool_auto_social']) && !isset($queueByPost[(int) $p['id']])): ?>
+            <?php $sqJson = json_encode(['suggest' => true, 'type' => 'blog', 'id' => (int) $p['id'], 'title' => $p['title'],
+                'img' => $p['cover_path'] ? siteUrl('/' . ltrim($p['cover_path'], '/')) : null, 'url' => siteUrl(blogPostUrl($profile['slug'], $p))]); ?>
+            <button type="button" class="btn small secondary" title="Metti in coda social (con data a scelta)" onclick='window.sqSuggest(<?= htmlspecialchars($sqJson, ENT_QUOTES) ?>)'>📤 In coda social</button>
+          <?php endif; ?>
           <form method="post" onsubmit="return confirm('Eliminare questo post?');">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="delete">

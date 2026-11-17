@@ -75,6 +75,12 @@ if ($action === 'enqueue') {
         'image_url'  => $imgUrl,
         'public_url' => $pubUrl,
     ], $scheduledFor);
+    // Firma: nome del profilo attivo (chi sta accodando a mano). Non blocca se la colonna non è ancora migrata.
+    try {
+        getDB()->prepare('UPDATE social_queue SET created_by = ? WHERE id = ?')
+            ->execute([mb_substr('Dashboard · ' . ((string) ($profile['display_name'] ?? '') ?: (string) ($profile['slug'] ?? 'profilo')), 0, 160), $id]);
+    } catch (Throwable $e) {
+    }
     echo json_encode(['ok' => true, 'id' => $id]);
     exit;
 }

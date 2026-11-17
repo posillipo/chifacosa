@@ -170,7 +170,10 @@ a.sq-title:hover { text-decoration:underline; }
               <?php else: ?><span class="sq-title"><?= e($label) ?></span><?php endif; ?>
               <?php if ($bodyText !== '' && $bodyText !== $label): ?><div class="sq-excerpt"><?= e(mb_substr($bodyText, 0, 220)) ?></div><?php endif; ?>
               <?php if (isset($authorTables[$qi['content_type']])): $au = $authorsByItem[$qi['content_type']][(int) $qi['content_id']] ?? null; ?>
-                <div style="margin-top:5px;"><?= $au ? authorBadgeHtml($au) : '<span class="sq-meta" style="margin:0;"><i class="fa-solid fa-pen-nib"></i> Autore non registrato</span>' ?></div>
+                <div style="margin-top:5px;"><?= $au ? authorBadgeHtml($au) : (empty($qi['created_by']) ? '<span class="sq-meta" style="margin:0;"><i class="fa-solid fa-pen-nib"></i> Autore non registrato</span>' : '') ?></div>
+              <?php endif; ?>
+              <?php if (!empty($qi['created_by'])): ?>
+                <div class="sq-meta" style="margin-top:5px;">Accodato da <?= authorBadgeHtml($qi['created_by']) ?></div>
               <?php endif; ?>
               <div class="sq-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?></div>
             </td>
