@@ -9,6 +9,11 @@
 - myband sincronizza i file `app/` da chifacosa via sync bot, ma NON `mcp-server/server.js`
 - Il MCP server myband usa `mybandApi` (non `chifacosaApi`) — modificare direttamente nel repo myband
 
+## Struttura del codice
+- `app/src/functions.php` è solo il punto d'ingresso (24 righe): carica i file per argomento `app/src/fn_*.php` (core, auth, feed, adminlte_layout, adminlte_pages, blog, dates, media, notifications, navigation, ...). Le pagine includono sempre e solo `functions.php`.
+- Le funzioni nuove vanno nel `fn_*.php` dell'argomento giusto (o in un nuovo file, con il relativo `require_once` in `functions.php`), non in `functions.php`. I file stanno in `app/src/` perché alcune funzioni usano `__DIR__`.
+- Le costanti condivise stanno in `fn_constants.php`, caricato per primo.
+
 ## Database
 - Container MySQL: `myband_db`
 - Root password: in Portainer (non salvare qui)
