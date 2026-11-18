@@ -17,7 +17,7 @@ if (isset($_GET['view'])) {
 
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
-$feed = getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0, (int) $profile['id']);
+$feed = dashboardFeedEnrich(getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0, (int) $profile['id']), (int) $profile['id'], $profile['slug']);
 require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
@@ -48,6 +48,10 @@ include __DIR__ . '/_dash_header.php';
   .dtc-evento-info{font-size:12.5px;color:var(--text-muted);margin-top:4px}
   .dtc-redirect-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--card-bg);border:1px solid #e2e2e7;font-size:15px;text-decoration:none;flex-shrink:0;z-index:1;transition:background .15s}
   .dtc-redirect-btn:hover{background:#f0f0f4}
+  /* Tabellina delle proprietà a destra di ogni riga; su schermi stretti va sotto il titolo. */
+  .dtl-row{flex-wrap:wrap;row-gap:6px}
+  .dtl-row > a.link-item{min-width:280px !important}
+  @media(max-width:820px){.dtl-row > .dtp{width:100% !important;margin:2px 0 6px !important}}
   </style>
 
   <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">

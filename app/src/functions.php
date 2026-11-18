@@ -8991,6 +8991,130 @@ function dashboardFeedBadgesHtml(array $item): string {
     return $b === '' ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px;">' . $b . '</div>';
 }
 
+// Data lunga in italiano, es. "mercoledì 18 novembre 2026 21.00" (fuso del profilo).
+function italianLongDateTime(?string $datetime, ?array $profile): string {
+    if (!$datetime) {
+        return '';
+    }
+    [$w, $j, $n, $y, $hi] = explode('|', formatLocalDateTime($datetime, $profile, 'w|j|n|Y|H.i'));
+    $days = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+    $months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+    return $days[(int) $w] . ' ' . (int) $j . ' ' . $months[(int) $n - 1] . ' ' . $y . ' ' . $hi;
+}
+
+// Arricchisce gli elementi del Feed della dashboard con dati usati dalla tabellina delle proprietà:
+// 'x_author' (firma, dove esiste la colonna created_by) e 'x_queue' (ultimo stato nella coda social).
+// Solo per gli elementi del profilo attivo; qualunque errore (colonne non migrate) lascia l'elemento invariato.
+function dashboardFeedEnrich(array $items, int $profileId, string $viewerSlug): array {
+    $authorTables = ['blog' => 'blog_posts', 'pensiero' => 'timeline_posts', 'album_foto' => 'photo_albums', 'servizio' => 'services', 'evento' => 'events', 'video' => 'videos'];
+    $queueTypes = dashboardFeedQueueTypeMap();
+    $byAuthor = [];
+    $byQueue = [];
+    foreach ($items as $it) {
+        if ($it['user_slug'] !== $viewerSlug || empty($it['item_id'])) {
+            continue;
+        }
+        if (isset($authorTables[$it['tipo']])) {
+            $byAuthor[$it['tipo']][] = (int) $it['item_id'];
+        }
+        if (isset($queueTypes[$it['tipo']])) {
+            $byQueue[$queueTypes[$it['tipo']]][] = (int) $it['item_id'];
+        }
+    }
+    $authors = [];
+    foreach ($byAuthor as $tipo => $ids) {
+        try {
+            $ids = array_values(array_unique($ids));
+            $in = implode(',', array_fill(0, count($ids), '?'));
+            $st = getDB()->prepare('SELECT id, created_by FROM `' . $authorTables[$tipo] . "` WHERE user_id = ? AND id IN ($in)");
+            $st->execute(array_merge([$profileId], $ids));
+            foreach ($st->fetchAll() as $r) {
+                $authors[$tipo][(int) $r['id']] = $r['created_by'];
+            }
+        } catch (Throwable $e) {
+        }
+    }
+    $queue = [];
+    foreach ($byQueue as $qType => $ids) {
+        try {
+            $ids = array_values(array_unique($ids));
+            $in = implode(',', array_fill(0, count($ids), '?'));
+            $st = getDB()->prepare("SELECT content_id, status, suspended, scheduled_for FROM social_queue WHERE user_id = ? AND content_type = ? AND content_id IN ($in) ORDER BY id ASC");
+            $st->execute(array_merge([$profileId, $qType], $ids));
+            foreach ($st->fetchAll() as $r) {
+                $queue[$qType][(int) $r['content_id']] = $r; // l'ultima riga prevale
+            }
+        } catch (Throwable $e) {
+        }
+    }
+    foreach ($items as &$it) {
+        if ($it['user_slug'] !== $viewerSlug) {
+            continue;
+        }
+        if (isset($authorTables[$it['tipo']])) {
+            $it['x_author'] = $authors[$it['tipo']][(int) $it['item_id']] ?? '';
+            $it['x_author_known'] = true;
+        }
+        if (isset($queueTypes[$it['tipo']])) {
+            $it['x_queue'] = $queue[$queueTypes[$it['tipo']]][(int) $it['item_id']] ?? null;
+            $it['x_queueable'] = true;
+        }
+    }
+    unset($it);
+    return $items;
+}
+
+// Tipo del feed ('tipo') -> content_type usato nella coda social.
+function dashboardFeedQueueTypeMap(): array {
+    return ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
+}
+
+// Tabellina delle proprietà di un elemento (a destra di ogni riga del Feed): una riga colorata per
+// proprietà, colori tenui coerenti col significato (verde = ok/pubblicato, ambra = in attesa, ecc.).
+function dashboardFeedPropsHtml(array $item, bool $metricoolActive): string {
+    $palette = [
+        'green'  => ['#e2f2e7', '#2f6f46'],
+        'amber'  => ['#fbefd5', '#8a6212'],
+        'blue'   => ['#e3edf8', '#2f5a8f'],
+        'teal'   => ['#dff1ee', '#23706a'],
+        'violet' => ['#ece6f7', '#5a3f9a'],
+        'red'    => ['#f9e3e3', '#9a3a3a'],
+        'grey'   => ['#ebedf0', '#5a6270'],
+        'sand'   => ['#f3eee2', '#7a6840'],
+    ];
+    $rows = [];
+    $scheduled = !empty($item['data']) && strtotime($item['data']) > time();
+    $rows[] = ['Stato', $scheduled ? 'Programmato' : 'Pubblicato', $scheduled ? 'amber' : 'green', ''];
+    $isPrivate = isset($item['x_pub']) && (int) $item['x_pub'] === 0;
+    $rows[] = ['Visibilità', $isPrivate ? 'Solo io' : 'Pubblico', $isPrivate ? 'grey' : 'blue', ''];
+    $inFeed = !isset($item['in_feed']) || (int) $item['in_feed'] !== 0;
+    $rows[] = ['Feed', $inFeed ? 'Nel Feed' : 'Non nel Feed', $inFeed ? 'teal' : 'grey', 'Il Feed RSS è quello letto dalle automazioni social'];
+    if ($metricoolActive && !empty($item['x_queueable'])) {
+        $q = $item['x_queue'] ?? null;
+        if (!$q) {
+            $rows[] = ['Coda social', 'Non in coda', 'grey', ''];
+        } else {
+            $susp = !empty($q['suspended']) && in_array($q['status'], ['pending', 'processing'], true);
+            $names = ['pending' => ['In attesa', 'violet'], 'processing' => ['In elaborazione', 'blue'], 'scheduled' => ['Programmato', 'green'], 'done' => ['Completato', 'green'], 'failed' => ['Errore', 'red'], 'skipped' => ['Saltato', 'grey']];
+            [$lab, $col] = $susp ? ['Sospeso', 'grey'] : ($names[$q['status']] ?? [(string) $q['status'], 'grey']);
+            $tip = !empty($q['scheduled_for']) ? 'Uscita social: ' . date('d/m/Y H:i', strtotime($q['scheduled_for'])) : '';
+            $rows[] = ['Coda social', $lab, $col, $tip];
+        }
+    }
+    if (!empty($item['x_author_known'])) {
+        $a = trim((string) ($item['x_author'] ?? ''));
+        $rows[] = ['Autore', $a !== '' ? $a : 'non registrato', $a !== '' ? 'sand' : 'grey', 'Firma di chi ha creato l\'elemento (visibile solo qui)'];
+    }
+    $h = '<div class="dtp" style="flex:0 0 auto;width:262px;margin:0 10px;display:flex;flex-direction:column;gap:3px;">';
+    foreach ($rows as [$k, $v, $c, $tip]) {
+        [$bg, $fg] = $palette[$c];
+        $h .= '<div' . ($tip !== '' ? ' title="' . e($tip) . '"' : '') . ' style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 9px;border-radius:6px;background:' . $bg . ';color:' . $fg . ';font-size:11.5px;line-height:1.35;">'
+           . '<span style="opacity:.75;white-space:nowrap;">' . e($k) . '</span>'
+           . '<strong style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:178px;">' . e($v) . '</strong></div>';
+    }
+    return $h . '</div>';
+}
+
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
@@ -9011,7 +9135,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
     $bgStyle = $isMine ? 'background:#eef0f2;' : '';
     $editUrl = $item['edit_url'] ?? $item['url'];
-    $html = '<div style="display:flex;gap:0;align-items:center;' . $bgStyle . '">';
+    $html = '<div class="dtl-row" style="display:flex;gap:0;align-items:center;' . $bgStyle . '">';
     $html .= '<a href="' . e($editUrl) . '" class="link-item" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;flex:1;min-width:0;">';
     if ($coverSrc) {
         $html .= '<img src="' . e($coverSrc) . '" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
@@ -9020,12 +9144,13 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
     }
     $html .= '<div style="flex:1;min-width:0;">';
     $html .= '<small style="color:var(--text-muted);text-transform:uppercase;">' . e($label) . ' · ' . e($item['display_name']) . ($isMine ? ' <span style="color:var(--accent);font-weight:700;">(tu)</span>' : '') . '</small><br>';
-    if ($isMine) {
-        $html .= dashboardFeedBadgesHtml($item);
-    }
     $html .= '<strong>' . e($item['titolo']) . '</strong><br>';
-    $html .= '<small style="color:var(--text-muted)">' . e(formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
+    $isFuture = !empty($item['data']) && strtotime($item['data']) > time();
+    $html .= '<small style="color:var(--text-muted)">' . ($isFuture ? 'Da pubblicare il ' : 'Pubblicato il ') . e(italianLongDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
     $html .= '</div></a>';
+    if ($isMine) {
+        $html .= dashboardFeedPropsHtml($item, $metricoolActive);
+    }
     if (!empty($item['redirect_link'])) {
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
     }
