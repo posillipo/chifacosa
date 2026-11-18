@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
     legacy_gestore_id INT DEFAULT NULL,
     legacy_band_id INT DEFAULT NULL,
     legacy_stato VARCHAR(20) DEFAULT NULL,
+    -- Accettazione delle Condizioni d'uso (data e versione del testo).
+    terms_accepted_at DATETIME DEFAULT NULL,
+    terms_version VARCHAR(20) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

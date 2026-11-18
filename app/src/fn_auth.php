@@ -122,6 +122,7 @@ function requireLogin(): array {
         header('Location: /login.php');
         exit;
     }
+    termsGate($u);
     return $u;
 }
 
