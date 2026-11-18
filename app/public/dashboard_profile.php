@@ -154,4 +154,9 @@ include __DIR__ . '/_dash_header.php';
     <strong>Il tuo link pubblico:</strong><br>
     <a href="/<?= e($profile['slug']) ?>" target="_blank"><?= e(siteName()) ?>/<?= e($profile['slug']) ?></a>
   </div>
+  <div class="card" style="margin-top:14px;border:1px solid #e74c3c33;">
+    <div class="section-title" style="margin-top:0;color:#e74c3c;">Elimina il mio account</div>
+    <p style="color:var(--text-muted);font-size:13px;">Cancella il tuo account e tutti i tuoi contenuti dal portale. L'operazione è definitiva.</p>
+    <a href="/dashboard_delete_account.php" class="btn small danger"><i class="fa-solid fa-trash"></i> Elimina il mio account…</a>
+  </div>
 <?php include __DIR__ . '/_dash_footer.php'; ?>
