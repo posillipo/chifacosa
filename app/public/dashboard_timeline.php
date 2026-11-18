@@ -17,7 +17,12 @@ if (isset($_GET['view'])) {
 
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
-$feed = dashboardFeedEnrich(getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0, (int) $profile['id']), (int) $profile['id'], $profile['slug']);
+$feedFilters = dashboardFeedFilters($_GET);
+$filtersOn = dashboardFeedFiltersActive($feedFilters);
+$filterQs = $filtersOn ? '&' . http_build_query(array_filter($feedFilters, fn($v) => $v !== '')) : '';
+$feed = $filtersOn
+    ? dashboardFeedFiltered((int) $profile['id'], $profile['slug'], $feedFilters, DASH_TIMELINE_PAGE_SIZE, 0)
+    : dashboardFeedEnrich(getTimelineFeedForUsers($feedUserIds, DASH_TIMELINE_PAGE_SIZE, 0, (int) $profile['id']), (int) $profile['id'], $profile['slug']);
 require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
@@ -57,8 +62,8 @@ include __DIR__ . '/_dash_header.php';
   <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">
     <div class="section-title" style="margin:0;flex:1;min-width:140px;">Feed</div>
     <div class="view-toggle">
-      <a href="?view=list" class="<?= $viewMode === 'list' ? 'active' : '' ?>">☰ Lista</a>
-      <a href="?view=card" class="<?= $viewMode === 'card' ? 'active' : '' ?>">🖼️ Card</a>
+      <a href="?view=list<?= e($filterQs) ?>" class="<?= $viewMode === 'list' ? 'active' : '' ?>">☰ Lista</a>
+      <a href="?view=card<?= e($filterQs) ?>" class="<?= $viewMode === 'card' ? 'active' : '' ?>">🖼️ Card</a>
     </div>
   </div>
   <style>
@@ -67,6 +72,8 @@ include __DIR__ . '/_dash_header.php';
   .view-toggle a:last-child{border-right:none}
   .view-toggle a.active{background:var(--accent);color:#fff}
   </style>
+
+  <?= dashboardFeedFilterBarHtml($feedFilters, dashboardFeedAuthorOptions((int) $profile['id']), $metricoolActive, $viewMode) ?>
 
   <details class="help-box">
     <summary>👥 Band Seguite (<?= count($followedBands) ?>)</summary>
@@ -131,7 +138,9 @@ include __DIR__ . '/_dash_header.php';
   </script>
 
   <?php if (!$feed): ?>
-    <?php if (!$followedIds): ?>
+    <?php if ($filtersOn): ?>
+      <div class="card">Nessun elemento corrisponde ai filtri scelti.</div>
+    <?php elseif (!$followedIds): ?>
       <div class="alert error">Non segui ancora nessun profilo — i contenuti che pubblichi tu compariranno comunque qui.</div>
     <?php else: ?>
       <div class="card">I profili che segui non hanno ancora pubblicato nulla.</div>
@@ -161,7 +170,7 @@ include __DIR__ . '/_dash_header.php';
         if (loading || finished) return;
         loading = true;
         loadingEl.style.display = 'block';
-        fetch('/dashboard_timeline_more.php?offset=' + offset + '&view=' + viewMode)
+        fetch('/dashboard_timeline_more.php?offset=' + offset + '&view=' + viewMode + <?= json_encode($filterQs) ?>)
           .then(function (r) { return r.json(); })
           .then(function (data) {
             loadingEl.style.display = 'none';

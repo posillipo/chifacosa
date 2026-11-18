@@ -9069,50 +9069,110 @@ function dashboardFeedQueueTypeMap(): array {
     return ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
 }
 
-// Tabellina delle proprietà di un elemento (a destra di ogni riga del Feed): una riga colorata per
-// proprietà, colori tenui coerenti col significato (verde = ok/pubblicato, ambra = in attesa, ecc.).
-function dashboardFeedPropsHtml(array $item, bool $metricoolActive): string {
-    $palette = [
-        'green'  => ['#e2f2e7', '#2f6f46'],
-        'amber'  => ['#fbefd5', '#8a6212'],
-        'blue'   => ['#e3edf8', '#2f5a8f'],
-        'teal'   => ['#dff1ee', '#23706a'],
-        'violet' => ['#ece6f7', '#5a3f9a'],
-        'red'    => ['#f9e3e3', '#9a3a3a'],
-        'grey'   => ['#ebedf0', '#5a6270'],
-        'sand'   => ['#f3eee2', '#7a6840'],
+// Proprietà di un elemento del Feed (le stesse che si possono filtrare in alto nella pagina Feed).
+function dashboardFeedItemProps(array $item): array {
+    $q = $item['x_queue'] ?? null;
+    $susp = $q && !empty($q['suspended']) && in_array($q['status'], ['pending', 'processing'], true);
+    return [
+        'stato'      => (!empty($item['data']) && strtotime($item['data']) > time()) ? 'programmato' : 'pubblicato',
+        'visibilita' => (isset($item['x_pub']) && (int) $item['x_pub'] === 0) ? 'solo_io' : 'pubblico',
+        'feed'       => (isset($item['in_feed']) && (int) $item['in_feed'] === 0) ? 'fuori' : 'nel',
+        'coda'       => !$q ? 'none' : ($susp ? 'suspended' : (string) $q['status']),
+        'autore'     => empty($item['x_author_known']) ? null : (trim((string) ($item['x_author'] ?? '')) !== '' ? trim((string) $item['x_author']) : '__none'),
     ];
-    $rows = [];
-    $scheduled = !empty($item['data']) && strtotime($item['data']) > time();
-    $rows[] = ['Stato', $scheduled ? 'Programmato' : 'Pubblicato', $scheduled ? 'amber' : 'green', ''];
-    $isPrivate = isset($item['x_pub']) && (int) $item['x_pub'] === 0;
-    $rows[] = ['Visibilità', $isPrivate ? 'Solo io' : 'Pubblico', $isPrivate ? 'grey' : 'blue', ''];
-    $inFeed = !isset($item['in_feed']) || (int) $item['in_feed'] !== 0;
-    $rows[] = ['Feed', $inFeed ? 'Nel Feed' : 'Non nel Feed', $inFeed ? 'teal' : 'grey', 'Il Feed RSS è quello letto dalle automazioni social'];
-    if ($metricoolActive && !empty($item['x_queueable'])) {
-        $q = $item['x_queue'] ?? null;
-        if (!$q) {
-            $rows[] = ['Coda social', 'Non in coda', 'grey', ''];
-        } else {
-            $susp = !empty($q['suspended']) && in_array($q['status'], ['pending', 'processing'], true);
-            $names = ['pending' => ['In attesa', 'violet'], 'processing' => ['In elaborazione', 'blue'], 'scheduled' => ['Programmato', 'green'], 'done' => ['Completato', 'green'], 'failed' => ['Errore', 'red'], 'skipped' => ['Saltato', 'grey']];
-            [$lab, $col] = $susp ? ['Sospeso', 'grey'] : ($names[$q['status']] ?? [(string) $q['status'], 'grey']);
-            $tip = !empty($q['scheduled_for']) ? 'Uscita social: ' . date('d/m/Y H:i', strtotime($q['scheduled_for'])) : '';
-            $rows[] = ['Coda social', $lab, $col, $tip];
+}
+
+// Filtri del Feed dalla querystring (solo valori ammessi; l'autore è testo libero ma limitato).
+function dashboardFeedFilters(array $src): array {
+    $allowed = [
+        'stato'      => ['pubblicato', 'programmato'],
+        'visibilita' => ['pubblico', 'solo_io'],
+        'feed'       => ['nel', 'fuori'],
+        'coda'       => ['none', 'pending', 'processing', 'scheduled', 'done', 'failed', 'skipped', 'suspended'],
+    ];
+    $f = [];
+    foreach ($allowed as $k => $vals) {
+        $v = (string) ($src[$k] ?? '');
+        $f[$k] = in_array($v, $vals, true) ? $v : '';
+    }
+    $f['autore'] = mb_substr(trim((string) ($src['autore'] ?? '')), 0, 160);
+    return $f;
+}
+
+function dashboardFeedFiltersActive(array $f): bool {
+    return count(array_filter($f, fn($v) => $v !== '')) > 0;
+}
+
+function dashboardFeedItemMatches(array $item, array $f): bool {
+    $p = dashboardFeedItemProps($item);
+    foreach (['stato', 'visibilita', 'feed', 'coda'] as $k) {
+        if ($f[$k] !== '' && $p[$k] !== $f[$k]) {
+            return false;
         }
     }
-    if (!empty($item['x_author_known'])) {
-        $a = trim((string) ($item['x_author'] ?? ''));
-        $rows[] = ['Autore', $a !== '' ? $a : 'non registrato', $a !== '' ? 'sand' : 'grey', 'Firma di chi ha creato l\'elemento (visibile solo qui)'];
+    if ($f['autore'] !== '' && $p['autore'] !== $f['autore']) {
+        return false;
     }
-    $h = '<div class="dtp" style="flex:0 0 auto;width:262px;margin:0 10px;display:flex;flex-direction:column;gap:3px;">';
-    foreach ($rows as [$k, $v, $c, $tip]) {
-        [$bg, $fg] = $palette[$c];
-        $h .= '<div' . ($tip !== '' ? ' title="' . e($tip) . '"' : '') . ' style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 9px;border-radius:6px;background:' . $bg . ';color:' . $fg . ';font-size:11.5px;line-height:1.35;">'
-           . '<span style="opacity:.75;white-space:nowrap;">' . e($k) . '</span>'
-           . '<strong style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:178px;">' . e($v) . '</strong></div>';
+    return true;
+}
+
+// Feed filtrato: solo gli elementi del profilo attivo (i filtri riguardano i propri contenuti),
+// arricchiti con coda e firma, filtrati PRIMA di impaginare così "carica altri" resta coerente.
+function dashboardFeedFiltered(int $profileId, string $slug, array $f, int $limit, int $offset): array {
+    $all = dashboardFeedEnrich(getTimelineFeedForUsers([$profileId], 2000, 0, $profileId), $profileId, $slug);
+    $all = array_values(array_filter($all, fn($it) => dashboardFeedItemMatches($it, $f)));
+    return array_slice($all, $offset, $limit);
+}
+
+// Firme presenti nei contenuti del profilo, per il filtro "Autore".
+function dashboardFeedAuthorOptions(int $profileId): array {
+    $out = [];
+    foreach (['blog_posts', 'timeline_posts', 'photo_albums', 'services', 'events', 'videos'] as $t) {
+        try {
+            $st = getDB()->prepare("SELECT DISTINCT created_by FROM `$t` WHERE user_id = ? AND created_by IS NOT NULL AND created_by <> ''");
+            $st->execute([$profileId]);
+            foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $v) {
+                $out[$v] = true;
+            }
+        } catch (Throwable $e) {
+        }
     }
-    return $h . '</div>';
+    $names = array_keys($out);
+    sort($names, SORT_NATURAL | SORT_FLAG_CASE);
+    return $names;
+}
+
+// Barra dei filtri in cima al Feed (GET, si applicano subito alla scelta).
+function dashboardFeedFilterBarHtml(array $f, array $authors, bool $metricoolActive, string $viewMode): string {
+    $sel = function (string $name, string $label, array $opts) use ($f): string {
+        $h = '<label style="display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--text-muted);font-weight:600;min-width:120px;">' . e($label)
+           . '<select name="' . e($name) . '" onchange="this.form.submit()" style="margin:0;padding:6px 8px;font-size:13px;' . ($f[$name] !== '' ? 'border-color:var(--accent);' : '') . '">';
+        foreach ($opts as $v => $t) {
+            $h .= '<option value="' . e((string) $v) . '"' . ((string) $f[$name] === (string) $v ? ' selected' : '') . '>' . e($t) . '</option>';
+        }
+        return $h . '</select></label>';
+    };
+    $authorOpts = ['' => 'Tutti', '__none' => 'Non registrato'];
+    foreach ($authors as $a) {
+        $authorOpts[$a] = $a;
+    }
+    if ($f['autore'] !== '' && !isset($authorOpts[$f['autore']])) {
+        $authorOpts[$f['autore']] = $f['autore'];
+    }
+    $h = '<form method="get" class="card" style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-bottom:14px;">'
+       . '<input type="hidden" name="view" value="' . e($viewMode) . '">'
+       . $sel('stato', 'Stato', ['' => 'Tutti', 'pubblicato' => 'Pubblicato', 'programmato' => 'Programmato'])
+       . $sel('visibilita', 'Visibilità', ['' => 'Tutti', 'pubblico' => 'Pubblico', 'solo_io' => 'Solo io'])
+       . $sel('feed', 'Feed', ['' => 'Tutti', 'nel' => 'Nel Feed', 'fuori' => 'Non nel Feed']);
+    if ($metricoolActive) {
+        $h .= $sel('coda', 'Coda social', ['' => 'Tutti', 'none' => 'Non in coda', 'pending' => 'In attesa', 'processing' => 'In elaborazione', 'scheduled' => 'Programmato', 'done' => 'Completato', 'failed' => 'Errore', 'skipped' => 'Saltato', 'suspended' => 'Sospeso']);
+    }
+    $h .= $sel('autore', 'Autore', $authorOpts);
+    if (dashboardFeedFiltersActive($f)) {
+        $h .= '<a href="?view=' . e($viewMode) . '" class="btn small secondary" style="align-self:flex-end;">Azzera filtri</a>'
+            . '<span style="flex-basis:100%;font-size:12px;color:var(--text-muted);">I filtri riguardano i tuoi contenuti: gli elementi dei profili che segui non sono inclusi.</span>';
+    }
+    return $h . '</form>';
 }
 
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
@@ -9148,9 +9208,6 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
     $isFuture = !empty($item['data']) && strtotime($item['data']) > time();
     $html .= '<small style="color:var(--text-muted)">' . ($isFuture ? 'Da pubblicare il ' : 'Pubblicato il ') . e(italianLongDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null])) . $eventoInfo . '</small>';
     $html .= '</div></a>';
-    if ($isMine) {
-        $html .= dashboardFeedPropsHtml($item, $metricoolActive);
-    }
     if (!empty($item['redirect_link'])) {
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
     }
