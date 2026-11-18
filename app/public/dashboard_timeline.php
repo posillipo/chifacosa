@@ -59,35 +59,61 @@ include __DIR__ . '/_dash_header.php';
   @media(max-width:820px){.dtl-row > .dtp{width:100% !important;margin:2px 0 6px !important}}
   </style>
 
-  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">
-    <div class="section-title" style="margin:0;flex:1;min-width:140px;">Feed</div>
+  <?php $activeCount = count(array_filter($feedFilters, fn($v) => $v !== '')); $panelOpen = !empty($_GET['open']); ?>
+  <div class="dtf-head">
+    <div class="section-title" style="margin:0;flex:1;min-width:0;">Feed</div>
+    <button type="button" id="dtf-toggle" class="dtf-btn<?= $activeCount ? ' on' : '' ?>" aria-expanded="<?= $panelOpen ? 'true' : 'false' ?>" aria-controls="dtf-panel">
+      <i class="fa-solid fa-sliders"></i> Filtri<?= $activeCount ? ' <span class="dtf-count">' . $activeCount . '</span>' : '' ?>
+    </button>
     <div class="view-toggle">
-      <a href="?view=list<?= e($filterQs) ?>" class="<?= $viewMode === 'list' ? 'active' : '' ?>">☰ Lista</a>
-      <a href="?view=card<?= e($filterQs) ?>" class="<?= $viewMode === 'card' ? 'active' : '' ?>">🖼️ Card</a>
+      <a href="?view=list<?= e($filterQs) ?>" class="<?= $viewMode === 'list' ? 'active' : '' ?>" title="Lista">☰<span class="dtf-hide-sm"> Lista</span></a>
+      <a href="?view=card<?= e($filterQs) ?>" class="<?= $viewMode === 'card' ? 'active' : '' ?>" title="Card">🖼️<span class="dtf-hide-sm"> Card</span></a>
     </div>
   </div>
   <style>
   .view-toggle{display:inline-flex;gap:0;border:1px solid #d5d5da;border-radius:6px;overflow:hidden}
-  .view-toggle a{padding:6px 14px;font-size:13px;text-decoration:none;color:var(--text-muted,#6c757d);border-right:1px solid #d5d5da}
+  .view-toggle a{padding:6px 12px;font-size:13px;text-decoration:none;color:var(--text-muted,#6c757d);border-right:1px solid #d5d5da}
   .view-toggle a:last-child{border-right:none}
   .view-toggle a.active{background:var(--accent);color:#fff}
+  .dtf-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dtf-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:13px;border:1px solid #d5d5da;border-radius:6px;background:var(--card-bg,#fff);color:var(--text-muted,#6c757d);cursor:pointer;white-space:nowrap}
+  .dtf-btn.on,.dtf-btn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+  .dtf-count{background:var(--accent);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:0 6px;line-height:17px}
+  .dtf-panel{border:1px solid #e2e2e7;border-radius:12px;background:var(--card-bg,#fff);padding:12px 14px;margin-bottom:12px}
+  .dtf-panel[hidden]{display:none}
+  .dtf-sub{margin-top:12px;border-top:1px dashed #e2e2e7;padding-top:10px}
+  .dtf-sub > summary{cursor:pointer;font-size:13px;font-weight:600;list-style:none}
+  .dtf-sub > summary::-webkit-details-marker{display:none}
+  @media(max-width:560px){.dtf-hide-sm{display:none}.view-toggle a{padding:6px 10px}}
   </style>
 
-  <?= dashboardFeedFilterBarHtml($feedFilters, dashboardFeedAuthorOptions((int) $profile['id']), $metricoolActive, $viewMode) ?>
+  <div id="dtf-panel" class="dtf-panel"<?= $panelOpen ? '' : ' hidden' ?>>
+    <?= dashboardFeedFilterBarHtml($feedFilters, dashboardFeedAuthorOptions((int) $profile['id']), $metricoolActive, $viewMode) ?>
 
-  <details class="help-box">
-    <summary>👥 Band Seguite (<?= count($followedBands) ?>)</summary>
-    <div style="padding:0 16px 14px;">
-      <input type="text" id="followed-search" placeholder="Cerca tra le band che segui..." style="margin-bottom:12px;">
-      <div id="followed-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>
-      <div id="followed-empty" style="display:none;color:var(--text-muted);font-size:13px;padding:8px 0;">Nessuna band trovata.</div>
-      <div id="followed-pagination" style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:12px;">
-        <button type="button" id="followed-prev" class="btn small" disabled>← Prec.</button>
-        <span id="followed-page-indicator" style="font-size:13px;color:var(--text-muted);"></span>
-        <button type="button" id="followed-next" class="btn small" disabled>Succ. →</button>
+    <details class="dtf-sub">
+      <summary>👥 Band seguite (<?= count($followedBands) ?>)</summary>
+      <div style="padding:10px 0 0;">
+        <input type="text" id="followed-search" placeholder="Cerca tra le band che segui..." style="margin-bottom:12px;">
+        <div id="followed-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;"></div>
+        <div id="followed-empty" style="display:none;color:var(--text-muted);font-size:13px;padding:8px 0;">Nessuna band trovata.</div>
+        <div id="followed-pagination" style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:12px;">
+          <button type="button" id="followed-prev" class="btn small" disabled>← Prec.</button>
+          <span id="followed-page-indicator" style="font-size:13px;color:var(--text-muted);"></span>
+          <button type="button" id="followed-next" class="btn small" disabled>Succ. →</button>
+        </div>
       </div>
-    </div>
-  </details>
+    </details>
+  </div>
+  <script>
+  (function () {
+    var btn = document.getElementById('dtf-toggle'), panel = document.getElementById('dtf-panel');
+    btn.addEventListener('click', function () {
+      var open = panel.hasAttribute('hidden');
+      if (open) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  })();
+  </script>
   <script>
   (function () {
     var allBands = <?= json_encode(array_map(fn($b) => ['slug' => $b['slug'], 'name' => $b['display_name'], 'avatar' => $b['avatar_path']], $followedBands)) ?>;

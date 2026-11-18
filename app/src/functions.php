@@ -9145,7 +9145,7 @@ function dashboardFeedAuthorOptions(int $profileId): array {
 // Barra dei filtri in cima al Feed (GET, si applicano subito alla scelta).
 function dashboardFeedFilterBarHtml(array $f, array $authors, bool $metricoolActive, string $viewMode): string {
     $sel = function (string $name, string $label, array $opts) use ($f): string {
-        $h = '<label style="display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--text-muted);font-weight:600;min-width:120px;">' . e($label)
+        $h = '<label style="display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--text-muted);font-weight:600;min-width:110px;flex:1 1 110px;">' . e($label)
            . '<select name="' . e($name) . '" onchange="this.form.submit()" style="margin:0;padding:6px 8px;font-size:13px;' . ($f[$name] !== '' ? 'border-color:var(--accent);' : '') . '">';
         foreach ($opts as $v => $t) {
             $h .= '<option value="' . e((string) $v) . '"' . ((string) $f[$name] === (string) $v ? ' selected' : '') . '>' . e($t) . '</option>';
@@ -9159,8 +9159,8 @@ function dashboardFeedFilterBarHtml(array $f, array $authors, bool $metricoolAct
     if ($f['autore'] !== '' && !isset($authorOpts[$f['autore']])) {
         $authorOpts[$f['autore']] = $f['autore'];
     }
-    $h = '<form method="get" class="card" style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-bottom:14px;">'
-       . '<input type="hidden" name="view" value="' . e($viewMode) . '">'
+    $h = '<form method="get" style="display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;">'
+       . '<input type="hidden" name="view" value="' . e($viewMode) . '"><input type="hidden" name="open" value="1">'
        . $sel('stato', 'Stato', ['' => 'Tutti', 'pubblicato' => 'Pubblicato', 'programmato' => 'Programmato'])
        . $sel('visibilita', 'Visibilità', ['' => 'Tutti', 'pubblico' => 'Pubblico', 'solo_io' => 'Solo io'])
        . $sel('feed', 'Feed', ['' => 'Tutti', 'nel' => 'Nel Feed', 'fuori' => 'Non nel Feed']);
@@ -9169,7 +9169,7 @@ function dashboardFeedFilterBarHtml(array $f, array $authors, bool $metricoolAct
     }
     $h .= $sel('autore', 'Autore', $authorOpts);
     if (dashboardFeedFiltersActive($f)) {
-        $h .= '<a href="?view=' . e($viewMode) . '" class="btn small secondary" style="align-self:flex-end;">Azzera filtri</a>'
+        $h .= '<a href="?view=' . e($viewMode) . '&open=1" class="btn small secondary" style="align-self:flex-end;">Azzera filtri</a>'
             . '<span style="flex-basis:100%;font-size:12px;color:var(--text-muted);">I filtri riguardano i tuoi contenuti: gli elementi dei profili che segui non sono inclusi.</span>';
     }
     return $h . '</form>';
