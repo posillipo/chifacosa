@@ -204,19 +204,17 @@ include __DIR__ . '/_dash_header.php';
 
     <div id="vid-options" style="display:none;">
       <label>Privacy (per tutti i video di questo caricamento)</label>
-      <div style="display:flex;gap:16px;margin-bottom:14px;">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
         <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
           <input type="radio" name="visibility" value="public" checked style="width:auto;"> Pubblico
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
           <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
         </label>
-      </div>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
         <input type="checkbox" id="vid-in-feed" checked style="width:auto;"> Includi nel Feed
-      </label>
-      <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito: serve solo per le automazioni social che leggono il feed RSS del profilo.</p>
-      <label>Programma la pubblicazione (opzionale)</label>
+      </label></div>
+      <label>Pubblica sui social (opzionale)</label>
       <input type="datetime-local" id="vid-publish-at">
       <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
       <button type="button" class="btn" id="vid-start" style="margin-top:10px;">Carica i video</button>
@@ -280,18 +278,17 @@ include __DIR__ . '/_dash_header.php';
             <label>Immagine di anteprima (opzionale — sostituisce quella attuale)</label>
             <input type="file" name="thumb" accept="image/*">
             <label>Privacy</label>
-            <div style="display:flex;gap:16px;margin-bottom:14px;">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" name="visibility" value="public" <?= (int) $v['is_public'] === 1 ? 'checked' : '' ?> style="width:auto;"> Pubblico
               </label>
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" name="visibility" value="private" <?= (int) $v['is_public'] === 0 ? 'checked' : '' ?> style="width:auto;"> Solo io
               </label>
-            </div>
-            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
               <input type="checkbox" name="in_feed" value="1" <?= (int) ($v['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
-            </label>
-            <label>Programma la pubblicazione (opzionale)</label>
+            </label></div>
+            <label>Pubblica sui social (opzionale)</label>
             <input type="datetime-local" name="publish_at" value="<?= e(localDateTimeInputValue($v['publish_at'], $profile)) ?>">
             <button type="submit" class="btn small" style="margin-top:10px;">Salva modifiche</button>
           </form>
