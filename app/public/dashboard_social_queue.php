@@ -13,6 +13,19 @@ $statusFilter = $_GET['status'] ?? 'active';
 $validStatuses = ['active', 'pending', 'suspended', 'scheduled', 'done', 'skipped', 'failed', 'all'];
 if (!in_array($statusFilter, $validStatuses, true)) $statusFilter = 'active';
 
+// Filtro per tipo di contenuto (solo tipi realmente presenti in coda per questo profilo).
+$typeOptions = [];
+try {
+    $ts = getDB()->prepare('SELECT DISTINCT content_type FROM social_queue WHERE user_id = ? ORDER BY content_type');
+    $ts->execute([$profile['id']]);
+    $typeOptions = $ts->fetchAll(PDO::FETCH_COLUMN);
+} catch (Throwable $e) {
+}
+$typeFilter = (string) ($_GET['tipo'] ?? '');
+if (!in_array($typeFilter, $typeOptions, true)) $typeFilter = '';
+$panelOpen = !empty($_GET['open']);
+$filtersQs = '&status=' . urlencode($statusFilter) . ($typeFilter !== '' ? '&tipo=' . urlencode($typeFilter) : '');
+
 $page = max(1, (int) ($_GET['p'] ?? 1));
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
@@ -29,6 +42,11 @@ if ($statusFilter === 'active') {
 } elseif ($statusFilter !== 'all') {
     $where .= ' AND q.status = ?';
     $params[] = $statusFilter;
+}
+
+if ($typeFilter !== '') {
+    $where .= ' AND q.content_type = ?';
+    $params[] = $typeFilter;
 }
 
 $total = getDB()->prepare("SELECT COUNT(*) FROM social_queue q $where");
@@ -117,17 +135,60 @@ a.sq-title:hover { text-decoration:underline; }
   <div class="alert error">Il servizio Social Automatico non è ancora configurato per questo profilo. <a href="/dashboard_metricool.php">Configura</a></div>
 <?php endif; ?>
 
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
-  <div class="section-title" style="margin:0;flex:1;">📤 Coda Social</div>
-  <a href="/dashboard_timeline.php" class="btn small">← Torna al Feed</a>
+<?php
+$statusLabels = ['active' => '⚡ Attivi', 'pending' => '⏳ In attesa', 'suspended' => '⏸ Sospesi', 'scheduled' => '🗓 Programmati', 'done' => '✅ Completati', 'skipped' => '⏭ Saltati', 'failed' => '❌ Errori', 'all' => 'Tutti'];
+$typeLabelsFilter = ['blog' => 'Blog', 'timeline' => 'Timeline', 'album' => 'Album', 'service' => 'Servizi', 'event' => 'Eventi', 'video' => 'Video', 'product' => 'Prodotti', 'offer' => 'Offerte'];
+$activeCount = ($statusFilter !== 'active' ? 1 : 0) + ($typeFilter !== '' ? 1 : 0);
+?>
+<style>
+.sqf-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.sqf-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:13px; border:1px solid #d5d5da; border-radius:6px; background:var(--card-bg,#fff); color:var(--text-muted,#6c757d); cursor:pointer; white-space:nowrap; }
+.sqf-btn.on, .sqf-btn[aria-expanded="true"] { border-color:var(--accent); color:var(--accent); }
+.sqf-count { background:var(--accent); color:#fff; border-radius:999px; font-size:11px; font-weight:700; padding:0 6px; line-height:17px; }
+.sqf-panel { border:1px solid #e2e2e7; border-radius:12px; background:var(--card-bg,#fff); padding:12px 14px; margin:8px 0 12px; }
+.sqf-panel[hidden] { display:none; }
+.sqf-panel form { display:flex; flex-wrap:wrap; gap:10px 12px; align-items:flex-end; }
+.sqf-panel label { display:flex; flex-direction:column; gap:2px; font-size:11.5px; color:var(--text-muted); font-weight:600; min-width:140px; flex:1 1 140px; }
+.sqf-panel select { margin:0; padding:6px 8px; font-size:13px; }
+.sqf-sum { font-size:12.5px; color:var(--text-muted); margin:0 0 12px; }
+@media(max-width:560px){ .sqf-hide-sm { display:none; } }
+</style>
+<div class="sqf-head">
+  <div class="section-title" style="margin:0;flex:1;min-width:0;">📤 Coda Social</div>
+  <button type="button" id="sqf-toggle" class="sqf-btn<?= $activeCount ? ' on' : '' ?>" aria-expanded="<?= $panelOpen ? 'true' : 'false' ?>" aria-controls="sqf-panel">
+    <i class="fa-solid fa-sliders"></i> Filtri<?= $activeCount ? ' <span class="sqf-count">' . $activeCount . '</span>' : '' ?>
+  </button>
+  <a href="/dashboard_timeline.php" class="sqf-btn" title="Torna al Feed" style="text-decoration:none;">←<span class="sqf-hide-sm"> Feed</span></a>
 </div>
+<p class="sqf-sum"><?= e($statusLabels[$statusFilter]) ?><?= $typeFilter !== '' ? ' · ' . e($typeLabelsFilter[$typeFilter] ?? $typeFilter) : '' ?> — <?= (int) $totalCount ?> element<?= $totalCount === 1 ? 'o' : 'i' ?></p>
 
-<!-- Filtri -->
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-  <?php foreach (['active' => '⚡ Attivi', 'pending' => '⏳ In attesa', 'suspended' => '⏸ Sospesi', 'scheduled' => '🗓 Programmati', 'done' => '✅ Completati', 'skipped' => '⏭ Saltati', 'failed' => '❌ Errori', 'all' => 'Tutti'] as $s => $l): ?>
-    <a href="?status=<?= $s ?>" class="btn small <?= $statusFilter === $s ? '' : 'secondary' ?>"><?= $l ?></a>
-  <?php endforeach; ?>
+<div id="sqf-panel" class="sqf-panel"<?= $panelOpen ? '' : ' hidden' ?>>
+  <form method="get">
+    <input type="hidden" name="open" value="1">
+    <label>Stato
+      <select name="status" onchange="this.form.submit()">
+        <?php foreach ($statusLabels as $sv => $sl): ?><option value="<?= e($sv) ?>"<?= $statusFilter === $sv ? ' selected' : '' ?>><?= e($sl) ?></option><?php endforeach; ?>
+      </select>
+    </label>
+    <label>Tipo
+      <select name="tipo" onchange="this.form.submit()">
+        <option value="">Tutti</option>
+        <?php foreach ($typeOptions as $tv): ?><option value="<?= e($tv) ?>"<?= $typeFilter === $tv ? ' selected' : '' ?>><?= e($typeLabelsFilter[$tv] ?? ucfirst($tv)) ?></option><?php endforeach; ?>
+      </select>
+    </label>
+    <?php if ($activeCount): ?><a href="?open=1" class="btn small secondary" style="align-self:flex-end;">Azzera filtri</a><?php endif; ?>
+  </form>
 </div>
+<script>
+(function () {
+  var btn = document.getElementById('sqf-toggle'), panel = document.getElementById('sqf-panel');
+  btn.addEventListener('click', function () {
+    var open = panel.hasAttribute('hidden');
+    if (open) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>
 
 <?php if (!$items): ?>
   <div class="card" style="color:var(--text-muted);text-align:center;">Nessun elemento in questa visualizzazione.</div>
@@ -242,9 +303,9 @@ a.sq-title:hover { text-decoration:underline; }
 
   <?php if ($totalPages > 1): ?>
     <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
-      <?php if ($page > 1): ?><a href="?status=<?= $statusFilter ?>&p=<?= $page-1 ?>" class="btn small">← Prec.</a><?php endif; ?>
+      <?php if ($page > 1): ?><a href="?p=<?= $page-1 ?><?= e($filtersQs) ?>" class="btn small">← Prec.</a><?php endif; ?>
       <span style="line-height:2;color:var(--text-muted);font-size:13px;">Pagina <?= $page ?> di <?= $totalPages ?> (<?= $totalCount ?> elementi)</span>
-      <?php if ($page < $totalPages): ?><a href="?status=<?= $statusFilter ?>&p=<?= $page+1 ?>" class="btn small">Succ. →</a><?php endif; ?>
+      <?php if ($page < $totalPages): ?><a href="?p=<?= $page+1 ?><?= e($filtersQs) ?>" class="btn small">Succ. →</a><?php endif; ?>
     </div>
   <?php endif; ?>
 <?php endif; ?>
