@@ -12,7 +12,10 @@ $viewMode = ($_GET['view'] ?? 'list') === 'card' ? 'card' : 'list';
 
 $followedIds = getFollowedUserIds((int) $profile['id']);
 $feedUserIds = array_merge($followedIds, [(int) $profile['id']]);
-$items = dashboardFeedEnrich(getTimelineFeedForUsers($feedUserIds, $pageSize, $offset, (int) $profile['id']), (int) $profile['id'], $profile['slug']);
+$feedFilters = dashboardFeedFilters($_GET);
+$items = dashboardFeedFiltersActive($feedFilters)
+    ? dashboardFeedFiltered((int) $profile['id'], $profile['slug'], $feedFilters, $pageSize, $offset)
+    : dashboardFeedEnrich(getTimelineFeedForUsers($feedUserIds, $pageSize, $offset, (int) $profile['id']), (int) $profile['id'], $profile['slug']);
 require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 
