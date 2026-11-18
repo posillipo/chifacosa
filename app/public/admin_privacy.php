@@ -66,7 +66,7 @@ include __DIR__ . '/_admin_header.php';
   <div class="card">
     <strong>Come funziona — Termini di Utilizzo (chi segue via email)</strong>
     <p style="color:var(--text-muted)">
-      Testo mostrato su <?= e(siteUrl('/termini_segui.php')) ?>, la pagina collegata alla casella
+      Testo mostrato su <a href="<?= e(siteUrl('/termini_segui.php')) ?>" target="_blank" rel="noopener"><?= e(siteUrl('/termini_segui.php')) ?> <i class="fas fa-external-link-alt" style="font-size:.7em;"></i></a>, la pagina collegata alla casella
       "Accetto i Termini di Utilizzo" che compare nel modulo "Segui" per chi non ha un account
       (email pubbliche) — chi ha già un account e segue con un click resta escluso, dato che ha
       già un rapporto diretto con la piattaforma. Se lasci il campo vuoto la casella non compare
@@ -86,6 +86,12 @@ include __DIR__ . '/_admin_header.php';
     <div class="alert error">Nessun termine configurato — la casella di accettazione non compare nel modulo "Segui" via email.</div>
   <?php else: ?>
     <div class="alert success">Casella di accettazione attiva nel modulo "Segui" via email.</div>
+    <div class="card">
+      <strong>Anteprima del documento pubblicato</strong>
+      <span style="float:right;"><a href="<?= e(siteUrl('/termini_segui.php')) ?>" target="_blank" rel="noopener">Apri la pagina pubblica <i class="fas fa-external-link-alt" style="font-size:.75em;"></i></a></span>
+      <hr style="margin:10px 0;">
+      <div style="max-height:320px;overflow:auto;white-space:normal;"><?= nl2br(e($followTermsContent)) ?></div>
+    </div>
   <?php endif; ?>
 
   <hr style="margin:32px 0; border-color:rgba(0,0,0,.1);">
