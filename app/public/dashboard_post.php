@@ -196,22 +196,20 @@ include __DIR__ . '/_dash_header.php';
     <input type="hidden" name="image_thumb_data" id="post-image-thumb-data">
 
     <label>Privacy</label>
-    <div style="display:flex;gap:16px;margin-bottom:14px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
         <input type="radio" name="visibility" value="public" checked style="width:auto;"> Pubblico
       </label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
         <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
       </label>
-    </div>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
       <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
-    </label>
-    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
+    </label></div>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
       <div style="flex:1;min-width:220px;">
-        <label>Programma la pubblicazione (opzionale)</label>
+        <label>Pubblica sui social (opzionale)</label>
         <input type="datetime-local" name="publish_at">
         <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
       </div>

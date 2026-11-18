@@ -253,21 +253,18 @@ include __DIR__ . '/_dash_header.php';
             <?php if ($f['image_path']): ?><p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Hai già caricato una foto — seleziona un nuovo file per sostituirla.</p><?php endif; ?>
 
             <label>Privacy</label>
-            <div style="display:flex;gap:16px;margin-bottom:14px;">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" class="pb-pub-visibility" name="visibility" value="public" <?= $isPrivate ? '' : 'checked' ?> style="width:auto;"> Pubblico
               </label>
               <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
                 <input type="radio" class="pb-pub-visibility" name="visibility" value="private" <?= $isPrivate ? 'checked' : '' ?> style="width:auto;"> Solo io
               </label>
-            </div>
-
-            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
               <input type="checkbox" class="pb-pub-in-feed" name="in_feed" value="1" <?= ($f['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
-            </label>
-            <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
+            </label></div>
 
-            <label>Programma la pubblicazione (opzionale)</label>
+            <label>Pubblica sui social (opzionale)</label>
             <input type="datetime-local" class="pb-pub-publish-at" value="<?= e(localDateTimeInputValue($f['publish_at'], $profile)) ?>">
             <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
 
@@ -359,12 +356,11 @@ include __DIR__ . '/_dash_header.php';
         + '<input type="file" class="pb-pub-image-input" accept="image/*">'
         + '<input type="hidden" class="pb-pub-image-thumb-data">'
         + '<label>Privacy</label>'
-        + '<div style="display:flex;gap:16px;margin-bottom:14px;">'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">'
         + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="pb-pub-visibility" name="visibility" value="public"' + (item.is_public ? ' checked' : '') + ' style="width:auto;"> Pubblico</label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="pb-pub-visibility" name="visibility" value="private"' + (!item.is_public ? ' checked' : '') + ' style="width:auto;"> Solo io</label></div>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;"><input type="checkbox" class="pb-pub-in-feed" name="in_feed" value="1"' + (item.in_feed == 1 ? ' checked' : '') + ' style="width:auto;"> Includi nel Feed</label>'
-        + '<p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la Timeline del sito (quella segue solo Pubblico/Solo io): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>'
-        + '<label>Programma la pubblicazione (opzionale)</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="radio" class="pb-pub-visibility" name="visibility" value="private"' + (!item.is_public ? ' checked' : '') + ' style="width:auto;"> Solo io</label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;"><input type="checkbox" class="pb-pub-in-feed" name="in_feed" value="1"' + (item.in_feed == 1 ? ' checked' : '') + ' style="width:auto;"> Includi nel Feed</label></div>'
+        + '<label>Pubblica sui social (opzionale)</label>'
         + '<input type="datetime-local" class="pb-pub-publish-at">'
         + '<p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>'
         + '<p class="pb-pub-status" style="color:var(--text-muted);font-size:12.5px;"></p>'

@@ -200,9 +200,8 @@ include __DIR__ . '/_dash_header.php';
     <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
       <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
     </label>
-    <p style="color:var(--text-muted);font-size:12.5px;margin:-8px 0 14px;">Non riguarda la visibilità dell'articolo sul sito (resta sempre pubblico una volta pubblicato): serve solo per le automazioni social (es. Metricool) che leggono il feed RSS del profilo.</p>
 
-    <label>Programma la pubblicazione (opzionale)</label>
+    <label>Pubblica sui social (opzionale)</label>
     <input type="datetime-local" name="published_at">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
 
