@@ -17,6 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'save_follow_terms') {
         setSiteSetting('follow_terms_content', trim($_POST['follow_terms_content'] ?? ''));
         $success = 'Termini di Utilizzo aggiornati.';
+    } elseif ($action === 'save_terms') {
+        $newTerms = trim($_POST['terms_content'] ?? '');
+        if ($newTerms !== '' && trim((string) (getSiteSetting('terms_content') ?: '')) === '') {
+            setSiteSetting('terms_enabled_since', date('Y-m-d H:i:s')); // da qui in poi i nuovi iscritti devono accettare
+        }
+        setSiteSetting('terms_content', $newTerms);
+        setSiteSetting('terms_gate_existing', !empty($_POST['terms_gate_existing']) ? '1' : '0');
+        $success = $newTerms !== ''
+            ? 'Condizioni d\'uso salvate. Chi si registra da ora deve accettarle.'
+            : 'Condizioni d\'uso rimosse: la registrazione non richiede più l\'accettazione.';
     } elseif ($action === 'save_ga') {
         $gaId = trim($_POST['ga_measurement_id'] ?? '');
         setSiteSetting('ga_measurement_id', $gaId);
@@ -30,6 +40,8 @@ $currentScript = getSiteSetting('privacy_script') ?: '';
 $privacyPolicyUrl = getSiteSetting('privacy_policy_url') ?: '';
 $gaId = getSiteSetting('ga_measurement_id') ?: '';
 $followTermsContent = getSiteSetting('follow_terms_content') ?: '';
+$termsContent = getSiteSetting('terms_content') ?: '';
+$termsGate = getSiteSetting('terms_gate_existing') === '1';
 
 include __DIR__ . '/_admin_header.php';
 ?>
@@ -92,6 +104,36 @@ include __DIR__ . '/_admin_header.php';
       <hr style="margin:10px 0;">
       <div style="max-height:320px;overflow:auto;white-space:normal;"><?= nl2br(e($followTermsContent)) ?></div>
     </div>
+  <?php endif; ?>
+
+  <hr style="margin:32px 0; border-color:rgba(0,0,0,.1);">
+
+  <div class="card">
+    <strong>Come funziona — Condizioni d'uso (registrazione)</strong>
+    <p style="color:var(--text-muted)">
+      Testo pubblicato su <a href="<?= e(siteUrl('/condizioni.php')) ?>" target="_blank" rel="noopener"><?= e(siteUrl('/condizioni.php')) ?> <i class="fas fa-external-link-alt" style="font-size:.7em;"></i></a>.
+      Se il campo non è vuoto, nel modulo di registrazione compare la casella obbligatoria
+      "Ho letto e accetto le Condizioni d'uso", e si salva data e versione dell'accettazione. Se lo lasci vuoto non cambia nulla.
+      Chi si registra con Google (senza passare dal modulo) accetta al primo accesso.
+    </p>
+  </div>
+
+  <form method="post" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="save_terms">
+    <label>Testo delle Condizioni d'uso</label>
+    <textarea name="terms_content" rows="14" placeholder="Incolla qui le Condizioni d'uso del portale..."><?= e($termsContent) ?></textarea>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;">
+      <input type="checkbox" name="terms_gate_existing" value="1" <?= $termsGate ? 'checked' : '' ?> style="width:auto;margin-top:3px;">
+      Chiedi l'accettazione anche agli utenti già registrati (la vedono una volta, al primo accesso dopo il salvataggio)
+    </label>
+    <button type="submit" class="btn">Salva Condizioni d'uso</button>
+  </form>
+
+  <?php if (trim($termsContent) === ''): ?>
+    <div class="alert error">Nessuna condizione configurata — la registrazione non richiede accettazioni.</div>
+  <?php else: ?>
+    <div class="alert success">Condizioni attive: casella obbligatoria nella registrazione<?= $termsGate ? ' e richiesta agli utenti già registrati' : '' ?>.</div>
   <?php endif; ?>
 
   <hr style="margin:32px 0; border-color:rgba(0,0,0,.1);">

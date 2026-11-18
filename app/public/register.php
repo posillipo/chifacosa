@@ -40,8 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $invite ? $invite['email'] : trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $slug = slugify($_POST['slug'] ?? $displayName);
+    $termsOk = !termsEnabled() || !empty($_POST['accept_terms']);
 
-    if ($displayName === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '' || $slug === '') {
+    if (!$termsOk) {
+        $error = 'Per registrarti devi accettare le Condizioni d\'uso.';
+    } elseif ($displayName === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '' || $slug === '') {
         $error = 'Compila tutti i campi con un\'email valida.';
     } elseif (strlen($password) < 8) {
         $error = 'La password deve avere almeno 8 caratteri.';
@@ -64,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int) $db->lastInsertId();
             $stmt = $db->prepare('INSERT INTO profiles (user_id, display_name) VALUES (?, ?)');
             $stmt->execute([$userId, $displayName]);
+            if (termsEnabled()) {
+                termsRecordAcceptance($userId);
+            }
 
             $referrerId = null;
             if ($invite) {
@@ -177,6 +183,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" name="slug" placeholder="es. marco-rossi" value="<?= e($_POST['slug'] ?? '') ?>">
             <label>Password (min. 8 caratteri)</label>
             <input type="password" name="password" required>
+            <?php $privacyUrl = trim((string) (getSiteSetting('privacy_policy_url') ?: '')); ?>
+            <?php if (termsEnabled()): ?>
+              <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13.5px;margin:12px 0;">
+                <input type="checkbox" name="accept_terms" value="1" required style="width:auto;margin-top:3px;" <?= !empty($_POST['accept_terms']) ? 'checked' : '' ?>>
+                <span>Ho letto e accetto le <a href="/condizioni.php" target="_blank" rel="noopener">Condizioni d'uso</a><?php if ($privacyUrl !== ''): ?> e ho letto l'<a href="<?= e($privacyUrl) ?>" target="_blank" rel="noopener">Informativa privacy</a><?php endif; ?>.</span>
+              </label>
+            <?php elseif ($privacyUrl !== ''): ?>
+              <p style="font-size:13px;color:#666;margin:10px 0;">Registrandoti dichiari di aver letto l'<a href="<?= e($privacyUrl) ?>" target="_blank" rel="noopener">Informativa privacy</a>.</p>
+            <?php endif; ?>
             <button type="submit" class="btn-dark">Crea pagina</button>
           </form>
         <?php endif; ?>
