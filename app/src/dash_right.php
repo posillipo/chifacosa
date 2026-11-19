@@ -137,7 +137,7 @@ function renderDashRight(array $ctx): string {
     }
 
     // Community per tutti; "Da gestire" (i contatori sono anche nel menu di sinistra e nella barra in alto) e gli strumenti solo per gli amministratori.
-    $html = renderDashCommunity($profileId);
+    $html = renderDashCommunity($profileId) . renderDashNewProfiles($profileId);
     if ($isAdmin) {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
     }
@@ -326,4 +326,33 @@ function renderDashCommunity(int $profileId): string {
                . 'box.querySelectorAll("[data-comm-panel]").forEach(function(p){p.hidden=p.getAttribute("data-comm-panel")!==k;});});})();</script>';
     }
     return $html;
+}
+
+
+/** Ultimi profili iscritti e attivi (in ordine di arrivo), escluso il profilo attivo: per il blocco "Nuovi profili". */
+function dashNewProfiles(int $selfId, int $limit = 10): array {
+    $out = [];
+    try {
+        $st = getDB()->prepare("SELECT u.id, u.slug, p.display_name, p.avatar_path, u.created_at d,
+                (SELECT COUNT(*) FROM account_follows b WHERE b.follower_user_id = ? AND b.followed_user_id = u.id) AS i_follow
+            FROM users u JOIN profiles p ON p.user_id = u.id
+            WHERE u.is_active = 1 AND u.account_type_chosen = 1 AND u.id <> ? AND u.email NOT LIKE '%@profili.chifacosa.local'
+            ORDER BY u.created_at DESC, u.id DESC LIMIT " . (int) $limit);
+        $st->execute([$selfId, $selfId]);
+        foreach ($st->fetchAll() as $r) {
+            $out[] = ['kind' => 'profile', 'id' => (int) $r['id'], 'slug' => $r['slug'], 'name' => $r['display_name'] ?: $r['slug'],
+                'avatar' => $r['avatar_path'], 'd' => $r['d'], 'i_follow' => (int) $r['i_follow'] > 0];
+        }
+    } catch (Throwable $e) {
+    }
+    return $out;
+}
+
+function renderDashNewProfiles(int $selfId): string {
+    $rows = dashNewProfiles($selfId);
+    if (!$rows) {
+        return '';
+    }
+    return '<div class="dash-right-block dash-comm"><div class="dash-right-title">Nuovi profili</div>'
+         . dashCommunityList($rows, '', true) . '</div>';
 }
