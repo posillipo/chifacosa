@@ -217,6 +217,14 @@ if ($actingAsId) {
     </button>
     <div class="brand brand-dash"><a href="/"><?= siteBrandHtml() ?></a></div>
   </div>
+  <div class="dash-psearch" id="dash-psearch">
+    <button type="button" class="dash-psearch-btn" id="dash-psearch-btn" title="Cerca profili" aria-label="Cerca profili" aria-expanded="false"><i class="fa-solid fa-magnifying-glass"></i></button>
+    <div class="dash-psearch-box">
+      <i class="fa-solid fa-magnifying-glass dash-psearch-icon" aria-hidden="true"></i>
+      <input type="search" id="dash-psearch-input" placeholder="Cerca profili…" autocomplete="off" aria-label="Cerca profili" role="combobox" aria-expanded="false" aria-controls="dash-psearch-list" maxlength="60">
+      <div class="dash-psearch-list" id="dash-psearch-list" role="listbox" hidden></div>
+    </div>
+  </div>
   <nav class="dash-icons-nav">
     <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="Attività" aria-label="Apri le attività" aria-controls="dash-right" aria-expanded="false">
       <i class="fa-solid fa-chart-simple"></i>
@@ -248,6 +256,61 @@ if ($actingAsId) {
     <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi il sito" style="font-size:17px;"><i class="fa-solid fa-eye"></i></a>
   </nav>
 </div>
+<script>
+// Ricerca profili nella barra in alto: campo sempre visibile su desktop, lente + campo compatto su telefono.
+(function () {
+  var wrap = document.getElementById('dash-psearch');
+  if (!wrap) return;
+  var btn = document.getElementById('dash-psearch-btn');
+  var input = document.getElementById('dash-psearch-input');
+  var list = document.getElementById('dash-psearch-list');
+  var timer = null, seq = 0, active = -1;
+  function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+  function show(open) { list.hidden = !open; input.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  function render(items, q) {
+    active = -1;
+    if (!items.length) { list.innerHTML = '<div class="dash-psearch-empty">Nessun profilo trovato per \u201c' + esc(q) + '\u201d</div>'; show(true); return; }
+    list.innerHTML = items.map(function (r) {
+      var av = r.avatar ? '<img src="' + esc(r.avatar) + '" alt="" loading="lazy">' : '<span class="dash-psearch-ph">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span>';
+      return '<a class="dash-psearch-item" role="option" href="/' + encodeURIComponent(r.slug) + '">' + av + '<span><b>' + esc(r.name) + '</b><small>' + esc(r.sub) + '</small></span></a>';
+    }).join('');
+    show(true);
+  }
+  function search() {
+    var q = input.value.trim().replace(/^@/, '');
+    if (q.length < 2) { show(false); return; }
+    var my = ++seq;
+    fetch('/api_profile_search.php?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+      .then(function (d) { if (my === seq) render(d.results || [], q); })
+      .catch(function () {});
+  }
+  input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(search, 250); });
+  input.addEventListener('focus', function () { if (list.innerHTML && input.value.trim().length >= 2) show(true); });
+  input.addEventListener('keydown', function (ev) {
+    var items = list.querySelectorAll('.dash-psearch-item');
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      if (!items.length) return;
+      ev.preventDefault();
+      active = (active + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items.forEach(function (it, i) { it.classList.toggle('active', i === active); });
+    } else if (ev.key === 'Enter') {
+      if (items.length) { ev.preventDefault(); (items[active >= 0 ? active : 0]).click(); }
+    } else if (ev.key === 'Escape') {
+      show(false); wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); input.blur();
+    }
+  });
+  btn.addEventListener('click', function () {
+    var open = !wrap.classList.contains('open');
+    wrap.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) input.focus(); else show(false);
+  });
+  document.addEventListener('click', function (ev) {
+    if (!wrap.contains(ev.target)) { show(false); wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+  });
+})();
+</script>
 <script>
 // La barra è "fixed" (vedi CSS .navbar-dash-sticky), quindi esce dal flusso normale della
 // pagina: senza compensare, il contenuto sotto salterebbe su e ci finirebbe parzialmente
