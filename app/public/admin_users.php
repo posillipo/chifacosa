@@ -13,7 +13,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'toggle_active' && $id !== (int)$admin['id']) {
         getDB()->prepare('UPDATE users SET is_active = NOT is_active WHERE id = ?')->execute([$id]);
     } elseif ($action === 'toggle_admin' && $id !== (int)$admin['id']) {
-        getDB()->prepare('UPDATE users SET is_admin = NOT is_admin WHERE id = ?')->execute([$id]);
+        // Mai togliere l'ultimo amministratore attivo: nessuno potrebbe più gestire il sito.
+        $cur = getDB()->prepare('SELECT is_admin FROM users WHERE id = ?');
+        $cur->execute([$id]);
+        $isAdminNow = (int) ($cur->fetchColumn() ?: 0);
+        $others = (int) getDB()->query('SELECT COUNT(*) FROM users WHERE is_admin = 1 AND is_active = 1')->fetchColumn();
+        if (!$isAdminNow || $others > 1) {
+            getDB()->prepare('UPDATE users SET is_admin = NOT is_admin WHERE id = ?')->execute([$id]);
+        }
     } elseif ($action === 'verify_manually' && $id !== (int)$admin['id']) {
         getDB()->prepare('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?')->execute([$id]);
     } elseif ($action === 'delete_user' && $id !== (int)$admin['id']) {
@@ -210,8 +217,9 @@ include __DIR__ . '/_admin_header.php';
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="toggle_admin">
                 <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
-                <button class="btn btn-sm btn-outline-primary" type="submit" title="Rendi/rimuovi admin">
-                  <i class="fas fa-user-shield"></i>
+                <button class="btn btn-sm <?= $u['is_admin'] ? 'btn-warning' : 'btn-outline-primary' ?>" type="submit" title="<?= $u['is_admin'] ? 'Riporta a utente standard' : 'Rendi amministratore' ?>"
+                        onclick="return confirm('<?= $u['is_admin'] ? 'Rimuovere i permessi di amministratore a questo utente?' : 'Rendere questo utente amministratore?' ?>');">
+                  <i class="fas fa-user-shield"></i> <?= $u['is_admin'] ? 'Rimuovi admin' : 'Rendi admin' ?>
                 </button>
               </form>
               <?php if (!$u['email_verified']): ?>
@@ -232,6 +240,8 @@ include __DIR__ . '/_admin_header.php';
                   <i class="fas fa-trash"></i>
                 </button>
               </form>
+              <?php else: ?>
+                <span class="text-muted small">Sei tu: non puoi modificare il tuo stesso account da qui</span>
               <?php endif; ?>
             </td>
           </tr>
