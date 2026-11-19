@@ -1,5 +1,7 @@
 <?php
 session_start();
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/spotify.php'; // httpRequest(), per la foto dell'account Google
 $user = requireLogin();
@@ -15,7 +17,6 @@ $error = null;
 
 // Dati dell'account Google (arrivano dal login): precompilano il form.
 $google = $_SESSION['google_profile'] ?? [];
-$googleName = trim((string) ($google['name'] ?? ''));
 $googlePicture = (string) ($google['picture'] ?? '');
 if (!preg_match('#^https://[a-z0-9.-]*\.googleusercontent\.com/#i', $googlePicture)) {
     $googlePicture = '';
@@ -214,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <?php if ($error): ?><div class="ob-error"><?= e($error) ?></div><?php endif; ?>
 
-  <form method="post" enctype="multipart/form-data">
+  <form method="post" enctype="multipart/form-data" autocomplete="off">
     <?= csrfField() ?>
 
     <div class="ob-card">
@@ -254,10 +255,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input type="text" value="<?= e($user['email']) ?>" readonly style="background:#f5f3ee;color:#666;">
 
       <label>Nome del profilo</label>
-      <input type="text" name="display_name" value="<?= e($_POST['display_name'] ?? ($googleName !== '' ? $googleName : ($profile['display_name'] ?? ''))) ?>" maxlength="120" required>
+      <input type="text" name="display_name" value="<?= e($_POST['display_name'] ?? '') ?>" placeholder="Come vuoi chiamare il tuo profilo?" maxlength="120" required autocomplete="off" autocapitalize="words">
 
-      <label>Username (<span id="ob-domain"><?= e($siteHost) ?></span>/<strong id="ob-slug-live"><?= e($_POST['slug'] ?? $profile['slug']) ?></strong>)</label>
-      <input type="text" name="slug" id="ob-slug" value="<?= e($_POST['slug'] ?? $profile['slug']) ?>" required maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label>Username (<span id="ob-domain"><?= e($siteHost) ?></span>/<strong id="ob-slug-live"><?= e(usernameNormalize((string) ($_POST['slug'] ?? '')) ?: 'username') ?></strong>)</label>
+      <input type="text" name="slug" id="ob-slug" value="<?= e($_POST['slug'] ?? '') ?>" placeholder="Scegli il tuo username" required maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
       <p id="ob-slug-msg" class="ob-hint" style="margin:6px 0 0;"></p>
 
       <label>Bio (opzionale)</label>
@@ -340,8 +341,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .then(function (d) { if (my !== seq) return; msg.className = 'ob-hint ' + (d.ok ? 'ok' : 'bad'); msg.textContent = (d.ok ? '✓ ' : '✗ ') + d.message; })
         .catch(function () {});
     }
-    input.addEventListener('input', function () { live.textContent = norm(input.value) || 'username'; clearTimeout(timer); timer = setTimeout(check, 300); });
-    check();
+    input.addEventListener('input', function () {
+      live.textContent = norm(input.value) || 'username';
+      clearTimeout(timer);
+      if (!input.value.trim()) { msg.className = 'ob-hint'; msg.textContent = ''; return; }
+      timer = setTimeout(check, 300);
+    });
+    // Nessun valore preimpostato: se il browser ha ripristinato qualcosa (cache, ripristino modulo), si svuota.
+    var serverVal = input.getAttribute('value') || '';
+    function wipe() { if (document.activeElement !== input && input.value !== serverVal) { input.value = serverVal; live.textContent = norm(serverVal) || 'username'; } var dn = document.querySelector('input[name=display_name]'); if (dn && document.activeElement !== dn && dn.value !== (dn.getAttribute('value') || '')) { dn.value = dn.getAttribute('value') || ''; } }
+    wipe(); window.addEventListener('pageshow', wipe); setTimeout(wipe, 300);
+    if (serverVal) check();
   })();
   </script>
 </div>
