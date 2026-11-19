@@ -13,6 +13,9 @@ require_once __DIR__ . '/../src/products.php';
 
 $action = (string) ($_GET['action'] ?? '');
 $method = $_SERVER['REQUEST_METHOD'];
+if (!siteToolEnabled('prodotti')) {
+    apiError(404, 'Funzione non attiva su questo sito.');
+}
 $auth = authenticateApiRequest();
 $uid = $auth['user_id'];
 $tid = $auth['token_id'];
