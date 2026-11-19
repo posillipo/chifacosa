@@ -12,29 +12,18 @@ $error = null;
 
 if (!$blocker && $_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    $fails = (int) ($_SESSION['del_account_fails'] ?? 0);
-    $until = (int) ($_SESSION['del_account_until'] ?? 0);
-    if ($until > time()) {
-        $error = 'Troppi tentativi: riprova tra qualche minuto.';
-    } elseif (empty($_POST['understood'])) {
+    if (empty($_POST['understood'])) {
         $error = 'Conferma di aver capito che l\'eliminazione è definitiva.';
-    } elseif (strcasecmp(trim((string) ($_POST['confirm_email'] ?? '')), (string) $user['email']) !== 0) {
-        $error = 'L\'email scritta non coincide con quella dell\'account.';
-    } elseif (!password_verify((string) ($_POST['password'] ?? ''), (string) $user['password_hash'])) {
-        $fails++;
-        $_SESSION['del_account_fails'] = $fails;
-        if ($fails >= 5) {
-            $_SESSION['del_account_until'] = time() + 900;
-            $_SESSION['del_account_fails'] = 0;
-        }
-        sleep(1);
-        $error = 'Password non corretta.';
+    } elseif (trim((string) ($_POST['confirm_word'] ?? '')) !== 'Elimina') {
+        $error = 'Per confermare scrivi esattamente la parola Elimina.';
     } else {
         $email = (string) $user['email'];
         $name = (string) (($user['display_name'] ?? '') ?: $user['slug']);
+        $slug = (string) $user['slug'];
         $res = accountDeleteEverything((int) $user['id']);
         if ($res['ok']) {
             notifyAccountDeleted($email, $name);
+            notifyAdminsAccountDeleted($email, $name, $slug, (int) $res['deleted']);
             clearRememberToken();
             $_SESSION = [];
             session_destroy();
@@ -79,11 +68,8 @@ include __DIR__ . '/_dash_header.php';
 
       <form method="post" onsubmit="return confirm('Ultima conferma: eliminare definitivamente il tuo account e tutti i suoi contenuti?');">
         <?= csrfField() ?>
-        <label>Scrivi la tua email (<?= e($user['email']) ?>) per confermare</label>
-        <input type="email" name="confirm_email" required autocomplete="off">
-        <label>Password</label>
-        <input type="password" name="password" required autocomplete="current-password">
-        <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Se hai sempre usato l'accesso con Google e non hai una password, usa prima "Password dimenticata" nella pagina di login per impostarne una.</p>
+        <label>Per confermare scrivi la parola <strong>Elimina</strong></label>
+        <input type="text" name="confirm_word" required autocomplete="off" placeholder="Elimina">
         <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;">
           <input type="checkbox" name="understood" value="1" style="width:auto;margin-top:3px;" required>
           Ho capito che l'eliminazione è definitiva e immediata e che i contenuti non potranno essere recuperati.

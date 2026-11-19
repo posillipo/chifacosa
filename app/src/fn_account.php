@@ -162,7 +162,31 @@ function notifyAccountDeleted(string $toEmail, string $toName): bool {
     $body = "Ciao {$toName},\n\n"
           . "Come richiesto, abbiamo eliminato il tuo account su " . siteName() . " con tutti i contenuti che avevi pubblicato.\n"
           . "L'operazione è definitiva.\n\n"
-          . "Se non sei stato tu a chiederlo, rispondi a questa email il prima possibile.\n"
+          . "Database e file caricati (immagini, video, audio) sono stati rimossi.\nSe non sei stato tu a chiederlo, rispondi a questa email il prima possibile.\n"
           . "Se un giorno vorrai tornare, potrai registrarti di nuovo su " . siteUrl('/register.php') . ".";
     return $mailer->send($cfg['from'], $cfg['fromName'], $toEmail, $toName, $subject, $body);
+}
+
+
+// Avviso agli amministratori: un account è stato eliminato (nessun dato dell'utente oltre a nome ed email già noti).
+function notifyAdminsAccountDeleted(string $email, string $name, string $slug, int $profilesDeleted): bool {
+    $cfg = getSmtpConfig();
+    if (!$cfg['host']) {
+        return false;
+    }
+    $admins = getDB()->query('SELECT email FROM users WHERE is_admin = 1 AND is_active = 1')->fetchAll(PDO::FETCH_COLUMN);
+    if (!$admins) {
+        return false;
+    }
+    require_once __DIR__ . '/mailer.php';
+    $mailer = new SimpleSmtpMailer($cfg['host'], $cfg['port'], $cfg['user'], $cfg['pass'], $cfg['secure'], $cfg['verifyCert']);
+    $subject = 'Account eliminato su ' . siteName() . ': ' . $name;
+    $body = "Un utente ha eliminato il proprio account su " . siteName() . ".\n\n"
+          . "Nome: {$name}\nEmail: {$email}\nProfilo: @{$slug}\nProfili cancellati: {$profilesDeleted}\n\n"
+          . "Database e file caricati (immagini, video, audio) sono stati rimossi in modo definitivo.";
+    $sent = false;
+    foreach ($admins as $to) {
+        $sent = $mailer->send($cfg['from'], $cfg['fromName'], $to, $to, $subject, $body) || $sent;
+    }
+    return $sent;
 }
