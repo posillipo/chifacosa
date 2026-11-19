@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/api_helpers.php';
-$user = requireLogin();
+$user = requireAdmin(); // strumento riservato agli amministratori del sito
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'api_tokens';
 $pageTitle = 'API';

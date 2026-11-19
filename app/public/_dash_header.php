@@ -101,7 +101,7 @@ $dashTabs['segui'] = ['label' => 'Follower', 'url' => '/dashboard_followers.php'
 $dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
 // Gestione token per l'API pubblica /api/v1/social-posts/*: strumento di gestione, non una
 // sezione del sito pubblico — sempre visibile, non legato al "Menu di Navigazione" come "Primo Piano".
-$dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'active' => 'api_tokens', 'visible' => true];
+$dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'active' => 'api_tokens', 'visible' => !empty($user['is_admin'])];
 // Come "Primo Piano"/"API": strumento di gestione trasversale a tutti i moduli, non una sezione
 // del sito pubblico — sempre visibile, non legato al "Menu di Navigazione".
 $dashTabs['schedule'] = ['label' => 'Programmati', 'url' => '/dashboard_schedule.php', 'active' => 'schedule', 'visible' => true];
@@ -169,7 +169,7 @@ $dashAccountGroups = [
         ['url' => '/dashboard_privacy_tracking.php', 'tab' => 'privacy_tracking', 'icon' => 'fa-shield-halved',  'label' => 'Privacy e Tracking',  'show' => true],
         ['url' => '/dashboard_team.php',             'tab' => 'team',             'icon' => 'fa-people-group',   'label' => 'Team e co-admin',     'show' => $isBandOrLabel],
         ['url' => '/dashboard_log.php',              'tab' => 'log',              'icon' => 'fa-clock-rotate-left', 'label' => 'Log',              'show' => $isBandOrLabel],
-        ['url' => '/dashboard_api_tokens.php',       'tab' => 'api_tokens',       'icon' => 'fa-code',           'label' => 'API',                 'show' => true],
+        ['url' => '/dashboard_api_tokens.php',       'tab' => 'api_tokens',       'icon' => 'fa-code',           'label' => 'API',                 'show' => !empty($user['is_admin'])],
     ],
 ];
 
@@ -224,7 +224,7 @@ if ($actingAsId) {
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
-    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
+    <?php if (!empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social'])): ?>
       <a href="/dashboard_social_queue.php" class="dash-hide-sm" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
         <i class="fa-solid fa-share-nodes"></i>
       </a>
@@ -299,7 +299,7 @@ document.addEventListener('click', function (e) {
   <div class="dash-side-foot">
     <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
     <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
-    <?php if (!empty($dashProfile['metricool_auto_social'])): ?>
+    <?php if (!empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social'])): ?>
     <a class="dash-side-link" href="/dashboard_social_queue.php"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span>Coda Social</span></a>
     <?php endif; ?>
     <?php if (!empty($user['is_admin'])): ?>
@@ -412,7 +412,7 @@ echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
     'nav_visibility'   => $navVisibility,
-    'queue_on'         => !empty($dashProfile['metricool_auto_social']),
+    'queue_on'         => !empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social']),
     'is_admin'         => !empty($user['is_admin']),
     'unread_contacts'  => $unreadMessages,
     'unread_messages'  => $unreadDirectMessages,
@@ -422,10 +422,10 @@ echo renderDashRight([
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
         ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
+    ], empty($user['is_admin']) ? [] : [
+        // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
         ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
         ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
-    ], [
-        // Marketing (tutti i profili): progetti pianificati a passi. Pallino = ci sono progetti in corso.
         ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
     ]),
     'active_tab'       => $activeTab ?? '',
@@ -506,7 +506,7 @@ echo renderDashRight([
 })();
 </script>
 
-<?php if (!empty($dashProfile['metricool_auto_social'])): ?>
+<?php if (!empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social'])): ?>
 <!-- ── Modale condivisione social ───────────────────────────────────────────── -->
 <dialog id="sq-share-dialog" style="border:none;border-radius:14px;padding:0;width:min(420px,94vw);box-shadow:0 8px 40px rgba(0,0,0,0.18);">
   <form method="dialog" style="padding:22px 22px 18px;">

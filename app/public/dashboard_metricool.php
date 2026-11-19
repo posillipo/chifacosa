@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
-$user = requireLogin();
+$user = requireAdmin(); // strumento riservato agli amministratori del sito
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 requireBandOrLabel($profile);
 $activeTab = 'metricool';
