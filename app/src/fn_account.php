@@ -56,6 +56,52 @@ function accountRemoveUploadsDir(string $dir): void {
     @rmdir($real);
 }
 
+// Percorsi dei file caricati (uploads/...) referenziati nel database dai profili indicati: tutte le colonne
+// che contengono un percorso (path, image, photo, cover, avatar, thumb, file, media) delle tabelle con user_id,
+// più le foto degli album. Va chiamata PRIMA di cancellare le righe.
+function accountCollectUploadPaths(array $userIds): array {
+    $db = getDB();
+    $in = implode(',', array_fill(0, count($userIds), '?'));
+    $paths = [];
+    $add = function ($v) use (&$paths) {
+        $v = trim((string) $v);
+        if ($v === '') return;
+        // accetta sia "uploads/..." sia URL completi del sito
+        if (($i = strpos($v, 'uploads/')) !== false && !str_contains($v, '..')) {
+            $paths[substr($v, $i)] = true;
+        }
+    };
+    try {
+        $cols = $db->query("SELECT c.TABLE_NAME t, c.COLUMN_NAME c FROM information_schema.COLUMNS c JOIN information_schema.TABLES tb ON tb.TABLE_SCHEMA = c.TABLE_SCHEMA AND tb.TABLE_NAME = c.TABLE_NAME AND tb.TABLE_TYPE = 'BASE TABLE' WHERE c.TABLE_SCHEMA = DATABASE() AND c.DATA_TYPE IN ('varchar','text','mediumtext','longtext') AND c.COLUMN_NAME REGEXP 'path|image|photo|cover|avatar|thumb|file|media|logo|banner'")->fetchAll();
+        $hasUser = [];
+        foreach ($db->query("SELECT TABLE_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'user_id'")->fetchAll(PDO::FETCH_COLUMN) as $t) {
+            $hasUser[$t] = true;
+        }
+        foreach ($cols as $r) {
+            $t = $r['t'];
+            $c = $r['c'];
+            if ($t === 'users') {
+                $sql = "SELECT `$c` FROM `users` WHERE id IN ($in)";
+            } elseif ($t === 'photo_album_photos') {
+                $sql = "SELECT `$c` FROM `photo_album_photos` WHERE album_id IN (SELECT id FROM photo_albums WHERE user_id IN ($in))";
+            } elseif (isset($hasUser[$t])) {
+                $sql = "SELECT `$c` FROM `$t` WHERE user_id IN ($in)";
+            } else {
+                continue;
+            }
+            try {
+                $st = $db->prepare($sql);
+                $st->execute($userIds);
+                foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $v) $add($v);
+            } catch (Throwable $e) {
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('accountCollectUploadPaths: ' . $e->getMessage());
+    }
+    return array_keys($paths);
+}
+
 // Cancella account e profili creati dall'utente. Ritorna ['ok'=>bool, 'deleted'=>n profili] .
 function accountDeleteEverything(int $userId): array {
     $db = getDB();
@@ -66,17 +112,7 @@ function accountDeleteEverything(int $userId): array {
     $st = $db->prepare("SELECT slug FROM users WHERE id IN ($in)");
     $st->execute($ids);
     $slugs = $st->fetchAll(PDO::FETCH_COLUMN);
-    $audio = [];
-    try {
-        $st = $db->prepare("SELECT file_path, cover_path FROM audio_tracks WHERE user_id IN ($in)");
-        $st->execute($ids);
-        foreach ($st->fetchAll() as $r) {
-            foreach (['file_path', 'cover_path'] as $c) {
-                if (!empty($r[$c])) $audio[] = $r[$c];
-            }
-        }
-    } catch (Throwable $e) {
-    }
+    $files = accountCollectUploadPaths($ids);
 
     try {
         $db->beginTransaction();
@@ -103,9 +139,10 @@ function accountDeleteEverything(int $userId): array {
             accountRemoveUploadsDir('/var/www/html/uploads/videos/' . $slug);
         }
     }
-    foreach ($audio as $rel) {
-        $path = realpath('/var/www/html/' . ltrim((string) $rel, '/'));
-        $root = realpath('/var/www/html/uploads');
+    // Singoli file referenziati dal database (copre anche cartelle di slug vecchi, cambiati dopo il caricamento).
+    $root = realpath('/var/www/html/uploads');
+    foreach ($files as $rel) {
+        $path = realpath('/var/www/html/' . ltrim($rel, '/'));
         if ($path && $root && strpos($path, $root . DIRECTORY_SEPARATOR) === 0 && is_file($path)) {
             @unlink($path);
         }
