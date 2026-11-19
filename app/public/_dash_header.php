@@ -109,8 +109,8 @@ $dashTabs['schedule_admin'] = ['label' => 'Calendario', 'url' => '/dashboard_sch
 // Interfaccia umana sulla bacheca condivisa con le AI (board_messages) — finora accessibile solo
 // via API/MCP con firma. Scrive sempre come "direttore" (autenticazione = sessione già loggata,
 // più forte di qualunque firma), senza passare dall'endpoint pubblico. Come API/Programmati:
-// strumento di gestione trasversale, sempre visibile.
-$dashTabs['board'] = ['label' => 'Bacheca', 'url' => '/dashboard_board.php', 'active' => 'board', 'visible' => true];
+// strumento di gestione trasversale, visibile salvo che l'admin la spenga (Admin → Funzioni del sito → Bacheca).
+$dashTabs['board'] = ['label' => 'Bacheca', 'url' => '/dashboard_board.php', 'active' => 'board', 'visible' => !in_array('bacheca', getSiteDisabledNavKeys(), true)];
 
 $dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
 

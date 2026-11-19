@@ -19,7 +19,9 @@ foreach (PUBLIC_NAV_ITEM_KEYS as $name => $key) {
 // Tutte le chiavi che questa pagina espone davvero come checkbox — solo queste vanno considerate
 // quando si calcola cosa disattivare: "Home" (mai mostrata qui) non deve finire per errore tra le
 // disattivate solo perché non compare in $_POST['enabled'].
-$toggleableKeys = array_merge(array_values($mainSections), array_keys(CHE_AMO_MODULES));
+// Strumenti della dashboard (non sono sezioni del sito pubblico): stessa lista di chiavi disattivate.
+$dashboardTools = ['bacheca' => 'Bacheca (messaggi condivisi con le AI)'];
+$toggleableKeys = array_merge(array_values($mainSections), array_keys(CHE_AMO_MODULES), array_keys($dashboardTools));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
@@ -64,6 +66,15 @@ include __DIR__ . '/_admin_header.php';
       <label style="display:flex;align-items:center;gap:10px;font-weight:normal;margin-bottom:10px;">
         <input type="checkbox" name="enabled[]" value="<?= e($key) ?>" style="width:auto;" <?= in_array($key, $disabledKeys, true) ? '' : 'checked' ?>>
         <?= e($name) ?>
+      </label>
+    <?php endforeach; ?>
+
+    <label style="margin-top:18px;">Strumenti della dashboard</label>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:-6px;">Se disattivata, la voce sparisce dal menu della dashboard di tutti i profili e la pagina non è più raggiungibile.</p>
+    <?php foreach ($dashboardTools as $key => $label): ?>
+      <label style="display:flex;align-items:center;gap:10px;font-weight:normal;margin-bottom:10px;">
+        <input type="checkbox" name="enabled[]" value="<?= e($key) ?>" style="width:auto;" <?= in_array($key, $disabledKeys, true) ? '' : 'checked' ?>>
+        <?= e($label) ?>
       </label>
     <?php endforeach; ?>
 
