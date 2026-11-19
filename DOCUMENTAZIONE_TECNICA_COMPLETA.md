@@ -141,6 +141,7 @@ l'Area Admin era stata valutata e poi annullata su richiesta esplicita). Tema fo
 | `dashboard_contacts.php` | Richieste di contatto ricevute |
 | `dashboard_spotify.php` | Ricerca e collegamento manuale del proprio profilo Spotify |
 | `dashboard_followers.php` | Conteggio e elenco follower, crescita 7/30 giorni |
+| `dashboard_profile_view.php` | Scheda di un profilo (dalla ricerca profili nella barra in alto): info essenziali, Segui / Non seguire più, «Scrivi un messaggio» se reciproci, link alla pagina pubblica. La ricerca usa `api_profile_search.php` |
 
 I pulsanti azione (sposta su/giù, modifica, mostra/nascondi, elimina) usano icone Font Awesome
 (`.icon-btn`), non testo — corretto un bug per cui il tab attivo nel menu diventava illeggibile

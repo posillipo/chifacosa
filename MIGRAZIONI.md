@@ -1276,6 +1276,9 @@ i testi modificati da Admin → Guide delle pagine). Da eseguire una volta su og
 ### Guide di tutte le pagine (`2026_11_30_page_help_all_pages.sql`)
 Aggiunge i testi di guida delle pagine che non ne avevano (Feed, Profilo, Eventi, Contatti, ecc.). INSERT IGNORE: si può rieseguire. Richiede la migrazione `2026_11_29` già eseguita.
 
+### Guida scheda profilo (`2026_11_31_page_help_profile_view.sql`)
+Aggiunge il testo di guida di `dashboard_profile_view.php`. INSERT IGNORE: si può rieseguire. Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce
