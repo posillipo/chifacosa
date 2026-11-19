@@ -279,7 +279,13 @@ if ($actingAsId) {
         </span>
       <?php endif; ?>
     </a>
-    <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi il sito" style="font-size:17px;"><i class="fa-solid fa-eye"></i></a>
+    <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm dash-preview" title="Vedi il sito di <?= e($barAvatarName) ?>" aria-label="Vedi il sito">
+      <?php if ($barAvatarPath): ?>
+        <img src="/<?= e(ltrim($barAvatarPath, '/')) ?>" alt="">
+      <?php else: ?>
+        <span class="dash-preview-ph"><?= e(mb_strtoupper(mb_substr((string) $barAvatarName, 0, 1))) ?></span>
+      <?php endif; ?>
+    </a>
     <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </nav>
 </div>
