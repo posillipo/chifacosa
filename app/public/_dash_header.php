@@ -280,6 +280,7 @@ if ($actingAsId) {
       <?php endif; ?>
     </a>
     <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm" title="Vedi il sito" style="font-size:17px;"><i class="fa-solid fa-eye"></i></a>
+    <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </nav>
 </div>
 <script>
