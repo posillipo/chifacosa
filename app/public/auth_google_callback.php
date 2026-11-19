@@ -102,6 +102,11 @@ if ($u) {
     $needsAccountType = true;
 }
 
+// Dati dell'account Google per precompilare il form di benvenuto (nome e foto).
+if ($needsAccountType) {
+    $_SESSION['google_profile'] = ['name' => $name, 'picture' => $userInfo['picture'] ?? null];
+}
+
 // Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session fixation"
 // (un ID di sessione impostato dall'esterno prima del login, che altrimenti resterebbe valido
 // anche dopo — come su login.php/login_otp_verify.php).

@@ -296,7 +296,7 @@ const RESERVED_SLUGS = ['login','register','logout','dashboard','dashboard_profi
     'auth_google_start','auth_google_callback','admin_google_login','onboarding_setup',
     'dashboard_che_amo','che_amo',
     'dashboard_fan_playlists','playlist_che_amo','dashboard_fan_albums','album_che_amo',
-    'dashboard_api_tokens','api','admin_mcp','guida','admin_page_help','api_profile_search','dashboard_profile_view'];
+    'dashboard_api_tokens','api','admin_mcp','guida','admin_page_help','api_profile_search','dashboard_profile_view','api_username_check'];
 
 
 // ============================================
