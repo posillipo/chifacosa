@@ -366,5 +366,5 @@ const DASHBOARD_TAB_KEYS = [
     'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
     'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album', 'video' => 'Video', 'contest' => 'Contest',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
-    'segui' => 'Follower', 'contatti' => 'Contatti', 'api' => 'API', 'schedule' => 'Programmati',
+    'segui' => 'Follower', 'contatti' => 'Contatti Web', 'api' => 'API', 'schedule' => 'Programmati',
 ];

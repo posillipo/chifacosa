@@ -98,14 +98,14 @@ $dashTabs['service_inquiries'] = ['label' => 'Richieste', 'url' => '/dashboard_s
 $dashTabs['eventi'] = ['label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
 $dashTabs['reservations'] = ['label' => 'Prenotazioni', 'url' => '/dashboard_reservations.php', 'active' => 'reservations', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
 $dashTabs['segui'] = ['label' => 'Follower', 'url' => '/dashboard_followers.php', 'active' => 'followers', 'visible' => $navVisibility['Segui'] ?? 1];
-$dashTabs['contatti'] = ['label' => 'Contatti', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
+$dashTabs['contatti'] = ['label' => 'Contatti Web', 'url' => '/dashboard_contacts.php', 'active' => 'contacts', 'visible' => $navVisibility['Contatti'] ?? 1];
 // Gestione token per l'API pubblica /api/v1/social-posts/*: strumento di gestione, non una
 // sezione del sito pubblico — sempre visibile, non legato al "Menu di Navigazione" come "Primo Piano".
 $dashTabs['api'] = ['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'active' => 'api_tokens', 'visible' => !empty($user['is_admin'])];
 // Come "Primo Piano"/"API": strumento di gestione trasversale a tutti i moduli, non una sezione
 // del sito pubblico — sempre visibile, non legato al "Menu di Navigazione".
-$dashTabs['schedule'] = ['label' => 'Programmati', 'url' => '/dashboard_schedule.php', 'active' => 'schedule', 'visible' => true];
-$dashTabs['schedule_admin'] = ['label' => 'Calendario', 'url' => '/dashboard_schedule_admin.php', 'active' => 'schedule_admin', 'visible' => !empty($user['is_admin'])];
+$dashTabs['schedule'] = ['label' => 'Programmati', 'url' => '/dashboard_schedule.php', 'active' => 'schedule', 'visible' => siteToolEnabled('programmati')];
+$dashTabs['schedule_admin'] = ['label' => 'Calendario', 'url' => '/dashboard_schedule_admin.php', 'active' => 'schedule_admin', 'visible' => !empty($user['is_admin']) && siteToolEnabled('programmati')];
 // Interfaccia umana sulla bacheca condivisa con le AI (board_messages) — finora accessibile solo
 // via API/MCP con firma. Scrive sempre come "direttore" (autenticazione = sessione già loggata,
 // più forte di qualunque firma), senza passare dall'endpoint pubblico. Come API/Programmati:
@@ -138,6 +138,20 @@ $dashSideExtra = [
 if (!siteToolEnabled('cinema')) unset($dashSideExtra['cinema']);
 if (!siteToolEnabled('prodotti')) unset($dashSideExtra['products']);
 $dashSideAll = $dashTabs + $dashSideExtra;
+// Integrazioni (prima nel menu account, poi colonna destra, ora nel menu di sinistra): solo band/etichette per Spotify, Podcast e
+// YouTube; strumenti per amministratori per gli altri. Il pallino verde = collegata.
+require_once __DIR__ . '/../src/marketing.php';
+$dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
+        ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
+        ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
+        ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
+    ], empty($user['is_admin']) ? [] : [
+        // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
+        ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
+        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
+        ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
+    ]);
+
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
 $dashSideGroups = [
     'Contenuti e pubblicazione' => [
@@ -148,7 +162,8 @@ $dashSideGroups = [
     'Eventi e prenotazioni' => [
         'eventi' => 'fa-ticket', 'reservations' => 'fa-calendar-check', 'cinema' => 'fa-film',
     ],
-    'Business e vendite' => [
+    '__integrations' => [],
+    'Business' => [
         'products' => 'fa-tags', 'menu' => 'fa-utensils', 'offerte' => 'fa-percent', 'servizi' => 'fa-briefcase',
         'service_inquiries' => 'fa-inbox', 'contatti' => 'fa-address-book',
     ],
@@ -353,6 +368,17 @@ document.addEventListener('click', function (e) {
   </div>
   <nav>
   <?php foreach ($dashSideGroups as $groupTitle => $groupItems): ?>
+    <?php if ($groupTitle === '__integrations'): ?>
+      <?php if ($dashIntegrations): ?>
+        <div class="dash-side-title">Integrazioni</div>
+        <?php foreach ($dashIntegrations as $int): ?>
+          <a href="<?= e($int['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $int['tab'] ? ' active' : '' ?>" title="<?= e($int['label']) ?>"<?= ($activeTab ?? '') === $int['tab'] ? ' aria-current="page"' : '' ?>>
+            <i class="<?= e($int['icon']) ?>" aria-hidden="true"></i><span><?= e($int['label']) ?></span><?= $int['on'] ? '<span class="dash-side-dot" title="Collegato" aria-label="Collegato"></span>' : '' ?>
+          </a>
+        <?php endforeach; ?>
+      <?php endif; ?>
+      <?php continue; ?>
+    <?php endif; ?>
     <?php $visibleItems = array_filter($groupItems, fn ($k) => isset($dashSideAll[$k]), ARRAY_FILTER_USE_KEY); ?>
     <?php if (!$visibleItems) continue; ?>
     <div class="dash-side-title"><?= e($groupTitle) ?></div>
@@ -474,7 +500,6 @@ document.addEventListener('click', function (e) {
 <?php
 // Colonna destra "Attività": dati del solo profilo attivo, calcolati lato server.
 require_once __DIR__ . '/../src/dash_right.php';
-require_once __DIR__ . '/../src/marketing.php';
 echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
@@ -484,17 +509,6 @@ echo renderDashRight([
     'unread_contacts'  => $unreadMessages,
     'unread_messages'  => $unreadDirectMessages,
     'tz_profile'       => $dashProfile,
-    // Integrazioni (prima nel menu account): solo band/etichette, come prima. Il pallino verde = collegata.
-    'integrations'     => array_merge(!$isBandOrLabel ? [] : [
-        ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
-        ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
-        ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
-    ], empty($user['is_admin']) ? [] : [
-        // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
-        ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
-        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
-        ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
-    ]),
     'active_tab'       => $activeTab ?? '',
 ]);
 ?>

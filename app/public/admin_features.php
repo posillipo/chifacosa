@@ -24,6 +24,7 @@ $dashboardTools = [
     'bacheca'  => 'Bacheca (messaggi condivisi con le AI)',
     'cinema'   => 'Cinema (film in programmazione, feed e API)',
     'prodotti' => 'Catalogo prodotti (importazione da feed e API)',
+    'programmati' => 'Programmati e Calendario (contenuti con pubblicazione programmata)',
 ];
 $toggleableKeys = array_merge(array_values($mainSections), array_keys(CHE_AMO_MODULES), array_keys($dashboardTools));
 
