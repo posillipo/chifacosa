@@ -6,6 +6,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     apiError(405, 'Metodo non permesso, usa GET.');
 }
 
+if (!siteToolEnabled('cinema')) {
+    apiError(404, 'Funzione non attiva su questo sito.');
+}
 $auth = authenticateApiRequest();
 
 $stmt = getDB()->prepare('SELECT * FROM profiles WHERE user_id = ?');

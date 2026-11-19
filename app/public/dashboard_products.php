@@ -3,6 +3,10 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/products.php';
 $user = requireLogin();
+if (!siteToolEnabled('prodotti')) {
+    http_response_code(404);
+    exit('Questa funzione non è attiva su questo sito.');
+}
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'products';
 $pageTitle = 'Catalogo prodotti';

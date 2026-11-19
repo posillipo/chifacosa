@@ -110,7 +110,7 @@ $dashTabs['schedule_admin'] = ['label' => 'Calendario', 'url' => '/dashboard_sch
 // via API/MCP con firma. Scrive sempre come "direttore" (autenticazione = sessione già loggata,
 // più forte di qualunque firma), senza passare dall'endpoint pubblico. Come API/Programmati:
 // strumento di gestione trasversale, visibile salvo che l'admin la spenga (Admin → Funzioni del sito → Bacheca).
-$dashTabs['board'] = ['label' => 'Bacheca', 'url' => '/dashboard_board.php', 'active' => 'board', 'visible' => !in_array('bacheca', getSiteDisabledNavKeys(), true)];
+$dashTabs['board'] = ['label' => 'Bacheca', 'url' => '/dashboard_board.php', 'active' => 'board', 'visible' => siteToolEnabled('bacheca')];
 
 $dashTabs = array_filter($dashTabs, fn ($t) => $t['visible']);
 
@@ -134,6 +134,9 @@ $dashSideExtra = [
     'following' => ['label' => 'Seguiti',           'url' => '/dashboard_following.php', 'active' => 'following'],
     'invite'    => ['label' => 'Invita',            'url' => '/dashboard_invite.php',    'active' => 'invite'],
 ];
+// Cinema e Catalogo prodotti: l'admin può spegnerli per tutto il sito (Admin → Funzioni del sito).
+if (!siteToolEnabled('cinema')) unset($dashSideExtra['cinema']);
+if (!siteToolEnabled('prodotti')) unset($dashSideExtra['products']);
 $dashSideAll = $dashTabs + $dashSideExtra;
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
 $dashSideGroups = [

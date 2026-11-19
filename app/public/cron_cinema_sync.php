@@ -5,6 +5,9 @@ require_once __DIR__ . '/../src/functions.php';
 // (vedi Dashboard → menu hamburger → Cinema per il comando esatto). Sincronizza TUTTI i profili
 // che hanno un URL JSON film configurato — non serve login, l'autenticazione è solo il token.
 header('Content-Type: text/plain; charset=UTF-8');
+if (!siteToolEnabled('cinema')) {
+    exit("Cinema disattivato su questo sito.\n");
+}
 set_time_limit(300);
 
 $token = $_GET['token'] ?? '';

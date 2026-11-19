@@ -3,7 +3,7 @@ session_start();
 require_once __DIR__ . '/../src/functions.php';
 require_once __DIR__ . '/../src/api_helpers.php';
 $user = requireLogin();
-if (in_array('bacheca', getSiteDisabledNavKeys(), true)) {
+if (!siteToolEnabled('bacheca')) {
     http_response_code(404);
     exit('Questa funzione non è attiva su questo sito.');
 }

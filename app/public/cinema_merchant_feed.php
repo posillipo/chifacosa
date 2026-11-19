@@ -9,6 +9,10 @@ require_once __DIR__ . '/../src/functions.php';
 
 header('Content-Type: application/xml; charset=UTF-8');
 
+if (!siteToolEnabled('cinema')) {
+    http_response_code(404);
+    exit;
+}
 $slug = $_GET['slug'] ?? '';
 $stmt = getDB()->prepare('SELECT u.id, p.display_name, p.cinema_films_json_url, p.cinema_ticket_price
                           FROM users u JOIN profiles p ON p.user_id = u.id

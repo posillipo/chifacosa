@@ -802,6 +802,12 @@ function getSiteDisabledNavKeys(): array {
 }
 
 
+// Strumento della dashboard attivo per tutto il sito? ($key: 'bacheca', 'cinema', 'prodotti' — vedi Admin → Funzioni del sito.)
+function siteToolEnabled(string $key): bool {
+    return !in_array($key, getSiteDisabledNavKeys(), true);
+}
+
+
 function setSiteDisabledNavKeys(array $keys): void {
     setSiteSetting('disabled_nav_keys', json_encode(array_values(array_unique($keys))));
 }
