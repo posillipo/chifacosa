@@ -188,23 +188,34 @@ function renderDashRight(array $ctx): string {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Integrazioni</div>' . $in . '</div>';
     }
 
-    // --- Prossimi eventi ---
-    if ($isBandOrLabel && ($nav['Eventi'] ?? 1)) {
-        $ev = '';
-        foreach ($heavy['events'] as $e1) {
-            $where = trim(($e1['venue'] ?? '') . (!empty($e1['city']) ? ' · ' . $e1['city'] : ''), ' ·');
-            $ev .= '<a class="dash-right-event" href="/dashboard_events.php"><b>' . e(formatLocalDateTime($e1['event_date'], $tzProfile, 'd/m H:i')) . '</b>'
-                 . '<span>' . e($e1['title']) . '</span>' . ($where !== '' ? '<small>' . e($where) . '</small>' : '') . '</a>';
-        }
-        if ($ev === '') {
-            $ev = '<div class="dash-right-empty">Nessun evento in programma.</div>';
-        }
-        $html .= '<div class="dash-right-block"><div class="dash-right-title">Prossimi eventi</div>' . $ev . '</div>';
-    }
-
     return '<div id="dash-right-overlay" class="dash-right-overlay"></div>'
          . '<aside id="dash-right" class="dash-right" aria-label="Attività">'
          . '<div class="dash-right-head"><strong>Attività</strong><button type="button" id="dash-right-close" class="dash-side-close" aria-label="Chiudi">&times;</button></div>'
          . $html
          . '</aside>';
+}
+
+
+/**
+ * Blocco "Prossimi eventi" per il menu laterale sinistro (solo profili con la sezione Eventi): i prossimi 3 eventi.
+ */
+function renderDashSideEvents(int $profileId, array $tzProfile): string {
+    $rows = [];
+    try {
+        $st = getDB()->prepare('SELECT id, title, venue, city, event_date FROM events WHERE user_id = ? AND event_date >= NOW() ORDER BY event_date ASC LIMIT 3');
+        $st->execute([$profileId]);
+        $rows = $st->fetchAll();
+    } catch (Throwable $e) {
+        $rows = [];
+    }
+    $html = '<div class="dash-side-title">Prossimi eventi</div>';
+    foreach ($rows as $e1) {
+        $where = trim(($e1['venue'] ?? '') . (!empty($e1['city']) ? ' · ' . $e1['city'] : ''), ' ·');
+        $html .= '<a class="dash-side-event" href="/dashboard_events.php"><b>' . e(formatLocalDateTime($e1['event_date'], $tzProfile, 'd/m H:i')) . '</b>'
+               . '<span>' . e($e1['title']) . '</span>' . ($where !== '' ? '<small>' . e($where) . '</small>' : '') . '</a>';
+    }
+    if (!$rows) {
+        $html .= '<div class="dash-side-empty">Nessun evento in programma.</div>';
+    }
+    return $html;
 }

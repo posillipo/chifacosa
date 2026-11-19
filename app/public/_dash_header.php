@@ -137,10 +137,20 @@ $dashSideExtra = [
 // Cinema e Catalogo prodotti: l'admin può spegnerli per tutto il sito (Admin → Funzioni del sito).
 if (!siteToolEnabled('cinema')) unset($dashSideExtra['cinema']);
 if (!siteToolEnabled('prodotti')) unset($dashSideExtra['products']);
+require_once __DIR__ . '/../src/dash_right.php';
 $dashSideAll = $dashTabs + $dashSideExtra;
+// Contatori "da gestire" accanto alle voci del menu (prima stavano nella colonna destra).
+$sideBadges = [];
+if (isset($dashSideAll['service_inquiries'])) {
+    $sideBadges['service_inquiries'] = dashRightCount('SELECT COUNT(*) FROM service_inquiries WHERE user_id = ? AND is_read = 0', [(int) $countsForId]);
+}
+if (isset($dashSideAll['reservations'])) {
+    $sideBadges['reservations'] = dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [(int) $countsForId]);
+}
 // Integrazioni (prima nel menu account, poi colonna destra, ora nel menu di sinistra): solo band/etichette per Spotify, Podcast e
 // YouTube; strumenti per amministratori per gli altri. Il pallino verde = collegata.
 require_once __DIR__ . '/../src/marketing.php';
+require_once __DIR__ . '/../src/dash_right.php';
 $dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
@@ -224,7 +234,7 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
+<body class="<?= e($dashTheme) ?> has-dash-side<?= !empty($user['is_admin']) ? ' has-dash-right' : '' ?>">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -245,9 +255,11 @@ if ($actingAsId) {
     </div>
   </div>
   <nav class="dash-icons-nav">
+    <?php if (!empty($user['is_admin'])): ?>
     <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="Attività" aria-label="Apri le attività" aria-controls="dash-right" aria-expanded="false">
       <i class="fa-solid fa-chart-simple"></i>
     </button>
+    <?php endif; ?>
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
@@ -385,10 +397,13 @@ document.addEventListener('click', function (e) {
     <?php foreach ($visibleItems as $itemKey => $itemIcon): ?>
       <?php $it = $dashSideAll[$itemKey]; ?>
       <a href="<?= e($it['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $it['active'] ? ' active' : '' ?>" title="<?= e($it['label']) ?>"<?= ($activeTab ?? '') === $it['active'] ? ' aria-current="page"' : '' ?>>
-        <i class="fa-solid <?= e($itemIcon) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span>
+        <i class="fa-solid <?= e($itemIcon) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span><?php if (!empty($sideBadges[$itemKey])): ?><b class="dash-side-badge"><?= (int) $sideBadges[$itemKey] ?></b><?php endif; ?>
       </a>
     <?php endforeach; ?>
   <?php endforeach; ?>
+  <?php if ($isBandOrLabel && ($navVisibility['Eventi'] ?? 1)): ?>
+    <?= renderDashSideEvents((int) $countsForId, $dashProfile ?? []) ?>
+  <?php endif; ?>
   <div class="dash-side-foot">
     <?php // Voci che su telefono/tablet escono dalla barra in alto (troppo affollata): stesse regole di visibilità. ?>
     <a class="dash-side-link" href="/<?= e($barSlug) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Vedi il sito</span></a>
@@ -500,6 +515,7 @@ document.addEventListener('click', function (e) {
 <?php
 // Colonna destra "Attività": dati del solo profilo attivo, calcolati lato server.
 require_once __DIR__ . '/../src/dash_right.php';
+if (!empty($user['is_admin'])) { // colonna destra "Attività": solo amministratori
 echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
@@ -511,6 +527,7 @@ echo renderDashRight([
     'tz_profile'       => $dashProfile,
     'active_tab'       => $activeTab ?? '',
 ]);
+}
 ?>
 <script>
 (function () {

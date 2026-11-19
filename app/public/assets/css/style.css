@@ -3388,3 +3388,12 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 
 /* Pallino "collegata" accanto alle Integrazioni nel menu di sinistra. */
 .dash-side-link .dash-side-dot { margin-left: auto; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; }
+
+/* Prossimi eventi e contatori nel menu di sinistra (la colonna destra è solo per gli amministratori). */
+.dash-side-event { display: block; padding: 6px 12px 6px 14px; color: #22223b; text-decoration: none; font-size: 12.5px; border-left: 3px solid transparent; }
+.dash-side-event:hover { background: #f5f5f8; }
+.dash-side-event b { display: block; color: var(--accent); font-size: 12px; }
+.dash-side-event span, .dash-side-event small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-side-event small, .dash-side-empty { color: var(--text-muted); }
+.dash-side-empty { padding: 4px 14px; font-size: 12.5px; }
+.dash-side-link .dash-side-badge { margin-left: auto; min-width: 18px; padding: 0 6px; border-radius: 999px; background: #e74c3c; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
