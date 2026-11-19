@@ -177,9 +177,6 @@ $dashSideGroups = [
         'products' => 'fa-tags', 'menu' => 'fa-utensils', 'offerte' => 'fa-percent', 'servizi' => 'fa-briefcase',
         'service_inquiries' => 'fa-inbox', 'contatti' => 'fa-address-book',
     ],
-    'Community' => [
-        'segui' => 'fa-users', 'following' => 'fa-user-check', 'invite' => 'fa-user-plus',
-    ],
 ];
 
 // Voci "Il mio profilo" e "Impostazioni": un solo elenco, usato sia dal pannello laterale
@@ -234,7 +231,7 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side<?= !empty($user['is_admin']) ? ' has-dash-right' : '' ?>">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -255,11 +252,9 @@ if ($actingAsId) {
     </div>
   </div>
   <nav class="dash-icons-nav">
-    <?php if (!empty($user['is_admin'])): ?>
-    <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="Attività" aria-label="Apri le attività" aria-controls="dash-right" aria-expanded="false">
-      <i class="fa-solid fa-chart-simple"></i>
+    <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="<?= !empty($user['is_admin']) ? 'Attività' : 'Community' ?>" aria-label="Apri <?= !empty($user['is_admin']) ? 'le attività' : 'la community' ?>" aria-controls="dash-right" aria-expanded="false">
+      <i class="fa-solid <?= !empty($user['is_admin']) ? 'fa-chart-simple' : 'fa-users' ?>"></i>
     </button>
-    <?php endif; ?>
     <?php if (!empty($user['is_admin'])): ?>
       <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
     <?php endif; ?>
@@ -515,7 +510,6 @@ document.addEventListener('click', function (e) {
 <?php
 // Colonna destra "Attività": dati del solo profilo attivo, calcolati lato server.
 require_once __DIR__ . '/../src/dash_right.php';
-if (!empty($user['is_admin'])) { // colonna destra "Attività": solo amministratori
 echo renderDashRight([
     'profile_id'       => (int) $countsForId,
     'is_band_or_label' => $isBandOrLabel,
@@ -527,7 +521,6 @@ echo renderDashRight([
     'tz_profile'       => $dashProfile,
     'active_tab'       => $activeTab ?? '',
 ]);
-}
 ?>
 <script>
 (function () {
