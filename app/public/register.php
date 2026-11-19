@@ -6,6 +6,19 @@ require_once __DIR__ . '/../src/google_oauth.php';
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
+// La registrazione avviene solo con l'account Google: i dati (email, nome, foto) arrivano da lì e
+// vengono completati nel form di benvenuto. Il modulo con email e password resta solo come ripiego
+// sulle installazioni dove l'accesso con Google non è configurato.
+if (getGoogleOAuthClientId() && getGoogleOAuthClientSecret()) {
+    $qs = [];
+    $refParam = trim((string) ($_GET['ref'] ?? ''));
+    if ($refParam !== '') {
+        $qs['ref'] = $refParam;
+    }
+    header('Location: /auth_google_start.php' . ($qs ? '?' . http_build_query($qs) : ''));
+    exit;
+}
+
 $error = null;
 $registered = false;
 $registeredEmailSent = false;

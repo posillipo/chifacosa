@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/spotify.php'; // httpRequest(), per la foto dell'account Google
 $user = requireLogin();
 
 if (!empty($user['account_type_chosen'])) {
@@ -12,16 +13,26 @@ $profile = getActingProfile($user);
 requireFullOwnerAccess($user, $profile);
 $error = null;
 
+// Dati dell'account Google (arrivano dal login): precompilano il form.
+$google = $_SESSION['google_profile'] ?? [];
+$googleName = trim((string) ($google['name'] ?? ''));
+$googlePicture = (string) ($google['picture'] ?? '');
+if (!preg_match('#^https://[a-z0-9.-]*\.googleusercontent\.com/#i', $googlePicture)) {
+    $googlePicture = '';
+}
+
 // Voci di menu "base": restano sempre attive e visibili, non compaiono come scelta qui — solo
 // i moduli davvero opzionali si possono disattivare dalla schermata di benvenuto. L'elenco deve
 // restare in sync con PUBLIC_NAV_ITEM_KEYS/createDefaultProfileNavMenu() in functions.php.
 const ONBOARDING_BASE_MODULES = ['Home', 'Timeline', 'Blog', 'Contatti', 'Segui'];
 
+$siteHost = parse_url(siteUrl('/'), PHP_URL_HOST) ?: (string) ($_SERVER['HTTP_HOST'] ?? siteName());
+
 $selectedType = $_POST['account_type'] ?? '';
 $isBandOrLabel = in_array($selectedType, ['band', 'label'], true) || $selectedType === '';
 $optionalModules = [
     ['name' => 'Link', 'icon' => 'fas fa-link', 'desc' => 'I tuoi link importanti in una pagina'],
-    ['name' => 'Band che amo', 'icon' => 'fas fa-heart-circle-check', 'desc' => 'Vetrina delle band/artisti che ami'],
+    ['name' => 'Band che amo', 'icon' => 'fas fa-heart-circle-check', 'desc' => 'Vetrina degli artisti che ami'],
     ['name' => 'Attori che amo', 'icon' => 'fas fa-clapperboard', 'desc' => 'Vetrina degli attori che ami'],
     ['name' => 'Film che amo', 'icon' => 'fas fa-film', 'desc' => 'Vetrina dei film che ami'],
     ['name' => 'Libri che amo', 'icon' => 'fas fa-book', 'desc' => 'Vetrina dei libri che ami'],
@@ -33,10 +44,10 @@ $optionalModules = [
     ['name' => 'Squadre che amo', 'icon' => 'fas fa-futbol', 'desc' => 'Vetrina delle squadre sportive che ami'],
     ['name' => 'Calciatori che amo', 'icon' => 'fas fa-shirt', 'desc' => 'Vetrina dei calciatori che ami'],
     ['name' => 'Partite che amo', 'icon' => 'fas fa-calendar-check', 'desc' => 'Vetrina delle partite che ami'],
-    ['name' => 'Menù', 'icon' => 'fas fa-utensils', 'desc' => 'Menù digitale (locali/ristoranti)'],
+    ['name' => 'Menù', 'icon' => 'fas fa-utensils', 'desc' => 'Menù digitale per locali e ristoranti'],
 ];
 if ($isBandOrLabel) {
-    $optionalModules[] = ['name' => 'Eventi', 'icon' => 'fas fa-calendar', 'desc' => 'Calendario concerti/eventi pubblico'];
+    $optionalModules[] = ['name' => 'Eventi', 'icon' => 'fas fa-calendar', 'desc' => 'Calendario degli eventi pubblico'];
     $optionalModules[] = ['name' => 'Spotify', 'icon' => 'fa-brands fa-spotify', 'desc' => 'Discografia collegata a Spotify'];
     $optionalModules[] = ['name' => 'Podcast', 'icon' => 'fas fa-microphone', 'desc' => 'Episodi del tuo podcast Spotify'];
     $optionalModules[] = ['name' => 'YouTube', 'icon' => 'fa-brands fa-youtube', 'desc' => 'Video collegati dal tuo canale YouTube'];
@@ -46,17 +57,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
 
     $accountType = $_POST['account_type'] ?? '';
-    $slug = slugify($_POST['slug'] ?? $profile['slug']);
+    $slug = usernameNormalize((string) ($_POST['slug'] ?? $profile['slug']));
+    $displayName = trim((string) ($_POST['display_name'] ?? ''));
     $bio = trim($_POST['bio'] ?? '');
 
     if (!in_array($accountType, ['band', 'fan', 'label'], true)) {
-        $error = 'Scegli cosa vuoi gestire.';
-    } elseif ($slug === '') {
-        $error = 'Il nome pagina non può essere vuoto.';
-    } elseif ($slug !== $profile['slug'] && in_array($slug, RESERVED_SLUGS, true)) {
-        $error = 'Questo nome pagina non è disponibile, scegline un altro.';
-    } elseif ($slug !== $profile['slug'] && slugExists($slug)) {
-        $error = 'Questo nome pagina è già in uso.';
+        $error = 'Scegli che tipo di profilo vuoi.';
+    } elseif ($displayName === '') {
+        $error = 'Scrivi il nome del profilo.';
+    } elseif (($slugError = usernameValidationError($slug, (string) $profile['slug'])) !== null) {
+        $error = $slugError;
     } else {
         $avatarPath = $profile['avatar_path'];
 
@@ -92,6 +102,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Nessuna foto caricata: se è spuntata, si usa quella dell'account Google.
+        if ($avatarPath === $profile['avatar_path'] && $googlePicture !== '' && !empty($_POST['use_google_photo'])) {
+            $big = preg_replace('/=s\d+(-c)?$/', '=s400-c', $googlePicture);
+            $raw = httpRequest('GET', $big);
+            $jpeg = ($raw && strlen($raw) < 8 * 1024 * 1024) ? compressImageToJpeg($raw, 250 * 1024, 800) : null;
+            if ($jpeg !== null) {
+                $fname = 'avatar_' . bin2hex(random_bytes(6)) . '.jpg';
+                $dir = __DIR__ . '/uploads/images/' . $profile['slug'];
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0775, true);
+                }
+                if (file_put_contents($dir . '/' . $fname, $jpeg) !== false) {
+                    $avatarPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
+                }
+            }
+        }
+
         $db = getDB();
         if ($slug !== $profile['slug']) {
             $stmt = $db->prepare('UPDATE users SET account_type = ?, account_type_chosen = 1, slug = ? WHERE id = ?');
@@ -101,8 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$accountType, $profile['id']]);
         }
 
-        $stmt = $db->prepare('UPDATE profiles SET bio = ?, avatar_path = ? WHERE user_id = ?');
-        $stmt->execute([$bio !== '' ? $bio : null, $avatarPath, $profile['id']]);
+        $stmt = $db->prepare('UPDATE profiles SET display_name = ?, bio = ?, avatar_path = ? WHERE user_id = ?');
+        $stmt->execute([mb_substr($displayName, 0, 120), $bio !== '' ? $bio : null, $avatarPath, $profile['id']]);
+        unset($_SESSION['google_profile']);
 
         // Moduli scelti: le voci "base" restano sempre visibili, per le altre si applica la
         // selezione. Prima si assicura che tutte le voci di default esistano già in tabella.
@@ -169,13 +197,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     padding: 14px; border-radius: 999px; border: none; font-weight: 700; font-size: 15px; cursor: pointer;
   }
   .ob-error { background: #fdecec; color: #b3261e; border: 1px solid #f5c6c3; border-radius: 10px; padding: 12px 16px; font-size: 14px; margin-bottom: 18px; }
+  .ob-type-icon { display: block; font-size: 20px; color: rgb(108,92,231); margin-bottom: 8px; }
+  .ob-google-photo { display: flex !important; align-items: center; gap: 10px; font-weight: 400 !important; margin: 0 0 10px !important; }
+  .ob-google-photo img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .ob-google-photo input { width: auto !important; }
+  #ob-slug-msg.ok { color: #1e8e3e; }
+  #ob-slug-msg.bad { color: #b3261e; }
   .ob-avatar-preview { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
 </style>
 </head>
 <body>
 <div class="ob-navbar"><a href="/" class="logo"><?= e(siteName()) ?></a></div>
 <div class="ob-wrap">
-  <h1>Benvenuto! Personalizza la tua pagina.</h1>
+  <h1>Benvenuto! Completa il tuo profilo.</h1>
   <p class="ob-sub">Puoi cambiare tutto in ogni momento dalla dashboard — questo è solo un punto di partenza.</p>
 
   <?php if ($error): ?><div class="ob-error"><?= e($error) ?></div><?php endif; ?>
@@ -184,37 +218,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?= csrfField() ?>
 
     <div class="ob-card">
-      <h2>Cosa vuoi gestire?</h2>
-      <p class="ob-hint">Puoi cambiarlo più avanti scrivendo all'assistenza.</p>
+      <h2>Che tipo di profilo vuoi?</h2>
+      <p class="ob-hint">Serve solo a darti gli strumenti giusti. Puoi cambiarlo più avanti scrivendo all'assistenza.</p>
       <div class="ob-type-grid">
         <div style="position:relative;">
           <input class="ob-type-input" type="radio" name="account_type" value="band" id="ob-type-band" <?= $selectedType === 'band' || $selectedType === '' ? 'checked' : '' ?>>
           <label for="ob-type-band" class="ob-type-card">
-            <strong>Band / Artista</strong>
-            <span>Il profilo della tua band o del tuo progetto solista</span>
-          </label>
-        </div>
-        <div style="position:relative;">
-          <input class="ob-type-input" type="radio" name="account_type" value="fan" id="ob-type-fan" <?= $selectedType === 'fan' ? 'checked' : '' ?>>
-          <label for="ob-type-fan" class="ob-type-card">
-            <strong>Fan</strong>
-            <span>Una tua pagina per segnalare ciò che ami</span>
+            <i class="fa-solid fa-star ob-type-icon"></i>
+            <strong>Profilo artista</strong>
+            <span>Musicisti, band, performer e creativi che si presentano al pubblico</span>
           </label>
         </div>
         <div style="position:relative;">
           <input class="ob-type-input" type="radio" name="account_type" value="label" id="ob-type-label" <?= $selectedType === 'label' ? 'checked' : '' ?>>
           <label for="ob-type-label" class="ob-type-card">
-            <strong>Etichetta Discografica</strong>
-            <span>Gestisci il profilo della tua etichetta</span>
+            <i class="fa-solid fa-building ob-type-icon"></i>
+            <strong>Profilo aziendale</strong>
+            <span>Attività, locali, negozi, etichette e organizzazioni</span>
+          </label>
+        </div>
+        <div style="position:relative;">
+          <input class="ob-type-input" type="radio" name="account_type" value="fan" id="ob-type-fan" <?= $selectedType === 'fan' ? 'checked' : '' ?>>
+          <label for="ob-type-fan" class="ob-type-card">
+            <i class="fa-solid fa-user ob-type-icon"></i>
+            <strong>Profilo personale</strong>
+            <span>Per te: racconta ciò che ami e segui gli altri profili</span>
           </label>
         </div>
       </div>
     </div>
 
     <div class="ob-card">
-      <h2>La tua pagina</h2>
-      <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
-      <input type="text" name="slug" value="<?= e($_POST['slug'] ?? $profile['slug']) ?>" required>
+      <h2>Il tuo profilo</h2>
+      <label>Email (dal tuo account Google)</label>
+      <input type="text" value="<?= e($user['email']) ?>" readonly style="background:#f5f3ee;color:#666;">
+
+      <label>Nome del profilo</label>
+      <input type="text" name="display_name" value="<?= e($_POST['display_name'] ?? ($googleName !== '' ? $googleName : ($profile['display_name'] ?? ''))) ?>" maxlength="120" required>
+
+      <label>Username (<span id="ob-domain"><?= e($siteHost) ?></span>/<strong id="ob-slug-live"><?= e($_POST['slug'] ?? $profile['slug']) ?></strong>)</label>
+      <input type="text" name="slug" id="ob-slug" value="<?= e($_POST['slug'] ?? $profile['slug']) ?>" required maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p id="ob-slug-msg" class="ob-hint" style="margin:6px 0 0;"></p>
 
       <label>Bio (opzionale)</label>
       <textarea name="bio" rows="3"><?= e($_POST['bio'] ?? $profile['bio'] ?? '') ?></textarea>
@@ -222,6 +266,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <label>Foto profilo (opzionale)</label>
       <img id="avatar-preview" class="ob-avatar-preview" src="<?= $profile['avatar_path'] ? e('/' . $profile['avatar_path']) : '' ?>"
            style="<?= $profile['avatar_path'] ? '' : 'display:none;' ?>">
+      <?php if ($googlePicture !== '' && !$profile['avatar_path']): ?>
+        <label class="ob-google-photo">
+          <input type="checkbox" name="use_google_photo" value="1" checked>
+          <img src="<?= e($googlePicture) ?>" alt="" referrerpolicy="no-referrer">
+          <span>Usa la foto del mio account Google (o scegline un'altra qui sotto)</span>
+        </label>
+      <?php endif; ?>
       <input type="file" id="avatar-input" name="avatar" accept="image/*">
       <input type="hidden" name="avatar_cropped_data" id="avatar-cropped-data">
       <p class="ob-hint" style="margin-top:6px;">Dopo aver scelto una foto potrai ritagliarla prima di salvarla.</p>
@@ -274,6 +325,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </style>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script src="<?= assetUrl('/assets/js/avatar-crop.js') ?>" defer></script>
+  <script>
+  // Username: l'indirizzo tra parentesi si aggiorna mentre scrivi e si controlla subito se è libero.
+  (function () {
+    var input = document.getElementById('ob-slug'), live = document.getElementById('ob-slug-live'), msg = document.getElementById('ob-slug-msg');
+    var timer = null, seq = 0;
+    function norm(v) { return v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40); }
+    function check() {
+      var s = norm(input.value), my = ++seq;
+      live.textContent = s || 'username';
+      if (s.length < 3) { msg.className = 'ob-hint bad'; msg.textContent = 'Almeno 3 caratteri: lettere, numeri o trattini.'; return; }
+      fetch('/api_username_check.php?u=' + encodeURIComponent(s), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (my !== seq) return; msg.className = 'ob-hint ' + (d.ok ? 'ok' : 'bad'); msg.textContent = (d.ok ? '✓ ' : '✗ ') + d.message; })
+        .catch(function () {});
+    }
+    input.addEventListener('input', function () { live.textContent = norm(input.value) || 'username'; clearTimeout(timer); timer = setTimeout(check, 300); });
+    check();
+  })();
+  </script>
 </div>
 </body>
 </html>

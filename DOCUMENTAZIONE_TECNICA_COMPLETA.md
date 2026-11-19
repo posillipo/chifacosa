@@ -206,6 +206,19 @@ email=...`); da lì in poi si possono promuovere altri utenti dall'interfaccia.
 
 ---
 
+### Registrazione con Google e benvenuto
+
+- **Registrazione solo con Google**: `register.php` rimanda a `auth_google_start.php` (mantiene `?ref=`). Il modulo con email e password resta
+  solo come ripiego dove l'accesso con Google non è configurato. L'email deve essere verificata da Google.
+- **Benvenuto** (`onboarding_setup.php`): form precompilato con i dati dell'account Google (email non modificabile, nome, foto — salvati in
+  `$_SESSION['google_profile']` dal callback). Campi: tipo di profilo, nome del profilo, **Username**, bio, foto, moduli.
+- **Tipo di profilo** in forma generica: «Profilo artista» (`band`), «Profilo aziendale» (`label`), «Profilo personale» (`fan`). I valori nel database
+  restano gli stessi e servono solo come dato statistico e per attivare i moduli giusti.
+- **Username** = `users.slug`, univoco in tutto il sito (`usernameNormalize()` / `usernameValidationError()` in `fn_auth.php`, esclusi gli slug riservati).
+  Il controllo in tempo reale usa `api_username_check.php`; l'indirizzo tra parentesi (`dominio/username`) si aggiorna mentre si scrive.
+
+---
+
 ## 8. Sistema "Segui via email"
 
 Meccanismo di following leggero (nessun account fan, solo email) per dare ai visitatori un modo

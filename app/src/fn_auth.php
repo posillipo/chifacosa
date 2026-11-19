@@ -189,6 +189,31 @@ function requireFullOwnerAccess(array $loggedInUser, array $actingProfile): void
 }
 
 
+// ===== Username (indirizzo del profilo: dominio/username), univoco in tutto il sito =====
+
+// Normalizza quanto scritto: minuscolo, solo lettere, numeri e trattini, al massimo 40 caratteri.
+function usernameNormalize(string $raw): string {
+    return mb_substr(slugify(trim($raw)), 0, 40);
+}
+
+// null se lo username è valido e libero, altrimenti il messaggio da mostrare. $current = username attuale dell'utente (resta valido).
+function usernameValidationError(string $slug, string $current = ''): ?string {
+    if ($slug === '' || strlen($slug) < 3) {
+        return 'Lo username deve avere almeno 3 caratteri (lettere, numeri o trattini).';
+    }
+    if ($slug === $current) {
+        return null;
+    }
+    if (in_array($slug, RESERVED_SLUGS, true)) {
+        return 'Questo username non è disponibile, scegline un altro.';
+    }
+    if (slugExists($slug)) {
+        return 'Questo username è già in uso, scegline un altro.';
+    }
+    return null;
+}
+
+
 // Crea un nuovo profilo posseduto dall'utente corrente: una riga users/profiles a tutti gli
 // effetti (email sintetica univoca, password casuale mai comunicata — non pensata per un login
 // diretto, solo per essere gestita via switch dal profilo che l'ha creata) più la riga

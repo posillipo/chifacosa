@@ -92,5 +92,6 @@ function googleOAuthGetUserInfo(string $accessToken): ?array {
     return [
         'email' => strtolower(trim($data['email'])),
         'name' => trim($data['name'] ?? '') ?: null,
+        'picture' => trim($data['picture'] ?? '') ?: null,
     ];
 }
