@@ -1273,6 +1273,9 @@ tiene in memoria il contenuto finché l'utente non sceglie la destinazione (auto
 Crea la tabella `page_help` e inserisce i testi iniziali dei popup "?" (INSERT IGNORE: rieseguirla non sovrascrive
 i testi modificati da Admin → Guide delle pagine). Da eseguire una volta su ogni database.
 
+### Guide di tutte le pagine (`2026_11_30_page_help_all_pages.sql`)
+Aggiunge i testi di guida delle pagine che non ne avevano (Feed, Profilo, Eventi, Contatti, ecc.). INSERT IGNORE: si può rieseguire. Richiede la migrazione `2026_11_29` già eseguita.
+
 ---
 
 ## Come aggiungere una nuova voce

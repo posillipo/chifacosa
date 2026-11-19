@@ -159,6 +159,7 @@ un testo breve e, se c'è un approfondimento (o un link esterno), il collegament
 - **Codice**: `app/src/fn_help.php` (`renderPageHelpHead()`, chiamata da `_dash_header.php`; segnaposto `{site_name}`,
   `{slug}`, `{album_max_photos}`, `{service_max_photos}`, `{max_video_mb}`; formato: riga vuota = paragrafo,
   `**grassetto**`, `` `codice` ``).
+- **Il "?" compare sempre** su ogni pagina della dashboard: se manca il testo (o la tabella) il popup mostra un messaggio generico. Le pagine con un titolo proprio (Feed, Coda Social, Calendario Programmazioni, Marketing) dichiarano `$pageHelpInline = true` e usano `renderPageHelpButton()` accanto al loro titolo. Migrazioni: `2026_11_29_page_help.sql` e `2026_11_30_page_help_all_pages.sql` (testi delle restanti pagine).
 - **Approfondisci** apre `guida.php?p=<chiave>` (elenco di tutte le guide in `guida.php`) oppure il link esterno `doc_url`.
 - **Modifica testi**: Admin → "Guide delle pagine" (`admin_page_help.php`).
 - **Regola**: quando cambia il comportamento di una pagina si aggiorna anche la sua guida (e questa documentazione).

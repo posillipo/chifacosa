@@ -5,6 +5,7 @@ $user = requireAdmin();
 $profile = getActingProfile($user);
 $activeTab = 'schedule_admin';
 $pageTitle = 'Calendario Programmazioni';
+$pageHelpInline = true; // il "?" sta accanto al titolo (vedi sotto)
 
 $allItems = getScheduledContentForAllUsers();
 
@@ -90,7 +91,7 @@ td.today .cal-date{color:#0d6efd}
 
 <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;">
   <div class="section-title" style="margin:0;flex:1;min-width:200px;">
-    Calendario Programmazioni (<?= count($filteredItems) ?>)
+    Calendario Programmazioni (<?= count($filteredItems) ?>) <?= renderPageHelpButton('dashboard_schedule_admin', 'Calendario Programmazioni') ?>
   </div>
   <div class="view-toggle">
     <a href="?view=calendar<?= $filterUserId !== null ? '&account=' . $filterUserId : '' ?>" class="<?= $viewMode === 'calendar' ? 'active' : '' ?>">📅 Calendario</a>

@@ -5,6 +5,7 @@ $user = requireAdmin(); // strumento riservato agli amministratori del sito
 $profile = getActingProfile($user);
 $activeTab = 'social_queue';
 $pageTitle = 'Coda Social';
+$pageHelpInline = true; // il "?" sta accanto al titolo (vedi sotto)
 
 require_once __DIR__ . '/../src/metricool_queue.php';
 $metricoolActive = metricoolIsEnabled((int) $profile['id']);
@@ -154,7 +155,7 @@ $activeCount = ($statusFilter !== 'active' ? 1 : 0) + ($typeFilter !== '' ? 1 : 
 @media(max-width:560px){ .sqf-hide-sm { display:none; } }
 </style>
 <div class="sqf-head">
-  <div class="section-title" style="margin:0;flex:1;min-width:0;">📤 Coda Social</div>
+  <div class="section-title" style="margin:0;flex:1;min-width:0;display:flex;align-items:center;gap:10px;">📤 Coda Social <?= renderPageHelpButton('dashboard_social_queue', 'Coda Social') ?></div>
   <button type="button" id="sqf-toggle" class="sqf-btn<?= $activeCount ? ' on' : '' ?>" aria-expanded="<?= $panelOpen ? 'true' : 'false' ?>" aria-controls="sqf-panel">
     <i class="fa-solid fa-sliders"></i> Filtri<?= $activeCount ? ' <span class="sqf-count">' . $activeCount . '</span>' : '' ?>
   </button>

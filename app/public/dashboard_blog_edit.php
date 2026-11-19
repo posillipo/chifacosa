@@ -158,7 +158,6 @@ include __DIR__ . '/_dash_header.php';
   <?php if (isset($_GET['tg']) && $_GET['tg'] === 'ok'): ?><div class="alert success">Inviato su Telegram!</div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
-  <div class="section-title">Modifica articolo</div>
   <form method="post" enctype="multipart/form-data" class="card">
     <?= csrfField() ?>
     <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">

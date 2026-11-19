@@ -5,6 +5,7 @@ $user = requireLogin();
 $profile = getActingProfile($user);
 $activeTab = 'timeline';
 $pageTitle = 'Feed';
+$pageHelpInline = true; // il "?" sta accanto al titolo Feed (vedi sotto)
 
 const DASH_TIMELINE_PAGE_SIZE = 20;
 $viewMode = $_GET['view'] ?? ($_COOKIE['dash_feed_view'] ?? 'list');
@@ -61,7 +62,7 @@ include __DIR__ . '/_dash_header.php';
 
   <?php $activeCount = count(array_filter($feedFilters, fn($v) => $v !== '')); $panelOpen = !empty($_GET['open']); ?>
   <div class="dtf-head">
-    <div class="section-title" style="margin:0;flex:1;min-width:0;">Feed</div>
+    <div class="section-title" style="margin:0;flex:1;min-width:0;display:flex;align-items:center;gap:10px;">Feed <?= renderPageHelpButton('dashboard_timeline', 'Feed') ?></div>
     <button type="button" id="dtf-toggle" class="dtf-btn<?= $activeCount ? ' on' : '' ?>" aria-expanded="<?= $panelOpen ? 'true' : 'false' ?>" aria-controls="dtf-panel">
       <i class="fa-solid fa-sliders"></i> Filtri<?= $activeCount ? ' <span class="dtf-count">' . $activeCount . '</span>' : '' ?>
     </button>

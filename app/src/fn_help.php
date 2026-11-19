@@ -73,22 +73,41 @@ function pageHelpMoreUrl(array $h): ?string {
     return trim((string) ($h['more'] ?? '')) !== '' ? '/guida.php?p=' . rawurlencode($h['page_key']) : null;
 }
 
-// Intestazione di pagina: titolo + "?" con popup. Mostrata solo se esiste un testo di guida per la pagina.
-function renderPageHelpHead(?string $key = null, ?string $fallbackTitle = null): string {
-    $key = $key ?? basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '.php');
+// Guida di una pagina, sempre disponibile: se manca il testo (o la tabella), mostra un messaggio generico.
+function pageHelpEntryOrFallback(string $key, ?string $fallbackTitle): array {
     $h = pageHelpGet($key);
-    if (!$h || trim((string) $h['body']) === '') {
-        return '';
+    if ($h && trim((string) $h['body']) !== '') {
+        return $h;
     }
-    $title = $fallbackTitle ?: $h['title'];
+    $isAdmin = false;
+    try {
+        $u = function_exists('currentUser') ? currentUser() : null;
+        $isAdmin = !empty($u['is_admin']);
+    } catch (Throwable $e) {
+    }
+    return [
+        'page_key' => $key,
+        'title'    => $fallbackTitle ?: 'Guida',
+        'body'     => $isAdmin
+            ? 'Per questa pagina non c\'è ancora una guida. Puoi scriverla da Admin → Guide delle pagine (chiave: `' . $key . '`).'
+            : 'La guida di questa pagina è in preparazione.',
+        'more'     => null,
+        'doc_url'  => null,
+    ];
+}
+
+// Pulsante "?" con il suo popup (da mettere accanto a un titolo già presente nella pagina).
+function renderPageHelpButton(?string $key = null, ?string $fallbackTitle = null): string {
+    $key = $key ?? basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '.php');
+    $h = pageHelpEntryOrFallback($key, $fallbackTitle);
+    $title = ($h['title'] ?? '') !== '' ? $h['title'] : ($fallbackTitle ?: 'Guida');
     $more = pageHelpMoreUrl($h);
     $id = 'ph-' . preg_replace('/[^a-z0-9_]/i', '', $key);
-    $html = '<div class="page-head"><h1 class="page-head-title">' . e($title) . '</h1>'
-          . '<button type="button" class="page-help-btn" aria-label="Aiuto su questa pagina" aria-haspopup="dialog" data-help-open="' . $id . '">?</button></div>'
+    $html = '<button type="button" class="page-help-btn" aria-label="Aiuto su questa pagina" aria-haspopup="dialog" data-help-open="' . $id . '">?</button>'
           . '<dialog class="page-help-dialog" id="' . $id . '" aria-labelledby="' . $id . '-t">'
           . '<div class="page-help-inner"><h2 id="' . $id . '-t">' . e($title) . '</h2>' . pageHelpFormat($h['body'])
           . '<div class="page-help-actions">'
-          . ($more ? '<a class="page-help-more" href="' . e($more) . '"' . (preg_match('#^https?://#i', $more) ? ' target="_blank" rel="noopener"' : '') . '>Approfondisci →</a>' : '')
+          . ($more ? '<a class="page-help-more" href="' . e($more) . '"' . (preg_match('#^https?://#i', $more) ? ' target="_blank" rel="noopener"' : '') . '>Approfondisci →</a>' : '<span></span>')
           . '<button type="button" class="btn secondary" data-help-close>Chiudi</button></div></div></dialog>';
     static $js = false;
     if (!$js) {
@@ -99,4 +118,16 @@ function renderPageHelpHead(?string $key = null, ?string $fallbackTitle = null):
                . 'if(ev.target.tagName==="DIALOG"){ev.target.close();}});})();</script>';
     }
     return $html;
+}
+
+// Intestazione di pagina: titolo + "?". Compare sempre, tranne nelle pagine che hanno già un proprio titolo
+// con il pulsante (dichiarano $pageHelpInline = true prima di includere _dash_header.php).
+function renderPageHelpHead(?string $key = null, ?string $fallbackTitle = null): string {
+    if (!empty($GLOBALS['pageHelpInline'])) {
+        return '';
+    }
+    $key = $key ?? basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '.php');
+    $h = pageHelpEntryOrFallback($key, $fallbackTitle);
+    $title = $fallbackTitle ?: $h['title'];
+    return '<div class="page-head"><h1 class="page-head-title">' . e($title) . '</h1>' . renderPageHelpButton($key, $title) . '</div>';
 }

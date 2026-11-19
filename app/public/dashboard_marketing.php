@@ -6,6 +6,7 @@ $user = requireAdmin(); // strumento riservato agli amministratori del sito
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'marketing';
 $pageTitle = 'Marketing';
+$pageHelpInline = true; // ha già il proprio ❓ accanto al titolo
 $uid = (int) $profile['id'];
 $error = null;
 
