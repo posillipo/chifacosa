@@ -151,19 +151,6 @@ $maxMb = (int) (VIDEO_MAX_BYTES / 1048576);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Carica i tuoi video (MP4, MOV o WebM, fino a <?= $maxMb ?> MB ciascuno) e dai a ciascuno un
-      titolo e una descrizione. Compaiono nella sezione pubblica "Video" del tuo profilo, ognuno con
-      la sua pagina condivisibile. Puoi selezionarne più d'uno insieme: vengono caricati uno alla volta.
-    </p>
-    <p style="color:var(--text-muted)">
-      Pubblico/Solo io e la programmazione funzionano come nel resto del sito. Se hai attivato
-      "Social Automatico", un video pubblicato subito viene messo in coda per Metricool con titolo,
-      descrizione e file. L'anteprima è presa dal video stesso<?= videoHasFfmpeg() ? '' : ' (non disponibile su questo server: puoi caricarne una a mano da "Modifica")' ?>.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['regen'])): ?>

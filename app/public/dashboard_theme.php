@@ -85,14 +85,6 @@ include __DIR__ . '/_dash_header.php';
 
   <h2 style="font-size: 18px; color: #1a1a1a; margin-bottom: 15px;">👤 Tema della tua pagina pubblica</h2>
 
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Scegli l'aspetto grafico della tua pagina pubblica — il colore che hai scelto in
-      "Profilo" resta il tuo accento personale in ogni tema, cambia solo lo stile generale
-      (sfondo, forme, atmosfera).
-    </p>
-  </details>
 
   <div class="card theme-picker-trigger">
     <button type="button" id="open-theme-picker" class="btn" style="width:auto;">🎨 Apri il selezionatore animato</button>

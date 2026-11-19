@@ -145,20 +145,6 @@ $unreadInquiries = (int) $unreadInquiries->fetch()['c'];
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Illustra i servizi della tua attività: foto, titolo, descrizione e una galleria fotografica
-      a carosello (fino a <?= SERVICE_MAX_PHOTOS ?> foto). Il pulsante "Richiedi informazioni" lato
-      pubblico si può attivare o disattivare per ciascun servizio — quando è attivo, chi lo compila
-      ti arriva via email e nella scheda "Richieste" qui sotto.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
-      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
-      modificare liberamente prima di salvare.
-    </p>
-  </details>
 
   <?php if ($unreadInquiries > 0): ?>
     <div class="alert success">

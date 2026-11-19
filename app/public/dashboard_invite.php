@@ -14,14 +14,6 @@ $totalJoined = (int) $stmt->fetch()['c'];
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Condividi il tuo link personale con chi vuoi invitare su <?= e(siteName()) ?> — chi lo apre
-      può registrarsi subito, nessuna approvazione necessaria. Appena completa la registrazione,
-      inizierete a seguirvi a vicenda automaticamente.
-    </p>
-  </details>
 
   <div class="card">
     <strong>Il tuo link di invito</strong>

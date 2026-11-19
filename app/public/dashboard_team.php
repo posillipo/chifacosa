@@ -46,15 +46,6 @@ $adminIds = array_column($admins, 'id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Puoi condividere la gestione di questo profilo con chi già ti segue — un co-admin può
-      pubblicare in Timeline e gestire Brani che amo, ma non può cambiare password, tipo di account,
-      tema grafico, eliminare il profilo, o gestire altri admin: quello resta sempre riservato
-      solo a te. Puoi revocare l'accesso in qualsiasi momento.
-    </p>
-  </details>
 
   <div class="section-title">Co-admin attuali (<?= count($admins) ?>)</div>
   <?php if (!$admins): ?>

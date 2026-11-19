@@ -43,14 +43,6 @@ $profile = getActingProfile($user);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Cerca il tuo nome artista su Spotify e seleziona il profilo giusto: la tua pagina pubblica
-      mostrerà automaticamente una sezione dedicata con i tuoi album, singoli e brani più
-      ascoltati, aggiornata direttamente da Spotify.
-    </p>
-  </details>
 
   <?php if (!empty($profile['spotify_artist_id'])): ?>
     <div class="card">

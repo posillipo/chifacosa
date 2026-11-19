@@ -10,22 +10,6 @@ $items = getScheduledContentForUser((int) $profile['id'], $profile['slug']);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Tutti i contenuti che hai programmato per una data futura — Timeline, Blog, ogni modulo
-      Che Amo, Offerte, Album, Servizi — raccolti qui in un unico calendario, dal più vicino al
-      più lontano. Da "Modifica" apri direttamente la pagina di gestione di quell'elemento per
-      cambiare testo o data. Gli Eventi non compaiono: la loro data è quando si terranno, non
-      una programmazione di pubblicazione.
-    </p>
-    <p style="color:var(--text-muted)">
-      "Copia" e "Anteprima" usano lo stesso link riservato alla pagina pubblica di quel contenuto,
-      valido anche se non è ancora pubblico: "Anteprima" la apre subito in una nuova scheda,
-      "Copia" mette il link negli appunti — utile per controllarlo prima della pubblicazione o
-      per incollarlo nel <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener">Tool di Meta per le Anteprime social (Sharing Debugger)</a>.
-    </p>
-  </details>
 
   <style>
   /* Titolo su due righe al massimo (prima una sola, tagliata); su telefono i pulsanti vanno a

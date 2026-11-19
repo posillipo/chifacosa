@@ -169,6 +169,7 @@ $dashAccountGroups = [
         ['url' => '/dashboard_privacy_tracking.php', 'tab' => 'privacy_tracking', 'icon' => 'fa-shield-halved',  'label' => 'Privacy e Tracking',  'show' => true],
         ['url' => '/dashboard_team.php',             'tab' => 'team',             'icon' => 'fa-people-group',   'label' => 'Team e co-admin',     'show' => $isBandOrLabel],
         ['url' => '/dashboard_log.php',              'tab' => 'log',              'icon' => 'fa-clock-rotate-left', 'label' => 'Log',              'show' => $isBandOrLabel],
+        ['url' => '/guida.php',                      'tab' => 'guida',            'icon' => 'fa-circle-question', 'label' => 'Guide',               'show' => true],
         ['url' => '/dashboard_api_tokens.php',       'tab' => 'api_tokens',       'icon' => 'fa-code',           'label' => 'API',                 'show' => !empty($user['is_admin'])],
     ],
 ];
@@ -666,3 +667,4 @@ echo renderDashRight([
 <?php endif; ?>
 
 <div class="container">
+<?= renderPageHelpHead(null, $pageTitle ?? null) ?>

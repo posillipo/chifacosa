@@ -77,17 +77,6 @@ $qs = function (array $over = []) use ($filters, $disc) {
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Scegli il tipo di feed (Google Shopping / PrestaShop oppure WooCommerce), incolla l'URL e premi
-      <strong>Aggiorna prodotti</strong>: vengono importati nome, descrizione, prezzo di listino e
-      scontato, link alla pagina e immagine principale. Le immagini <strong>non</strong> vengono
-      scaricate: si salva solo il loro indirizzo. Le taglie sono ignorate (un prodotto per modello).
-      Un prodotto che sparisce dal feed viene nascosto, non cancellato. L'aggiornamento è solo
-      manuale. I prodotti sono poi disponibili agli strumenti MCP per programmare i post social.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($deletedCount)): ?>

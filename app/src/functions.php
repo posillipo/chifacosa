@@ -22,6 +22,7 @@ require_once __DIR__ . '/fn_events_cinema.php';
 require_once __DIR__ . '/fn_account.php';
 require_once __DIR__ . '/fn_terms.php';
 require_once __DIR__ . '/fn_blog.php';
+require_once __DIR__ . '/fn_help.php';
 
 
 

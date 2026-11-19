@@ -158,29 +158,6 @@ $favoriteIds = array_column($favorites, 'spoonacular_recipe_id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Cerca ricette pubbliche su Spoonacular e aggiungile alla tua lista — qualsiasi ricetta del
-      suo catalogo. Comparirà sulla tua pagina pubblica come vetrina di ciò che ami cucinare/
-      mangiare, con tempo di preparazione, porzioni e ingredienti (tradotti in italiano
-      automaticamente, se l'Assistente AI è configurato).
-      La ricerca parte da sola mentre scrivi, e aggiungere/rimuovere una ricetta aggiorna la lista
-      all'istante, senza ricaricare la pagina.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni ricetta aggiunta ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      condivisibile sui social con anteprima immagine/testo. Da "✏️ Gestisci pubblicazione" puoi
-      scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
-      comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
-      impostare il link personalizzato per il feed — stessa logica della Timeline.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni nuovo elemento aggiunto parte impostato su <strong>Solo io</strong>: resta visibile
-      nella tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come
-      Pubblico da "✏️ Gestisci pubblicazione".
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

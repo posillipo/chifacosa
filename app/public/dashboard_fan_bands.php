@@ -147,27 +147,6 @@ $favoriteIds = array_column($favorites, 'spotify_artist_id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Cerca su Spotify le band o gli artisti che ami e aggiungili alla tua lista — qualsiasi
-      band esista su Spotify, non solo quelle registrate su <?= e(siteName()) ?>. Comparirà sulla tua
-      pagina pubblica come vetrina di ciò che ascolti. La ricerca parte da sola mentre scrivi,
-      e aggiungere/rimuovere una band aggiorna la lista all'istante, senza ricaricare la pagina.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni band aggiunta ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      condivisibile sui social con anteprima immagine/testo. Da "✏️ Gestisci pubblicazione" puoi
-      scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
-      comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
-      impostare il link personalizzato per il feed — stessa logica della Timeline.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni nuovo elemento aggiunto parte impostato su <strong>Solo io</strong>: resta visibile
-      nella tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come
-      Pubblico da "✏️ Gestisci pubblicazione".
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

@@ -43,30 +43,6 @@ $merchantFeedUrl = siteUrl('/' . $profile['slug'] . '/cinema-feed.xml');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Funzionalità dedicata ai profili cinema: incolla qui l'URL di un feed JSON dei film in
-      programmazione (formato 18tickets, con un campo <code>films</code>) e verrà creato
-      automaticamente un pulsante per ogni film nel modulo <strong>Link</strong> — con
-      locandina, titolo e link alla pagina del film. Lato pubblico, i pulsanti dei film
-      compaiono sempre <strong>in fondo</strong> all'elenco Link, dopo tutti gli altri pulsanti
-      che hai pubblicato, indipendentemente dall'ordine impostato in Link.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni sincronizzazione è una <strong>sincronizzazione vera</strong>: aggiunge i film nuovi
-      trovati nel JSON, aggiorna quelli già presenti, e rimuove quelli non più in programmazione
-      — il modulo Link rispecchia sempre esattamente il JSON. Puoi sincronizzare a mano quando
-      vuoi col pulsante qui sotto, oppure impostare un aggiornamento automatico periodico (es.
-      una volta al giorno) seguendo le istruzioni più in basso.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il <strong>prezzo del biglietto</strong> qui sotto serve solo per il feed prodotti verso
-      Google Merchant Center e Meta Commerce Manager (più in basso): un unico prezzo per tutti i
-      film di questo profilo, dato che il JSON in programmazione non lo fornisce per singolo
-      film.
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

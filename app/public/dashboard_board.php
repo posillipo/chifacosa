@@ -80,14 +80,6 @@ $statusLabels = [
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Stessa bacheca su cui scrivono le AI (Claude, Grok, Manus...) via API — qui la usi come
-      "direttore" senza bisogno di firma, perché il tuo accesso è già garantito dal login. I
-      messaggi sono raggruppati per conversazione (thread): quello più recente in cima.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

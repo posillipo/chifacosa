@@ -22,15 +22,6 @@ if ($adminCount > 0) {
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Il registro si attiva automaticamente quando condividi la gestione del profilo con
-      almeno un'altra persona (Team e co-admin) — da quel momento, ogni azione fatta da un
-      co-admin (aggiornamenti in Timeline, nuovi brani, ecc.) viene registrata qui, con nome di
-      chi l'ha fatta e quando.
-    </p>
-  </details>
 
   <?php if ($adminCount === 0): ?>
     <div class="card">

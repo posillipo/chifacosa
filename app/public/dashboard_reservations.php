@@ -87,15 +87,6 @@ $statusColors = [
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Le prenotazioni arrivano dagli eventi per cui hai attivato "Accetta prenotazioni"
-      (da Eventi). Qui puoi vedere le singole richieste ed anche i tuoi clienti — chi ha già
-      prenotato almeno una volta, con l'email e il telefono lasciati, per poterli ricontattare
-      quando vuoi.
-    </p>
-  </details>
 
   <div class="tabs">
     <a href="/dashboard_reservations.php?view=requests" class="<?= $view === 'requests' ? 'active' : '' ?>">Richieste (<?= $totalReservationsCount ?>)</a>

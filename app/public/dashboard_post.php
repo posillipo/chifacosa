@@ -130,27 +130,6 @@ $posts = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Un modo rapido per condividere un pensiero, un annuncio breve, o una foto — senza dover
-      scrivere un articolo completo come nel Blog. Puoi renderlo pubblico o visibile solo a te,
-      e programmarne la pubblicazione per una data futura.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il link personalizzato per il feed è opzionale: se lo compili, chi clicca sui post
-      pubblicati <strong>da questo momento in poi</strong> (dalla Timeline, dal feed RSS o da
-      un'automazione tipo Metricool) viene reindirizzato lì invece che alla pagina del post su
-      <?= e(siteName()) ?>. Il feed RSS continua comunque a esporre il permalink standard e
-      l'immagine caricata qui, per restare compatibile con strumenti come Metricool. Vale finché
-      non lo modifichi o lo svuoti — non serve ripeterlo a ogni pubblicazione.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di testo a partire da poche
-      parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi modificare
-      liberamente prima di pubblicare.
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (!empty($feedError)): ?><div class="alert error"><?= e($feedError) ?></div><?php endif; ?>

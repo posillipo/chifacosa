@@ -105,14 +105,6 @@ include __DIR__ . '/_dash_header.php';
     <!-- ═══ SEZIONE 1: Pubblica da Telegram ═══ -->
     <div class="section-title">📲 Pubblica da Telegram</div>
 
-    <details class="help-box">
-      <summary>ℹ️ Come funziona</summary>
-      <p style="color:var(--text-muted)">
-        Collega il tuo account Telegram al profilo: dopo potrai inviare una foto (con o senza testo)
-        direttamente al bot in chat privata. Il bot ti chiederà se pubblicarla sulla
-        <strong>Timeline</strong> o sul <strong>Blog</strong>, e creerà il post automaticamente.
-      </p>
-    </details>
 
     <?php if (!empty($profile['telegram_user_id'])): ?>
       <div class="card">

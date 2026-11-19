@@ -87,25 +87,6 @@ $offers = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Promozioni e sconti mostrati sulla tua pagina pubblica, in una sezione dedicata "Offerte"
-      (compare solo se hai almeno un'offerta attiva e valida). Ognuna ha anche una pagina propria
-      condivisibile sui social, con anteprima corretta (immagine, titolo, descrizione).
-    </p>
-    <p style="color:var(--text-muted)">
-      La validità è facoltativa: lasciala vuota per un'offerta sempre attiva, oppure imposta un
-      inizio e/o una fine — fuori da quell'intervallo l'offerta smette automaticamente di comparire
-      lato pubblico (resta comunque qui, puoi riattivarla cambiando le date). Il pulsante
-      Attiva/Disattiva sospende un'offerta manualmente, senza doverla eliminare.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
-      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
-      modificare liberamente prima di salvare.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

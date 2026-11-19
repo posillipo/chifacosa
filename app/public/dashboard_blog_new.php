@@ -120,15 +120,6 @@ include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
 
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Scrivi un articolo, eventualmente collegalo a un album della sezione Foto, aggiungi tag
-      liberi e una o più categorie, e scegli quando farlo comparire: subito, o programmato per
-      una data futura (proprio come per gli album fotografici). Un articolo programmato resta
-      visibile solo a te, qui in dashboard, finché non arriva la data scelta.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
