@@ -122,7 +122,8 @@ function renderDashRight(array $ctx): string {
     $isAdmin = !empty($ctx['is_admin']);
     $tzProfile = $ctx['tz_profile'] ?? [];
 
-    $heavy = dashRightHeavyData($profileId, $isBandOrLabel, $queueOn);
+    // I dati "pesanti" (coda, API) servono solo agli amministratori.
+    $heavy = $isAdmin ? dashRightHeavyData($profileId, $isBandOrLabel, $queueOn) : ['queue' => null, 'api' => null, 'events' => []];
 
     // --- Da gestire ---
     $todo = '';
@@ -135,10 +136,14 @@ function renderDashRight(array $ctx): string {
         $todo .= dashRightRow('Prenotazioni da confermare', dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [$profileId]), '/dashboard_reservations.php', 'warn');
     }
 
-    $html = '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
+    // Community per tutti; "Da gestire" (i contatori sono anche nel menu di sinistra e nella barra in alto) e gli strumenti solo per gli amministratori.
+    $html = renderDashCommunity($profileId);
+    if ($isAdmin) {
+        $html .= '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
+    }
 
     // --- Coda Social ---
-    if ($queueOn && $heavy['queue'] !== null) {
+    if ($isAdmin && $queueOn && $heavy['queue'] !== null) {
         $q = $heavy['queue'];
         $b = dashRightRow('In attesa', $q['pending'], '/dashboard_social_queue.php?status=pending');
         $b .= dashRightRow('In elaborazione', $q['processing'], '/dashboard_social_queue.php?status=active');
@@ -190,7 +195,7 @@ function renderDashRight(array $ctx): string {
 
     return '<div id="dash-right-overlay" class="dash-right-overlay"></div>'
          . '<aside id="dash-right" class="dash-right" aria-label="Attività">'
-         . '<div class="dash-right-head"><strong>Attività</strong><button type="button" id="dash-right-close" class="dash-side-close" aria-label="Chiudi">&times;</button></div>'
+         . '<div class="dash-right-head"><strong>' . ($isAdmin ? 'Attività' : 'Community') . '</strong><button type="button" id="dash-right-close" class="dash-side-close" aria-label="Chiudi">&times;</button></div>'
          . $html
          . '</aside>';
 }
@@ -216,6 +221,109 @@ function renderDashSideEvents(int $profileId, array $tzProfile): string {
     }
     if (!$rows) {
         $html .= '<div class="dash-side-empty">Nessun evento in programma.</div>';
+    }
+    return $html;
+}
+
+
+/**
+ * Dati del blocco Community: conteggi e ultimi 10 follower / seguiti del profilo attivo.
+ * Follower = profili che ti seguono + iscritti via email (verificati); Seguiti = profili che segui.
+ */
+function dashCommunityData(int $profileId): array {
+    $db = getDB();
+    $out = ['followers_n' => 0, 'following_n' => 0, 'followers' => [], 'following' => []];
+    try {
+        $accN = dashRightCount('SELECT COUNT(*) FROM account_follows WHERE followed_user_id = ?', [$profileId]);
+        $mailN = dashRightCount('SELECT COUNT(*) FROM followers WHERE user_id = ? AND verified = 1', [$profileId]);
+        $out['followers_n'] = $accN + $mailN;
+        $out['following_n'] = dashRightCount('SELECT COUNT(*) FROM account_follows WHERE follower_user_id = ?', [$profileId]);
+
+        $st = $db->prepare('SELECT u.id, u.slug, p.display_name, p.avatar_path, af.created_at d,
+                (SELECT COUNT(*) FROM account_follows b WHERE b.follower_user_id = ? AND b.followed_user_id = u.id) AS i_follow
+            FROM account_follows af JOIN users u ON u.id = af.follower_user_id JOIN profiles p ON p.user_id = u.id
+            WHERE af.followed_user_id = ? ORDER BY af.created_at DESC, af.id DESC LIMIT 10');
+        $st->execute([$profileId, $profileId]);
+        foreach ($st->fetchAll() as $r) {
+            $out['followers'][] = ['kind' => 'profile', 'id' => (int) $r['id'], 'slug' => $r['slug'], 'name' => $r['display_name'] ?: $r['slug'],
+                'avatar' => $r['avatar_path'], 'd' => $r['d'], 'i_follow' => (int) $r['i_follow'] > 0];
+        }
+        $st = $db->prepare('SELECT email, first_name, last_name, created_at d FROM followers WHERE user_id = ? AND verified = 1 ORDER BY created_at DESC LIMIT 10');
+        $st->execute([$profileId]);
+        foreach ($st->fetchAll() as $r) {
+            $nm = trim(($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? ''));
+            $out['followers'][] = ['kind' => 'email', 'name' => $nm !== '' ? $nm : $r['email'], 'sub' => $nm !== '' ? $r['email'] : 'iscritto via email', 'd' => $r['d']];
+        }
+        usort($out['followers'], fn($a, $b) => strcmp((string) $b['d'], (string) $a['d']));
+        $out['followers'] = array_slice($out['followers'], 0, 10);
+
+        $st = $db->prepare('SELECT u.id, u.slug, p.display_name, p.avatar_path, af.created_at d
+            FROM account_follows af JOIN users u ON u.id = af.followed_user_id JOIN profiles p ON p.user_id = u.id
+            WHERE af.follower_user_id = ? ORDER BY af.created_at DESC, af.id DESC LIMIT 10');
+        $st->execute([$profileId]);
+        foreach ($st->fetchAll() as $r) {
+            $out['following'][] = ['kind' => 'profile', 'id' => (int) $r['id'], 'slug' => $r['slug'], 'name' => $r['display_name'] ?: $r['slug'],
+                'avatar' => $r['avatar_path'], 'd' => $r['d']];
+        }
+    } catch (Throwable $e) {
+    }
+    return $out;
+}
+
+function dashCommunityAvatar(array $r): string {
+    if (!empty($r['avatar'])) {
+        return '<img class="dash-comm-av" src="/' . e(ltrim($r['avatar'], '/')) . '" alt="" loading="lazy">';
+    }
+    return '<span class="dash-comm-av dash-comm-ph">' . e(mb_strtoupper(mb_substr((string) $r['name'], 0, 1))) . '</span>';
+}
+
+function dashCommunityList(array $rows, string $emptyText, bool $withFollowBack): string {
+    if (!$rows) {
+        return '<div class="dash-right-empty">' . e($emptyText) . '</div>';
+    }
+    $html = '';
+    foreach ($rows as $r) {
+        $inner = dashCommunityAvatar($r) . '<span class="dash-comm-txt"><b>' . e($r['name']) . '</b><small>'
+               . e(($r['kind'] === 'profile' ? '@' . $r['slug'] : ($r['sub'] ?? '')) . ' · ' . dashRelTime($r['d'])) . '</small></span>';
+        $html .= '<div class="dash-comm-row">';
+        $html .= $r['kind'] === 'profile'
+            ? '<a class="dash-comm-link" href="/dashboard_profile_view.php?slug=' . e(rawurlencode($r['slug'])) . '">' . $inner . '</a>'
+            : '<div class="dash-comm-link">' . $inner . '</div>';
+        if ($withFollowBack && $r['kind'] === 'profile' && empty($r['i_follow'])) {
+            $html .= '<form method="post" action="/follow_account.php" class="dash-comm-follow">' . csrfField()
+                   . '<input type="hidden" name="user_id" value="' . (int) $r['id'] . '"><input type="hidden" name="action" value="follow">'
+                   . '<input type="hidden" name="redirect" value="' . e((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard.php')) . '">'
+                   . '<button type="submit" title="Segui anche tu" aria-label="Segui ' . e($r['name']) . '"><i class="fa-solid fa-user-plus"></i></button></form>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+
+/** Blocco "Community" della colonna destra: scorciatoie, ultimi 10 follower e ultimi 10 seguiti, con schede. */
+function renderDashCommunity(int $profileId): string {
+    $c = dashCommunityData($profileId);
+    $html = '<div class="dash-right-block dash-comm"><div class="dash-right-title">Community</div>'
+          . '<div class="dash-comm-tiles">'
+          . '<a href="/dashboard_followers.php" class="dash-comm-tile"><i class="fa-solid fa-users"></i><b>' . (int) $c['followers_n'] . '</b><span>Follower</span></a>'
+          . '<a href="/dashboard_following.php" class="dash-comm-tile"><i class="fa-solid fa-user-check"></i><b>' . (int) $c['following_n'] . '</b><span>Seguiti</span></a>'
+          . '<a href="/dashboard_invite.php" class="dash-comm-tile dash-comm-invite"><i class="fa-solid fa-user-plus"></i><b>+</b><span>Invita</span></a>'
+          . '</div>'
+          . '<div class="dash-comm-tabs" role="tablist">'
+          . '<button type="button" class="active" role="tab" aria-selected="true" data-comm-tab="followers">Ultimi follower</button>'
+          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button></div>'
+          . '<div class="dash-comm-panel" data-comm-panel="followers">' . dashCommunityList($c['followers'], 'Ancora nessun follower: condividi il tuo link con Invita.', true)
+          . '<a class="dash-right-link" href="/dashboard_followers.php">Vedi tutti i follower</a></div>'
+          . '<div class="dash-comm-panel" data-comm-panel="following" hidden>' . dashCommunityList($c['following'], 'Non segui ancora nessun profilo: usa la ricerca in alto.', false)
+          . '<a class="dash-right-link" href="/dashboard_following.php">Vedi tutti i seguiti</a></div>'
+          . '</div>';
+    static $js = false;
+    if (!$js) {
+        $js = true;
+        $html .= '<script>(function(){document.addEventListener("click",function(ev){var b=ev.target.closest("[data-comm-tab]");if(!b)return;'
+               . 'var box=b.closest(".dash-comm"),k=b.getAttribute("data-comm-tab");'
+               . 'box.querySelectorAll("[data-comm-tab]").forEach(function(x){var on=x===b;x.classList.toggle("active",on);x.setAttribute("aria-selected",on?"true":"false");});'
+               . 'box.querySelectorAll("[data-comm-panel]").forEach(function(p){p.hidden=p.getAttribute("data-comm-panel")!==k;});});})();</script>';
     }
     return $html;
 }

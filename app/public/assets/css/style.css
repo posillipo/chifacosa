@@ -3397,3 +3397,30 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .dash-side-event small, .dash-side-empty { color: var(--text-muted); }
 .dash-side-empty { padding: 4px 14px; font-size: 12.5px; }
 .dash-side-link .dash-side-badge { margin-left: auto; min-width: 18px; padding: 0 6px; border-radius: 999px; background: #e74c3c; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+
+/* ===== Community nella colonna destra: tessere, schede e ultimi 10 follower / seguiti ===== */
+.dash-comm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 2px 10px; }
+.dash-comm-tile { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 4px 7px; border-radius: 12px; background: rgba(108,92,231,.08); color: inherit; text-decoration: none; transition: transform .12s, background .12s; }
+.dash-comm-tile:hover { background: rgba(108,92,231,.16); transform: translateY(-1px); }
+.dash-comm-tile i { color: var(--accent); font-size: 13px; }
+.dash-comm-tile b { font-size: 18px; line-height: 1.2; }
+.dash-comm-tile span { font-size: 11px; color: var(--text-muted); }
+.dash-comm-invite { background: var(--accent); }
+.dash-comm-invite i, .dash-comm-invite b, .dash-comm-invite span { color: #fff; }
+.dash-comm-invite:hover { background: var(--accent); filter: brightness(1.08); }
+.dash-comm-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(128,128,128,.14); margin: 0 2px 8px; }
+.dash-comm-tabs button { flex: 1; border: none; background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 999px; cursor: pointer; }
+.dash-comm-tabs button.active { background: #fff; color: #22223b; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.dash-comm-panel[hidden] { display: none; }
+.dash-comm-row { display: flex; align-items: center; gap: 4px; border-radius: 10px; }
+.dash-comm-row:hover { background: #f5f5f8; }
+.dash-comm-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; padding: 6px; color: inherit; text-decoration: none; }
+.dash-comm-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.dash-comm-ph { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; }
+.dash-comm-txt { min-width: 0; }
+.dash-comm-txt b, .dash-comm-txt small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-comm-txt b { font-size: 13px; font-weight: 600; }
+.dash-comm-txt small { font-size: 11.5px; color: var(--text-muted); }
+.dash-comm-follow { margin: 0; }
+.dash-comm-follow button { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(108,92,231,.12); color: var(--accent); cursor: pointer; font-size: 12px; }
+.dash-comm-follow button:hover { background: var(--accent); color: #fff; }
