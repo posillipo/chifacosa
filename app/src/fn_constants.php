@@ -363,7 +363,7 @@ const PUBLIC_NAV_ITEM_KEYS = [
 // Feed e Primo Piano sono strumenti solo di gestione, Richieste/Prenotazioni sono le sotto-voci
 // di Servizi/Eventi che nella barra della dashboard compaiono come tasti a sé.
 const DASHBOARD_TAB_KEYS = [
-    'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link', 'featured' => 'Primo Piano',
+    'feed' => 'Feed', 'timeline' => 'Timeline', 'link' => 'Link in Bio', 'featured' => 'Primo Piano',
     'cheamo' => 'Che Amo', 'blog' => 'Blog', 'menu' => 'Menù', 'offerte' => 'Offerte', 'foto' => 'Album', 'video' => 'Video', 'contest' => 'Contest',
     'servizi' => 'Servizi', 'service_inquiries' => 'Richieste', 'eventi' => 'Eventi', 'reservations' => 'Prenotazioni',
     'segui' => 'Follower', 'contatti' => 'Contatti Web', 'api' => 'API', 'schedule' => 'Programmati',
