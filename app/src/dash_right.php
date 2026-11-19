@@ -152,26 +152,28 @@ function renderDashRight(array $ctx): string {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Coda Social</div>' . $b . '</div>';
     }
 
-    // --- Automazioni e MCP ---
-    $a = '';
-    if ($heavy['api'] !== null) {
-        $api = $heavy['api'];
-        $a .= dashRightRow('Chiamate (24 ore)', $api['calls'], '/dashboard_api_tokens.php');
-        $a .= dashRightRow('Errori (24 ore)', $api['errors'], '/dashboard_api_tokens.php', 'bad');
-        $a .= '<div class="dash-right-sub">Ultimo utilizzo</div>';
-        foreach ($api['tokens'] as $tk) {
-            $name = $tk['mcp_name'] ?: $tk['label'];
-            $a .= '<div class="dash-right-line"><span>' . e($name) . '</span><small>' . e(dashRelTime($tk['last_used_at'])) . '</small></div>';
-        }
-    } else {
-        $a .= '<div class="dash-right-empty">Nessun token attivo.</div>';
-    }
-    $a .= '<a class="dash-right-link" href="/dashboard_api_tokens.php"><i class="fa-solid fa-code" aria-hidden="true"></i> Token e richieste</a>';
+    // --- Automazioni e MCP: solo amministratori ---
     if ($isAdmin) {
-        // Solo amministratori del sito: la pagina è comunque protetta lato server da requireAdmin().
-        $a .= '<a class="dash-right-link" href="/admin_mcp.php"><i class="fa-solid fa-server" aria-hidden="true"></i> Server MCP (Area Admin)</a>';
+        $a = '';
+        if ($heavy['api'] !== null) {
+            $api = $heavy['api'];
+            $a .= dashRightRow('Chiamate (24 ore)', $api['calls'], '/dashboard_api_tokens.php');
+            $a .= dashRightRow('Errori (24 ore)', $api['errors'], '/dashboard_api_tokens.php', 'bad');
+            $a .= '<div class="dash-right-sub">Ultimo utilizzo</div>';
+            foreach ($api['tokens'] as $tk) {
+                $name = $tk['mcp_name'] ?: $tk['label'];
+                $a .= '<div class="dash-right-line"><span>' . e($name) . '</span><small>' . e(dashRelTime($tk['last_used_at'])) . '</small></div>';
+            }
+        } else {
+            $a .= '<div class="dash-right-empty">Nessun token attivo.</div>';
+        }
+        $a .= '<a class="dash-right-link" href="/dashboard_api_tokens.php"><i class="fa-solid fa-code" aria-hidden="true"></i> Token e richieste</a>';
+        if ($isAdmin) {
+            // Solo amministratori del sito: la pagina è comunque protetta lato server da requireAdmin().
+            $a .= '<a class="dash-right-link" href="/admin_mcp.php"><i class="fa-solid fa-server" aria-hidden="true"></i> Server MCP (Area Admin)</a>';
+        }
+        $html .= '<div class="dash-right-block"><div class="dash-right-title">Automazioni e MCP</div>' . $a . '</div>';
     }
-    $html .= '<div class="dash-right-block"><div class="dash-right-title">Automazioni e MCP</div>' . $a . '</div>';
 
     // --- Integrazioni (voci prima nel menu account) ---
     if (!empty($ctx['integrations'])) {
