@@ -276,7 +276,7 @@ if ($actingAsId) {
     if (!items.length) { list.innerHTML = '<div class="dash-psearch-empty">Nessun profilo trovato per \u201c' + esc(q) + '\u201d</div>'; show(true); return; }
     list.innerHTML = items.map(function (r) {
       var av = r.avatar ? '<img src="' + esc(r.avatar) + '" alt="" loading="lazy">' : '<span class="dash-psearch-ph">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span>';
-      return '<a class="dash-psearch-item" role="option" href="/' + encodeURIComponent(r.slug) + '">' + av + '<span><b>' + esc(r.name) + '</b><small>' + esc(r.sub) + '</small></span></a>';
+      return '<a class="dash-psearch-item" role="option" href="/dashboard_profile_view.php?slug=' + encodeURIComponent(r.slug) + '">' + av + '<span><b>' + esc(r.name) + '</b><small>' + esc(r.sub) + '</small></span></a>';
     }).join('');
     show(true);
   }
