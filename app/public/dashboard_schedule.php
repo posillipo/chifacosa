@@ -2,6 +2,10 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireLogin();
+if (!siteToolEnabled('programmati')) {
+    http_response_code(404);
+    exit('Questa funzione non è attiva su questo sito.');
+}
 $profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
 $activeTab = 'schedule';
 $pageTitle = 'Programmati';

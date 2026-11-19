@@ -2,6 +2,10 @@
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 $user = requireAdmin();
+if (!siteToolEnabled('programmati')) {
+    http_response_code(404);
+    exit('Questa funzione non è attiva su questo sito.');
+}
 $profile = getActingProfile($user);
 $activeTab = 'schedule_admin';
 $pageTitle = 'Calendario Programmazioni';

@@ -3385,3 +3385,6 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .page-help-inner code { font-size: 12.5px; word-break: break-all; }
 .page-help-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
 .page-help-more { font-weight: 600; color: var(--accent); text-decoration: none; }
+
+/* Pallino "collegata" accanto alle Integrazioni nel menu di sinistra. */
+.dash-side-link .dash-side-dot { margin-left: auto; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; }
