@@ -166,18 +166,6 @@ $dtv = fn ($k) => e(localDateTimeInputValue($c[$k] ?? null, $profile));
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Qui configuri le edizioni del contest di questo profilo (nome, date, regolamento) e gestisci
-      le candidature, i gruppi, i voti e gli sponsor. La pagina pubblica di ogni edizione è
-      <code>/<?= e($profile['slug']) ?>/contest/<em>indirizzo</em></code>; l'elenco delle edizioni è
-      <a href="/<?= e($profile['slug']) ?>/contest" target="_blank">/<?= e($profile['slug']) ?>/contest</a>.
-      Un artista candida un solo brano; il brano deve essere su Spotify e uscito entro il numero di mesi
-      indicato prima dell'inizio delle votazioni. Una candidatura resta «in attesa» finché non la approvi:
-      all'approvazione l'artista riceve la conferma e il brano entra nella lista ufficiale.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>

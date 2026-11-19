@@ -1205,3 +1205,14 @@ CREATE TABLE IF NOT EXISTS theme_visibility_users (
     KEY idx_theme_vis_user (user_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Guide delle pagine (popup "?" accanto al titolo): vedi database/migrations/2026_11_29_page_help.sql
+CREATE TABLE IF NOT EXISTS page_help (
+    page_key VARCHAR(80) NOT NULL PRIMARY KEY,
+    title VARCHAR(160) NOT NULL,
+    body TEXT NOT NULL,
+    more TEXT DEFAULT NULL,
+    doc_url VARCHAR(255) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;

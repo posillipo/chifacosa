@@ -224,36 +224,6 @@ include __DIR__ . '/_dash_header.php';
       all'amministratore di configurarla (ADMIN → Geoapify).
     </div>
   <?php endif; ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Cerca un luogo (via OpenStreetMap, gratuito) o inserisci le coordinate a mano se non lo
-      trovi, e aggiungilo alla tua lista di viaggi. Comparirà sulla tua pagina pubblica come
-      diario dei posti che hai visitato.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il nome trovato dalla ricerca è sempre modificabile prima di aggiungere il punto — utile
-      perché la mappa spesso trova l'indirizzo esatto ma non il nome del locale (es. "Via Roma 12"
-      invece di "Trattoria da Mario"). Puoi correggerlo anche in seguito da "✏️ Gestisci
-      pubblicazione".
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni viaggio aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      con una mappa e condivisibile sui social. Da "✏️ Gestisci pubblicazione" puoi scrivere il
-      racconto (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve comparire nel
-      Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e impostare il link
-      personalizzato per il feed — stessa logica della Timeline.
-    </p>
-    <p style="color:var(--text-muted)">
-      Se non carichi una foto tua, l'anteprima social usa automaticamente una miniatura della
-      mappa del posto, così ogni viaggio ha sempre un'immagine condivisibile.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni nuovo elemento aggiunto parte impostato su <strong>Solo io</strong>: resta visibile
-      nella tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come
-      Pubblico da "✏️ Gestisci pubblicazione".
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

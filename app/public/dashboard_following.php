@@ -14,13 +14,6 @@ $following = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      L'elenco dei profili che segui — i loro contenuti compaiono nella tua Timeline
-      personale. Per seguire un nuovo profilo, vai sulla sua pagina pubblica e clicca "Segui".
-    </p>
-  </details>
 
   <div class="section-title">Segui (<?= count($following) ?>)</div>
   <?php if (!$following): ?>

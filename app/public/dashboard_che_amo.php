@@ -104,20 +104,6 @@ if (!in_array('cheamo', $hiddenKeys, true)) {
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Tutti i moduli "che amo" raccolti in un unico posto, invece di una scheda a testa in cima
-      alla dashboard. Ogni modulo resta esattamente quello di sempre (stessa pagina, stessi dati,
-      stesse impostazioni di privacy e pubblicazione) — cambia solo il punto da cui ci si arriva.
-    </p>
-    <p style="color:var(--text-muted)">
-      Trascina una card dall'icona <i class="fa-solid fa-grip-vertical"></i> per cambiarne
-      l'ordine: si salva subito, senza bisogno di premere alcun pulsante. È lo stesso ordine
-      usato dalla barra di navigazione pubblica per queste voci (personalizzabile anche da
-      Menu di Navigazione).
-    </p>
-  </details>
   <div id="che-amo-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
 
   <div id="che-amo-sortable-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">

@@ -18,13 +18,6 @@ $postsCount = (int) $stmt->fetch()['c'];
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Gestisci qui il blog: organizza categorie e tag, scrivi un nuovo articolo, oppure vai
-      all'elenco completo per cercare, modificare o eliminare quelli già pubblicati.
-    </p>
-  </details>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
     <a href="/dashboard_blog_categories.php" class="card" style="display:block;text-decoration:none;color:inherit;">

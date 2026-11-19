@@ -242,22 +242,6 @@ function renderLinkItem(array $l, int $idx, int $total): void {
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Aggiungi qui i pulsanti del tuo Link in Bio: social, sito web, streaming, qualsiasi link tu
-      voglia mostrare. Le icone dei servizi più comuni (Spotify, Instagram, YouTube, ecc.)
-      vengono riconosciute automaticamente e mostrate in cima alla pagina pubblica come icone
-      social invece che come pulsanti — usa le frecce per decidere l'ordine dei link rimanenti.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il <strong>Tasto Speciale</strong> qui sotto genera in automatico un pulsante per ogni
-      sezione del sito che hai già popolato con contenuti (Timeline, Che Amo, Blog, Eventi,
-      Offerte, ecc.), raggruppati dietro un separatore "Sezioni del sito". Puoi premerlo quando
-      vuoi: non duplica nulla, aggiorna i pulsanti già creati e rimuove quelli delle sezioni che
-      restano senza contenuti.
-    </p>
-  </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['error'])): ?><div class="alert error">Inserisci un'etichetta e un URL valido.</div><?php endif; ?>
   <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città), oppure inserisci direttamente le coordinate.</div><?php endif; ?>

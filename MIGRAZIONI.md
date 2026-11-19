@@ -1269,6 +1269,10 @@ al bot in chat privata. Il bot chiede se pubblicare su Timeline o Blog con botto
 Il webhook riceve gli aggiornamenti su `/webhook/telegram`. La tabella `telegram_pending_posts`
 tiene in memoria il contenuto finché l'utente non sceglie la destinazione (auto-pulizia dopo 1h).
 
+### Guide delle pagine (`2026_11_29_page_help.sql`)
+Crea la tabella `page_help` e inserisce i testi iniziali dei popup "?" (INSERT IGNORE: rieseguirla non sovrascrive
+i testi modificati da Admin → Guide delle pagine). Da eseguire una volta su ogni database.
+
 ---
 
 ## Come aggiungere una nuova voce

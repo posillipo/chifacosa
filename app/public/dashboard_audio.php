@@ -166,28 +166,6 @@ $trackIds = array_column($tracks, 'spotify_track_id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Cerca su Spotify i brani da mostrare sulla tua pagina (i tuoi, le tue cover, o qualsiasi
-      brano ti rappresenti) e aggiungili — compariranno nella sezione "Brani che amo" della tua
-      pagina pubblica. La ricerca parte da sola mentre scrivi, e aggiungere/rimuovere un brano
-      aggiorna la lista all'istante, senza ricaricare la pagina.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni brano aggiunto ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      condivisibile sui social con anteprima immagine/testo. Da "✏️ Gestisci pubblicazione" puoi
-      scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
-      comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
-      impostare il link personalizzato per il feed — stessa logica della Timeline. Puoi anche
-      aggiungere il testo del brano da "📝 Testo".
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni nuovo brano aggiunto parte impostato su <strong>Solo io</strong>: resta visibile nella
-      tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come Pubblico
-      da "✏️ Gestisci pubblicazione".
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

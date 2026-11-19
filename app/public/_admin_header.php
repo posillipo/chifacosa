@@ -25,6 +25,7 @@ $navItems = [
     'reviews' => ['url' => '/admin_reviews.php', 'icon' => 'fas fa-star', 'label' => 'Recensioni'],
     'access_requests' => ['url' => '/admin_access_requests.php', 'icon' => 'fas fa-user-check', 'label' => 'Richieste di accesso'],
     'turnstile' => ['url' => '/admin_turnstile.php', 'icon' => 'fas fa-shield-halved', 'label' => 'Antispam'],
+    'page_help' => ['url' => '/admin_page_help.php', 'icon' => 'fas fa-circle-question', 'label' => 'Guide delle pagine'],
     'mcp' => ['url' => '/admin_mcp.php', 'icon' => 'fas fa-robot', 'label' => 'Server MCP'],
 ];
 ?>

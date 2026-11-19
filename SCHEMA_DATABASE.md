@@ -127,3 +127,7 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
   `users` (un profilo per utente, non di più).
 - `blog_posts` ha una chiave univoca composta su `(user_id, slug)`: due utenti diversi possono
   avere articoli con lo stesso slug, ma non lo stesso utente due volte.
+
+- `page_help` (guide delle pagine, popup "?"): `page_key` (chiave primaria, nome del file della pagina senza `.php`),
+  `title`, `body` (testo breve), `more` (approfondimento, opzionale), `doc_url` (link esterno "Approfondisci", opzionale),
+  `sort_order`, `updated_at`. Nessuna chiave esterna. Migrazione `2026_11_29_page_help.sql`.

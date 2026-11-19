@@ -152,14 +152,6 @@ if ($editCategoryId > 0) {
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Organizza il tuo menù in categorie (es. Antipasti, Primi, Dolci) e aggiungi i piatti con
-      prezzo e, se vuoi, gli allergeni previsti dalla normativa UE. La tua pagina pubblica
-      mostrerà il menù completo, diviso per categoria, sotto <code>/<?= e($user['slug']) ?>/menu</code>.
-    </p>
-  </details>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
   <form method="post" class="card">

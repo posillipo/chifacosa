@@ -97,19 +97,6 @@ include __DIR__ . '/_dash_header.php';
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
 
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Quando pubblichi un post Timeline o un articolo Blog, il contenuto viene aggiunto a una coda.
-      Ogni 10 minuti, Claude legge la coda, genera una <strong>copy ottimizzata per ogni social
-      network</strong> (tono, lunghezza, hashtag diversi per Instagram, Facebook, LinkedIn, ecc.)
-      e la schedula su Metricool. Nessun intervento manuale richiesto.
-    </p>
-    <p style="color:var(--text-muted)">
-      Per ogni profilo serve l'<strong>ID Metricool</strong> del brand collegato: lo inserisce
-      l'amministratore del sito. Poi scegli su quali social pubblicare.
-    </p>
-  </details>
 
   <div class="section-title">Profili e ID Metricool</div>
   <?php foreach ($rows as $r): ?>

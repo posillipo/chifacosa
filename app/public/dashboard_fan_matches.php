@@ -166,27 +166,6 @@ $favoriteIds = array_column($favorites, 'thesportsdb_event_id');
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      TheSportsDB non permette di cercare una partita per nome: prima cerca e scegli una squadra,
-      poi scegli una partita dal suo calendario (prossime partite in programma e ultime giocate).
-      Comparirà sulla tua pagina pubblica come vetrina di ciò che ami seguire, con risultato (se
-      già giocata), campionato, stadio e data.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni partita aggiunta ha una sua pagina pubblica dedicata (raggiungibile cliccandoci sopra),
-      condivisibile sui social con anteprima immagine/testo. Da "✏️ Gestisci pubblicazione" puoi
-      scrivere perché ti piace (anche con l'aiuto dell'AI), aggiungere una foto, decidere se deve
-      comparire nel Feed (Pubblico/Solo io), programmarne la comparsa per una data futura e
-      impostare il link personalizzato per il feed — stessa logica della Timeline.
-    </p>
-    <p style="color:var(--text-muted)">
-      Ogni nuovo elemento aggiunto parte impostato su <strong>Solo io</strong>: resta visibile
-      nella tua lista e nella sua pagina, ma compare nel Feed solo dopo che lo confermi come
-      Pubblico da "✏️ Gestisci pubblicazione".
-    </p>
-  </details>
 
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

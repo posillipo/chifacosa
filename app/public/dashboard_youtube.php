@@ -41,14 +41,6 @@ $profile = getActingProfile($user);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Incolla il link del tuo canale YouTube (es. <code>https://www.youtube.com/@tuoband</code>
-      o <code>https://www.youtube.com/channel/UC...</code>): la tua pagina pubblica mostrerà
-      automaticamente i video più recenti, aggiornati direttamente da YouTube.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

@@ -91,25 +91,6 @@ usort($dashTabKeysInOrder, function ($a, $b) use ($dashTabOrder, $dashTabKeysInO
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Scegli quali voci mostrare nel menu di navigazione della tua pagina pubblica — anche
-      Spotify, Podcast, YouTube e il pulsante "Segui". Band/Attori/Film/Libri/Playlist/Album che
-      amo non hanno più un tab a testa in cima alla pagina: sono raccolti dentro "Che Amo", e la
-      spunta qui sotto decide se compaiono come card in quella vetrina. Restano comunque
-      raggiungibili con un link diretto e condivisibile (es. <code>/tuoslug/film-che-amo</code>),
-      come indicato accanto a ciascuna voce.
-      Nota: Spotify/Podcast/YouTube/Menù/Offerte/Foto/Servizi/Band/Attori/Film/Libri/Playlist/Album
-      che amo/Viaggi restano comunque visibili solo se hanno anche effettivamente del contenuto
-      PUBBLICO (collegamento fatto, piatti attivi, elementi aggiunti, offerta/album/servizio con
-      visibilità "Pubblico" e non programmato nel futuro) — spuntarli qui non basta da solo a
-      farli comparire: qui sotto trovi segnalato quali, fra quelle già spuntate, ne sono ancora
-      prive.
-      Trascina una voce dall'icona <i class="fa-solid fa-grip-vertical"></i>
-      per cambiarne l'ordine: si salva subito, senza bisogno di premere "Salva".
-    </p>
-  </details>
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
   <?php if (!empty($_GET['reset'])): ?><div class="alert success">Ordine del menu pubblico riportato a quello predefinito.</div><?php endif; ?>
   <?php if (!empty($_GET['reset_dash'])): ?><div class="alert success">Ordine dei tasti della dashboard riportato a quello predefinito.</div><?php endif; ?>

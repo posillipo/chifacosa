@@ -58,14 +58,6 @@ include __DIR__ . '/_dash_header.php';
 ?>
   <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
 
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      I tag sono etichette libere assegnate ai singoli articoli — a differenza delle categorie
-      non vanno create prima: basta scriverle quando scrivi o modifichi un articolo. Qui trovi
-      tutti quelli attualmente in uso: puoi rinominarli (cambia ovunque compaiano) o eliminarli.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

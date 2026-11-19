@@ -144,24 +144,6 @@ $albums = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Un album è un gruppo di foto con un titolo e una descrizione, mostrato nella sezione
-      pubblica "Foto" insieme alle foto prese dai tuoi post Timeline. Puoi caricare fino a
-      <?= ALBUM_MAX_PHOTOS ?> foto per album.
-    </p>
-    <p style="color:var(--text-muted)">
-      Pubblico/Solo io e la programmazione funzionano come nel resto del sito: un album privato
-      non compare nella pagina pubblica né nel Feed, uno programmato compare automaticamente alla
-      data scelta.
-    </p>
-    <p style="color:var(--text-muted)">
-      Il pulsante <strong>✨ Genera con AI</strong> scrive una bozza di descrizione a partire da
-      poche parole chiave: scrivi cosa vuoi comunicare, l'AI propone un testo pronto che puoi
-      modificare liberamente prima di salvare.
-    </p>
-  </details>
 
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 

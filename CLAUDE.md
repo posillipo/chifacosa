@@ -33,3 +33,7 @@ done
 
 ## MCP_ACCESS_TOKEN
 - Solo variabile d'ambiente, mai in codice
+
+## Guide delle pagine e documentazione
+- Le pagine della dashboard NON hanno riquadri descrittivi in cima: il testo di aiuto sta nella tabella `page_help` (popup "?" accanto al titolo, modificabile da Admin → Guide delle pagine). Codice in `app/src/fn_help.php`.
+- Ogni modifica al comportamento di una pagina deve aggiornare anche il suo testo in `page_help` (nuova migrazione con `INSERT ... ON DUPLICATE KEY UPDATE`) e la documentazione (`DOCUMENTAZIONE_TECNICA_COMPLETA.md`, `SCHEMA_DATABASE.md`, `MIGRAZIONI.md`).

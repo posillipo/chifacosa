@@ -30,14 +30,6 @@ $conversations = $stmt->fetchAll();
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Puoi scrivere solo con chi ti segue e che segui a tua volta — nessun messaggio con
-      sconosciuti. Chi riceve il tuo primo messaggio della giornata riceve un'email di
-      notifica (senza mai rivelare il contenuto), al massimo una volta al giorno.
-    </p>
-  </details>
 
   <?php if (!$conversations): ?>
     <div class="card">

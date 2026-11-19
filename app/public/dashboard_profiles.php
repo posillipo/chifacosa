@@ -55,15 +55,6 @@ $createdId = (int) ($_GET['created'] ?? 0);
 
 include __DIR__ . '/_dash_header.php';
 ?>
-  <details class="help-box">
-    <summary>ℹ️ Come funziona</summary>
-    <p style="color:var(--text-muted)">
-      Crea qui altri profili pubblici (pagine) gestiti dallo stesso tuo account — utile ad
-      esempio se segui più attività diverse. Ogni profilo ha la propria pagina pubblica, i propri
-      link, eventi, blog, ecc., del tutto separati dagli altri. Passa dall'uno all'altro con il
-      selettore in alto nella dashboard (l'icona accanto al menu account).
-    </p>
-  </details>
 
   <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
