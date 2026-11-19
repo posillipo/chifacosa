@@ -122,8 +122,31 @@ function requireLogin(): array {
         header('Location: /login.php');
         exit;
     }
+    onboardingGate($u);
     termsGate($u);
     return $u;
+}
+
+
+// Finché il profilo non è completo (tipo di profilo, nome e username scelti nel form di benvenuto) non si può usare
+// la dashboard né nessuna pagina che richiede il login: chi arriva con la sessione già aperta (per esempio dopo
+// aver lasciato il form a metà e tornato alla home) viene riportato al form.
+function onboardingGate(array $u): void {
+    if (!empty($u['account_type_chosen'])) {
+        return;
+    }
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $exempt = ['onboarding_setup.php', 'choose_account_type.php', 'logout.php', 'accetta_condizioni.php', 'condizioni.php',
+               'dashboard_delete_account.php', 'account_eliminato.php', 'api_username_check.php'];
+    if (in_array($script, $exempt, true)) {
+        return;
+    }
+    if (strncmp($script, 'api_', 4) === 0 || $_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(403);
+        exit('Completa prima il tuo profilo.');
+    }
+    header('Location: /onboarding_setup.php');
+    exit;
 }
 
 

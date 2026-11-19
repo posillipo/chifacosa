@@ -210,6 +210,7 @@ email=...`); da lì in poi si possono promuovere altri utenti dall'interfaccia.
 
 - **Registrazione solo con Google**: `register.php` rimanda a `auth_google_start.php` (mantiene `?ref=`). Il modulo con email e password resta
   solo come ripiego dove l'accesso con Google non è configurato. L'email deve essere verificata da Google.
+- **Profilo incompleto = niente dashboard**: `requireLogin()` chiama `onboardingGate()` (`fn_auth.php`): finché `users.account_type_chosen = 0` ogni pagina che richiede il login rimanda a `onboarding_setup.php` (le API rispondono 403). Pagine escluse: il form stesso, logout, condizioni d'uso, eliminazione account.
 - **Benvenuto** (`onboarding_setup.php`): form precompilato con i dati dell'account Google (email non modificabile, nome, foto — salvati in
   `$_SESSION['google_profile']` dal callback). Campi: tipo di profilo, nome del profilo, **Username**, bio, foto, moduli.
 - **Tipo di profilo** in forma generica: «Profilo artista» (`band`), «Profilo aziendale» (`label`), «Profilo personale» (`fan`). I valori nel database
