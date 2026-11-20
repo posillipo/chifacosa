@@ -3409,7 +3409,7 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .dash-comm-invite i, .dash-comm-invite b, .dash-comm-invite span { color: #fff; }
 .dash-comm-invite:hover { background: var(--accent); filter: brightness(1.08); }
 .dash-comm-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(128,128,128,.14); margin: 0 2px 8px; }
-.dash-comm-tabs button { flex: 1; border: none; background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 999px; cursor: pointer; }
+.dash-comm-tabs button { flex: 1 1 auto; min-width: 0; white-space: nowrap; border: none; background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 999px; cursor: pointer; }
 .dash-comm-tabs button.active { background: #fff; color: #22223b; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .dash-comm-panel[hidden] { display: none; }
 .dash-comm-row { display: flex; align-items: center; gap: 4px; border-radius: 10px; }

@@ -137,7 +137,7 @@ function renderDashRight(array $ctx): string {
     }
 
     // Community per tutti; "Da gestire" (i contatori sono anche nel menu di sinistra e nella barra in alto) e gli strumenti solo per gli amministratori.
-    $html = renderDashCommunity($profileId) . renderDashNewProfiles($profileId);
+    $html = renderDashCommunity($profileId);
     if ($isAdmin) {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
     }
@@ -311,12 +311,15 @@ function renderDashCommunity(int $profileId): string {
           . '</div>'
           . '<div class="dash-comm-tabs" role="tablist">'
           . '<button type="button" class="active" role="tab" aria-selected="true" data-comm-tab="followers">Ultimi follower</button>'
-          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button></div>'
+          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button>'
+          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="discover">Scopri</button></div>'
           . '<div class="dash-comm-body" data-comm-body>'
           . '<div class="dash-comm-panel" data-comm-panel="followers">' . dashCommunityList($c['followers'], 'Ancora nessun follower: condividi il tuo link con Invita.', true)
           . '<a class="dash-right-link" href="/dashboard_followers.php">Vedi tutti i follower</a></div>'
           . '<div class="dash-comm-panel" data-comm-panel="following" hidden>' . dashCommunityList($c['following'], 'Non segui ancora nessun profilo: usa la ricerca in alto.', false)
           . '<a class="dash-right-link" href="/dashboard_following.php">Vedi tutti i seguiti</a></div>'
+          . '<div class="dash-comm-panel" data-comm-panel="discover" hidden>' . dashCommunityList(dashNewProfiles($profileId), 'Nessun nuovo profilo da scoprire per ora.', true)
+          . '<div class="dash-right-empty">I profili più recenti, in ordine di arrivo.</div></div>'
           . '</div>'
           . '<div class="dash-comm-grip" data-comm-grip role="separator" aria-orientation="horizontal" tabindex="0" '
           . 'title="Trascina per alzare o abbassare l\'elenco (doppio clic: altezza iniziale)" aria-label="Cambia l\'altezza dell\'elenco"><span></span></div>'
@@ -347,7 +350,7 @@ function renderDashCommunity(int $profileId): string {
   document.querySelectorAll('.dash-comm[data-comm-box]').forEach(function (box) {
     // La scheda scelta (Follower / Seguiti) resta attiva anche dopo aver aperto un profilo e tornato indietro.
     var saved = get(TAB_KEY);
-    if (saved === 'followers' || saved === 'following') showTab(box, saved);
+    if (saved === 'followers' || saved === 'following' || saved === 'discover') showTab(box, saved);
     var body = box.querySelector('[data-comm-body]'), grip = box.querySelector('[data-comm-grip]');
     if (!body || !grip) return;
     var h0 = parseInt(get(H_KEY), 10);
@@ -400,13 +403,4 @@ function dashNewProfiles(int $selfId, int $limit = 10): array {
     } catch (Throwable $e) {
     }
     return $out;
-}
-
-function renderDashNewProfiles(int $selfId): string {
-    $rows = dashNewProfiles($selfId);
-    if (!$rows) {
-        return '';
-    }
-    return '<div class="dash-right-block dash-comm"><div class="dash-right-title">Nuovi profili</div>'
-         . dashCommunityList($rows, '', true) . '</div>';
 }
