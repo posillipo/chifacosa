@@ -303,7 +303,7 @@ function dashCommunityList(array $rows, string $emptyText, bool $withFollowBack)
 /** Blocco "Community" della colonna destra: scorciatoie, ultimi 10 follower e ultimi 10 seguiti, con schede. */
 function renderDashCommunity(int $profileId): string {
     $c = dashCommunityData($profileId);
-    $html = '<div class="dash-right-block dash-comm"><div class="dash-right-title">Community</div>'
+    $html = '<div class="dash-right-block dash-comm" data-comm-box><div class="dash-right-title">Community</div>'
           . '<div class="dash-comm-tiles">'
           . '<a href="/dashboard_followers.php" class="dash-comm-tile"><i class="fa-solid fa-users"></i><b>' . (int) $c['followers_n'] . '</b><span>Follower</span></a>'
           . '<a href="/dashboard_following.php" class="dash-comm-tile"><i class="fa-solid fa-user-check"></i><b>' . (int) $c['following_n'] . '</b><span>Seguiti</span></a>'
@@ -312,18 +312,72 @@ function renderDashCommunity(int $profileId): string {
           . '<div class="dash-comm-tabs" role="tablist">'
           . '<button type="button" class="active" role="tab" aria-selected="true" data-comm-tab="followers">Ultimi follower</button>'
           . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button></div>'
+          . '<div class="dash-comm-body" data-comm-body>'
           . '<div class="dash-comm-panel" data-comm-panel="followers">' . dashCommunityList($c['followers'], 'Ancora nessun follower: condividi il tuo link con Invita.', true)
           . '<a class="dash-right-link" href="/dashboard_followers.php">Vedi tutti i follower</a></div>'
           . '<div class="dash-comm-panel" data-comm-panel="following" hidden>' . dashCommunityList($c['following'], 'Non segui ancora nessun profilo: usa la ricerca in alto.', false)
           . '<a class="dash-right-link" href="/dashboard_following.php">Vedi tutti i seguiti</a></div>'
+          . '</div>'
+          . '<div class="dash-comm-grip" data-comm-grip role="separator" aria-orientation="horizontal" tabindex="0" '
+          . 'title="Trascina per alzare o abbassare l\'elenco (doppio clic: altezza iniziale)" aria-label="Cambia l\'altezza dell\'elenco"><span></span></div>'
           . '</div>';
     static $js = false;
     if (!$js) {
         $js = true;
-        $html .= '<script>(function(){document.addEventListener("click",function(ev){var b=ev.target.closest("[data-comm-tab]");if(!b)return;'
-               . 'var box=b.closest(".dash-comm"),k=b.getAttribute("data-comm-tab");'
-               . 'box.querySelectorAll("[data-comm-tab]").forEach(function(x){var on=x===b;x.classList.toggle("active",on);x.setAttribute("aria-selected",on?"true":"false");});'
-               . 'box.querySelectorAll("[data-comm-panel]").forEach(function(p){p.hidden=p.getAttribute("data-comm-panel")!==k;});});})();</script>';
+        $html .= <<<'JS'
+<script>
+(function () {
+  var TAB_KEY = 'dashCommTab', H_KEY = 'dashCommH', DEF_H = 300, MIN_H = 120, MAX_H = 640;
+  function get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function put(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  function showTab(box, k) {
+    box.querySelectorAll('[data-comm-tab]').forEach(function (x) {
+      var on = x.getAttribute('data-comm-tab') === k;
+      x.classList.toggle('active', on);
+      x.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    box.querySelectorAll('[data-comm-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-comm-panel') !== k; });
+  }
+  function setH(body, h, save) {
+    h = Math.max(MIN_H, Math.min(MAX_H, Math.round(h)));
+    body.style.maxHeight = h + 'px'; // altezza massima: con pochi elementi l'elenco resta compatto
+    if (save) put(H_KEY, String(h));
+    return h;
+  }
+  document.querySelectorAll('.dash-comm[data-comm-box]').forEach(function (box) {
+    // La scheda scelta (Follower / Seguiti) resta attiva anche dopo aver aperto un profilo e tornato indietro.
+    var saved = get(TAB_KEY);
+    if (saved === 'followers' || saved === 'following') showTab(box, saved);
+    var body = box.querySelector('[data-comm-body]'), grip = box.querySelector('[data-comm-grip]');
+    if (!body || !grip) return;
+    var h0 = parseInt(get(H_KEY), 10);
+    setH(body, h0 > 0 ? h0 : DEF_H, false);
+    var startY = 0, startH = 0;
+    grip.addEventListener('pointerdown', function (ev) {
+      startY = ev.clientY; startH = parseInt(body.style.maxHeight, 10) || DEF_H;
+      grip.setPointerCapture(ev.pointerId); grip.classList.add('drag'); ev.preventDefault();
+    });
+    grip.addEventListener('pointermove', function (ev) {
+      if (!grip.classList.contains('drag')) return;
+      setH(body, startH + (ev.clientY - startY), false);
+    });
+    function end() { if (grip.classList.contains('drag')) { grip.classList.remove('drag'); put(H_KEY, String(parseInt(body.style.maxHeight, 10) || DEF_H)); } }
+    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+    grip.addEventListener('dblclick', function () { setH(body, DEF_H, true); });
+    grip.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); setH(body, (parseInt(body.style.maxHeight, 10) || DEF_H) + (ev.key === 'ArrowDown' ? 40 : -40), true); }
+    });
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-comm-tab]');
+    if (!b) return;
+    var k = b.getAttribute('data-comm-tab');
+    showTab(b.closest('.dash-comm'), k);
+    put(TAB_KEY, k);
+  });
+})();
+</script>
+JS;
     }
     return $html;
 }

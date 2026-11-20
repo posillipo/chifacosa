@@ -3434,3 +3434,10 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .dash-icons-nav .dash-preview:hover { border-color: var(--accent); }
 .dash-preview img, .dash-preview-ph { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .dash-preview-ph { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
+
+/* Elenco Community: altezza regolabile (maniglia in basso, trascinabile) con scorrimento interno. */
+.dash-comm-body { overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.dash-comm-grip { display: flex; align-items: center; justify-content: center; height: 16px; margin: 2px 2px 0; cursor: ns-resize; touch-action: none; border-radius: 8px; }
+.dash-comm-grip span { width: 44px; height: 4px; border-radius: 4px; background: rgba(128,128,128,.45); transition: background .15s, width .15s; }
+.dash-comm-grip:hover span, .dash-comm-grip:focus-visible span, .dash-comm-grip.drag span { background: var(--accent); width: 60px; }
+.dash-comm-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
