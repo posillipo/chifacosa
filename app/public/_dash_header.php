@@ -164,7 +164,7 @@ $dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
 
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
 $dashSideGroups = [
-    'Contenuti e pubblicazione' => [
+    'Pubblica Contenuti' => [
         'feed' => 'fa-list', 'timeline' => 'fa-clock', 'blog' => 'fa-newspaper', 'video' => 'fa-circle-play',
         'foto' => 'fa-images', 'link' => 'fa-link', 'featured' => 'fa-star', 'cheamo' => 'fa-heart',
         'contest' => 'fa-trophy', 'schedule' => 'fa-hourglass-half', 'schedule_admin' => 'fa-calendar-days', 'board' => 'fa-thumbtack',
@@ -395,7 +395,11 @@ document.addEventListener('click', function (e) {
     <?php endif; ?>
     <?php $visibleItems = array_filter($groupItems, fn ($k) => isset($dashSideAll[$k]), ARRAY_FILTER_USE_KEY); ?>
     <?php if (!$visibleItems) continue; ?>
-    <div class="dash-side-title"><?= e($groupTitle) ?></div>
+    <div class="dash-side-title<?= $groupTitle === 'Pubblica Contenuti' ? ' has-gear' : '' ?>"><span><?= e($groupTitle) ?></span>
+      <?php if ($groupTitle === 'Pubblica Contenuti'): ?>
+        <a href="/dashboard_nav_menu.php" class="dash-side-gear<?= ($activeTab ?? '') === 'nav_menu' ? ' active' : '' ?>" title="Menu di Navigazione: scegli quali voci mostrare" aria-label="Menu di Navigazione"><i class="fa-solid fa-gear" aria-hidden="true"></i></a>
+      <?php endif; ?>
+    </div>
     <?php foreach ($visibleItems as $itemKey => $itemIcon): ?>
       <?php $it = $dashSideAll[$itemKey]; ?>
       <a href="<?= e($it['url']) ?>" class="dash-side-link<?= ($activeTab ?? '') === $it['active'] ? ' active' : '' ?>" title="<?= e($it['label']) ?>"<?= ($activeTab ?? '') === $it['active'] ? ' aria-current="page"' : '' ?>>
