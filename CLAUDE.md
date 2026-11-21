@@ -37,3 +37,7 @@ done
 ## Guide delle pagine e documentazione
 - Le pagine della dashboard NON hanno riquadri descrittivi in cima: il testo di aiuto sta nella tabella `page_help` (popup "?" accanto al titolo, modificabile da Admin → Guide delle pagine). Codice in `app/src/fn_help.php`.
 - Ogni modifica al comportamento di una pagina deve aggiornare anche il suo testo in `page_help` (nuova migrazione con `INSERT ... ON DUPLICATE KEY UPDATE`) e la documentazione (`DOCUMENTAZIONE_TECNICA_COMPLETA.md`, `SCHEMA_DATABASE.md`, `MIGRAZIONI.md`).
+
+## Studio (copia della dashboard per la nuova grafica)
+- `app/public/studio/` è una copia GENERATA della dashboard (`scripts/make-studio.py`): non modificare a mano le pagine in `studio/dashboard*.php`. Dopo ogni modifica a `app/public/dashboard*.php` (o alla testata `_dash_header.php`) rilancia `python3 scripts/make-studio.py` e committa il risultato. La grafica nuova sta in `studio/assets/studio.css`.
+
