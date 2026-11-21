@@ -1,0 +1,358 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+$user = requireLogin();
+$profile = getActingProfile($user); // il profilo su cui si sta agendo (proprio, o co-gestito)
+$activeTab = 'post';
+$pageTitle = 'Timeline';
+
+$feedError = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrf();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'add') {
+        // Link personalizzato per il feed (ex dashboard_feed.php, ora vive qui): impostazione
+        // del profilo, non del singolo post — si aggiorna comunque ogni volta che si pubblica,
+        // indipendentemente dal fatto che il post stesso vada a buon fine, così cambiare o
+        // svuotare il link non richiede per forza di scrivere qualcosa di nuovo.
+        $customFeedGuid = trim($_POST['custom_feed_guid'] ?? '');
+        if ($customFeedGuid !== '' && !filter_var($customFeedGuid, FILTER_VALIDATE_URL)) {
+            $feedError = 'Il link personalizzato per il feed non è un URL valido.';
+        } else {
+            $customFeedGuid = $customFeedGuid ?: null;
+            $customFeedGuidSince = $profile['custom_feed_guid_since'] ?? null;
+            if ($customFeedGuid !== ($profile['custom_feed_guid'] ?? null)) {
+                $customFeedGuidSince = $customFeedGuid ? date('Y-m-d H:i:s') : null;
+            }
+            $stmt = getDB()->prepare('UPDATE profiles SET custom_feed_guid=?, custom_feed_guid_since=? WHERE user_id=?');
+            $stmt->execute([$customFeedGuid, $customFeedGuidSince, $profile['id']]);
+            $user = currentUser();
+            $profile = getActingProfile($user);
+        }
+
+        $testo = trim($_POST['testo'] ?? '');
+        // Fino a 10 foto: la prima resta su image_path (quella sola che compare nel Feed, come
+        // sempre), le eventuali altre (fino a 9) alimentano il carosello nella pagina di dettaglio.
+        $uploadedPhotos = handleMultiCoverUpload($profile['slug'], 'images', 10);
+        $imagePath = $uploadedPhotos[0] ?? null;
+        $extraPhotos = array_slice($uploadedPhotos, 1);
+
+        // Miniatura leggera per la lista/feed, generata nel browser (canvas) al momento della
+        // selezione del file — vedi commento analogo per il ritaglio avatar in
+        // dashboard_profile.php: niente elaborazione lato server, non serve GD/Imagick. La foto
+        // originale caricata sopra resta intatta ed è quella mostrata aprendo il post.
+        $imageThumbPath = null;
+        if ($imagePath) {
+            $thumbData = $_POST['image_thumb_data'] ?? '';
+            if ($thumbData !== '' && preg_match('#^data:image/jpeg;base64,#', $thumbData)) {
+                $raw = base64_decode(substr($thumbData, strpos($thumbData, ',') + 1), true);
+                if ($raw !== false && strlen($raw) > 0 && strlen($raw) < 2 * 1024 * 1024) {
+                    $fname = 'thumb_' . bin2hex(random_bytes(6)) . '.jpg';
+                    $dir = __DIR__ . '/../uploads/images/' . $profile['slug'];
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0775, true);
+                    }
+                    if (file_put_contents($dir . '/' . $fname, $raw) !== false) {
+                        $imageThumbPath = 'uploads/images/' . $profile['slug'] . '/' . $fname;
+                    }
+                }
+            }
+        }
+
+        $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
+        // Interpretato nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
+        if ($publishAt && strtotime($publishAt) <= time()) {
+            $publishAt = null;
+        }
+
+        if ($testo === '' && !$imagePath) {
+            $error = 'Scrivi qualcosa o allega una foto.';
+        } else {
+            $stmt = getDB()->prepare('INSERT INTO timeline_posts (user_id, testo, image_path, image_thumb_path, visibility, in_feed, publish_at) VALUES (?,?,?,?,?,?,?)');
+            $stmt->execute([$profile['id'], $testo ?: null, $imagePath, $imageThumbPath, $visibility, $inFeed, $publishAt]);
+            $newPostId = (int) getDB()->lastInsertId();
+            setContentAuthor('timeline_posts', $newPostId, dashboardAuthorSignature($user));
+
+            if ($extraPhotos) {
+                $insPhoto = getDB()->prepare('INSERT INTO timeline_post_photos (post_id, image_path, sort_order) VALUES (?,?,?)');
+                foreach ($extraPhotos as $photoIndex => $photoPath) {
+                    $insPhoto->execute([$newPostId, $photoPath, $photoIndex]);
+                }
+            }
+
+            logAdminAction((int) $profile['id'], (int) $user['id'], 'Nuovo aggiornamento in Timeline', $testo !== '' ? textExcerpt($testo, 60) : 'Foto pubblicata');
+
+            if ($visibility === 'public' && !$publishAt) {
+                $anteprima = $testo !== '' ? textExcerpt($testo, 80) : 'Nuova foto pubblicata';
+                $timelineUrl = siteUrl('/' . $profile['slug'] . '/timeline');
+                notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'timeline', $anteprima, $timelineUrl);
+
+                require_once __DIR__ . '/../../src/telegram.php';
+                telegramAutoPublishIfEnabled((int) $profile['id'], 'post', [
+                    'body' => $testo,
+                    'image_url' => $imagePath,
+                    'public_url' => $timelineUrl,
+                ]);
+
+                require_once __DIR__ . '/../../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'timeline', [
+                    'content_id' => $newPostId,
+                    'body'       => $testo,
+                    'image_url'  => $imagePath ? siteUrl($imagePath) : null,
+                    'public_url' => $timelineUrl,
+                ]);
+            }
+            // Pubblicazione programmata: l'uscita social si accoda subito con la data prevista (prima
+            // restava fuori dalla coda e non veniva mai pubblicata sui social).
+            if ($visibility === 'public' && $publishAt) {
+                require_once __DIR__ . '/../../src/metricool_queue.php';
+                socialQueueEnqueueIfEnabled((int) $profile['id'], 'timeline', [
+                    'content_id' => $newPostId,
+                    'body'       => $testo,
+                    'image_url'  => $imagePath ? siteUrl($imagePath) : null,
+                    'public_url' => siteUrl('/' . $profile['slug'] . '/timeline'),
+                ], $publishAt);
+            }
+        }
+    }
+    // Modifica, eliminazione e gestione foto di un post già esistente vivono ora in una pagina
+    // dedicata (dashboard_timeline_edit.php) — vedi il link "✏️ Modifica" nell'elenco qui sotto.
+}
+
+$stmt = getDB()->prepare('SELECT * FROM timeline_posts WHERE user_id=? ORDER BY created_at DESC LIMIT 50');
+$stmt->execute([$profile['id']]);
+$posts = $stmt->fetchAll();
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if (!empty($feedError)): ?><div class="alert error"><?= e($feedError) ?></div><?php endif; ?>
+
+  <style>
+  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
+     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). Il contenitore, che di
+     solito è stretto (720px), qui può allargarsi quanto serve alle due colonne. */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
+  <form method="post" enctype="multipart/form-data" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
+    <label>Cosa vuoi condividere?</label>
+    <textarea name="testo" id="ai-testo" rows="3" placeholder="Scrivilo qui..."></textarea>
+    <div id="ai-caption-box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="ai-caption-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="ai-caption-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="ai-caption-keywords" rows="2" placeholder="es. annuncio nuovo concerto sabato 14 a Milano"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="ai-caption-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="ai-caption-cancel">Annulla</button>
+      </div>
+      <p id="ai-caption-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
+    <label>Foto (fino a 10, opzionale)</label>
+    <input type="file" name="images[]" id="post-image-input" accept="image/*" multiple>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
+      Se ne carichi più di una, sulla pagina del post appariranno in un carosello scorrevole
+      (come su Instagram) — nel Feed e in Timeline continua a comparire solo la prima.
+    </p>
+    <input type="hidden" name="image_thumb_data" id="post-image-thumb-data">
+
+    <label>Privacy</label>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="visibility" value="public" checked style="width:auto;"> Pubblico
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
+      </label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
+    </label></div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <label>Pubblica sui social (opzionale)</label>
+        <input type="datetime-local" name="publish_at">
+        <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <label>Link personalizzato per il feed (opzionale)</label>
+        <input type="url" name="custom_feed_guid" value="<?= e($profile['custom_feed_guid'] ?? '') ?>" placeholder="https://...">
+        <?php if (!empty($profile['custom_feed_guid_since'])): ?>
+          <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+            Attivo dal <?= e(formatLocalDateTime($profile['custom_feed_guid_since'], $profile)) ?>.
+          </p>
+        <?php else: ?>
+          <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per usare sempre la pagina normale.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <button type="submit" class="btn">Pubblica</button>
+  </form>
+  </div>
+
+  <div class="dash-two-col-side">
+  <div class="card">
+    <strong>Il tuo feed:</strong><br>
+    <a href="/<?= e($profile['slug']) ?>/feed" target="_blank"><?= e(siteName()) ?>/<?= e($profile['slug']) ?>/feed</a>
+  </div>
+
+  <div class="section-title">I tuoi aggiornamenti (<?= count($posts) ?>)</div>
+  <div id="tl-posts-list">
+  <?php foreach ($posts as $p): ?>
+    <?php
+      $isScheduled = $p['publish_at'] && strtotime($p['publish_at']) > time();
+      $isPrivate = $p['visibility'] === 'private';
+      $stmt = getDB()->prepare('SELECT COUNT(*) c FROM timeline_post_photos WHERE post_id=?');
+      $stmt->execute([$p['id']]);
+      $extraPhotoCount = (int) $stmt->fetch()['c'];
+    ?>
+    <div class="card" data-tl-post="<?= (int) $p['id'] ?>" style="display:flex;gap:14px;align-items:flex-start;<?= $isScheduled ? 'border:1px solid #f0ad4e;' : '' ?>">
+      <?php if ($p['image_path']): ?>
+        <img src="/<?= e($p['image_thumb_path'] ?: $p['image_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+      <?php endif; ?>
+      <div style="flex:1;min-width:0;">
+        <div class="tl-badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+          <?php if ($isScheduled): ?>
+            <span class="tl-badge-scheduled" style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">
+              ⏰ Programmato per il <?= formatLocalDateTime($p['publish_at'], $profile) ?>
+            </span>
+          <?php endif; ?>
+          <?php if ($isPrivate): ?>
+            <span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔒 Solo io</span>
+          <?php elseif (!(int) ($p['in_feed'] ?? 1)): ?>
+            <span class="tl-badge-private" style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
+          <?php endif; ?>
+          <?= authorBadgeHtml($p['created_by'] ?? null) ?>
+          <?php if ($extraPhotoCount > 0): ?>
+            <span style="background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">📷 +<?= $extraPhotoCount ?> foto</span>
+          <?php endif; ?>
+          <?php if (($p['source'] ?? 'dashboard') === 'api'): ?>
+            <span style="background:#20c997;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">🔌 Creato via API</span>
+          <?php endif; ?>
+        </div>
+        <small style="color:var(--text-muted)"><?= formatLocalDateTime($p['created_at'], $profile) ?></small>
+        <div class="tl-text-block">
+          <?php if (!empty($p['title'])): ?><p class="tl-title" style="margin:4px 0;font-weight:700;"><?= e($p['title']) ?></p><?php endif; ?>
+          <?php if ($p['testo']): ?><p class="tl-testo" style="margin:4px 0;"><?= nl2br(e($p['testo'])) ?></p><?php endif; ?>
+          <?php if (!empty($p['hashtags'])): ?><p class="tl-hashtags" style="margin:4px 0;color:var(--accent);font-size:13px;"><?= e($p['hashtags']) ?></p><?php endif; ?>
+          <?php if (!empty($p['call_to_action'])): ?><p class="tl-cta" style="margin:4px 0;font-style:italic;font-size:13px;"><?= e($p['call_to_action']) ?></p><?php endif; ?>
+          <?php if (!empty($p['redirect_link'])): ?><p class="tl-redirect" style="margin:4px 0;font-size:12.5px;color:var(--text-muted);">🔗 Reindirizza sempre a: <?= e($p['redirect_link']) ?></p><?php endif; ?>
+        </div>
+        <?php if (!$isPrivate): ?>
+          <a href="/<?= e($profile['slug']) ?>/timeline/<?= (int)$p['id'] ?>" target="_blank" style="font-size:13px;">Vedi pagina pubblica ↗</a>
+        <?php endif; ?>
+
+        <div style="margin-top:8px;">
+          <a href="/dashboard_timeline_edit.php?id=<?= (int) $p['id'] ?>" class="btn small secondary">✏️ Modifica</a>
+        </div>
+      </div>
+    </div>
+  <?php endforeach; ?>
+  </div>
+  </div>
+  </div>
+
+  <script>
+    // Genera nel browser una miniatura JPEG leggera (max 600px, qualità 0.82) dalla foto
+    // selezionata, per alleggerire la lista/feed — l'originale caricato resta a piena qualità.
+    (function () {
+      const imageInput = document.getElementById('post-image-input');
+      const thumbDataInput = document.getElementById('post-image-thumb-data');
+      if (!imageInput || !thumbDataInput) return;
+
+      imageInput.addEventListener('change', function () {
+        thumbDataInput.value = '';
+        const file = imageInput.files && imageInput.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          img.onload = function () {
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            thumbDataInput.value = canvas.toDataURL('image/jpeg', 0.82);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    })();
+
+    (function () {
+      const toggleBtn = document.getElementById('ai-caption-toggle');
+      const panel = document.getElementById('ai-caption-panel');
+      const cancelBtn = document.getElementById('ai-caption-cancel');
+      const generateBtn = document.getElementById('ai-caption-generate');
+      const keywordsInput = document.getElementById('ai-caption-keywords');
+      const statusEl = document.getElementById('ai-caption-status');
+      const textarea = document.getElementById('ai-testo');
+      const csrfInput = document.querySelector('#ai-caption-toggle').closest('form').querySelector('input[name="csrf"]');
+
+      toggleBtn.addEventListener('click', function () {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        if (panel.style.display === 'block') keywordsInput.focus();
+      });
+      cancelBtn.addEventListener('click', function () {
+        panel.style.display = 'none';
+        statusEl.textContent = '';
+      });
+
+      generateBtn.addEventListener('click', function () {
+        const keywords = keywordsInput.value.trim();
+        if (!keywords) {
+          statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+          return;
+        }
+        generateBtn.disabled = true;
+        statusEl.textContent = 'Generazione in corso...';
+
+        const body = new URLSearchParams();
+        body.set('csrf', csrfInput.value);
+        body.set('keywords', keywords);
+
+        fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            generateBtn.disabled = false;
+            if (data.ok) {
+              textarea.value = data.text;
+              statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+            } else {
+              statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+            }
+          })
+          .catch(function () {
+            generateBtn.disabled = false;
+            statusEl.textContent = 'Errore di connessione. Riprova.';
+          });
+      });
+    })();
+
+  </script>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>

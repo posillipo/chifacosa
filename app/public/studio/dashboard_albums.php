@@ -1,0 +1,418 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+$user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+$activeTab = 'albums';
+$pageTitle = 'Album';
+$error = null;
+
+// Fino a 50 foto per album — molte di più delle 10 già previste per i post Timeline/Viaggi, dato
+// che qui è proprio lo scopo del modulo (un album fotografico, non un singolo aggiornamento).
+const ALBUM_MAX_PHOTOS = 50;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrf();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'add' || $action === 'edit') {
+        $id = $action === 'edit' ? (int) ($_POST['id'] ?? 0) : 0;
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $visibility = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
+        $isPublic = $visibility === 'public' ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
+        // Interpretato nel fuso orario reale di chi sta scrivendo in questo momento (offset del
+        // browser), con il fuso del profilo solo come ripiego — vedi parseLocalDateTime().
+        // Niente più azzeramento se la data è già passata: equivale a NULL per la visibilità
+        // pubblica, azzerarla qui cancellava la programmazione originale ad ogni salvataggio di
+        // un elemento già pubblicato (stesso bug corretto in dashboard_timeline_edit.php).
+        $publishAt = parseLocalDateTime($_POST['publish_at'] ?? '', $profile, browserTzOffsetFromRequest());
+
+        if ($title === '') {
+            $error = 'Il titolo è obbligatorio.';
+        } else {
+            // In modifica le nuove foto si aggiungono a quelle esistenti (vedi sotto).
+            $uploadedPhotos = handleMultiCoverUpload($profile['slug'], 'images', ALBUM_MAX_PHOTOS);
+            $newCoverPath = $uploadedPhotos[0] ?? null;
+            $extraPhotos = array_slice($uploadedPhotos, 1);
+
+            if ($action === 'add') {
+                if (!$newCoverPath) {
+                    $error = 'Carica almeno una foto.';
+                } else {
+                    $stmt = getDB()->prepare('INSERT INTO photo_albums (user_id, title, description, cover_path, is_public, in_feed, publish_at, sort_order)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM photo_albums WHERE user_id=?) t))');
+                    $stmt->execute([$profile['id'], $title, $description ?: null, $newCoverPath, $isPublic, $inFeed, $publishAt, $profile['id']]);
+                    $newId = (int) getDB()->lastInsertId();
+                    setContentAuthor('photo_albums', $newId, dashboardAuthorSignature($user));
+                    if ($extraPhotos) {
+                        $insPhoto = getDB()->prepare('INSERT INTO photo_album_photos (album_id, image_path, sort_order) VALUES (?,?,?)');
+                        foreach ($extraPhotos as $i => $p) {
+                            $insPhoto->execute([$newId, $p, $i]);
+                        }
+                    }
+
+                    if ($visibility === 'public' && !$publishAt) {
+                        $albumUrl = siteUrl('/' . $profile['slug'] . '/album/' . $newId);
+                        notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'album_foto', $title, $albumUrl);
+                        require_once __DIR__ . '/../../src/metricool_queue.php';
+                        socialQueueEnqueueIfEnabled((int) $profile['id'], 'album', [
+                            'content_id' => $newId,
+                            'title'      => $title,
+                            'body'       => $description,
+                            'image_url'  => $newCoverPath ? siteUrl($newCoverPath) : null,
+                            'public_url' => $albumUrl,
+                        ]);
+                    } elseif ($visibility === 'public' && $publishAt) {
+                        // Programmato: si accoda subito con la data di pubblicazione (prima restava fuori dalla coda).
+                        $queueUrl = siteUrl('/' . $profile['slug'] . '/album/' . $newId);
+                        require_once __DIR__ . '/../../src/metricool_queue.php';
+                        socialQueueEnqueueIfEnabled((int) $profile['id'], 'album', [
+                            'content_id' => $newId,
+                            'title'      => $title,
+                            'body'       => $description,
+                            'image_url'  => $newCoverPath ? siteUrl($newCoverPath) : null,
+                            'public_url' => $queueUrl,
+                        ], $publishAt);
+                    }
+                }
+            } else {
+                // In modifica le nuove foto si AGGIUNGONO a quelle già presenti. Se l'album è senza
+                // copertina (eliminata), la prima nuova foto diventa la copertina.
+                if ($newCoverPath) {
+                    $stmt = getDB()->prepare('SELECT cover_path FROM photo_albums WHERE id=? AND user_id=?');
+                    $stmt->execute([$id, $profile['id']]);
+                    $cur = $stmt->fetch();
+                    if ($cur) {
+                        $hasCover = !empty($cur['cover_path']);
+                        $existingExtras = count(getAlbumPhotos($id));
+                        $room = max(0, ALBUM_MAX_PHOTOS - ($hasCover ? 1 : 0) - $existingExtras);
+                        $toAdd = $uploadedPhotos;
+                        if (!$hasCover) {
+                            $newCover = array_shift($toAdd);
+                            getDB()->prepare('UPDATE photo_albums SET cover_path=? WHERE id=? AND user_id=?')->execute([$newCover, $id, $profile['id']]);
+                            $room = max(0, $room - 1);
+                        }
+                        foreach (array_slice($toAdd, $room) as $excess) {
+                            deleteCoverFile($excess);
+                        }
+                        $toAdd = array_slice($toAdd, 0, $room);
+                        $maxSort = (int) getDB()->query('SELECT COALESCE(MAX(sort_order), -1) FROM photo_album_photos WHERE album_id=' . (int) $id)->fetchColumn();
+                        $insPhoto = getDB()->prepare('INSERT INTO photo_album_photos (album_id, image_path, sort_order) VALUES (?,?,?)');
+                        foreach ($toAdd as $i => $p) {
+                            $insPhoto->execute([$id, $p, $maxSort + 1 + $i]);
+                        }
+                    }
+                }
+                $stmt = getDB()->prepare('UPDATE photo_albums SET title=?, description=?, is_public=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
+            }
+        }
+    } elseif ($action === 'delete_photo') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $photoId = (int) ($_POST['photo_id'] ?? -1);
+        $result = deleteSingleGalleryPhoto('photo_albums', 'cover_path', 'photo_album_photos', 'album_id', $id, (int) $profile['id'], $photoId);
+        if (!$result['ok']) {
+            $error = $result['error'];
+        }
+    } elseif ($action === 'delete') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('SELECT cover_path FROM photo_albums WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+        if ($row = $stmt->fetch()) {
+            deleteCoverFile($row['cover_path']);
+            deleteFeedShareImage($row['cover_path']);
+            foreach (getAlbumPhotos($id) as $extraPath) {
+                deleteCoverFile($extraPath);
+            }
+        }
+        // photo_album_photos ha ON DELETE CASCADE: le righe spariscono da sole, qui sopra
+        // servivano solo per cancellare i FILE dal disco prima che spariscano i riferimenti.
+        $stmt = getDB()->prepare('DELETE FROM photo_albums WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+    }
+    if (!$error) {
+        header('Location: /dashboard_albums.php');
+        exit;
+    }
+}
+
+$stmt = getDB()->prepare('SELECT * FROM photo_albums WHERE user_id=? ORDER BY sort_order DESC');
+$stmt->execute([$profile['id']]);
+$albums = $stmt->fetchAll();
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+  <style>
+  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
+     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
+  <form method="post" enctype="multipart/form-data" class="card"<?= uploadProgressAttrs() ?>>
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
+    <label>Titolo album</label>
+    <input type="text" name="title" required placeholder="es. Il nostro tour 2026">
+    <label>Descrizione (opzionale)</label>
+    <textarea name="description" id="alb-add-description" rows="4" placeholder="Racconta l'album..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="alb-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="alb-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="alb-add-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="alb-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="alb-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="alb-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
+    <label>Foto (fino a <?= ALBUM_MAX_PHOTOS ?>)</label>
+    <input type="file" name="images[]" accept="image/*" multiple required>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">La prima foto selezionata diventa la copertina dell'album.</p>
+    <label>Privacy</label>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="visibility" value="public" checked style="width:auto;"> Pubblico
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+        <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
+      </label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
+    </label></div>
+    <label>Pubblica sui social (opzionale)</label>
+    <input type="datetime-local" name="publish_at">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
+    <button type="submit" class="btn" style="margin-top:10px;">Crea album</button>
+  </form>
+
+  </div>
+
+  <div class="dash-two-col-side">
+  <div class="section-title">I tuoi album (<?= count($albums) ?>)</div>
+  <?php foreach ($albums as $al): ?>
+    <?php
+      $isScheduled = $al['publish_at'] && strtotime($al['publish_at']) > time();
+      $photoCount = 1 + count(getAlbumPhotos((int) $al['id']));
+    ?>
+    <div class="event-item" style="display:flex;gap:14px;align-items:flex-start;">
+      <?php if ($al['cover_path']): ?>
+        <img src="/<?= e($al['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+      <?php endif; ?>
+      <div style="flex:1;min-width:0;">
+        <strong><?= e($al['title']) ?></strong> <?= authorBadgeHtml($al['created_by'] ?? null) ?>
+        <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $photoCount ?> foto</span>
+        <?php if (!(int) $al['is_public']): ?>
+          <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-lock"></i> Solo io</div>
+        <?php elseif ($isScheduled): ?>
+          <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($al['publish_at'], $profile)) ?></div>
+        <?php else: ?>
+          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Pubblico<?= (int) ($al['in_feed'] ?? 1) ? '' : ' · non nel Feed' ?></div>
+        <?php endif; ?>
+
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <a href="/<?= e($profile['slug']) ?>/album/<?= (int) $al['id'] ?>" target="_blank" class="btn small secondary">Vedi pagina pubblica</a>
+          <form method="post" onsubmit="return confirm('Eliminare questo album? Tutte le foto verranno cancellate.');">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+            <button class="btn small danger" type="submit">Elimina</button>
+          </form>
+        </div>
+
+        <details style="margin-top:8px;">
+          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
+
+          <?php
+            $alExtraPhotos = getDB()->prepare('SELECT id, image_path FROM photo_album_photos WHERE album_id=? ORDER BY sort_order ASC, id ASC');
+            $alExtraPhotos->execute([(int) $al['id']]);
+            $alExtraPhotos = $alExtraPhotos->fetchAll();
+          ?>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <?php if ($al['cover_path']): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($al['cover_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
+                <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+                  <input type="hidden" name="photo_id" value="0">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endif; ?>
+            <?php foreach ($alExtraPhotos as $ph): ?>
+              <div style="position:relative;width:72px;">
+                <img src="/<?= e($ph['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
+                <form method="post" onsubmit="return confirm('Eliminare questa foto?');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="delete_photo">
+                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+                  <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
+                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
+                </form>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <p style="color:var(--text-muted);font-size:12px;margin:6px 0 12px;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
+
+          <form method="post" enctype="multipart/form-data"<?= uploadProgressAttrs() ?>>
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
+            <input type="hidden" name="tz_offset_minutes" value="">
+            <label>Titolo album</label>
+            <input type="text" name="title" value="<?= e($al['title']) ?>" required>
+            <label>Descrizione (opzionale)</label>
+            <textarea name="description" class="alb-edit-description" rows="4"><?= e($al['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary alb-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="alb-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="alb-edit-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small alb-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary alb-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="alb-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
+            <label>Aggiungi altre foto (opzionale — si aggiungono a quelle già presenti)</label>
+            <input type="file" name="images[]" accept="image/*" multiple>
+            <label>Privacy</label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" name="visibility" value="public" <?= (int) $al['is_public'] === 1 ? 'checked' : '' ?> style="width:auto;"> Pubblico
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+                <input type="radio" name="visibility" value="private" <?= (int) $al['is_public'] === 0 ? 'checked' : '' ?> style="width:auto;"> Solo io
+              </label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
+              <input type="checkbox" name="in_feed" value="1" <?= (int) ($al['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
+            </label></div>
+            <label>Pubblica sui social (opzionale)</label>
+            <input type="datetime-local" name="publish_at" value="<?= e(localDateTimeInputValue($al['publish_at'], $profile)) ?>">
+            <button type="submit" class="btn small" style="margin-top:10px;">Salva modifiche</button>
+          </form>
+        </details>
+      </div>
+    </div>
+  <?php endforeach; ?>
+  </div>
+  </div>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('alb-add-ai-toggle');
+    const panel = document.getElementById('alb-add-ai-panel');
+    const cancelBtn = document.getElementById('alb-add-ai-cancel');
+    const generateBtn = document.getElementById('alb-add-ai-generate');
+    const keywordsInput = document.getElementById('alb-add-ai-keywords');
+    const statusEl = document.getElementById('alb-add-ai-status');
+    const textarea = document.getElementById('alb-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.alb-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.alb-edit-ai-cancel');
+    const generateBtn = e.target.closest('.alb-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.alb-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.alb-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.alb-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.alb-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.alb-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.alb-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.alb-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.alb-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>

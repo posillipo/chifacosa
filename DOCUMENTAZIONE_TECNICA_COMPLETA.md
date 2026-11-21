@@ -173,14 +173,14 @@ un testo breve e, se c'è un approfondimento (o un link esterno), il collegament
 
 ---
 
-### Studio — nuova veste della dashboard (in prova)
+### Studio — copia della dashboard per la nuova grafica (in prova)
 
-Interfaccia **parallela** all'attuale, che resta intatta: cartella `app/public/studio/`, indirizzo `/studio/` (non collegato dal sito, `noindex`, nome riservato come slug). Serve il login ma non è limitata agli admin: la conosce chi ne ha l'indirizzo.
+Copia **funzionante** della dashboard in `app/public/studio/` (indirizzo `/studio/`): stesse funzioni, stesso login e stessi dati dell'originale, che resta intatta. Non è collegata dal sito, è `noindex`, il nome è riservato come slug; serve il login ma non è limitata agli admin.
 
-- **Pagine:** `index.php` (Panoramica), `feed.php` (Feed con schede Tutti/Articoli/Video/Aggiornamenti, ricerca con attesa di 250 ms, vista Lista/Card ricordata, scorrimento infinito da `feed_more.php`, «Nuovo contenuto»). Le altre voci del menu portano alle pagine della dashboard attuale; in fondo al menu c'è il collegamento «Dashboard classica».
-- **Tecnologia:** PHP + CSS scritto a mano con i token del documento di progetto (`assets/studio.css`) + JavaScript semplice (`assets/studio.js`). **Mobile first**; sopra 1024 px il menu è fisso e riducibile, sopra 1100 px compare la colonna destra (Community + Da fare).
-- **Riuso:** nessuna logica duplicata: `_studio.php` usa le funzioni esistenti (`getTimelineFeedForUsers()`, `dashboardFeedEnrich()`, `dashCommunityData()`, contatori, regole di visibilità del menu).
-- **Stati delle card:** Pubblicato, Programmato (data futura), Solo io, Errore (coda social). Azioni: Modifica (solo propri), Pagina pubblica, Condividi. Duplica, Elimina e Programma non ci sono ancora.
+- **Pagine generate:** `scripts/make-studio.py` copia ogni `app/public/dashboard*.php` in `studio/` correggendo solo i percorsi (`../../src`, testata e piè originali, `../uploads`). **Non modificare a mano** le pagine generate: dopo ogni modifica alla dashboard originale si rilancia `python3 scripts/make-studio.py` (le modifiche specifiche di Studio vanno in `studio/_overrides/NOME.php`, che lo script copia al posto della pagina generata).
+- **Strato Studio:** `studio/_studio_boot.php`, incluso all'inizio di ogni pagina copiata, tiene la navigazione dentro `/studio/` (riscrive i collegamenti `/dashboard*.php` nell'HTML, nel JSON e nei reindirizzamenti), aggiunge `assets/studio.css` e la classe `studio-mode` al `body`, ed esclude dai motori di ricerca.
+- **Grafica:** si costruisce in `studio/assets/studio.css` (token di colore, schede, pulsanti, menu…). A regime la copia sostituirà l'originale.
+
 
 ---
 
