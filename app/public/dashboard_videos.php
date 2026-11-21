@@ -185,11 +185,31 @@ include __DIR__ . '/_dash_header.php';
 
   <form class="card" id="vid-upload-form" onsubmit="return false;">
     <?= csrfField() ?>
-    <label>Video (puoi sceglierne più di uno)</label>
+    <div id="vid-single-fields">
+      <label>Titolo del video</label>
+      <input type="text" id="vid-title-main" maxlength="150" placeholder="es. Live al Teatro, 12 giugno">
+      <label>Descrizione (opzionale)</label>
+      <textarea id="vid-desc-main" rows="4" placeholder="Racconta il video..."></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+        <button type="button" class="btn small secondary" id="vid-ai-toggle">✨ Genera con AI</button>
+      </div>
+      <div id="vid-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+        <label>Qualche parola chiave o istruzione per l'AI</label>
+        <textarea id="vid-ai-keywords" rows="2" placeholder="es. concerto estivo 2026, tappa di Milano"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn small" id="vid-ai-generate">Genera testo</button>
+          <button type="button" class="btn small secondary" id="vid-ai-cancel">Annulla</button>
+        </div>
+        <p id="vid-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+      </div>
+    </div>
+
+    <label>Video (puoi sceglierne più di uno, fino a <?= $maxMb ?> MB ciascuno)</label>
     <input type="file" id="vid-files" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.m4v" multiple>
+    <p id="vid-multi-note" style="display:none;color:var(--text-muted);font-size:12.5px;margin-top:6px;">Hai scelto più video: titolo e descrizione si scrivono per ciascuno qui sotto.</p>
     <div id="vid-rows" style="margin-top:12px;"></div>
 
-    <div id="vid-options" style="display:none;">
+    <div id="vid-options">
       <label>Privacy (per tutti i video di questo caricamento)</label>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
         <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
@@ -204,7 +224,7 @@ include __DIR__ . '/_dash_header.php';
       <label>Pubblica sui social (opzionale)</label>
       <input type="datetime-local" id="vid-publish-at">
       <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
-      <button type="button" class="btn" id="vid-start" style="margin-top:10px;">Carica i video</button>
+      <button type="button" class="btn" id="vid-start" style="margin-top:10px;">Carica il video</button>
       <p id="vid-summary" style="color:var(--text-muted);font-size:13px;margin:10px 0 0;"></p>
     </div>
   </form>
@@ -291,7 +311,10 @@ include __DIR__ . '/_dash_header.php';
     const MAX = <?= (int) VIDEO_MAX_BYTES ?>;
     const fileInput = document.getElementById('vid-files');
     const rowsBox = document.getElementById('vid-rows');
-    const options = document.getElementById('vid-options');
+    const singleFields = document.getElementById('vid-single-fields');
+    const titleMain = document.getElementById('vid-title-main');
+    const descMain = document.getElementById('vid-desc-main');
+    const multiNote = document.getElementById('vid-multi-note');
     const startBtn = document.getElementById('vid-start');
     const summary = document.getElementById('vid-summary');
     const csrf = document.querySelector('#vid-upload-form input[name="csrf"]').value;
@@ -304,6 +327,12 @@ include __DIR__ . '/_dash_header.php';
     fileInput.addEventListener('change', function () {
       items = Array.from(fileInput.files).map(function (f) { return { file: f, state: 'ready' }; });
       rowsBox.innerHTML = '';
+      const multi = items.length > 1;
+      // Un solo video: titolo e descrizione sono nei campi in alto. Più video: ognuno ha i suoi, qui sotto.
+      singleFields.style.display = multi ? 'none' : 'block';
+      multiNote.style.display = multi ? 'block' : 'none';
+      startBtn.textContent = multi ? 'Carica i video' : 'Carica il video';
+      if (items.length === 1) titleMain.placeholder = baseTitle(items[0].file.name) || titleMain.placeholder;
       items.forEach(function (it, i) {
         const tooBig = it.file.size > MAX;
         if (tooBig) it.state = 'error';
@@ -312,14 +341,13 @@ include __DIR__ . '/_dash_header.php';
         div.style.cssText = 'background:var(--bg-alt,#f7f7f9);margin:0 0 10px;';
         div.innerHTML = '<strong>' + esc(it.file.name) + '</strong> <span style="color:var(--text-muted);font-size:12.5px;">· ' + mb(it.file.size) + '</span>'
           + (tooBig ? '<div style="color:#c0392b;font-size:13px;">Supera il limite di <?= $maxMb ?> MB: non verrà caricato.</div>' : '')
-          + '<label>Titolo</label><input type="text" class="vid-title" maxlength="150" value="' + esc(baseTitle(it.file.name)) + '">'
-          + '<label>Descrizione (opzionale)</label><textarea class="vid-desc" rows="3"></textarea>'
+          + (multi ? '<label>Titolo</label><input type="text" class="vid-title" maxlength="150" value="' + esc(baseTitle(it.file.name)) + '">'
+          + '<label>Descrizione (opzionale)</label><textarea class="vid-desc" rows="3"></textarea>' : '')
           + '<div class="vid-bar" style="display:none;height:8px;background:#ddd;border-radius:4px;overflow:hidden;margin-top:8px;"><div style="height:100%;width:0;background:var(--accent,#6C5CE7);"></div></div>'
           + '<div class="vid-status" style="font-size:12.5px;color:var(--text-muted);margin-top:4px;"></div>';
         rowsBox.appendChild(div);
         it.el = div;
       });
-      options.style.display = items.length ? 'block' : 'none';
     });
 
     function uploadOne(it) {
@@ -329,8 +357,10 @@ include __DIR__ . '/_dash_header.php';
         fd.set('action', 'upload');
         fd.set('ajax', '1');
         fd.set('video', it.file);
-        fd.set('title', it.el.querySelector('.vid-title').value);
-        fd.set('description', it.el.querySelector('.vid-desc').value);
+        const rowTitle = it.el.querySelector('.vid-title');
+        const rowDesc = it.el.querySelector('.vid-desc');
+        fd.set('title', rowTitle ? rowTitle.value : titleMain.value);
+        fd.set('description', rowDesc ? rowDesc.value : descMain.value);
         fd.set('visibility', document.querySelector('#vid-upload-form input[name="visibility"]:checked').value);
         if (document.getElementById('vid-in-feed').checked) fd.set('in_feed', '1');
         fd.set('publish_at', document.getElementById('vid-publish-at').value);
@@ -373,7 +403,7 @@ include __DIR__ . '/_dash_header.php';
 
     startBtn.addEventListener('click', async function () {
       const todo = items.filter(function (it) { return it.state === 'ready'; });
-      if (!todo.length) return;
+      if (!todo.length) { summary.textContent = items.length ? 'Nessun video valido da caricare.' : 'Scegli prima il video da caricare.'; return; }
       startBtn.disabled = true;
       fileInput.disabled = true;
       for (let i = 0; i < todo.length; i++) {
@@ -385,6 +415,40 @@ include __DIR__ . '/_dash_header.php';
       summary.textContent = ok + ' caricati' + (ko ? ', ' + ko + ' con errore (vedi sopra)' : '') + '.';
       if (ok && !ko) setTimeout(function () { location.reload(); }, 1200);
       else { startBtn.textContent = 'Ricarica la pagina'; startBtn.disabled = false; startBtn.onclick = function () { location.reload(); }; }
+    });
+  })();
+
+  // "Genera con AI" per la descrizione (stesso assistente di Album e Timeline).
+  (function () {
+    const toggleBtn = document.getElementById('vid-ai-toggle');
+    const panel = document.getElementById('vid-ai-panel');
+    const cancelBtn = document.getElementById('vid-ai-cancel');
+    const generateBtn = document.getElementById('vid-ai-generate');
+    const keywordsInput = document.getElementById('vid-ai-keywords');
+    const statusEl = document.getElementById('vid-ai-status');
+    const target = document.getElementById('vid-desc-main');
+    const csrf = document.querySelector('#vid-upload-form input[name="csrf"]').value;
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () { panel.style.display = 'none'; statusEl.textContent = ''; });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) { statusEl.textContent = 'Scrivi almeno qualche parola chiave.'; return; }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrf);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) { target.value = data.text; statusEl.textContent = 'Fatto! Puoi modificare il testo prima di caricare.'; }
+          else { statusEl.textContent = data.error || 'Qualcosa è andato storto.'; }
+        })
+        .catch(function () { generateBtn.disabled = false; statusEl.textContent = 'Errore di connessione. Riprova.'; });
     });
   })();
   </script>
