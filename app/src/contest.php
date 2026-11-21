@@ -630,3 +630,86 @@ function contestSponsorOwned(int $sponsorId, int $userId): bool {
     $stmt->execute([$sponsorId, $userId]);
     return (bool) $stmt->fetchColumn();
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// Area partecipante (dashboard_contests.php): elenco dei contest gestiti dagli amministratori e gestione
+// della propria candidatura.
+// ---------------------------------------------------------------------------------------------
+
+// Contest visibili a tutti gli utenti: non in bozza, di profili autorizzati dall'amministratore (modulo attivo)
+// e attivi. Prima quelli in votazione, poi con candidature aperte, poi i conclusi.
+function contestListAllPublic(): array {
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+    if (in_array('contest', getSiteDisabledNavKeys(), true)) {
+        return $cache = [];
+    }
+    try {
+        $st = getDB()->query("SELECT c.*, u.slug AS owner_slug, p.display_name AS owner_name,
+                (SELECT COUNT(*) FROM contest_entries e WHERE e.contest_id = c.id AND e.status = 'approved') AS entries_count
+            FROM contests c JOIN users u ON u.id = c.user_id JOIN profiles p ON p.user_id = u.id
+            WHERE c.status <> 'draft' AND u.is_active = 1 AND p.contest_enabled = 1
+            ORDER BY FIELD(c.status, 'voting', 'open', 'closed'), c.id DESC");
+        return $cache = $st->fetchAll();
+    } catch (Throwable $e) {
+        return $cache = [];
+    }
+}
+
+function contestPublicById(int $id): ?array {
+    foreach (contestListAllPublic() as $c) {
+        if ((int) $c['id'] === $id) {
+            return $c;
+        }
+    }
+    return null;
+}
+
+// La candidatura di un profilo a un contest (null se non ce n'è).
+function contestMyEntry(int $contestId, int $userId): ?array {
+    $st = getDB()->prepare("SELECT e.*, (SELECT COUNT(*) FROM contest_votes v WHERE v.entry_id = e.id AND v.status = 'confirmed') AS votes_confirmed
+        FROM contest_entries e WHERE e.contest_id = ? AND e.user_id = ?");
+    $st->execute([$contestId, $userId]);
+    return $st->fetch() ?: null;
+}
+
+// Ritira la propria candidatura. Non si può durante le votazioni (se già approvata) né a contest concluso.
+function contestWithdrawEntry(int $contestId, int $userId): array {
+    $c = contestGet($contestId);
+    $e = $c ? contestMyEntry($contestId, $userId) : null;
+    if (!$c || !$e) {
+        return ['ok' => false, 'error' => 'Candidatura non trovata.'];
+    }
+    if ($c['status'] === 'closed' || ($c['status'] === 'voting' && $e['status'] === 'approved')) {
+        return ['ok' => false, 'error' => 'La candidatura non si può più ritirare: le votazioni sono in corso o il contest è concluso. Scrivi all\'organizzazione.'];
+    }
+    getDB()->prepare('DELETE FROM contest_entries WHERE id = ? AND user_id = ?')->execute([(int) $e['id'], $userId]);
+    $to = trim((string) ($c['contact_email'] ?? ''));
+    if ($to !== '') {
+        contestSendMail($to, $c['name'], 'Candidatura ritirata: ' . $c['name'],
+            "L'artista \"{$e['band_name']}\" ha ritirato la candidatura del brano \"{$e['track_name']}\" dal contest {$c['name']}.");
+    }
+    return ['ok' => true];
+}
+
+// Aggiorna nome artista ed email di contatto della propria candidatura (non a contest concluso).
+function contestUpdateEntryContact(int $contestId, int $userId, string $bandName, string $email): array {
+    $c = contestGet($contestId);
+    $e = $c ? contestMyEntry($contestId, $userId) : null;
+    $bandName = trim($bandName);
+    if (!$c || !$e) {
+        return ['ok' => false, 'error' => 'Candidatura non trovata.'];
+    }
+    if ($c['status'] === 'closed') {
+        return ['ok' => false, 'error' => 'Il contest è concluso: i dati non si possono più modificare.'];
+    }
+    if ($bandName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'Nome ed email valida sono obbligatori.'];
+    }
+    getDB()->prepare('UPDATE contest_entries SET band_name = ?, contact_email = ? WHERE id = ? AND user_id = ?')
+        ->execute([mb_substr($bandName, 0, 150), mb_substr($email, 0, 190), (int) $e['id'], $userId]);
+    return ['ok' => true];
+}

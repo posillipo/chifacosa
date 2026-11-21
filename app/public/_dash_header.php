@@ -92,7 +92,10 @@ $dashTabs['foto'] = ['label' => 'Album', 'url' => '/dashboard_albums.php', 'acti
 $dashTabs['video'] = ['label' => 'Video', 'url' => '/dashboard_videos.php', 'active' => 'videos', 'visible' => $navVisibility['Video'] ?? 1];
 // Contest: modulo di profilo, visibile solo se l'amministratore lo ha autorizzato per questo profilo
 // (e il modulo non è spento per tutto il sito).
-$dashTabs['contest'] = ['label' => 'Contest', 'url' => '/dashboard_contest.php', 'active' => 'contest', 'visible' => contestModuleEnabled((int) $countsForId) && ($navVisibility['Contest'] ?? 1)];
+$dashTabs['contest'] = ['label' => 'Gestisci Contest', 'url' => '/dashboard_contest.php', 'active' => 'contest', 'visible' => contestModuleEnabled((int) $countsForId) && ($navVisibility['Contest'] ?? 1)];
+// Contest per tutti (sola lettura): elenco dei contest gestiti dagli admin e propria candidatura. Compare solo se ce n'è almeno uno.
+require_once __DIR__ . '/../src/contest.php';
+$dashTabs['contest_list'] = ['label' => 'Contest', 'url' => '/dashboard_contests.php', 'active' => 'contest_list', 'visible' => (bool) contestListAllPublic()];
 $dashTabs['servizi'] = ['label' => 'Servizi', 'url' => '/dashboard_services.php', 'active' => 'services', 'visible' => $navVisibility['Servizi'] ?? 1];
 $dashTabs['service_inquiries'] = ['label' => 'Richieste', 'url' => '/dashboard_service_inquiries.php', 'active' => 'service_inquiries', 'visible' => $navVisibility['Servizi'] ?? 1];
 $dashTabs['eventi'] = ['label' => 'Eventi', 'url' => '/dashboard_events.php', 'active' => 'events', 'visible' => $isBandOrLabel && ($navVisibility['Eventi'] ?? 1)];
@@ -170,7 +173,7 @@ $dashSideGroups = [
         'contest' => 'fa-trophy', 'schedule' => 'fa-hourglass-half', 'schedule_admin' => 'fa-calendar-days', 'board' => 'fa-thumbtack',
     ],
     'Eventi e prenotazioni' => [
-        'eventi' => 'fa-ticket', 'reservations' => 'fa-calendar-check', 'cinema' => 'fa-film',
+        'eventi' => 'fa-ticket', 'reservations' => 'fa-calendar-check', 'cinema' => 'fa-film', 'contest_list' => 'fa-trophy',
     ],
     '__integrations' => [],
     'Business' => [
