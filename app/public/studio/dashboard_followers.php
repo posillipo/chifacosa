@@ -1,0 +1,46 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+$user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+$activeTab = 'followers';
+$pageTitle = 'Follower';
+
+$total = getFollowerCount((int)$profile['id']);
+
+$stmt = getDB()->prepare("SELECT COUNT(*) c FROM followers WHERE user_id=? AND verified=1 AND created_at >= NOW() - INTERVAL 7 DAY");
+$stmt->execute([$profile['id']]);
+$last7 = (int) $stmt->fetch()['c'];
+
+$stmt = getDB()->prepare("SELECT COUNT(*) c FROM followers WHERE user_id=? AND verified=1 AND created_at >= NOW() - INTERVAL 30 DAY");
+$stmt->execute([$profile['id']]);
+$last30 = (int) $stmt->fetch()['c'];
+
+$stmt = getDB()->prepare('SELECT email, first_name, last_name, phone, postal_code, created_at FROM followers WHERE user_id=? AND verified=1 ORDER BY created_at DESC LIMIT 200');
+$stmt->execute([$profile['id']]);
+$followers = $stmt->fetchAll();
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <div class="card">
+    <strong><?= $total ?></strong> follower totali ·
+    <?= $last7 ?> negli ultimi 7 giorni · <?= $last30 ?> negli ultimi 30 giorni
+  </div>
+
+  <div class="section-title">Elenco follower (<?= count($followers) ?>, ultimi 200)</div>
+  <?php if (!$followers): ?>
+    <div class="card">Nessun follower ancora. Il pulsante "Segui" è già visibile sulla tua pagina pubblica.</div>
+  <?php endif; ?>
+  <?php foreach ($followers as $f): ?>
+    <?php $fullName = trim(($f['first_name'] ?? '') . ' ' . ($f['last_name'] ?? '')); ?>
+    <div class="link-item">
+      <span>
+        <?= e($f['email']) ?>
+        <?php if ($fullName !== ''): ?><br><small style="color:var(--text-muted)"><?= e($fullName) ?><?php if ($f['phone']): ?> · <?= e($f['phone']) ?><?php endif; ?><?php if ($f['postal_code']): ?> · CAP <?= e($f['postal_code']) ?><?php endif; ?></small><?php endif; ?>
+      </span>
+      <small style="color:var(--text-muted)">dal <?= date('d/m/Y', strtotime($f['created_at'])) ?></small>
+    </div>
+  <?php endforeach; ?>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>

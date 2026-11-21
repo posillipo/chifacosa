@@ -1,0 +1,72 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+$user = requireLogin();
+if (!siteToolEnabled('programmati')) {
+    http_response_code(404);
+    exit('Questa funzione non è attiva su questo sito.');
+}
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+$activeTab = 'schedule';
+$pageTitle = 'Programmati';
+
+$items = getScheduledContentForUser((int) $profile['id'], $profile['slug']);
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <style>
+  /* Titolo su due righe al massimo (prima una sola, tagliata); su telefono i pulsanti vanno a
+     capo sotto al contenuto, a tutta larghezza, invece di sovrapporsi al titolo. */
+  .sched-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  @media (max-width: 600px) {
+    .sched-actions { width: 100%; }
+    .sched-actions .btn { flex: 1; text-align: center; }
+  }
+  </style>
+
+  <div class="section-title">Contenuti programmati (<?= count($items) ?>)</div>
+  <?php if (!$items): ?>
+    <div class="alert error">Nessun contenuto programmato al momento.</div>
+  <?php else: ?>
+    <?php foreach ($items as $it): ?>
+      <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
+        <a href="<?= e($it['edit_url']) ?>" class="sched-main" style="display:flex;flex:1 1 240px;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
+          <?php if ($it['cover']): ?>
+            <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+          <?php endif; ?>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
+              <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;">
+                ⏰ <?= e(formatLocalDateTime($it['scheduled_for'], $profile)) ?>
+              </span>
+              <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;"><?= e($it['label']) ?></span>
+            </div>
+            <p class="sched-title" style="margin:0;font-weight:600;"><?= e(textExcerpt($it['title'], 120)) ?></p>
+          </div>
+        </a>
+        <?php if ($it['preview_url']): ?>
+          <div class="sched-actions" style="display:flex;gap:6px;flex-shrink:0;">
+            <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
+            <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+<script>
+document.querySelectorAll('.schedule-preview-copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var url = btn.getAttribute('data-url');
+    navigator.clipboard.writeText(url).then(function () {
+      var original = btn.textContent;
+      btn.textContent = '✅ Copiato!';
+      setTimeout(function () { btn.textContent = original; }, 1800);
+    }).catch(function () {
+      window.prompt('Copia questo link:', url);
+    });
+  });
+});
+</script>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>

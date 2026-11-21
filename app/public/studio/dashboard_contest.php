@@ -1,0 +1,366 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+require_once __DIR__ . '/../../src/spotify.php';
+require_once __DIR__ . '/../../src/contest.php';
+$user = requireLogin();
+$profile = getActingProfile($user);
+requireFullOwnerAccess($user, $profile);
+$uid = (int) $profile['id'];
+if (!contestModuleEnabled($uid)) {
+    http_response_code(403);
+    exit('Il modulo Contest non è attivo per questo profilo: chiedi all\'amministratore del sito di abilitarlo.');
+}
+$activeTab = 'contest';
+$pageTitle = 'Contest';
+$error = null;
+$success = null;
+$db = getDB();
+
+$contestId = contestOwned((int) ($_GET['id'] ?? 0), $uid) ? (int) $_GET['id'] : 0;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrf();
+    $action = $_POST['action'] ?? '';
+    $contestId = contestOwned((int) ($_POST['contest_id'] ?? $contestId), $uid) ? (int) ($_POST['contest_id'] ?? $contestId) : 0;
+
+    if ($action === 'save_contest') {
+        $name = trim($_POST['name'] ?? '');
+        $off = browserTzOffsetFromRequest();
+        $dt = fn ($k) => parseLocalDateTime($_POST[$k] ?? '', $profile, $off);
+        $status = in_array($_POST['status'] ?? '', ['draft', 'open', 'voting', 'closed'], true) ? $_POST['status'] : 'draft';
+        $age = max(1, min(60, (int) ($_POST['max_track_age_months'] ?? 12)));
+        $thr = max(0, min(100, (int) ($_POST['big_threshold'] ?? 40)));
+        $bigMin = max(1, (int) ($_POST['big_min_count'] ?? 8));
+        $newMin = max(1, (int) ($_POST['new_min_count'] ?? 4));
+        $existing = $contestId ? contestOwned($contestId, $uid) : null;
+        $slugIn = slugify(trim($_POST['slug'] ?? ''));
+        $slug = null;
+        if ($name === '') {
+            $error = 'Il nome del contest è obbligatorio.';
+        } elseif ($slugIn === '') {
+            $slug = $existing['slug'] ?? contestUniqueSlug($name, $uid);
+        } elseif (!contestSlugAvailable($slugIn, $uid, $existing ? (int) $existing['id'] : null)) {
+            $error = 'L\'indirizzo «' . $slugIn . '» è già in uso o riservato: scegline un altro.';
+        } else {
+            $slug = $slugIn;
+        }
+        if (!$error) {
+            $logoPath = $existing['logo_path'] ?? null;
+            if (!empty($_FILES['contest_logo']['name'])) {
+                if ($newLogo = contestSaveLogo('contest_logo')) {
+                    contestDeleteLogo($logoPath);
+                    $logoPath = $newLogo;
+                } else {
+                    $error = 'Il logo non è stato caricato (formato non valido o più di 5 MB). Il resto non è stato salvato.';
+                }
+            } elseif (!empty($_POST['remove_logo'])) {
+                contestDeleteLogo($logoPath);
+                $logoPath = null;
+            }
+        }
+        if (!$error) {
+            $vals = [mb_substr($name, 0, 150), trim($_POST['description'] ?? '') ?: null, trim($_POST['regulation'] ?? '') ?: null,
+                $dt('candidatures_open_at'), $dt('candidatures_close_at'), $dt('voting_start_at'), $dt('voting_end_at'),
+                $age, $thr, $bigMin, $newMin, $status, $slug, $logoPath];
+            if ($existing) {
+                $db->prepare('UPDATE contests SET name=?, description=?, regulation=?, candidatures_open_at=?, candidatures_close_at=?, voting_start_at=?, voting_end_at=?, max_track_age_months=?, big_threshold=?, big_min_count=?, new_min_count=?, status=?, slug=?, logo_path=?, contact_email=? WHERE id=? AND user_id=?')
+                    ->execute(array_merge($vals, [trim($_POST['contact_email'] ?? '') ?: null, $contestId, $uid]));
+            } else {
+                $db->prepare('INSERT INTO contests (name, description, regulation, candidatures_open_at, candidatures_close_at, voting_start_at, voting_end_at, max_track_age_months, big_threshold, big_min_count, new_min_count, status, slug, logo_path, contact_email, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                    ->execute(array_merge($vals, [trim($_POST['contact_email'] ?? '') ?: null, $uid]));
+                $contestId = (int) $db->lastInsertId();
+            }
+            $success = 'Contest salvato.';
+        }
+    } elseif ($action === 'set_entry' && contestEntryOwned((int) ($_POST['entry_id'] ?? 0), $uid)) {
+        contestSetEntryStatus((int) ($_POST['entry_id'] ?? 0), (string) ($_POST['status'] ?? ''), trim($_POST['note'] ?? ''));
+        $success = 'Candidatura aggiornata.';
+    } elseif ($action === 'add_entry' && $contestId && ($c = contestOwned($contestId, $uid))) {
+        $res = contestAddEntry($c, null, trim($_POST['band_name'] ?? ''), trim($_POST['email'] ?? ''), (string) ($_POST['track'] ?? ''), null, true);
+        if ($res['ok']) {
+            contestSetEntryStatus($res['entry_id'], !empty($_POST['approve_now']) ? 'approved' : 'pending');
+            $success = 'Candidatura aggiunta.';
+        } else {
+            $error = $res['error'];
+        }
+    } elseif ($action === 'compute_groups' && $contestId && ($cc = contestOwned($contestId, $uid)) && empty($cc['groups_locked_at'])) {
+        contestSnapshotPopularity($contestId);
+        $success = 'Popolarità Spotify fotografata. Controlla l\'anteprima dei gruppi e, se va bene, bloccali.';
+    } elseif ($action === 'lock_groups' && $contestId) {
+        $success = contestLockGroups($contestId) ? 'Gruppi bloccati.' : 'I gruppi erano già bloccati.';
+    } elseif ($action === 'cancel_vote' && contestVoteOwned((int) ($_POST['vote_id'] ?? 0), $uid)) {
+        $db->prepare("UPDATE contest_votes SET status = 'cancelled', unique_key = NULL WHERE id = ?")->execute([(int) ($_POST['vote_id'] ?? 0)]);
+        $success = 'Voto annullato.';
+    } elseif ($action === 'add_sponsor' && $contestId && contestOwned($contestId, $uid)) {
+        $sname = trim($_POST['sponsor_name'] ?? '');
+        $surl = trim($_POST['sponsor_url'] ?? '');
+        if ($sname === '') {
+            $error = 'Il nome dello sponsor è obbligatorio.';
+        } elseif ($surl !== '' && !preg_match('#^https?://#i', $surl)) {
+            $error = 'Il sito dello sponsor deve iniziare con http:// o https://.';
+        } else {
+            $logo = contestSaveLogo('sponsor_logo');
+            $db->prepare('INSERT INTO contest_sponsors (contest_id, name, website_url, logo_path, access_token) VALUES (?,?,?,?,?)')
+                ->execute([$contestId, mb_substr($sname, 0, 150), $surl !== '' ? mb_substr($surl, 0, 300) : null, $logo, bin2hex(random_bytes(16))]);
+            $success = 'Sponsor aggiunto.' . (!empty($_FILES['sponsor_logo']['name']) && !$logo ? ' Il logo non è stato caricato (formato non valido o troppo grande).' : '');
+        }
+    } elseif ($action === 'delete_sponsor' && contestSponsorOwned((int) ($_POST['sponsor_id'] ?? 0), $uid)) {
+        $sid = (int) ($_POST['sponsor_id'] ?? 0);
+        $row = $db->prepare('SELECT logo_path FROM contest_sponsors WHERE id = ?');
+        $row->execute([$sid]);
+        if ($r = $row->fetch()) {
+            contestDeleteLogo($r['logo_path']);
+            $db->prepare('UPDATE contest_entries SET sponsor_id = NULL WHERE sponsor_id = ?')->execute([$sid]);
+            $db->prepare('DELETE FROM contest_sponsors WHERE id = ?')->execute([$sid]);
+            $success = 'Sponsor eliminato.';
+        }
+    } elseif ($action === 'set_sponsor' && contestEntryOwned((int) ($_POST['entry_id'] ?? 0), $uid)) {
+        $success = contestSetEntrySponsor((int) ($_POST['entry_id'] ?? 0), (int) ($_POST['sponsor_id'] ?? 0)) ? 'Sponsor del brano aggiornato.' : null;
+        $error = $success ? null : 'Abbinamento non riuscito.';
+    } elseif ($action === 'delete_contest' && $contestId) {
+        if ($del = contestOwned($contestId, $uid)) {
+            contestDeleteLogo($del['logo_path'] ?? null);
+            foreach (contestSponsors($contestId) as $dsp) {
+                contestDeleteLogo($dsp['logo_path']);
+            }
+        }
+        $db->prepare('DELETE FROM contests WHERE id = ?')->execute([$contestId]);
+        header('Location: /dashboard_contest.php');
+        exit;
+    }
+}
+
+$cs = $db->prepare('SELECT id, name, status FROM contests WHERE user_id = ? ORDER BY id DESC');
+$cs->execute([$uid]);
+$contests = $cs->fetchAll();
+if (!$contestId && $contests && !isset($_GET['new'])) {
+    $contestId = (int) $contests[0]['id'];
+}
+$c = $contestId ? contestOwned($contestId, $uid) : null;
+$entries = [];
+if ($c) {
+    $stmt = $db->prepare('SELECT * FROM contest_entries WHERE contest_id = ? ORDER BY FIELD(status, "pending", "approved", "rejected"), created_at DESC');
+    $stmt->execute([$contestId]);
+    $entries = $stmt->fetchAll();
+}
+$sponsors = $c ? contestSponsors($contestId) : [];
+$proposal = null;
+$voteStats = ['confirmed' => 0, 'pending' => 0, 'expired' => 0];
+$votes = [];
+if ($c) {
+    $proposal = contestProposeGroups($c);
+    $vs = $db->prepare("SELECT status, expires_at FROM contest_votes WHERE contest_id = ?");
+    $vs->execute([$contestId]);
+    foreach ($vs->fetchAll() as $vr) {
+        if ($vr['status'] === 'confirmed') { $voteStats['confirmed']++; }
+        elseif ($vr['status'] === 'pending') { strtotime($vr['expires_at']) < time() ? $voteStats['expired']++ : $voteStats['pending']++; }
+    }
+    $vl = $db->prepare("SELECT v.*, e.track_name, e.band_name FROM contest_votes v JOIN contest_entries e ON e.id = v.entry_id WHERE v.contest_id = ? AND v.status <> 'cancelled' ORDER BY v.created_at DESC LIMIT 100");
+    $vl->execute([$contestId]);
+    $votes = $vl->fetchAll();
+}
+$statusLabels = ['draft' => 'Bozza', 'open' => 'Candidature aperte', 'voting' => 'Votazioni', 'closed' => 'Chiuso'];
+$v = fn ($k, $d = '') => e((string) ($c[$k] ?? $d));
+$dtv = fn ($k) => e(localDateTimeInputValue($c[$k] ?? null, $profile));
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+
+  <p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <?php foreach ($contests as $ct): ?>
+      <a class="btn small <?= (int) $ct['id'] === $contestId ? '' : 'secondary' ?>" href="?id=<?= (int) $ct['id'] ?>"><?= e($ct['name']) ?> · <?= e($statusLabels[$ct['status']]) ?></a>
+    <?php endforeach; ?>
+    <a class="btn small secondary" href="?new=1">+ Nuovo contest</a>
+  </p>
+
+  <div class="section-title"><?= $c ? 'Configurazione' : 'Nuovo contest' ?></div>
+  <form method="post" enctype="multipart/form-data" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="save_contest">
+    <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+    <input type="hidden" name="tz_offset_minutes" value="">
+    <label>Nome</label>
+    <input type="text" name="name" value="<?= $v('name') ?>" placeholder="es. MyBand Festival 2027" required maxlength="150">
+    <label>Indirizzo (slug) — la pagina pubblica sarà /<?= e($profile['slug']) ?>/contest/<em>indirizzo</em></label>
+    <input type="text" name="slug" value="<?= $v('slug') ?>" placeholder="si ricava dal nome, es. myband-festival-2027" maxlength="80" pattern="[A-Za-z0-9\-]*">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
+      Solo lettere, numeri e trattini; deve essere unico. Lascia vuoto per generarlo dal nome.
+      <?php if ($c && $c['status'] !== 'draft'): ?><strong>Il contest è già pubblico: cambiare l'indirizzo cambia il link da condividere.</strong><?php endif; ?>
+      <?php if ($c): ?> Pagina attuale: <a href="<?= e(contestUrl($c)) ?>" target="_blank"><?= e(siteUrl(contestUrl($c))) ?></a><?php endif; ?>
+    </p>
+    <label>Logo del contest (opzionale — PNG, JPG o WebP, max 5 MB)</label>
+    <?php if (!empty($c['logo_path'])): ?>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+        <img src="/<?= e($c['logo_path']) ?>" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:normal;"><input type="checkbox" name="remove_logo" value="1" style="width:auto;"> Rimuovi il logo</label>
+      </div>
+    <?php endif; ?>
+    <input type="file" name="contest_logo" accept="image/*">
+    <label>Stato</label>
+    <select name="status">
+      <?php foreach ($statusLabels as $k => $lbl): ?>
+        <option value="<?= $k ?>" <?= ($c['status'] ?? 'draft') === $k ? 'selected' : '' ?>><?= e($lbl) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Bozza = invisibile al pubblico. Le candidature si ricevono solo con stato «Candidature aperte» e dentro le date sotto.</p>
+    <label>Descrizione breve</label>
+    <textarea name="description" rows="3"><?= $v('description') ?></textarea>
+    <label>Regolamento</label>
+    <textarea name="regulation" rows="10"><?= $v('regulation') ?></textarea>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px;">
+      <div><label>Apertura candidature</label><input type="datetime-local" name="candidatures_open_at" value="<?= $dtv('candidatures_open_at') ?>"></div>
+      <div><label>Chiusura candidature</label><input type="datetime-local" name="candidatures_close_at" value="<?= $dtv('candidatures_close_at') ?>"></div>
+      <div><label>Inizio votazioni</label><input type="datetime-local" name="voting_start_at" value="<?= $dtv('voting_start_at') ?>"></div>
+      <div><label>Fine votazioni</label><input type="datetime-local" name="voting_end_at" value="<?= $dtv('voting_end_at') ?>"></div>
+    </div>
+    <label>Il brano deve essere uscito da non più di (mesi, rispetto all'inizio votazioni)</label>
+    <input type="number" name="max_track_age_months" min="1" max="60" value="<?= $v('max_track_age_months', '12') ?>">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 14px;">
+      <div><label>Soglia popolarità Spotify «Big» (0-100)</label><input type="number" name="big_threshold" min="0" max="100" value="<?= $v('big_threshold', '40') ?>"></div>
+      <div><label>Minimo di band sopra soglia per dividere</label><input type="number" name="big_min_count" min="1" value="<?= $v('big_min_count', '8') ?>"></div>
+      <div><label>Minimo di Nuove Proposte</label><input type="number" name="new_min_count" min="1" value="<?= $v('new_min_count', '4') ?>"></div>
+    </div>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Soglia e minimi servono nelle fasi successive (gruppi Big / Nuove Proposte): per ora vengono solo salvati.</p>
+    <label>Email di contatto per chi non ha un profilo (mostrata nella pagina pubblica)</label>
+    <input type="email" name="contact_email" value="<?= $v('contact_email') ?>">
+    <button type="submit" class="btn">Salva</button>
+  </form>
+
+  <?php if ($c): ?>
+    <div class="section-title">Sponsor (<?= count($sponsors) ?>)</div>
+    <?php foreach ($sponsors as $sp): ?>
+      <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <?php if ($sp['logo_path']): ?><img src="/<?= e($sp['logo_path']) ?>" alt="" style="height:44px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:4px;"><?php endif; ?>
+        <div style="flex:1;min-width:220px;">
+          <strong><?= e($sp['name']) ?></strong> <span style="color:var(--text-muted);font-size:12.5px;">· <?= (int) $sp['entries_count'] ?> brani</span>
+          <?php if ($sp['website_url']): ?><div style="font-size:12.5px;"><a href="<?= e($sp['website_url']) ?>" target="_blank" rel="noopener"><?= e($sp['website_url']) ?></a></div><?php endif; ?>
+          <div style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Link riservato per l'anteprima (da inviare allo sponsor):</div>
+          <input type="text" readonly value="<?= e(contestSponsorPreviewUrl($sp)) ?>" onclick="this.select()" style="font-size:12.5px;">
+        </div>
+        <form method="post" onsubmit="return confirm('Eliminare lo sponsor? Verrà tolto anche dagli abbinamenti.');">
+          <?= csrfField() ?><input type="hidden" name="action" value="delete_sponsor"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>"><input type="hidden" name="sponsor_id" value="<?= (int) $sp['id'] ?>">
+          <button class="btn small secondary" type="submit">Elimina</button>
+        </form>
+      </div>
+    <?php endforeach; ?>
+    <form method="post" enctype="multipart/form-data" class="card">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="add_sponsor">
+      <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+      <label>Nome dello sponsor</label><input type="text" name="sponsor_name" required maxlength="150">
+      <label>Sito (opzionale)</label><input type="url" name="sponsor_url" placeholder="https://...">
+      <label>Logo (PNG, JPG o WebP, max 5 MB — consigliato PNG con sfondo trasparente)</label>
+      <input type="file" name="sponsor_logo" accept="image/*">
+      <button type="submit" class="btn">Aggiungi sponsor</button>
+    </form>
+
+    <div class="section-title">Gruppi Big / Nuove Proposte</div>
+    <div class="card">
+      <?php if (!empty($c['groups_locked_at'])): ?>
+        <p>Gruppi <strong>bloccati</strong> il <?= e(formatLocalDateTime($c['groups_locked_at'], $profile)) ?>:
+          <strong><?= $c['groups_mode'] === 'two' ? 'due gruppi (Big e Nuove Proposte)' : 'gruppo unico' ?></strong>.</p>
+      <?php else: ?>
+        <p style="color:var(--text-muted)">Alla chiusura delle candidature: fotografa la popolarità Spotify degli artisti approvati, controlla l'anteprima e blocca i gruppi. Dopo il blocco non si ricalcola e si possono aprire le votazioni (stato «Votazioni»).</p>
+        <form method="post" style="display:inline;">
+          <?= csrfField() ?><input type="hidden" name="action" value="compute_groups"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+          <button class="btn small" type="submit">Fotografa popolarità e calcola anteprima</button>
+        </form>
+      <?php endif; ?>
+      <?php if ($proposal && $proposal['entries']): ?>
+        <p style="margin-top:12px;">Soglia Big: <strong><?= (int) $c['big_threshold'] ?></strong> · sopra soglia: <strong><?= (int) $proposal['big'] ?></strong> (minimo <?= (int) $c['big_min_count'] ?>) · sotto: <strong><?= (int) $proposal['new'] ?></strong> (minimo <?= (int) $c['new_min_count'] ?>)
+          → <strong><?= $proposal['mode'] === 'two' ? 'due gruppi' : 'gruppo unico' ?></strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+          <?php foreach ($proposal['entries'] as $pe): $isBig = $pe['popularity_snapshot'] !== null && (int) $pe['popularity_snapshot'] >= (int) $c['big_threshold']; ?>
+            <tr><td style="padding:3px 6px;"><?= e($pe['band_name']) ?> — <?= e($pe['track_name']) ?></td>
+                <td style="padding:3px 6px;text-align:right;"><?= $pe['popularity_snapshot'] !== null ? (int) $pe['popularity_snapshot'] : '—' ?></td>
+                <td style="padding:3px 6px;"><?= $proposal['mode'] === 'two' ? ($isBig ? 'Big' : 'Nuove Proposte') : 'Unico' ?></td></tr>
+          <?php endforeach; ?>
+        </table>
+        <?php if (empty($c['groups_locked_at'])): ?>
+          <form method="post" style="margin-top:12px;" onsubmit="return confirm('Bloccare i gruppi? Dopo non si possono ricalcolare.');">
+            <?= csrfField() ?><input type="hidden" name="action" value="lock_groups"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+            <button class="btn" type="submit">Conferma e blocca i gruppi</button>
+          </form>
+        <?php endif; ?>
+      <?php endif; ?>
+    </div>
+
+    <div class="section-title">Voti — confermati <?= $voteStats['confirmed'] ?> · in attesa <?= $voteStats['pending'] ?> · scaduti <?= $voteStats['expired'] ?></div>
+    <?php foreach ($votes as $vt): ?>
+      <div class="blog-item" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13.5px;">
+        <span style="flex:1;min-width:200px;"><?= e($vt['email_norm']) ?> → <strong><?= e($vt['track_name']) ?></strong> (<?= e($vt['band_name']) ?>)</span>
+        <span style="color:var(--text-muted);"><?= $vt['status'] === 'confirmed' ? 'confermato' : (strtotime($vt['expires_at']) < time() ? 'scaduto' : 'in attesa') ?> · <?= e(formatLocalDateTime($vt['created_at'], $profile)) ?></span>
+        <form method="post" onsubmit="return confirm('Annullare questo voto?');">
+          <?= csrfField() ?><input type="hidden" name="action" value="cancel_vote"><input type="hidden" name="contest_id" value="<?= (int) $contestId ?>"><input type="hidden" name="vote_id" value="<?= (int) $vt['id'] ?>">
+          <button class="btn small secondary" type="submit">Annulla</button>
+        </form>
+      </div>
+    <?php endforeach; ?>
+    <?php if (!$votes): ?><p style="color:var(--text-muted)">Nessun voto per ora.</p><?php endif; ?>
+
+    <div class="section-title">Candidature (<?= count($entries) ?>)</div>
+    <?php foreach ($entries as $en): ?>
+      <div class="card" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <?php if ($en['image_url']): ?><img src="<?= e($en['image_url']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;" alt=""><?php endif; ?>
+        <div style="flex:1;min-width:220px;">
+          <strong><?= e($en['band_name']) ?></strong> — <?= e($en['track_name']) ?>
+          <span class="badge"><?= $en['status'] === 'approved' ? 'Approvata' : ($en['status'] === 'rejected' ? 'Rifiutata' : 'In attesa') ?></span>
+          <div style="color:var(--text-muted);font-size:12.5px;">
+            <?= e($en['contact_email']) ?> · uscito il <?= $en['release_date'] ? e(date('d/m/Y', strtotime($en['release_date']))) : '—' ?>
+            · popolarità artista: <?= $en['artist_popularity'] !== null ? (int) $en['artist_popularity'] : '—' ?>
+            · <?= $en['user_id'] ? ($en['artist_match'] ? 'artista Spotify del profilo coincide ✔' : '⚠ artista Spotify del profilo NON coincide') : 'senza profilo' ?>
+            <?php if ($en['track_url']): ?> · <a href="<?= e($en['track_url']) ?>" target="_blank" rel="noopener">Spotify</a><?php endif; ?>
+          </div>
+          <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="set_entry">
+            <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+            <input type="hidden" name="entry_id" value="<?= (int) $en['id'] ?>">
+            <input type="text" name="note" value="<?= e($en['admin_note'] ?? '') ?>" placeholder="Nota (opzionale)" style="flex:1;min-width:140px;" maxlength="300">
+            <?php if ($en['status'] !== 'approved'): ?><button class="btn small" name="status" value="approved">Approva</button><?php endif; ?>
+            <?php if ($en['status'] !== 'rejected'): ?><button class="btn small secondary" name="status" value="rejected">Rifiuta</button><?php endif; ?>
+            <?php if ($en['status'] !== 'pending'): ?><button class="btn small secondary" name="status" value="pending">Rimetti in attesa</button><?php endif; ?>
+          </form>
+          <?php if ($sponsors): ?>
+          <form method="post" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="set_sponsor">
+            <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+            <input type="hidden" name="entry_id" value="<?= (int) $en['id'] ?>">
+            <select name="sponsor_id" style="min-width:160px;">
+              <option value="0">— Nessuno sponsor —</option>
+              <?php foreach ($sponsors as $sp): ?><option value="<?= (int) $sp['id'] ?>" <?= (int) ($en['sponsor_id'] ?? 0) === (int) $sp['id'] ? 'selected' : '' ?>><?= e($sp['name']) ?></option><?php endforeach; ?>
+            </select>
+            <button class="btn small secondary" type="submit">Imposta sponsor</button>
+          </form>
+          <?php endif; ?>
+        </div>
+      </div>
+    <?php endforeach; ?>
+    <?php if (!$entries): ?><p style="color:var(--text-muted)">Nessuna candidatura per ora.</p><?php endif; ?>
+
+    <div class="section-title">Aggiungi una candidatura a mano</div>
+    <form method="post" class="card">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="add_entry">
+      <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+      <label>Nome band/artista</label><input type="text" name="band_name" required maxlength="150">
+      <label>Email</label><input type="email" name="email" required>
+      <label>Link (o ID) del brano su Spotify</label><input type="text" name="track" placeholder="https://open.spotify.com/track/..." required>
+      <label style="display:flex;gap:6px;align-items:center;font-weight:normal;"><input type="checkbox" name="approve_now" value="1" style="width:auto;"> Approva subito</label>
+      <button type="submit" class="btn">Aggiungi</button>
+    </form>
+
+    <form method="post" onsubmit="return confirm('Eliminare il contest e tutte le sue candidature?');" style="margin-top:18px;">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="delete_contest">
+      <input type="hidden" name="contest_id" value="<?= (int) $contestId ?>">
+      <button class="btn small secondary" type="submit">Elimina questo contest</button>
+    </form>
+  <?php endif; ?>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>

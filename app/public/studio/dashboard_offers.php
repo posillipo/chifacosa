@@ -1,0 +1,352 @@
+<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php
+session_start();
+require_once __DIR__ . '/../../src/functions.php';
+$user = requireLogin();
+$profile = getActingProfile($user); requireFullOwnerAccess($user, $profile);
+$activeTab = 'offers';
+$pageTitle = 'Offerte speciali';
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrf();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'add' || $action === 'edit') {
+        $id = $action === 'edit' ? (int) ($_POST['id'] ?? 0) : 0;
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $priceLabel = trim($_POST['price_label'] ?? '');
+        // Interpretati nel fuso orario scelto dal profilo (Dashboard -> Profilo e anagrafica),
+        // non in quello del server — vedi parseLocalDateTime() in functions.php.
+        $validFrom = parseLocalDateTime($_POST['valid_from'] ?? '', $profile, browserTzOffsetFromRequest());
+        $validUntil = parseLocalDateTime($_POST['valid_until'] ?? '', $profile, browserTzOffsetFromRequest());
+        $isActive = isset($_POST['is_active']) ? 1 : 0;
+        $inFeed = !empty($_POST['in_feed']) ? 1 : 0;
+
+        if ($title === '') {
+            $error = 'Il titolo è obbligatorio.';
+        } elseif ($validFrom && $validUntil && $validFrom > $validUntil) {
+            $error = 'La data di inizio non può essere dopo la data di fine.';
+        } elseif ($action === 'add') {
+            $coverPath = handleCoverUpload($profile['slug']);
+            $stmt = getDB()->prepare('INSERT INTO special_offers (user_id, title, description, price_label, cover_path, valid_from, valid_until, is_active, in_feed, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT n FROM (SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM special_offers WHERE user_id=?) t))');
+            $stmt->execute([$profile['id'], $title, $description ?: null, $priceLabel ?: null, $coverPath, $validFrom, $validUntil, $isActive, $inFeed, $profile['id']]);
+            $newId = (int) getDB()->lastInsertId();
+
+            $offerUrl = siteUrl('/' . $profile['slug'] . '/offerte/' . $newId);
+            notifyFollowersNewContent((int) $profile['id'], $profile['display_name'], $profile['slug'], 'offerta', $title, $offerUrl);
+            require_once __DIR__ . '/../../src/metricool_queue.php';
+            socialQueueEnqueueIfEnabled((int) $profile['id'], 'offer', [
+                'content_id' => $newId,
+                'title'      => $title,
+                'body'       => $description,
+                'image_url'  => $coverPath ? siteUrl($coverPath) : null,
+                'public_url' => $offerUrl,
+            ]);
+        } else {
+            // Copertina opzionale in modifica: un nuovo file la sostituisce (e cancella quella
+            // precedente), lasciando il campo vuoto quella già caricata resta invariata.
+            $newCoverPath = handleCoverUpload($profile['slug']);
+            if ($newCoverPath) {
+                $stmt = getDB()->prepare('SELECT cover_path FROM special_offers WHERE id=? AND user_id=?');
+                $stmt->execute([$id, $profile['id']]);
+                if ($old = $stmt->fetch()) {
+                    deleteCoverFile($old['cover_path']);
+                }
+                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, cover_path=?, valid_from=?, valid_until=?, is_active=?, in_feed=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $newCoverPath, $validFrom, $validUntil, $isActive, $inFeed, $id, $profile['id']]);
+            } else {
+                $stmt = getDB()->prepare('UPDATE special_offers SET title=?, description=?, price_label=?, valid_from=?, valid_until=?, is_active=?, in_feed=? WHERE id=? AND user_id=?');
+                $stmt->execute([$title, $description ?: null, $priceLabel ?: null, $validFrom, $validUntil, $isActive, $inFeed, $id, $profile['id']]);
+            }
+        }
+    } elseif ($action === 'delete') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('SELECT cover_path FROM special_offers WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+        if ($row = $stmt->fetch()) {
+            deleteCoverFile($row['cover_path']);
+        }
+        $stmt = getDB()->prepare('DELETE FROM special_offers WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+    } elseif ($action === 'toggle_active') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = getDB()->prepare('UPDATE special_offers SET is_active = NOT is_active WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $profile['id']]);
+    }
+    if (!$error) {
+        header('Location: /dashboard_offers.php');
+        exit;
+    }
+}
+
+$stmt = getDB()->prepare('SELECT * FROM special_offers WHERE user_id=? ORDER BY sort_order DESC');
+$stmt->execute([$profile['id']]);
+$offers = $stmt->fetchAll();
+
+include __DIR__ . '/../_dash_header.php';
+?>
+
+  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+  <style>
+  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
+     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
+  .container { max-width: 1240px; }
+  .dash-two-col { display: block; }
+  .dash-two-col > div { min-width: 0; }
+  @media (min-width: 760px) {
+    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  }
+  </style>
+
+  <div class="dash-two-col">
+  <div class="dash-two-col-main">
+  <form method="post" enctype="multipart/form-data" class="card">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="tz_offset_minutes" value="">
+    <label>Titolo</label>
+    <input type="text" name="title" required placeholder="es. Sconto di benvenuto">
+    <label>Prezzo/sconto (opzionale)</label>
+    <input type="text" name="price_label" placeholder="es. -20%, 2x1, €19,90 invece di €29,90">
+    <label>Descrizione (opzionale)</label>
+    <textarea name="description" id="off-add-description" rows="4" placeholder="Dettagli, condizioni, cosa include..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+      <button type="button" class="btn small secondary" id="off-add-ai-toggle">✨ Genera con AI</button>
+    </div>
+    <div id="off-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+      <label>Qualche parola chiave o istruzione per l'AI</label>
+      <textarea id="off-add-ai-keywords" rows="2" placeholder="es. -20% su tutti gli abiti da cerimonia fino a fine mese"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn small" id="off-add-ai-generate">Genera testo</button>
+        <button type="button" class="btn small secondary" id="off-add-ai-cancel">Annulla</button>
+      </div>
+      <p id="off-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+    </div>
+    <label>Foto (opzionale, jpg/png/webp)</label>
+    <input type="file" name="cover" accept="image/*">
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <label>Valida dal (opzionale)</label>
+        <input type="datetime-local" name="valid_from">
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label>Valida fino al (opzionale)</label>
+        <input type="datetime-local" name="valid_until">
+      </div>
+    </div>
+    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia entrambe vuote per un'offerta sempre attiva.</p>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0;">
+      <input type="checkbox" name="is_active" value="1" checked style="width:auto;margin-bottom:0;">
+      Attiva
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:0 0 16px;">
+      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;margin-bottom:0;">
+      Includi nel Feed
+    </label>
+    <button type="submit" class="btn">Aggiungi offerta</button>
+  </form>
+
+  </div>
+
+  <div class="dash-two-col-side">
+  <div class="section-title">Le tue offerte (<?= count($offers) ?>)</div>
+  <?php foreach ($offers as $of): ?>
+    <?php
+      $now = date('Y-m-d H:i:s');
+      $isCurrentlyValid = (!$of['valid_from'] || $of['valid_from'] <= $now) && (!$of['valid_until'] || $of['valid_until'] >= $now);
+    ?>
+    <div class="event-item" style="display:flex;gap:14px;align-items:flex-start;">
+      <?php if ($of['cover_path']): ?>
+        <img src="/<?= e($of['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+      <?php endif; ?>
+      <div style="flex:1;min-width:0;">
+        <strong><?= e($of['title']) ?></strong>
+        <?php if ($of['price_label']): ?><span style="color:var(--accent);font-weight:700;"> · <?= e($of['price_label']) ?></span><?php endif; ?>
+        <?php if (!(int) $of['is_active']): ?>
+          <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-pause"></i> Disattivata</div>
+        <?php elseif (!$isCurrentlyValid): ?>
+          <div style="color:#c0392b;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Fuori validità (non visibile lato pubblico)</div>
+        <?php else: ?>
+          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Visibile lato pubblico<?= (int) ($of['in_feed'] ?? 1) ? '' : ' · non nel Feed' ?></div>
+        <?php endif; ?>
+        <?php if ($of['valid_from'] || $of['valid_until']): ?>
+          <div style="color:var(--text-muted);font-size:12.5px;margin-top:2px;">
+            <?= $of['valid_from'] ? 'Dal ' . e(formatLocalDateTime($of['valid_from'], $profile)) : '' ?>
+            <?= $of['valid_from'] && $of['valid_until'] ? ' — ' : '' ?>
+            <?= $of['valid_until'] ? 'Fino al ' . e(formatLocalDateTime($of['valid_until'], $profile)) : '' ?>
+          </div>
+        <?php endif; ?>
+
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <form method="post">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="toggle_active">
+            <input type="hidden" name="id" value="<?= (int) $of['id'] ?>">
+            <button class="btn small secondary" type="submit"><?= (int) $of['is_active'] === 1 ? 'Disattiva' : 'Attiva' ?></button>
+          </form>
+          <form method="post" onsubmit="return confirm('Eliminare questa offerta?');">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= (int) $of['id'] ?>">
+            <button class="btn small danger" type="submit">Elimina</button>
+          </form>
+        </div>
+
+        <details style="margin-top:8px;">
+          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
+          <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id" value="<?= (int) $of['id'] ?>">
+            <input type="hidden" name="tz_offset_minutes" value="">
+            <label>Titolo</label>
+            <input type="text" name="title" value="<?= e($of['title']) ?>" required>
+            <label>Prezzo/sconto (opzionale)</label>
+            <input type="text" name="price_label" value="<?= e($of['price_label'] ?? '') ?>">
+            <label>Descrizione (opzionale)</label>
+            <textarea name="description" class="off-edit-description" rows="4"><?= e($of['description'] ?? '') ?></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
+              <button type="button" class="btn small secondary off-edit-ai-toggle">✨ Genera con AI</button>
+            </div>
+            <div class="off-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
+              <label>Qualche parola chiave o istruzione per l'AI</label>
+              <textarea class="off-edit-ai-keywords" rows="2" placeholder="es. -20% su tutti gli abiti da cerimonia fino a fine mese"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small off-edit-ai-generate">Genera testo</button>
+                <button type="button" class="btn small secondary off-edit-ai-cancel">Annulla</button>
+              </div>
+              <p class="off-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+            </div>
+            <label>Foto (opzionale — lascia vuoto per non cambiarla)</label>
+            <input type="file" name="cover" accept="image/*">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <label>Valida dal (opzionale)</label>
+                <input type="datetime-local" name="valid_from" value="<?= $of['valid_from'] ? e(date('Y-m-d\TH:i', strtotime($of['valid_from']))) : '' ?>">
+              </div>
+              <div style="flex:1;min-width:200px;">
+                <label>Valida fino al (opzionale)</label>
+                <input type="datetime-local" name="valid_until" value="<?= $of['valid_until'] ? e(date('Y-m-d\TH:i', strtotime($of['valid_until']))) : '' ?>">
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:8px 0;">
+              <input type="checkbox" name="is_active" value="1" <?= (int) $of['is_active'] === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
+              Attiva
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:0 0 16px;">
+              <input type="checkbox" name="in_feed" value="1" <?= (int) ($of['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
+              Includi nel Feed
+            </label>
+            <button type="submit" class="btn small">Salva modifiche</button>
+          </form>
+        </details>
+      </div>
+    </div>
+  <?php endforeach; ?>
+  </div>
+  </div>
+
+  <script>
+  (function () {
+    const toggleBtn = document.getElementById('off-add-ai-toggle');
+    const panel = document.getElementById('off-add-ai-panel');
+    const cancelBtn = document.getElementById('off-add-ai-cancel');
+    const generateBtn = document.getElementById('off-add-ai-generate');
+    const keywordsInput = document.getElementById('off-add-ai-keywords');
+    const statusEl = document.getElementById('off-add-ai-status');
+    const textarea = document.getElementById('off-add-description');
+    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
+
+    toggleBtn.addEventListener('click', function () {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') keywordsInput.focus();
+    });
+    cancelBtn.addEventListener('click', function () {
+      panel.style.display = 'none';
+      statusEl.textContent = '';
+    });
+    generateBtn.addEventListener('click', function () {
+      const keywords = keywordsInput.value.trim();
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', csrfInput.value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            textarea.value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    const toggleBtn = e.target.closest('.off-edit-ai-toggle');
+    const cancelBtn = e.target.closest('.off-edit-ai-cancel');
+    const generateBtn = e.target.closest('.off-edit-ai-generate');
+    if (!toggleBtn && !cancelBtn && !generateBtn) return;
+
+    if (toggleBtn) {
+      const panel = toggleBtn.closest('form').querySelector('.off-edit-ai-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') panel.querySelector('.off-edit-ai-keywords').focus();
+      return;
+    }
+    if (cancelBtn) {
+      const panel = cancelBtn.closest('.off-edit-ai-panel');
+      panel.style.display = 'none';
+      panel.querySelector('.off-edit-ai-status').textContent = '';
+      return;
+    }
+    if (generateBtn) {
+      const panel = generateBtn.closest('.off-edit-ai-panel');
+      const form = generateBtn.closest('form');
+      const keywords = panel.querySelector('.off-edit-ai-keywords').value.trim();
+      const statusEl = panel.querySelector('.off-edit-ai-status');
+      if (!keywords) {
+        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
+        return;
+      }
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generazione in corso...';
+      const body = new URLSearchParams();
+      body.set('csrf', form.querySelector('input[name="csrf"]').value);
+      body.set('keywords', keywords);
+      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          generateBtn.disabled = false;
+          if (data.ok) {
+            form.querySelector('.off-edit-description').value = data.text;
+            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
+          } else {
+            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
+          }
+        })
+        .catch(function () {
+          generateBtn.disabled = false;
+          statusEl.textContent = 'Errore di connessione. Riprova.';
+        });
+    }
+  });
+  </script>
+<?php include __DIR__ . '/../_dash_footer.php'; ?>
