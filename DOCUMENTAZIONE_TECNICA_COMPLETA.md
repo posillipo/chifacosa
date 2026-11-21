@@ -173,6 +173,17 @@ un testo breve e, se c'è un approfondimento (o un link esterno), il collegament
 
 ---
 
+### Studio — nuova veste della dashboard (in prova)
+
+Interfaccia **parallela** all'attuale, che resta intatta: cartella `app/public/studio/`, indirizzo `/studio/` (non collegato dal sito, `noindex`, nome riservato come slug). Serve il login ma non è limitata agli admin: la conosce chi ne ha l'indirizzo.
+
+- **Pagine:** `index.php` (Panoramica), `feed.php` (Feed con schede Tutti/Articoli/Video/Aggiornamenti, ricerca con attesa di 250 ms, vista Lista/Card ricordata, scorrimento infinito da `feed_more.php`, «Nuovo contenuto»). Le altre voci del menu portano alle pagine della dashboard attuale; in fondo al menu c'è il collegamento «Dashboard classica».
+- **Tecnologia:** PHP + CSS scritto a mano con i token del documento di progetto (`assets/studio.css`) + JavaScript semplice (`assets/studio.js`). **Mobile first**; sopra 1024 px il menu è fisso e riducibile, sopra 1100 px compare la colonna destra (Community + Da fare).
+- **Riuso:** nessuna logica duplicata: `_studio.php` usa le funzioni esistenti (`getTimelineFeedForUsers()`, `dashboardFeedEnrich()`, `dashCommunityData()`, contatori, regole di visibilità del menu).
+- **Stati delle card:** Pubblicato, Programmato (data futura), Solo io, Errore (coda social). Azioni: Modifica (solo propri), Pagina pubblica, Condividi. Duplica, Elimina e Programma non ci sono ancora.
+
+---
+
 ## 6. Area di amministrazione (`is_admin = 1`)
 
 Layout **AdminLTE 3** (Bootstrap 4) via CDN, sidebar laterale con 7 sezioni:
