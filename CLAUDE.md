@@ -40,4 +40,4 @@ done
 
 ## Studio (copia della dashboard per la nuova grafica)
 - `app/public/studio/` è una copia GENERATA della dashboard (`scripts/make-studio.py`): non modificare a mano le pagine in `studio/dashboard*.php`. Dopo ogni modifica a `app/public/dashboard*.php` (o alla testata `_dash_header.php`) rilancia `python3 scripts/make-studio.py` e committa il risultato. La grafica nuova sta in `studio/assets/studio.css`.
-
+- **CSS e JavaScript fuori dalle pagine**: in Studio niente `<style>`, `style="..."` e `<script>` con codice dentro le pagine. Gli stili stanno in `studio/assets/studio.css`, i comportamenti in `studio/assets/*.js`. Fanno eccezione solo i valori dinamici (es. colori scelti dall'utente), passati come variabili CSS o attributi `data-*`.
