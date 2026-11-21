@@ -1,2 +1,99 @@
-/* Studio — foglio di stile della nuova veste. Caricato in tutte le pagine di /studio/ (classe body.studio-mode).
-   Per ora vuoto: la copia è identica alla dashboard attuale. Qui si costruisce la grafica nuova. */
+/* Studio — nuova veste della dashboard. Caricato solo in /studio/ (body.studio-mode), sopra lo stile attuale.
+   Token dal documento di progetto: viola #7C5CFF, sfondo #F6F7FB, angoli 16/12 px, carattere Inter. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+body.studio-mode {
+  --accent: #7C5CFF; --accent-h: #6A45F0; --accent-soft: #F1EDFF;
+  --bg: #F6F7FB; --card-bg: #FFFFFF; --text: #111827; --text-muted: #6B7280;
+  --st-border: #E5E7EB; --st-shadow: 0 1px 3px rgba(0,0,0,.06); --st-shadow-h: 0 8px 24px rgba(0,0,0,.08);
+  --st-ok: #16A34A; --st-warn: #F59E0B; --st-danger: #EF4444;
+  --radius: 16px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px; letter-spacing: 0;
+}
+body.studio-mode .container a:not(.btn):not(.link-item):not(.dtc-card):not(.card):not([class*="dash-"]) { color: var(--accent); }
+body.studio-mode h1, body.studio-mode h2, body.studio-mode h3 { letter-spacing: -.01em; }
+
+/* Barra in alto */
+body.studio-mode .navbar.navbar-dash-sticky { background: #fff; border-bottom: 1px solid var(--st-border); box-shadow: none; padding-top: 10px; padding-bottom: 10px; min-height: 64px; }
+body.studio-mode .navbar .brand.brand-dash { font-family: Inter, sans-serif; font-weight: 800; letter-spacing: -.02em; }
+body.studio-mode .dash-psearch-box input { border-radius: 999px; background: var(--bg); border: 1px solid var(--st-border); height: 40px; }
+body.studio-mode .dash-psearch-box input:focus { outline: 2px solid var(--accent); background: #fff; }
+body.studio-mode .dash-icons-nav a, body.studio-mode .dash-icons-nav button { color: var(--text); }
+body.studio-mode .dash-icons-nav .dash-logout { border-radius: 12px; border-color: var(--st-border); }
+
+/* Menu laterale */
+body.studio-mode .dash-side { background: #fff; border-right: 1px solid var(--st-border); }
+body.studio-mode .dash-side-title { padding: 18px 20px 6px; font-size: 11px; letter-spacing: .06em; font-weight: 600; color: var(--text-muted); }
+body.studio-mode .dash-side-link { margin: 1px 10px; padding: 0 12px; min-height: 38px; border-radius: 12px; border-left: 0; color: var(--text); font-size: 14px; font-weight: 500; }
+body.studio-mode .dash-side-link i { color: var(--text-muted); width: 18px; }
+body.studio-mode .dash-side-link:hover { background: var(--bg); }
+body.studio-mode .dash-side-link.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+body.studio-mode .dash-side-link.active i { color: var(--accent); }
+body.studio-mode .dash-side-event { margin: 0 10px; border-radius: 12px; }
+body.studio-mode .dash-side-user { border-top: 1px solid var(--st-border); }
+
+/* Colonna destra: blocchi come schede */
+body.studio-mode .dash-right { background: transparent; border-left: 0; padding: 16px 16px 24px; }
+body.studio-mode .dash-right-block { background: #fff; border: 1px solid var(--st-border); border-radius: 16px; box-shadow: var(--st-shadow); padding: 14px 14px 10px; margin-bottom: 14px; }
+body.studio-mode .dash-right-block:last-child { border-bottom: 1px solid var(--st-border); }
+body.studio-mode .dash-right-title { font-size: 12px; letter-spacing: .05em; font-weight: 600; color: var(--text-muted); padding: 0 2px 10px; }
+body.studio-mode .dash-comm-tile { background: var(--accent-soft); border-radius: 14px; }
+body.studio-mode .dash-comm-invite { background: var(--accent); }
+body.studio-mode .dash-comm-tabs { background: #EEF0F3; }
+body.studio-mode .dash-comm-tabs button.active { box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+body.studio-mode .dash-comm-row:hover { background: var(--bg); }
+body.studio-mode .dash-right-link { color: var(--accent); font-weight: 600; }
+
+/* Schede, pulsanti, campi */
+body.studio-mode .card { border: 1px solid var(--st-border); border-radius: 16px; box-shadow: var(--st-shadow); }
+body.studio-mode .btn { border-radius: 12px; font-weight: 600; min-height: 40px; padding: 10px 18px; background: var(--accent); transition: background .15s, box-shadow .15s; }
+body.studio-mode .btn:hover { background: var(--accent-h); opacity: 1; }
+body.studio-mode .btn.secondary { background: #fff; border: 1px solid var(--st-border); color: var(--text); }
+body.studio-mode .btn.secondary:hover { background: var(--bg); }
+body.studio-mode .btn.danger { background: var(--st-danger); }
+body.studio-mode .btn.small { min-height: 32px; padding: 6px 12px; font-size: 13px; border-radius: 10px; }
+body.studio-mode form input, body.studio-mode form textarea, body.studio-mode form select { border-radius: 12px; border: 1px solid var(--st-border); background: #fff; font-family: inherit; }
+body.studio-mode form input:focus, body.studio-mode form textarea:focus, body.studio-mode form select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+body.studio-mode form label { font-weight: 600; font-size: 13px; color: var(--text); }
+body.studio-mode .section-title { font-size: 12px; letter-spacing: .06em; font-weight: 600; color: var(--text-muted); margin: 24px 0 10px; }
+body.studio-mode .page-head-title { font-size: 22px; font-weight: 700; }
+body.studio-mode .page-help-btn { border-color: var(--st-border); color: var(--text-muted); }
+body.studio-mode .alert { border-radius: 12px; }
+body.studio-mode .alert.error { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+body.studio-mode .alert.success { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+body.studio-mode .page-help-dialog { border-radius: 20px; }
+
+/* Feed: righe come schede con miniatura 16:9 */
+body.studio-mode .dtf-btn, body.studio-mode .view-toggle a { border-radius: 12px; }
+body.studio-mode .view-toggle { border-radius: 12px; overflow: hidden; }
+body.studio-mode .dtl-row { margin-bottom: 12px; border-radius: 16px; }
+body.studio-mode .dtl-row .link-item { background: #fff; border: 1px solid var(--st-border); border-radius: 16px; box-shadow: var(--st-shadow); padding: 10px; gap: 14px; transition: box-shadow .15s; }
+body.studio-mode .dtl-row .link-item:hover { box-shadow: var(--st-shadow-h); }
+body.studio-mode .dtl-row .link-item > img { width: 120px !important; height: 68px !important; border-radius: 10px !important; flex-shrink: 0; }
+body.studio-mode .dtl-row .link-item > div > small:first-child { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: #5B3FD6; }
+body.studio-mode .dtl-row .link-item strong { font-size: 16px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.studio-mode .dtc-card { border: 1px solid var(--st-border); border-radius: 16px; box-shadow: var(--st-shadow); }
+body.studio-mode .dtc-card:hover { box-shadow: var(--st-shadow-h); }
+body.studio-mode .dtc-badge { border-radius: 999px; background: var(--accent-soft); color: #5B3FD6; font-weight: 700; }
+
+/* Elenchi (link, eventi, video, album...) */
+body.studio-mode .link-item, body.studio-mode .list-item { border-radius: 14px; border: 1px solid var(--st-border); background: #fff; }
+body.studio-mode .event-item { border-radius: 14px; }
+
+/* Telefono: bersagli più grandi, miniature più piccole */
+@media (max-width: 639px) {
+  body.studio-mode .dash-side-link { min-height: 46px; }
+  body.studio-mode .btn { min-height: 44px; }
+  body.studio-mode .dtl-row .link-item > img { width: 88px !important; height: 50px !important; }
+  body.studio-mode .dtl-row .link-item { gap: 10px; }
+}
+
+/* Ritocchi dopo la prima prova */
+body.studio-mode .dash-comm-tabs button { padding: 6px 4px; font-size: 11.5px; }
+body.studio-mode .dash-comm-link, body.studio-mode .dash-right-row, body.studio-mode .dash-side-event { color: var(--text); }
+body.studio-mode .dtf-head .section-title { font-size: 22px; font-weight: 700; letter-spacing: -.01em; text-transform: none; color: var(--text); margin: 0; }
+body.studio-mode .dtl-row .link-item br { display: none; }
+body.studio-mode .dtl-row .link-item > div > small:last-child { display: block; margin-top: 4px; }
+body.studio-mode .dtl-row .link-item strong { margin-top: 6px; display: -webkit-box; }
+body.studio-mode .container .view-toggle a.active, body.studio-mode .container .tabs a.active { color: #fff !important; background: var(--accent); }
