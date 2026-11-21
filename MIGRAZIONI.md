@@ -1279,6 +1279,9 @@ Aggiunge i testi di guida delle pagine che non ne avevano (Feed, Profilo, Eventi
 ### Guida scheda profilo (`2026_11_31_page_help_profile_view.sql`)
 Aggiunge il testo di guida di `dashboard_profile_view.php`. INSERT IGNORE: si può rieseguire. Richiede la `2026_11_29`.
 
+### Guide dei Contest (`2026_11_32_page_help_contests.sql`)
+Testi di guida di `dashboard_contests.php` (Contest per tutti) e `dashboard_contest.php` (Gestisci Contest). INSERT IGNORE: si può rieseguire. Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce
