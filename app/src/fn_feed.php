@@ -854,6 +854,26 @@ function dashboardFeedFilterBarHtml(array $f, array $authors, bool $metricoolAct
 }
 
 
+// Attributo data-fp per gli elementi del Feed di ALTRI profili: il clic apre un popup di anteprima (con il tasto verso la
+// pagina pubblica) invece della pagina di modifica, che esiste solo per il proprietario ("Articolo non trovato").
+function dashboardFeedPreviewAttr(array $item, string $label): string {
+    $cover = $item['cover_thumb'] ?? $item['cover'] ?? null;
+    $data = [
+        'tipo'   => (string) ($item['tipo'] ?? ''),
+        'id'     => (int) ($item['item_id'] ?? 0),
+        'titolo' => (string) ($item['titolo'] ?? ''),
+        'label'  => $label,
+        'autore' => (string) ($item['display_name'] ?? ''),
+        'slug'   => (string) ($item['user_slug'] ?? ''),
+        'avatar' => !empty($item['avatar']) ? '/' . ltrim((string) $item['avatar'], '/') : '',
+        'cover'  => $cover ? (str_starts_with($cover, 'http') ? $cover : '/' . ltrim($cover, '/')) : '',
+        'data'   => !empty($item['data']) ? formatLocalDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null]) : '',
+        'url'    => (string) ($item['url'] ?? '#'),
+    ];
+    return ' data-fp="' . htmlspecialchars(json_encode($data, JSON_UNESCAPED_UNICODE), ENT_QUOTES) . '"';
+}
+
+
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
@@ -873,9 +893,10 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
     // Sfondo grigio tenue per distinguere subito i propri contenuti dal resto del feed
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
     $bgStyle = $isMine ? 'background:#eef0f2;' : '';
-    $editUrl = $item['edit_url'] ?? $item['url'];
+    // Solo i propri contenuti si modificano in dashboard; quelli degli altri profili aprono un'anteprima.
+    $editUrl = $isMine ? ($item['edit_url'] ?? $item['url']) : $item['url'];
     $html = '<div class="dtl-row" style="display:flex;gap:0;align-items:center;' . $bgStyle . '">';
-    $html .= '<a href="' . e($editUrl) . '" class="link-item" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;flex:1;min-width:0;">';
+    $html .= '<a href="' . e($editUrl) . '" class="link-item"' . ($isMine ? '' : dashboardFeedPreviewAttr($item, $label)) . ' style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;flex:1;min-width:0;">';
     if ($coverSrc) {
         $html .= '<img src="' . e($coverSrc) . '" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
     } elseif (!empty($item['avatar'])) {
@@ -921,9 +942,9 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null, bo
     }
     $isMine = $viewerSlug !== null && $item['user_slug'] === $viewerSlug;
     $mineClass = $isMine ? ' dtc-mine' : '';
-    $editUrl = $item['edit_url'] ?? $item['url'];
+    $editUrl = $isMine ? ($item['edit_url'] ?? $item['url']) : $item['url'];
     $html = '<div class="dtc-card' . $mineClass . '" style="position:relative;">';
-    $html .= '<a href="' . e($editUrl) . '" style="display:block;text-decoration:none;color:inherit;">';
+    $html .= '<a href="' . e($editUrl) . '"' . ($isMine ? '' : dashboardFeedPreviewAttr($item, $label)) . ' style="display:block;text-decoration:none;color:inherit;">';
     $html .= '<div class="dtc-header">';
     if (!empty($item['avatar'])) {
         $html .= '<img class="dtc-avatar" src="/' . e($item['avatar']) . '">';

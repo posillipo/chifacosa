@@ -164,6 +164,51 @@ include __DIR__ . '/_dash_header.php';
   })();
   </script>
 
+  <?php // Anteprima dei contenuti degli altri profili (al posto della pagina di modifica, che non esiste per loro). ?>
+  <dialog class="page-help-dialog" id="fp-dialog" aria-labelledby="fp-title">
+    <div class="page-help-inner">
+      <div id="fp-meta" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"></div>
+      <img id="fp-cover" alt="" style="display:none;width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-bottom:10px;">
+      <h2 id="fp-title"></h2>
+      <p id="fp-text" style="display:none;"></p>
+      <div class="page-help-actions">
+        <a id="fp-open" class="btn" href="#" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Vai alla pagina pubblica</a>
+        <button type="button" class="btn secondary" id="fp-close">Chiudi</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+  (function () {
+    var dlg = document.getElementById('fp-dialog');
+    if (!dlg || !dlg.showModal) return;
+    var meta = document.getElementById('fp-meta'), cover = document.getElementById('fp-cover'), title = document.getElementById('fp-title'),
+        text = document.getElementById('fp-text'), open = document.getElementById('fp-open'), seq = 0;
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    document.addEventListener('click', function (ev) {
+      var a = ev.target.closest('a[data-fp]');
+      if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) return;
+      ev.preventDefault();
+      var d; try { d = JSON.parse(a.getAttribute('data-fp')); } catch (e) { window.location = a.href; return; }
+      meta.innerHTML = (d.avatar ? '<img src="' + esc(d.avatar) + '" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">' : '')
+        + '<div><b>' + esc(d.autore) + '</b><br><small style="color:var(--text-muted);">' + esc(d.label) + (d.data ? ' · ' + esc(d.data) : '') + '</small></div>';
+      cover.style.display = d.cover ? 'block' : 'none'; if (d.cover) cover.src = d.cover;
+      title.textContent = d.titolo || '';
+      text.style.display = 'none'; text.textContent = '';
+      open.href = d.url;
+      dlg.showModal();
+      if ((d.tipo === 'blog' || d.tipo === 'pensiero') && d.id) {
+        var my = ++seq;
+        fetch('/dashboard_feed_preview.php?t=' + encodeURIComponent(d.tipo) + '&id=' + d.id, { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (x) { if (my === seq && x.text) { text.textContent = x.text; text.style.display = 'block'; } })
+          .catch(function () {});
+      }
+    });
+    document.getElementById('fp-close').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
+  })();
+  </script>
+
   <?php if (!$feed): ?>
     <?php if ($filtersOn): ?>
       <div class="card">Nessun elemento corrisponde ai filtri scelti.</div>
