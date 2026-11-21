@@ -221,7 +221,7 @@ include __DIR__ . '/../_dash_header.php';
   <?php else: ?>
     <div id="dash-timeline-feed">
       <?php foreach ($feed as $item): ?>
-        <?= $viewMode === 'card' ? renderDashboardTimelineCard($item, $profile['slug'], $metricoolActive) : renderDashboardTimelineItem($item, $profile['slug'], $metricoolActive) ?>
+        <?= $viewMode === 'card' ? studioRenderTimelineCard($item, $profile['slug'], $metricoolActive) : studioRenderTimelineItem($item, $profile['slug'], $metricoolActive) ?>
       <?php endforeach; ?>
     </div>
     <div id="dash-timeline-sentinel" style="height:1px;"></div>

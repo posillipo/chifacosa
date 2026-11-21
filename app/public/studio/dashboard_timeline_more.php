@@ -23,8 +23,8 @@ $metricoolActive = metricoolIsEnabled((int) $profile['id']);
 $html = '';
 foreach ($items as $item) {
     $html .= $viewMode === 'card'
-        ? renderDashboardTimelineCard($item, $profile['slug'], $metricoolActive)
-        : renderDashboardTimelineItem($item, $profile['slug'], $metricoolActive);
+        ? studioRenderTimelineCard($item, $profile['slug'], $metricoolActive)
+        : studioRenderTimelineItem($item, $profile['slug'], $metricoolActive);
 }
 
 echo json_encode(['html' => $html, 'count' => count($items)]);
