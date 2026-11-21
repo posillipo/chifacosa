@@ -33,7 +33,7 @@ if (!defined('STUDIO_BOOT')) {
         if (($ct === '' || strpos($ct, 'text/html') !== false) && stripos($html, '</head>') !== false) {
             $css = '/studio/assets/studio.css';
             $v = @filemtime(__DIR__ . '/assets/studio.css');
-            $html = preg_replace('~</head>~i', '<link rel="stylesheet" href="' . $css . ($v ? '?v=' . $v : '') . '"></head>', $html, 1);
+            $html = preg_replace('~</head>~i', '<link rel="stylesheet" href="' . $css . ($v ? '?v=' . $v : '') . '"><script src="/studio/assets/studio.js' . ($v ? '?v=' . $v : '') . '" defer></script></head>', $html, 1);
             $html = preg_replace('~<body(\s+class=")?~i', '<body class="studio-mode ', $html, 1);
             $html = str_replace('<body class="studio-mode  ', '<body class="studio-mode ', $html);
         }
@@ -51,5 +51,6 @@ if (!defined('STUDIO_BOOT')) {
             }
         }
     });
+    require_once __DIR__ . '/_studio_feed.php';
     ob_start('studioFilter');
 }

@@ -33,6 +33,8 @@ for src in sorted(glob.glob(os.path.join(pub, 'dashboard*.php'))):
     s = s.replace("__DIR__ . '/../src/", "__DIR__ . '/../../src/").replace('__DIR__ . "/../src/', '__DIR__ . "/../../src/')
     s = s.replace("__DIR__ . '/_dash_header.php'", "__DIR__ . '/../_dash_header.php'").replace("__DIR__ . '/_dash_footer.php'", "__DIR__ . '/../_dash_footer.php'")
     s = s.replace("__DIR__ . '/uploads/", "__DIR__ . '/../uploads/")
+    # schede del Feed di Studio (stato e azioni): vedi studio/_studio_feed.php
+    s = s.replace('renderDashboardTimelineItem(', 'studioRenderTimelineItem(').replace('renderDashboardTimelineCard(', 'studioRenderTimelineCard(')
     left = [m for m in re.findall(r"__DIR__ \. ['\"][^'\"]*['\"]", s) if not (m.startswith("__DIR__ . '/../") or m.startswith('__DIR__ . "/../'))]
     if left:
         print('ATTENZIONE', name, 'ha altri percorsi relativi a __DIR__:', set(left), file=sys.stderr)
