@@ -692,3 +692,14 @@ body.studio-mode .chx-form { position: sticky; bottom: 0; display: flex; gap: 8p
 body.studio-mode .chx-form textarea { flex: 1; margin: 0; min-height: 46px; max-height: 160px; border-radius: 23px; padding: 12px 16px; resize: none; background: #fff; }
 body.studio-mode .chx-form .tlx-submit { width: 46px; height: 46px; padding: 0; border-radius: 50%; flex: none; }
 body.studio-mode .pnx-img.stc-ph { background: linear-gradient(135deg, #7C5CFF, #B6A2FF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
+
+/* ===== Gruppo 3: profilo, password, team ===== */
+body.studio-mode .tlx-narrow { max-width: 640px; margin: 0 auto; }
+body.studio-mode .box input[type=password] { width: 100%; margin: 0; height: 44px; border-radius: 12px; }
+body.studio-mode .box-list { margin: 0 0 12px 18px; padding: 0; color: var(--text); font-size: 14px; line-height: 1.6; }
+body.studio-mode .pvx { text-align: center; padding: 28px 20px; }
+body.studio-mode .pvx-av { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #7C5CFF, #B6A2FF); color: #fff; font-size: 38px; font-weight: 800; }
+body.studio-mode .pvx h2 { margin: 12px 0 2px; font-size: 22px; font-weight: 800; }
+body.studio-mode .pvx-sub, body.studio-mode .pvx-st { color: var(--text-muted); font-size: 14px; margin: 2px 0; }
+body.studio-mode .pvx-bio { max-width: 520px; margin: 14px auto; line-height: 1.55; color: var(--text) !important; font-size: 14.5px !important; }
+body.studio-mode .pvx-act { justify-content: center; margin-top: 14px; }

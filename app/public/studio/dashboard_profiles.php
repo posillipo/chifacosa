@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -56,46 +56,34 @@ $createdId = (int) ($_GET['created'] ?? 0);
 
 include __DIR__ . '/../_dash_header.php';
 ?>
+  <div class="tlx">
+    <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+    <?php if ($createdId): ?><div class="alert success">Profilo creato! <a href="/dashboard_timeline.php?acting_as=<?= $createdId ?>">Vai a gestirlo →</a></div><?php endif; ?>
 
-  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-  <?php if ($createdId): ?>
-    <div class="alert success">
-      Profilo creato! <a href="/dashboard_timeline.php?acting_as=<?= $createdId ?>">Vai a gestirlo →</a>
-    </div>
-  <?php endif; ?>
+    <form method="post" class="box">
+      <?= csrfField() ?><input type="hidden" name="action" value="create">
+      <h3><i class="fa-solid fa-plus"></i> Crea un nuovo profilo</h3>
+      <p>Per un locale, un'azienda, un progetto: lo gestisci dallo stesso account.</p>
+      <label for="pf-name">Nome del profilo</label>
+      <input type="text" name="display_name" id="pf-name" required placeholder="es. Il mio locale, La mia azienda...">
+      <label for="pf-slug">Nome pagina <small>(<?= e(siteName()) ?>/<b>nomepagina</b>)</small></label>
+      <input type="text" name="slug" id="pf-slug" placeholder="es. il-mio-locale">
+      <button type="submit" class="tlx-submit cmp-done">Crea profilo</button>
+    </form>
 
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="create">
-    <label>Nome del profilo</label>
-    <input type="text" name="display_name" required placeholder="es. Il mio locale, La mia azienda...">
-    <label>Nome pagina (<?= e(siteName()) ?>/<strong>nomepagina</strong>)</label>
-    <input type="text" name="slug" placeholder="es. il-mio-locale">
-    <button type="submit" class="btn">Crea profilo</button>
-  </form>
-
-  <div class="section-title">I tuoi profili (<?= count($ownedProfiles) ?>)</div>
-  <?php if (!$ownedProfiles): ?>
-    <div class="card">Non hai ancora creato nessun altro profilo.</div>
-  <?php endif; ?>
-  <?php foreach ($ownedProfiles as $p): ?>
-    <div class="link-item" style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <?php if ($p['avatar_path']): ?>
-          <img src="/<?= e($p['avatar_path']) ?>" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-        <?php endif; ?>
-        <div><strong><?= e($p['display_name']) ?></strong><br><small style="color:var(--text-muted)">@<?= e($p['slug']) ?></small></div>
+    <div class="tlx-listhead"><h2>I tuoi profili <small>(<?= count($ownedProfiles) ?>)</small></h2></div>
+    <?php if (!$ownedProfiles): ?><div class="tlx-empty"><i class="fa-regular fa-id-card"></i><b>Nessun altro profilo</b><span>Non hai ancora creato nessun altro profilo.</span></div><?php endif; ?>
+    <?php foreach ($ownedProfiles as $p): ?>
+      <div class="pnx">
+        <?php if ($p['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($p['avatar_path']) ?>" alt="" loading="lazy"><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($p['display_name'], 0, 1))) ?></span><?php endif; ?>
+        <div class="pnx-b"><b><?= e($p['display_name']) ?></b><small>@<?= e($p['slug']) ?></small></div>
+        <div class="pnx-act">
+          <a class="stc-act primary" href="/dashboard_timeline.php?acting_as=<?= (int) $p['id'] ?>"><i class="fa-solid fa-sliders"></i> <span>Gestisci</span></a>
+          <form method="post" data-confirm="Eliminare definitivamente questo profilo e tutti i suoi contenuti (link, eventi, blog, ecc.)? L'operazione non è reversibile."><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $p['id'] ?>"><button class="stc-act danger" type="submit" title="Elimina"><i class="fa-solid fa-trash"></i></button></form>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <a class="btn small" href="/dashboard_timeline.php?acting_as=<?= (int) $p['id'] ?>">Gestisci</a>
-        <form method="post" onsubmit="return confirm('Eliminare definitivamente questo profilo e tutti i suoi contenuti (link, eventi, blog, ecc.)? L\'operazione non è reversibile.');">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="delete">
-          <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
-          <button class="btn small danger" type="submit">Elimina</button>
-        </form>
-      </div>
-    </div>
-  <?php endforeach; ?>
+    <?php endforeach; ?>
+  </div>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

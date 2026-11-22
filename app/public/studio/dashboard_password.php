@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -35,22 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <div class="card">
-    <strong>Cambia la tua password</strong>
-    <p style="color:var(--text-muted)">Ti servirà la password attuale per confermare la modifica.</p>
+  <div class="tlx tlx-narrow">
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+    <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+    <form method="post" class="box">
+      <?= csrfField() ?>
+      <h3><i class="fa-solid fa-key"></i> Cambia la tua password</h3>
+      <p>Ti serve la password attuale per confermare la modifica.</p>
+      <label for="pw-cur">Password attuale</label>
+      <input type="password" name="current_password" id="pw-cur" required autocomplete="current-password">
+      <label for="pw-new">Nuova password <small>(almeno 8 caratteri)</small></label>
+      <input type="password" name="new_password" id="pw-new" required minlength="8" autocomplete="new-password">
+      <label for="pw-cnf">Conferma la nuova password</label>
+      <input type="password" name="confirm_password" id="pw-cnf" required minlength="8" autocomplete="new-password">
+      <button type="submit" class="tlx-submit cmp-done">Aggiorna password</button>
+    </form>
   </div>
-
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <label>Password attuale</label>
-    <input type="password" name="current_password" required autocomplete="current-password">
-    <label>Nuova password (min. 8 caratteri)</label>
-    <input type="password" name="new_password" required minlength="8" autocomplete="new-password">
-    <label>Conferma nuova password</label>
-    <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password">
-    <button type="submit" class="btn">Aggiorna password</button>
-  </form>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

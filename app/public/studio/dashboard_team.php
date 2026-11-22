@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -46,48 +46,34 @@ $admins = $stmt->fetchAll();
 $adminIds = array_column($admins, 'id');
 
 include __DIR__ . '/../_dash_header.php';
+$cands = array_values(array_filter($followers, fn ($f) => !in_array($f['id'], $adminIds, true)));
 ?>
-
-  <div class="section-title">Co-admin attuali (<?= count($admins) ?>)</div>
-  <?php if (!$admins): ?>
-    <div class="card">Non hai ancora condiviso la gestione del profilo con nessuno.</div>
-  <?php endif; ?>
-  <?php foreach ($admins as $a): ?>
-    <div class="link-item" style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <?php if ($a['avatar_path']): ?>
-          <img src="/<?= e($a['avatar_path']) ?>" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-        <?php endif; ?>
-        <div><strong><?= e($a['display_name']) ?></strong><br><small style="color:var(--text-muted)">@<?= e($a['slug']) ?></small></div>
-      </div>
-      <form method="post" onsubmit="return confirm('Revocare l\'accesso di gestione a questo utente?');">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="revoke">
-        <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
-        <button class="btn small danger" type="submit">Revoca</button>
-      </form>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($admins) ?></b><span>Co-admin</span></div>
+      <div class="tlx-kpi"><b><?= count($cands) ?></b><span>Follower da poter promuovere</span></div>
     </div>
-  <?php endforeach; ?>
+    <div class="box"><p>Un co-admin può gestire il tuo profilo (contenuti, eventi, link…) senza conoscere la tua password. Puoi promuovere solo chi ti segue già, e revocare l'accesso quando vuoi.</p></div>
 
-  <div class="section-title" style="margin-top:24px;">I tuoi follower (<?= count($followers) ?>)</div>
-  <?php if (!$followers): ?>
-    <div class="card">Nessuno ti segue ancora — non hai ancora nessuno da poter promuovere.</div>
-  <?php endif; ?>
-  <?php foreach ($followers as $f): ?>
-    <?php if (in_array($f['id'], $adminIds, true)) continue; ?>
-    <div class="link-item" style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <?php if ($f['avatar_path']): ?>
-          <img src="/<?= e($f['avatar_path']) ?>" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-        <?php endif; ?>
-        <div><strong><?= e($f['display_name']) ?></strong><br><small style="color:var(--text-muted)">@<?= e($f['slug']) ?></small></div>
+    <div class="tlx-listhead"><h2>Co-admin attuali <small>(<?= count($admins) ?>)</small></h2></div>
+    <?php if (!$admins): ?><div class="tlx-empty"><i class="fa-solid fa-user-shield"></i><b>Nessun co-admin</b><span>Non hai ancora condiviso la gestione del profilo con nessuno.</span></div><?php endif; ?>
+    <?php foreach ($admins as $a): ?>
+      <div class="pnx">
+        <?php if ($a['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($a['avatar_path']) ?>" alt="" loading="lazy"><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($a['display_name'], 0, 1))) ?></span><?php endif; ?>
+        <div class="pnx-b"><b><?= e($a['display_name']) ?></b><small>@<?= e($a['slug']) ?></small></div>
+        <form method="post" class="pnx-act" data-confirm="Revocare l'accesso di gestione a questo utente?"><?= csrfField() ?><input type="hidden" name="action" value="revoke"><input type="hidden" name="id" value="<?= (int) $a['id'] ?>"><button class="stc-act danger" type="submit"><i class="fa-solid fa-user-xmark"></i> <span>Revoca</span></button></form>
       </div>
-      <form method="post" onsubmit="return confirm('Rendere questo utente co-admin del tuo profilo?');">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="promote">
-        <input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
-        <button class="btn small" type="submit">Rendi admin</button>
-      </form>
-    </div>
-  <?php endforeach; ?>
+    <?php endforeach; ?>
+
+    <div class="tlx-listhead"><h2>I tuoi follower <small>(<?= count($followers) ?>)</small></h2></div>
+    <?php if (!$followers): ?><div class="tlx-empty"><i class="fa-regular fa-heart"></i><b>Nessuno ti segue ancora</b><span>Non hai ancora nessuno da poter promuovere.</span></div><?php endif; ?>
+    <?php foreach ($cands as $f): ?>
+      <div class="pnx">
+        <?php if ($f['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($f['avatar_path']) ?>" alt="" loading="lazy"><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($f['display_name'], 0, 1))) ?></span><?php endif; ?>
+        <div class="pnx-b"><b><?= e($f['display_name']) ?></b><small>@<?= e($f['slug']) ?></small></div>
+        <form method="post" class="pnx-act" data-confirm="Rendere questo utente co-admin del tuo profilo?"><?= csrfField() ?><input type="hidden" name="action" value="promote"><input type="hidden" name="id" value="<?= (int) $f['id'] ?>"><button class="stc-act primary" type="submit"><i class="fa-solid fa-user-shield"></i> <span>Rendi admin</span></button></form>
+      </div>
+    <?php endforeach; ?>
+  </div>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
