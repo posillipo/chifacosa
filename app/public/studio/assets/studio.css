@@ -129,7 +129,7 @@ body.studio-mode .stc-toast.show { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* ===== Pagina Timeline (.tlx) ===== */
-body.studio-mode .tlx { max-width: 1040px; margin: 0 auto; }
+body.studio-mode .tlx { max-width: 100%; margin: 0 auto; }
 body.studio-mode .tlx [hidden] { display: none !important; }
 body.studio-mode .tlx-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 body.studio-mode .tlx-kpi { background: #fff; border: 1px solid var(--st-border); border-radius: 14px; padding: 12px 14px; box-shadow: var(--st-shadow); display: flex; flex-direction: column; gap: 2px; color: var(--text); }
@@ -324,3 +324,7 @@ body.studio-mode .blx-tg-box { border-color: var(--st-border); }
   body.studio-mode .blx-main { padding: 14px; border-radius: 16px; }
   body.studio-mode input.blx-title { font-size: 20px; }
 }
+
+/* Colonna centrale più ampia su desktop (prima 720px) */
+body.studio-mode .container { max-width: 1080px; }
+@media (min-width: 1500px) { body.studio-mode .container { max-width: 1180px; } }
