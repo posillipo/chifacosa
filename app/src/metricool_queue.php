@@ -17,10 +17,18 @@ function metricoolIsEnabled(int $userId): bool {
  * Returns an array if Metricool is active and the item should be shared, null otherwise.
  */
 function socialQueueBuildSq(int $userId, string $type, array $data, bool $isPublic, ?string $publishAt): ?array {
-    if (!$isPublic || $publishAt) {
+    if (!$isPublic) {
         return null;
     }
     if (!metricoolIsEnabled($userId)) {
+        return null;
+    }
+    if ($publishAt) {
+        // Con una data di pubblicazione: se è nel futuro l'uscita si accoda subito con quella data (come
+        // per articoli ed eventi); se è già passata il contenuto è già pubblico e non si propone nulla.
+        if (strtotime($publishAt) > time()) {
+            socialQueueEnqueueScheduledOnce($userId, $type, $data, $publishAt);
+        }
         return null;
     }
     return [
@@ -31,6 +39,29 @@ function socialQueueBuildSq(int $userId, string $type, array $data, bool $isPubl
         'img'     => $data['image_url'] ?? null,
         'url'     => $data['public_url'] ?? '',
     ];
+}
+
+/**
+ * Accoda un'uscita con data ma senza duplicati: se lo stesso contenuto è già in coda (in attesa, in
+ * elaborazione o sospeso) ne aggiorna solo la data; se è già stato programmato o pubblicato per la
+ * stessa data non fa nulla. Pensata per i moduli che salvano più volte lo stesso elemento.
+ */
+function socialQueueEnqueueScheduledOnce(int $userId, string $type, array $data, string $scheduledFor): void {
+    $contentId = (int) ($data['content_id'] ?? 0);
+    if ($contentId > 0) {
+        $q = getDB()->prepare("SELECT id, status, scheduled_for FROM social_queue WHERE user_id=? AND content_type=? AND content_id=? ORDER BY id DESC");
+        $q->execute([$userId, $type, $contentId]);
+        foreach ($q->fetchAll() as $row) {
+            if (in_array($row['status'], ['pending', 'processing'], true)) {
+                getDB()->prepare('UPDATE social_queue SET scheduled_for=? WHERE id=?')->execute([$scheduledFor, $row['id']]);
+                return;
+            }
+            if (in_array($row['status'], ['scheduled', 'done'], true) && !empty($row['scheduled_for']) && strtotime($row['scheduled_for']) === strtotime($scheduledFor)) {
+                return;
+            }
+        }
+    }
+    socialQueueEnqueue($userId, $type, $data, $scheduledFor);
 }
 
 // ===== Registro delle pubblicazioni (social_queue come coda E come storico) =====

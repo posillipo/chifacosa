@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
-        if ($isPublic && !$publishAt) {
+        if ($isPublic) { // con data futura socialQueueBuildSq accoda subito l'uscita
             $stmtFan = getDB()->prepare('SELECT recipe_title, recipe_image FROM fan_favorite_recipes WHERE id=? AND user_id=?');
             $stmtFan->execute([$id, $profile['id']]);
             $fanRow = $stmtFan->fetch() ?: [];
