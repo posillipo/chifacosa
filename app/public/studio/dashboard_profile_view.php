@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 // Scheda di un profilo, dentro la dashboard: raggiunta dalla ricerca profili nella barra in alto.
 // Mostra le informazioni essenziali, il pulsante Segui / Non seguire più e il collegamento alla pagina pubblica.
@@ -55,58 +55,34 @@ $where = $target ? trim(($target['citta'] ?? '') . (($target['provincia'] ?? '')
 include __DIR__ . '/../_dash_header.php';
 ?>
   <div class="page-head"><h1 class="page-head-title">Profilo</h1><?= renderPageHelpButton('dashboard_profile_view', 'Profilo') ?></div>
-
+  <div class="tlx tlx-narrow">
   <?php if (!$target): ?>
-    <div class="card">Profilo non trovato. <a href="/dashboard.php">Torna alla dashboard</a></div>
+    <div class="tlx-empty"><i class="fa-regular fa-user"></i><b>Profilo non trovato</b><span><a href="/dashboard.php">Torna alla dashboard</a></span></div>
   <?php else: ?>
-    <div class="card" style="text-align:center;padding:28px 20px;">
-      <?php if ($target['avatar_path']): ?>
-        <img src="/<?= e(ltrim($target['avatar_path'], '/')) ?>" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">
-      <?php else: ?>
-        <div style="width:96px;height:96px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;"><?= e(mb_strtoupper(mb_substr($target['display_name'], 0, 1))) ?></div>
-      <?php endif; ?>
-      <h2 style="margin:12px 0 2px;"><?= e($target['display_name']) ?></h2>
-      <div style="color:var(--text-muted);">@<?= e($target['slug']) ?><?= $where !== '' ? ' · ' . e($where) : '' ?><?= !empty($target['genere']) ? ' · ' . e($target['genere']) : '' ?></div>
-      <div style="margin:10px 0;color:var(--text-muted);font-size:14px;"><strong style="color:inherit;"><?= (int) $followers ?></strong> follower<?= $followedBack ? ' · <em>ti segue</em>' : '' ?></div>
-
-      <?php if (!empty($target['bio'])): ?>
-        <p style="max-width:560px;margin:12px auto;line-height:1.5;"><?= nl2br(e(mb_strimwidth((string) $target['bio'], 0, 600, '…'))) ?></p>
-      <?php endif; ?>
-
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:16px;">
+    <div class="box pvx">
+      <?php if ($target['avatar_path']): ?><img class="pvx-av" src="/<?= e(ltrim($target['avatar_path'], '/')) ?>" alt=""><?php else: ?><span class="pvx-av stc-ph"><?= e(mb_strtoupper(mb_substr($target['display_name'], 0, 1))) ?></span><?php endif; ?>
+      <h2><?= e($target['display_name']) ?></h2>
+      <div class="pvx-sub">@<?= e($target['slug']) ?><?= $where !== '' ? ' · ' . e($where) : '' ?><?= !empty($target['genere']) ? ' · ' . e($target['genere']) : '' ?></div>
+      <div class="pvx-st"><b><?= (int) $followers ?></b> follower<?= $followedBack ? ' · ti segue' : '' ?><?= $mutual ? ' · vi seguite a vicenda' : '' ?></div>
+      <?php if (!empty($target['bio'])): ?><p class="pvx-bio"><?= nl2br(e(mb_strimwidth((string) $target['bio'], 0, 600, '…'))) ?></p><?php endif; ?>
+      <div class="box-row pvx-act">
         <?php if ($isSelf): ?>
-          <a class="btn secondary" href="/dashboard_profile.php"><i class="fa-solid fa-pen"></i> Modifica il tuo profilo</a>
+          <a class="stc-act primary" href="/dashboard_profile.php"><i class="fa-solid fa-pen"></i> <span>Modifica il tuo profilo</span></a>
         <?php else: ?>
-          <form method="post" action="/follow_account.php" style="margin:0;">
-            <?= csrfField() ?>
-            <input type="hidden" name="user_id" value="<?= (int) $target['id'] ?>">
-            <input type="hidden" name="redirect" value="<?= e($here) ?>">
-            <?php if ($following): ?>
-              <input type="hidden" name="action" value="unfollow">
-              <button type="submit" class="btn secondary"><i class="fa-solid fa-user-check"></i> Non seguire più</button>
-            <?php else: ?>
-              <input type="hidden" name="action" value="follow">
-              <button type="submit" class="btn"><i class="fa-solid fa-user-plus"></i> Segui</button>
-            <?php endif; ?>
-          </form>
-          <?php if ($mutual): ?>
-            <a class="btn secondary" href="/dashboard_chat.php?with=<?= e(rawurlencode($target['slug'])) ?>"><i class="fa-solid fa-comment-dots"></i> Scrivi un messaggio</a>
-          <?php endif; ?>
+          <form method="post" action="/follow_account.php"><?= csrfField() ?><input type="hidden" name="user_id" value="<?= (int) $target['id'] ?>"><input type="hidden" name="redirect" value="<?= e($here) ?>">
+            <?php if ($following): ?><input type="hidden" name="action" value="unfollow"><button type="submit" class="stc-act"><i class="fa-solid fa-user-check"></i> <span>Non seguire più</span></button>
+            <?php else: ?><input type="hidden" name="action" value="follow"><button type="submit" class="stc-act primary"><i class="fa-solid fa-user-plus"></i> <span>Segui</span></button><?php endif; ?></form>
+          <?php if ($mutual): ?><a class="stc-act" href="/dashboard_chat.php?with=<?= e(rawurlencode($target['slug'])) ?>"><i class="fa-regular fa-comment"></i> <span>Scrivi un messaggio</span></a><?php endif; ?>
         <?php endif; ?>
-        <a class="btn secondary" href="/<?= e($target['slug']) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Pagina pubblica</a>
+        <a class="stc-act" href="/<?= e($target['slug']) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Pagina pubblica</span></a>
       </div>
     </div>
-
     <?php if ($latest): ?>
-      <div class="section-title">Ultimi contenuti</div>
-      <div class="card">
-        <?php foreach ($latest as $it): ?>
-          <div style="padding:8px 0;border-top:1px solid rgba(128,128,128,.2);">
-            <small style="color:var(--text-muted);text-transform:uppercase;"><?= e($it['kind']) ?> · <?= e(date('d/m/Y', strtotime($it['d']))) ?></small><br>
-            <strong><?= e(mb_strimwidth((string) $it['title'], 0, 120, '…')) ?></strong>
-          </div>
-        <?php endforeach; ?>
-      </div>
+      <div class="tlx-listhead"><h2>Ultimi contenuti</h2></div>
+      <?php foreach ($latest as $it): ?>
+        <div class="pnx"><div class="pnx-b"><span class="pnx-t"><?= e($it['kind']) ?> · <?= e(date('d/m/Y', strtotime($it['d']))) ?></span><b><?= e(mb_strimwidth((string) $it['title'], 0, 120, '…')) ?></b></div></div>
+      <?php endforeach; ?>
     <?php endif; ?>
   <?php endif; ?>
+  </div>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

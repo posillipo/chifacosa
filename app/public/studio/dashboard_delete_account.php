@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -38,46 +38,36 @@ if (!$blocker && $_SERVER['REQUEST_METHOD'] === 'POST') {
 $summary = accountDeletionSummary($allIds);
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <p><a href="/dashboard_profile.php"><i class="fa-solid fa-arrow-left"></i> Torna al profilo</a></p>
-
-  <div class="card" style="border:1px solid #e74c3c55;">
-    <div class="section-title" style="margin-top:0;color:#e74c3c;">Elimina il mio account</div>
-
-    <?php if ($blocker): ?>
-      <div class="alert error"><?= e($blocker) ?></div>
-    <?php else: ?>
-      <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-      <p>Eliminando l'account cancelli <strong>subito e in modo definitivo</strong> il tuo profilo e tutti i suoi contenuti. <strong>Non è possibile tornare indietro.</strong></p>
-
-      <p style="margin-bottom:6px;"><strong>Verrà cancellato:</strong></p>
-      <ul style="margin-top:0;">
-        <li>Il tuo account (<?= e($user['email']) ?>), il login e il profilo <strong>@<?= e($user['slug']) ?></strong></li>
-        <?php foreach ($summary as $label => $n): if ($n > 0): ?><li><?= e($label) ?>: <?= (int) $n ?></li><?php endif; endforeach; ?>
-        <li>Le immagini, i video e i brani caricati</li>
-        <li>I follower e le impostazioni collegate</li>
-      </ul>
-
-      <?php if ($owned): ?>
-        <p style="margin-bottom:6px;"><strong>Verranno eliminati anche i profili che hai creato:</strong></p>
-        <ul style="margin-top:0;">
-          <?php foreach ($owned as $p): ?><li><?= e($p['display_name'] ?: $p['slug']) ?> (@<?= e($p['slug']) ?>)</li><?php endforeach; ?>
+  <div class="tlx tlx-narrow">
+    <a href="/dashboard_profile.php"><i class="fa-solid fa-arrow-left"></i> Torna al profilo</a>
+    <div class="box box-danger">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Elimina il mio account</h3>
+      <?php if ($blocker): ?>
+        <div class="alert error"><?= e($blocker) ?></div>
+      <?php else: ?>
+        <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+        <p>Eliminando l'account cancelli <b>subito e in modo definitivo</b> il tuo profilo e tutti i suoi contenuti. <b>Non è possibile tornare indietro.</b></p>
+        <p><b>Verrà cancellato:</b></p>
+        <ul class="box-list">
+          <li>Il tuo account (<?= e($user['email']) ?>), il login e il profilo <b>@<?= e($user['slug']) ?></b></li>
+          <?php foreach ($summary as $label => $n): if ($n > 0): ?><li><?= e($label) ?>: <?= (int) $n ?></li><?php endif; endforeach; ?>
+          <li>Le immagini, i video e i brani caricati</li>
+          <li>I follower e le impostazioni collegate</li>
         </ul>
+        <?php if ($owned): ?>
+          <p><b>Verranno eliminati anche i profili che hai creato:</b></p>
+          <ul class="box-list"><?php foreach ($owned as $p): ?><li><?= e($p['display_name'] ?: $p['slug']) ?> (@<?= e($p['slug']) ?>)</li><?php endforeach; ?></ul>
+        <?php endif; ?>
+        <p class="tlx-hint">I profili altrui che gestisci come co-amministratore non vengono toccati: perdi soltanto l'accesso.</p>
+        <form method="post" data-confirm="Ultima conferma: eliminare definitivamente il tuo account e tutti i suoi contenuti?">
+          <?= csrfField() ?>
+          <label for="da-word">Per confermare scrivi la parola <b>Elimina</b></label>
+          <input type="text" name="confirm_word" id="da-word" required autocomplete="off" placeholder="Elimina">
+          <?php studioSwitch('understood', "Ho capito che l'eliminazione è definitiva e immediata e che i contenuti non potranno essere recuperati.", false); ?>
+          <div class="box-row"><button type="submit" class="stc-act danger"><i class="fa-solid fa-trash"></i> <span>Elimina definitivamente il mio account</span></button><a href="/dashboard_profile.php" class="stc-act">Annulla</a></div>
+        </form>
       <?php endif; ?>
-
-      <p style="color:var(--text-muted);font-size:13px;">I profili altrui che gestisci come co-amministratore non vengono toccati: perdi soltanto l'accesso. Se vuoi conservare qualcosa, copialo prima di procedere.</p>
-
-      <form method="post" onsubmit="return confirm('Ultima conferma: eliminare definitivamente il tuo account e tutti i suoi contenuti?');">
-        <?= csrfField() ?>
-        <label>Per confermare scrivi la parola <strong>Elimina</strong></label>
-        <input type="text" name="confirm_word" required autocomplete="off" placeholder="Elimina">
-        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;">
-          <input type="checkbox" name="understood" value="1" style="width:auto;margin-top:3px;" required>
-          Ho capito che l'eliminazione è definitiva e immediata e che i contenuti non potranno essere recuperati.
-        </label>
-        <button type="submit" class="btn danger"><i class="fa-solid fa-trash"></i> Elimina definitivamente il mio account</button>
-        <a href="/dashboard_profile.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
-      </form>
-    <?php endif; ?>
+    </div>
   </div>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
