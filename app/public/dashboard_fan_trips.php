@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$placeName, $note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
-        if ($isPublic && !$publishAt) {
+        if ($isPublic) { // con data futura socialQueueBuildSq accoda subito l'uscita
             require_once __DIR__ . '/../src/metricool_queue.php';
             $sq = socialQueueBuildSq((int) $profile['id'], 'fan_trip', [
                 'content_id' => $id,

@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $sq = null;
-        if ($isPublic && !$publishAt) {
+        if ($isPublic) { // con data futura socialQueueBuildSq accoda subito l'uscita
             $stmtFan = getDB()->prepare('SELECT spotify_artist_name, artist_image FROM fan_favorite_bands WHERE id=? AND user_id=?');
             $stmtFan->execute([$id, $profile['id']]);
             $fanRow = $stmtFan->fetch() ?: [];

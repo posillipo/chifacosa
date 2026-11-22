@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$note !== '' ? $note : null, $isPublic, $inFeed, $publishAt, $id, $profile['id']]);
         }
 
-        if ($isPublic && !$publishAt) {
+        if ($isPublic) { // con data futura socialQueueBuildSq accoda subito l'uscita
             $stmtTrack = getDB()->prepare('SELECT track_name, artist_name, image_path, track_image FROM favorite_tracks WHERE id=? AND user_id=?');
             $stmtTrack->execute([$id, $profile['id']]);
             $trackRow = $stmtTrack->fetch() ?: [];
