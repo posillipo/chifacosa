@@ -395,3 +395,6 @@ body.studio-mode .vdx-row { display: flex; flex-wrap: wrap; gap: 12px 20px; alig
 body.studio-mode .vdx-form .tlx-submit { width: auto; height: 42px; padding: 0 22px; margin-top: 12px; }
 body.studio-mode .vdx-inline { display: inline; margin: 0; }
 body.studio-mode .stc-type.stc-blue { background: #E0F0FF; color: #1D6FB8; }
+
+/* Il Feed della dashboard ha la larghezza del feed dei social: 680px, centrato */
+body.studio-mode.studio-p-dashboard_timeline .container { max-width: 720px; }
