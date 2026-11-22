@@ -335,3 +335,10 @@ subito da tutti gli utenti della piattaforma.
 consolidamento, poi arricchiti con due nuove guide specifiche): `README.md` (indice +
 panoramica), `LOCAL_TESTING.md`, `GITHUB.md`, `DEPLOY.md`, `ADMIN_SETUP.md`, `SMTP.md`,
 `SPOTIFY_SETUP.md`, `COOKIE_PREFERENZE_SETUP.md`, `MIGRAZIONI.md`, `SCHEMA_DATABASE.md`.
+
+## Dashboard classica riservata al proprietario
+
+- Le pagine `/dashboard*.php` rimandano per tutti alla versione Studio (`/studio/dashboard*.php`, 302 in GET, 307 negli altri metodi, query string conservata).
+- La dashboard classica resta attiva solo per il proprietario: va aperto una volta `/classic-<TOKEN>` da loggato con il suo account; viene impostato il cookie `cdash` (HMAC, 30 giorni, httponly) e da quel momento `/dashboard*.php` funziona normalmente su quel browser.
+- Variabili d'ambiente (mai nel codice): `CLASSIC_DASH_TOKEN` (almeno 16 caratteri alfanumerici) e `CLASSIC_DASH_OWNER_EMAIL`. Se una manca, la classica è chiusa a tutti. Token sbagliato → 404.
+- Codice: `app/src/fn_classic_gate.php` (richiamato a fine `functions.php`), `app/public/classic_entry.php`, regola in `.htaccess`.
