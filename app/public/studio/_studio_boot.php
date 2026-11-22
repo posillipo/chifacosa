@@ -52,5 +52,6 @@ if (!defined('STUDIO_BOOT')) {
         }
     });
     require_once __DIR__ . '/_studio_feed.php';
+require_once __DIR__ . '/_studio_composer.php';
     ob_start('studioFilter');
 }
