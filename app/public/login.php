@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Rigenera l'ID di sessione PRIMA di autenticare: impedisce un attacco di "session
         // fixation" (un ID di sessione impostato dall'esterno prima del login, che altrimenti
         // resterebbe valido anche dopo).
-        session_regenerate_id(true);
+        session_regenerate_id(true); unset($_SESSION['classic_ok']);
         $_SESSION['user_id'] = $u['id'];
         if (!empty($_POST['remember'])) {
             issueRememberToken((int) $u['id']);
