@@ -6,6 +6,13 @@
 // Riconosce la piattaforma social da un URL, tra quelle mostrate come icona in cima alla pagina
 // pubblica. Ogni voce ha una "key" univoca usata per la deduplicazione (un solo link per
 // piattaforma viene mostrato come icona) e una classe Font Awesome completa per l'icona.
+// Il profilo ha almeno un link attivo (pulsante o icona) da mostrare in /slug/link?
+function profileHasActiveLinks(int $userId): bool {
+    $stmt = getDB()->prepare("SELECT 1 FROM links WHERE user_id=? AND is_active=1 AND link_type='link' LIMIT 1");
+    $stmt->execute([$userId]);
+    return (bool) $stmt->fetchColumn();
+}
+
 // Elenco dominio => piattaforma (unica fonte: usata da detectPlatform e dalla dashboard Studio).
 function platformMap(): array {
     return [

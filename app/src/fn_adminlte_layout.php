@@ -452,6 +452,9 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
     if ($isBandOrLabel && !in_array('eventi', $hiddenKeys, true)) {
         $navItems['eventi'] = ['label' => 'Eventi', 'url' => '/' . $slug . '/eventi'];
     }
+    if (!in_array('link', $hiddenKeys, true) && profileHasActiveLinks($uid)) {
+        $navItems['link'] = ['label' => 'Link', 'url' => '/' . $slug . '/link'];
+    }
     $navItems['contatti'] = ['label' => 'Contatti', 'url' => '/' . $slug . '/contatti'];
 
     $avatarUrl = adminLteAvatarUrl($artist);
@@ -499,7 +502,7 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
                 </ul>
               </li>
               <?php endif; ?>
-              <?php foreach (['spotify', 'podcast', 'youtube', 'video', 'contest', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'contatti'] as $key): ?>
+              <?php foreach (['spotify', 'podcast', 'youtube', 'video', 'contest', 'blog', 'menu', 'offerte', 'foto', 'servizi', 'eventi', 'link', 'contatti'] as $key): ?>
                 <?php if (isset($navItems[$key])): ?>
               <li class="nav-item">
                 <a href="<?= e($navItems[$key]['url']) ?>" class="nav-link<?= $activeKey === $key ? ' active' : '' ?>"><?= e($navItems[$key]['label']) ?></a>

@@ -13,6 +13,13 @@ $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.th
 $stmt->execute([$slug]);
 $artist = $stmt->fetch();
 
+// /slug/link: stessa pagina "Link in Bio" ma sempre con il tema Colorful di base, anche se la Home
+// del profilo usa un altro tema (AdminLTE, PA Italia, ...).
+$linkView = ($_GET['view'] ?? '') === 'link';
+if ($artist && $linkView) {
+    $artist['page_theme'] = 'colorful';
+}
+
 if (!$artist) {
     http_response_code(404);
     echo '<h1 style="font-family:sans-serif;text-align:center;margin-top:80px;">Pagina non trovata</h1>';
@@ -74,7 +81,7 @@ $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 O
 $links->execute([$uid]);
 $links = $links->fetchAll();
 
-$pageUrl = siteUrl('/' . $slug);
+$pageUrl = siteUrl('/' . $slug . ($linkView ? '/link' : ''));
 $ogImage = $artist['avatar_path'] ? siteUrl($artist['avatar_path']) : null;
 $ogDescription = $artist['bio'] ? textExcerpt($artist['bio']) : ('La pagina di ' . $artist['display_name'] . ' su ' . siteName());
 
