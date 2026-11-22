@@ -62,6 +62,7 @@ include __DIR__ . '/../_dash_header.php';
   </style>
 
   <?php $activeCount = count(array_filter($feedFilters, fn($v) => $v !== '')); $panelOpen = !empty($_GET['open']); ?>
+  <?php studioComposer($profile, []); ?>
   <div class="dtf-head">
     <div class="section-title" style="margin:0;flex:1;min-width:0;display:flex;align-items:center;gap:10px;">Feed <?= renderPageHelpButton('dashboard_timeline', 'Feed') ?></div>
     <button type="button" id="dtf-toggle" class="dtf-btn<?= $activeCount ? ' on' : '' ?>" aria-expanded="<?= $panelOpen ? 'true' : 'false' ?>" aria-controls="dtf-panel">

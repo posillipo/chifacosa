@@ -35,6 +35,9 @@ for src in sorted(glob.glob(os.path.join(pub, 'dashboard*.php'))):
     s = s.replace("__DIR__ . '/uploads/", "__DIR__ . '/../uploads/")
     # schede del Feed di Studio (stato e azioni): vedi studio/_studio_feed.php
     s = s.replace('renderDashboardTimelineItem(', 'studioRenderTimelineItem(').replace('renderDashboardTimelineCard(', 'studioRenderTimelineCard(')
+    if name == 'dashboard_timeline.php':
+        # pulsante "A cosa stai pensando?" + popup di inserimento in cima al Feed
+        s = s.replace('<div class="dtf-head">', '<?php studioComposer($profile, []); ?>\n  <div class="dtf-head">', 1)
     left = [m for m in re.findall(r"__DIR__ \. ['\"][^'\"]*['\"]", s) if not (m.startswith("__DIR__ . '/../") or m.startswith('__DIR__ . "/../'))]
     if left:
         print('ATTENZIONE', name, 'ha altri percorsi relativi a __DIR__:', set(left), file=sys.stderr)
