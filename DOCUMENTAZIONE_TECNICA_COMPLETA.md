@@ -163,6 +163,12 @@ un testo breve e, se c'è un approfondimento (o un link esterno), il collegament
 - **Testi nel database**, tabella `page_help` (`page_key` = nome del file senza `.php`, `title`, `body`, `more`,
   `doc_url`): non nel codice delle pagine. Migrazione `2026_11_29_page_help.sql` (crea la tabella e inserisce i testi
   iniziali senza sovrascrivere quelli modificati).
+### Profilo privato
+- **Impostazione**: Dashboard → Profilo → «Profilo privato» (`profiles.is_private`). Codice in `app/src/fn_privacy.php`.
+- **Pagina pubblica chiusa**: `enforcePrivateProfileGate()` (chiamata alla fine di `functions.php`) controlla `?slug=` su tutte le pagine pubbliche del profilo (Home, Timeline, Blog, Eventi, Contatti, feed RSS, ecc.). Se il profilo è privato e chi guarda non è autorizzato risponde 404 con `X-Robots-Tag: noindex`. Autorizzati: il proprietario, chi lo gestisce (`canManageProfile`), gli admin del sito e gli account che lo seguono (`account_follows`). Chi segue solo via email non è identificabile e non entra.
+- **Nascosto da**: ricerca della dashboard (`api_profile_search.php`), scheda «Scopri» (`dashNewProfiles()`), sitemap, scheda profilo in dashboard (`dashboard_profile_view.php`).
+- **Non toccati**: API e server MCP (passano dal token del profilo; le pagine `api_*`, dashboard, admin, accesso e «Segui» sono escluse dal blocco). Se la colonna non esiste ancora (migrazione non eseguita) nessuna lista cambia e nessuna pagina si chiude.
+
 - **Codice**: `app/src/fn_help.php` (`renderPageHelpHead()`, chiamata da `_dash_header.php`; segnaposto `{site_name}`,
   `{slug}`, `{album_max_photos}`, `{service_max_photos}`, `{max_video_mb}`; formato: riga vuota = paragrafo,
   `**grassetto**`, `` `codice` ``).

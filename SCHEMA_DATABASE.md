@@ -41,6 +41,7 @@ Dati del profilo pubblico, uno per utente.
 | bio | TEXT | — | Biografia |
 | avatar_path | VARCHAR(255) | — | Percorso foto profilo |
 | theme_color | VARCHAR(7) | DEFAULT `#6C5CE7` | Colore accento pagina pubblica |
+| is_private | TINYINT(1) | NOT NULL DEFAULT 0 | Profilo privato: nascosto da ricerche, liste e sitemap; pagina pubblica chiusa ai non autorizzati (migrazione `2026_11_33_profile_is_private.sql`) |
 | updated_at | DATETIME | AUTO UPDATE | Ultimo aggiornamento profilo |
 
 ## `links`

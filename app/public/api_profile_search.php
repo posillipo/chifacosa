@@ -1,6 +1,6 @@
 <?php
 // Ricerca profili per la barra in alto della dashboard (utenti collegati). GET ?q=testo → JSON.
-// Cerca per nome e per @nome-pagina tra i profili attivi; esclude il profilo che si sta gestendo.
+// Cerca per nome e per @nome-pagina tra i profili attivi e non privati; esclude il profilo che si sta gestendo.
 session_start();
 require_once __DIR__ . '/../src/functions.php';
 header('Content-Type: application/json; charset=UTF-8');
@@ -33,9 +33,10 @@ $like = '%' . addcslashes($q, '\\%_') . '%';
 $prefix = addcslashes($q, '\\%_') . '%';
 $self = (int) (getActingProfile($user)['id'] ?? $user['id']);
 
+$privOnly = privateProfileExcludeSql('p');
 $st = getDB()->prepare("SELECT u.slug, u.account_type, p.display_name, p.avatar_path, p.citta
     FROM users u JOIN profiles p ON p.user_id = u.id
-    WHERE u.is_active = 1 AND u.id <> ? AND (p.display_name LIKE ? OR u.slug LIKE ?)
+    WHERE u.is_active = 1{$privOnly} AND u.id <> ? AND (p.display_name LIKE ? OR u.slug LIKE ?)
     ORDER BY (p.display_name LIKE ? OR u.slug LIKE ?) DESC, p.display_name ASC
     LIMIT 8");
 $st->execute([$self, $like, $like, $prefix, $prefix]);

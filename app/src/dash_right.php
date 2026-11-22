@@ -393,7 +393,7 @@ function dashNewProfiles(int $selfId, int $limit = 10): array {
         $st = getDB()->prepare("SELECT u.id, u.slug, p.display_name, p.avatar_path, u.created_at d,
                 (SELECT COUNT(*) FROM account_follows b WHERE b.follower_user_id = ? AND b.followed_user_id = u.id) AS i_follow
             FROM users u JOIN profiles p ON p.user_id = u.id
-            WHERE u.is_active = 1 AND u.account_type_chosen = 1 AND u.id <> ? AND u.email NOT LIKE '%@profili.chifacosa.local'
+            WHERE u.is_active = 1" . privateProfileExcludeSql('p') . " AND u.account_type_chosen = 1 AND u.id <> ? AND u.email NOT LIKE '%@profili.chifacosa.local'
             ORDER BY u.created_at DESC, u.id DESC LIMIT " . (int) $limit);
         $st->execute([$selfId, $selfId]);
         foreach ($st->fetchAll() as $r) {

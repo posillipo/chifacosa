@@ -67,10 +67,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$error) {
         $stmt = getDB()->prepare('UPDATE profiles SET display_name=?, bio=?, avatar_path=?, theme_color=?, genere=?, citta=?, provincia=?, telefono=?, dashboard_theme=? WHERE user_id=?');
         $stmt->execute([$displayName, $bio, $avatarPath, $themeColor, $genere ?: null, $citta ?: null, $provincia ?: null, $telefono ?: null, $timezone, $profile['id']]);
+        // Profilo privato (migrazione 2026_11_33): nascosto da ricerche/liste, pagina pubblica chiusa ai non autorizzati.
+        if (profilesHavePrivateColumn()) {
+            getDB()->prepare('UPDATE profiles SET is_private=? WHERE user_id=?')->execute([!empty($_POST['is_private']) ? 1 : 0, $profile['id']]);
+        }
         $success = 'Profilo aggiornato.';
         $user = currentUser();
         $profile = getActingProfile($user);
     }
+}
+
+$isPrivateNow = false;
+if (profilesHavePrivateColumn()) {
+    $pq = getDB()->prepare('SELECT is_private FROM profiles WHERE user_id=?');
+    $pq->execute([$profile['id']]);
+    $isPrivateNow = (int) $pq->fetchColumn() === 1;
 }
 
 include __DIR__ . '/../_dash_header.php';
@@ -118,6 +129,17 @@ include __DIR__ . '/../_dash_header.php';
     <input type="file" id="avatar-input" name="avatar" accept="image/*">
     <input type="hidden" name="avatar_cropped_data" id="avatar-cropped-data">
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Dopo aver scelto una foto potrai ritagliarla prima di salvarla.</p>
+
+    <?php if (profilesHavePrivateColumn()): ?>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:14px 0 4px;">
+      <input type="checkbox" name="is_private" value="1" <?= $isPrivateNow ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
+      <strong>Profilo privato</strong>
+    </label>
+    <p style="color:var(--text-muted);font-size:12.5px;margin:0 0 14px;">
+      Il profilo non compare nelle ricerche, nelle liste di nuovi profili né nei motori di ricerca, e la tua pagina pubblica si apre
+      solo a te, a chi la gestisce e ai tuoi follower collegati (per tutti gli altri è «pagina non trovata»). Le tue automazioni e i server MCP continuano a funzionare.
+    </p>
+    <?php endif; ?>
 
     <button type="submit" class="btn">Salva profilo</button>
   </form>

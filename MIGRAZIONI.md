@@ -1282,6 +1282,12 @@ Aggiunge il testo di guida di `dashboard_profile_view.php`. INSERT IGNORE: si pu
 ### Guide dei Contest (`2026_11_32_page_help_contests.sql`)
 Testi di guida di `dashboard_contests.php` (Contest per tutti) e `dashboard_contest.php` (Gestisci Contest). INSERT IGNORE: si può rieseguire. Richiede la `2026_11_29`.
 
+### Profilo privato (`2026_11_33_profile_is_private.sql`)
+Aggiunge `profiles.is_private TINYINT(1) NOT NULL DEFAULT 0` (tutti i profili esistenti restano pubblici). Idempotente: si può rieseguire. Finché non è eseguita il sito funziona come prima e nella pagina Profilo l'interruttore non compare.
+
+### Guida Profilo aggiornata (`2026_11_34_page_help_profile_private.sql`)
+Aggiorna il testo di guida di `dashboard_profile.php` con l'opzione «Profilo privato» (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce

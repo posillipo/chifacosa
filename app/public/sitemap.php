@@ -19,6 +19,7 @@ function sitemapUrl(string $loc, ?string $lastmod = null, string $changefreq = '
 }
 
 $db = getDB();
+$privU = privateUserExcludeSql('u');
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
@@ -45,7 +46,7 @@ foreach ($db->query('SELECT DISTINCT user_id FROM menu_items WHERE is_active = 1
 
 $stmt = $db->query("SELECT u.id, u.slug, u.account_type, p.spotify_artist_id, p.spotify_show_id, p.youtube_channel_id, p.updated_at
     FROM users u JOIN profiles p ON p.user_id = u.id
-    WHERE u.is_active = 1");
+    WHERE u.is_active = 1{$privU}");
 foreach ($stmt->fetchAll() as $p) {
     $slug = $p['slug'];
     $isBandOrLabel = in_array($p['account_type'], ['band', 'label'], true);
@@ -91,7 +92,7 @@ foreach ($stmt->fetchAll() as $p) {
 // Singoli post del blog (permalink SEO con data)
 $stmt = $db->query("SELECT b.slug, b.published_at, u.slug AS user_slug
     FROM blog_posts b JOIN users u ON u.id = b.user_id
-    WHERE u.is_active = 1 AND b.published_at <= NOW()");
+    WHERE u.is_active = 1{$privU} AND b.published_at <= NOW()");
 foreach ($stmt->fetchAll() as $b) {
     sitemapUrl(siteUrl(blogPostUrl($b['user_slug'], $b)), $b['published_at'], 'monthly', '0.6');
 }
@@ -103,7 +104,7 @@ $stmt = $db->query("SELECT DISTINCT c.slug, c.name, u.slug AS user_slug
     JOIN users u ON u.id = c.user_id
     JOIN blog_post_categories pc ON pc.category_id = c.id
     JOIN blog_posts b ON b.id = pc.post_id AND b.published_at <= NOW()
-    WHERE u.is_active = 1");
+    WHERE u.is_active = 1{$privU}");
 foreach ($stmt->fetchAll() as $c) {
     sitemapUrl(siteUrl(blogCategoryUrl($c['user_slug'], $c)), null, 'weekly', '0.5');
 }
@@ -111,7 +112,7 @@ foreach ($stmt->fetchAll() as $c) {
 // Singoli eventi
 $stmt = $db->query("SELECT e.id, e.created_at, u.slug AS user_slug
     FROM events e JOIN users u ON u.id = e.user_id
-    WHERE u.is_active = 1 AND (e.publish_at IS NULL OR e.publish_at <= NOW())");
+    WHERE u.is_active = 1{$privU} AND (e.publish_at IS NULL OR e.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $ev) {
     sitemapUrl(siteUrl('/' . $ev['user_slug'] . '/eventi/' . $ev['id']), $ev['created_at'], 'monthly', '0.5');
 }
@@ -120,7 +121,7 @@ foreach ($stmt->fetchAll() as $ev) {
 // hasActiveOffers()/offerte.php per decidere la visibilità).
 $stmt = $db->query("SELECT so.id, so.created_at, u.slug AS user_slug
     FROM special_offers so JOIN users u ON u.id = so.user_id
-    WHERE u.is_active = 1 AND so.is_active = 1
+    WHERE u.is_active = 1{$privU} AND so.is_active = 1
       AND (so.valid_from IS NULL OR so.valid_from <= NOW()) AND (so.valid_until IS NULL OR so.valid_until >= NOW())");
 foreach ($stmt->fetchAll() as $so) {
     sitemapUrl(siteUrl('/' . $so['user_slug'] . '/offerte/' . $so['id']), $so['created_at'], 'weekly', '0.5');
@@ -129,7 +130,7 @@ foreach ($stmt->fetchAll() as $so) {
 // Singoli album fotografici — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT pa.id, pa.created_at, u.slug AS user_slug
     FROM photo_albums pa JOIN users u ON u.id = pa.user_id
-    WHERE u.is_active = 1 AND pa.is_public = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW())");
+    WHERE u.is_active = 1{$privU} AND pa.is_public = 1 AND (pa.publish_at IS NULL OR pa.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $al) {
     sitemapUrl(siteUrl('/' . $al['user_slug'] . '/album/' . $al['id']), $al['created_at'], 'monthly', '0.4');
 }
@@ -137,7 +138,7 @@ foreach ($stmt->fetchAll() as $al) {
 // Singoli servizi — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT sv.id, sv.created_at, u.slug AS user_slug
     FROM services sv JOIN users u ON u.id = sv.user_id
-    WHERE u.is_active = 1 AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW())");
+    WHERE u.is_active = 1{$privU} AND sv.is_public = 1 AND (sv.publish_at IS NULL OR sv.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $sv) {
     sitemapUrl(siteUrl('/' . $sv['user_slug'] . '/servizi/' . $sv['id']), $sv['created_at'], 'monthly', '0.4');
 }
@@ -146,7 +147,7 @@ foreach ($stmt->fetchAll() as $sv) {
 // condizione usata da getTimelineFeedForUsers()/timeline_post.php per decidere la visibilità).
 $stmt = $db->query("SELECT tp.id, tp.created_at, u.slug AS user_slug
     FROM timeline_posts tp JOIN users u ON u.id = tp.user_id
-    WHERE u.is_active = 1 AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())");
+    WHERE u.is_active = 1{$privU} AND tp.visibility = 'public' AND (tp.publish_at IS NULL OR tp.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $tp) {
     sitemapUrl(siteUrl('/' . $tp['user_slug'] . '/timeline/' . $tp['id']), $tp['created_at'], 'monthly', '0.5');
 }
@@ -154,7 +155,7 @@ foreach ($stmt->fetchAll() as $tp) {
 // Singoli brani (pagina dedicata, condivisibile) — solo quelli davvero pubblici e già pubblicati.
 $stmt = $db->query("SELECT f.id, f.created_at, u.slug AS user_slug
     FROM favorite_tracks f JOIN users u ON u.id = f.user_id
-    WHERE u.is_active = 1 AND f.is_public = 1 AND (f.publish_at IS NULL OR f.publish_at <= NOW())");
+    WHERE u.is_active = 1{$privU} AND f.is_public = 1 AND (f.publish_at IS NULL OR f.publish_at <= NOW())");
 foreach ($stmt->fetchAll() as $t) {
     sitemapUrl(siteUrl('/' . $t['user_slug'] . '/brani/' . $t['id']), $t['created_at'], 'monthly', '0.4');
 }

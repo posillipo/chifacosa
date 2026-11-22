@@ -14,6 +14,14 @@ $st = $db->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.bio, 
     FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.slug = ? AND u.is_active = 1');
 $st->execute([$slug]);
 $target = $slug !== '' ? $st->fetch() : false;
+// Profilo privato: la sua scheda si apre solo a lui, a chi lo gestisce, agli admin e ai suoi follower.
+if ($target && profilesHavePrivateColumn()) {
+    $pv = $db->prepare('SELECT is_private FROM profiles WHERE user_id = ?');
+    $pv->execute([(int) $target['id']]);
+    if ((int) $pv->fetchColumn() === 1 && !privateProfileViewerAllowed((int) $target['id'])) {
+        $target = false;
+    }
+}
 if (!$target) {
     http_response_code(404);
 }
