@@ -34,8 +34,9 @@ if (!defined('STUDIO_BOOT')) {
             $css = '/studio/assets/studio.css';
             $v = @filemtime(__DIR__ . '/assets/studio.css');
             $html = preg_replace('~</head>~i', '<link rel="stylesheet" href="' . $css . ($v ? '?v=' . $v : '') . '"><script src="/studio/assets/studio.js' . ($v ? '?v=' . $v : '') . '" defer></script></head>', $html, 1);
-            $html = preg_replace('~<body(\s+class=")?~i', '<body class="studio-mode ', $html, 1);
-            $html = str_replace('<body class="studio-mode  ', '<body class="studio-mode ', $html);
+            $pg = 'studio-p-' . preg_replace('~[^a-z0-9_]~i', '', basename($_SERVER['SCRIPT_NAME'] ?? '', '.php'));
+            $html = preg_replace('~<body(\s+class=")?~i', '<body class="studio-mode ' . $pg . ' ', $html, 1);
+            $html = str_replace('<body class="studio-mode ' . $pg . '  ', '<body class="studio-mode ' . $pg . ' ', $html);
         }
         return $html;
     }
