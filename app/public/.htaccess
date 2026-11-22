@@ -37,6 +37,7 @@ RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
 # Contest: i link di conferma voto e l'anteprima sponsor portano un codice che identifica già il contest
+RewriteRule ^classic-([A-Za-z0-9]+)/?$ classic_entry.php?k=$1 [L]
 RewriteRule ^contest/vota/([a-f0-9]{64})/?$ contest_vote_confirm.php?t=$1 [L,QSA]
 RewriteRule ^contest/sponsor/([a-f0-9]{32})/?$ contest_sponsor_preview.php?t=$1 [L,QSA]
 
