@@ -5,6 +5,7 @@
 // Stili in assets/studio.css (.cmp-*), comportamenti in assets/studio-composer.js.
 
 function studioComposer(array $profile, array $opt = []): void {
+    require_once __DIR__ . '/../../src/videos.php';
     static $done = false;
     if ($done) { return; }
     $done = true;
@@ -17,11 +18,11 @@ function studioComposer(array $profile, array $opt = []): void {
     ?>
   <button type="button" class="cmp-trigger" data-cmp-open>
     <span class="tlx-av"><?= $av ?></span>
-    <span class="cmp-trigger-t">A cosa stai pensando<?= $first ? ', ' . e($first) : '' ?>?</span>
-    <span class="cmp-trigger-i"><i class="fa-regular fa-image"></i></span>
+    <span class="cmp-trigger-t"><?= e($opt['label'] ?? 'A cosa stai pensando') ?><?= $first ? ', ' . e($first) : '' ?>?</span>
+    <span class="cmp-trigger-i"><i class="fa-regular fa-image"></i> <i class="fa-solid fa-film"></i></span>
   </button>
 
-  <dialog class="cmp" id="cmp" aria-labelledby="cmp-title" data-open="<?= !empty($opt['open']) ? 1 : 0 ?>">
+  <dialog class="cmp" id="cmp" aria-labelledby="cmp-title" data-open="<?= !empty($opt['open']) ? 1 : 0 ?>" data-max="<?= (int) VIDEO_MAX_BYTES ?>" data-upload="/studio/dashboard_videos.php">
     <form method="post" action="/studio/dashboard_post.php" enctype="multipart/form-data" class="cmp-form" id="tlx-form">
       <?= csrfField() ?>
       <input type="hidden" name="action" value="add">
@@ -47,6 +48,17 @@ function studioComposer(array $profile, array $opt = []): void {
           </div>
           <div class="cmp-sum" id="cmp-sum" hidden></div>
           <div id="tlx-photos" class="tlx-photos" hidden></div>
+          <div id="cmp-vid" class="cmp-vid" hidden>
+            <div class="cmp-vid-top">
+              <video id="cmp-vid-prev" muted playsinline preload="metadata"></video>
+              <div class="cmp-vid-info"><b id="cmp-vid-name"></b><small id="cmp-vid-size"></small></div>
+              <button type="button" class="cmp-x" id="cmp-vid-x" aria-label="Rimuovi video"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <label for="cmp-vtitle">Titolo del video</label>
+            <input type="text" id="cmp-vtitle" maxlength="150" placeholder="Titolo (se vuoto: prima riga del testo o nome del file)">
+          </div>
+          <div id="cmp-prog" class="cmp-prog" hidden><div class="cmp-prog-bar"><i></i></div><span id="cmp-prog-t"></span></div>
+          <p id="cmp-err" class="cmp-err" role="alert" hidden></p>
           <div id="ai-caption-panel" class="tlx-ai" hidden>
             <label for="ai-caption-keywords">Parole chiave o istruzioni per l'AI</label>
             <textarea id="ai-caption-keywords" rows="2" placeholder="es. annuncio nuovo concerto sabato 14 a Milano"></textarea>
@@ -59,14 +71,16 @@ function studioComposer(array $profile, array $opt = []): void {
           <div class="cmp-add">
             <span>Aggiungi al tuo post</span>
             <div class="cmp-add-i">
-              <label for="post-image-input" class="cmp-ic cmp-ic-photo" title="Foto"><i class="fa-regular fa-images"></i></label>
+              <label for="post-image-input" class="cmp-ic cmp-ic-photo" id="cmp-photo-btn" title="Foto (fino a 10)"><i class="fa-regular fa-images"></i></label>
+              <label for="cmp-video" class="cmp-ic cmp-ic-video" id="cmp-video-btn" title="Video (uno alla volta)"><i class="fa-solid fa-film"></i></label>
               <button type="button" class="cmp-ic cmp-ic-clock" data-cmp-opts title="Programma"><i class="fa-regular fa-clock"></i></button>
               <button type="button" class="cmp-ic cmp-ic-ai" id="ai-caption-toggle" title="Scrivi con l'AI"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
               <button type="button" class="cmp-ic" data-cmp-opts title="Altre opzioni"><i class="fa-solid fa-ellipsis"></i></button>
             </div>
           </div>
           <input type="file" name="images[]" id="post-image-input" accept="image/*" multiple hidden>
-          <p class="tlx-hint cmp-note">Fino a 10 foto. La prima è la copertina nel Feed, le altre formano il carosello. Puoi anche trascinarle qui o incollarle.</p>
+          <input type="file" id="cmp-video" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.m4v" hidden>
+          <p class="tlx-hint cmp-note">Fino a 10 foto (la prima è la copertina nel Feed, le altre formano il carosello) oppure un solo video, fino a <?= (int) (VIDEO_MAX_BYTES / 1048576) ?> MB. Puoi trascinare i file qui.</p>
         </div>
         <footer class="cmp-foot"><button type="submit" class="tlx-submit" id="tlx-submit"><i class="fa-solid fa-paper-plane"></i> <span>Pubblica</span></button></footer>
       </section>
