@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -100,83 +100,72 @@ $queueLabels = [
 ];
 
 include __DIR__ . '/../_dash_header.php';
+require_once __DIR__ . '/_studio_blog.php';
+$bc = getDB()->prepare('SELECT (SELECT COUNT(*) FROM blog_posts WHERE user_id=?) p, (SELECT COUNT(*) FROM blog_categories WHERE user_id=?) c');
+$bc->execute([$profile['id'], $profile['id']]);
+$bcr = $bc->fetch();
+$blogCounts = ['posts' => (int) $bcr['p'], 'cats' => (int) $bcr['c'], 'tags' => count(getBlogTagCounts((int) $profile['id']))];
+studioBlogHead('posts', $blogCounts);
+$filtered = ($q !== '' || $categoryId > 0);
 ?>
-  <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
-
-  <form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-    <input type="text" name="q" value="<?= e($q) ?>" placeholder="Cerca per titolo..." style="flex:1;min-width:180px;margin-bottom:0;">
+  <form method="get" class="blx-toolbar">
+    <div class="blx-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" name="q" value="<?= e($q) ?>" placeholder="Cerca per titolo..."></div>
     <?php if ($categories): ?>
-      <select name="category" style="width:auto;margin-bottom:0;">
+      <select name="category" aria-label="Categoria">
         <option value="0">Tutte le categorie</option>
-        <?php foreach ($categories as $c): ?>
-          <option value="<?= (int) $c['id'] ?>" <?= $categoryId === (int) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
-        <?php endforeach; ?>
+        <?php foreach ($categories as $c): ?><option value="<?= (int) $c['id'] ?>" <?= $categoryId === (int) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option><?php endforeach; ?>
       </select>
     <?php endif; ?>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;white-space:nowrap;">
-      <input type="checkbox" name="in_content" value="1" style="width:auto;" <?= $inContent ? 'checked' : '' ?>>
-      Ricerca avanzata: cerca anche nel testo
-    </label>
-    <button type="submit" class="btn" style="width:auto;">Cerca</button>
-    <?php if ($q !== '' || $categoryId > 0): ?><a href="/dashboard_blog_posts.php" class="btn small secondary">Azzera</a><?php endif; ?>
+    <label class="tlx-switch"><input type="checkbox" name="in_content" value="1" <?= $inContent ? 'checked' : '' ?>><i></i><span>Cerca anche nel testo</span></label>
+    <button type="submit" class="tlx-chip">Cerca</button>
+    <?php if ($filtered): ?><a href="/dashboard_blog_posts.php" class="tlx-chip">Azzera</a><?php endif; ?>
   </form>
 
-  <div class="section-title">
-    <?= ($q !== '' || $categoryId > 0) ? 'Risultati (' . count($posts) . ')' : 'Tutti gli articoli (' . count($posts) . ')' ?>
-  </div>
+  <div class="tlx-listhead"><h2><?= $filtered ? 'Risultati' : 'Tutti gli articoli' ?> <small>(<?= count($posts) ?>)</small></h2></div>
   <?php if (!$posts): ?>
-    <div class="alert error"><?= ($q !== '' || $categoryId > 0) ? 'Nessun articolo trovato per questa ricerca/filtro.' : 'Non hai ancora scritto nessun articolo.' ?></div>
+    <div class="tlx-empty"><i class="fa-regular fa-newspaper"></i><b><?= $filtered ? 'Nessun articolo trovato' : 'Non hai ancora scritto nessun articolo' ?></b><span><?= $filtered ? 'Prova con altre parole o azzera i filtri.' : 'Scrivi il primo: comparirà qui e nel Feed.' ?></span></div>
   <?php endif; ?>
-  <?php foreach ($posts as $p): ?>
-    <?php $isScheduled = strtotime($p['published_at']) > time(); ?>
-    <div class="blog-item" style="display:flex;gap:14px;align-items:flex-start;">
-      <?php if ($p['cover_path']): ?>
-        <span style="position:relative;flex-shrink:0;"><img src="/<?= e($p['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;display:block;"><?php if (!empty($p['cover_video_path'])): ?><i class="fa-solid fa-circle-play" style="position:absolute;right:3px;bottom:3px;color:#fff;text-shadow:0 0 4px #000;"></i><?php endif; ?></span>
-      <?php endif; ?>
-      <div style="flex:1;min-width:0;">
-        <?php if ($isScheduled): ?>
-          <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($p['published_at'], $profile)) ?></div>
-        <?php else: ?>
-          <div class="date"><?= e(formatLocalDateTime($p['published_at'], $profile)) ?></div>
-        <?php endif; ?>
-        <?php if (!(int) ($p['in_feed'] ?? 1)): ?>
-          <span style="background:#6c757d;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">Non nel Feed</span>
-        <?php endif; ?>
-        <?php if (isset($queueByPost[(int) $p['id']])): $qr = $queueByPost[(int) $p['id']]; $ql = $queueLabels[$qr['status']] ?? [$qr['status'], '#6c757d', 'fa-share-nodes']; ?>
-          <span style="background:<?= $ql[1] ?>;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Coda social"><i class="fa-solid <?= $ql[2] ?>"></i> <?= e($ql[0]) ?><?= !empty($qr['scheduled_for']) ? ' · ' . e(formatLocalDateTime($qr['scheduled_for'], $profile)) : '' ?></span>
-        <?php endif; ?>
-        <?php if (!empty($p['created_by'])): ?>
-          <span style="background:#f1f3f5;color:#495057;border:1px solid #ced4da;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;" title="Autore (visibile solo qui)"><i class="fa-solid fa-pen-nib"></i> <?= e($p['created_by']) ?></span>
-        <?php endif; ?>
-        <strong><?= e($p['title']) ?></strong>
-        <p style="color:var(--text-muted);font-size:13px;margin:4px 0;"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
-        <?php $pCats = array_filter($categories, fn ($c) => in_array((int) $c['id'], $postCategoryIds[(int) $p['id']], true)); ?>
-        <?php if ($pCats || $p['tags']): ?>
-          <p style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
-            <?php foreach ($pCats as $c): ?><span class="icon-btn" style="width:auto;padding:0 10px;font-size:12px;"><?= e($c['name']) ?></span><?php endforeach; ?>
-            <?php if ($p['tags']): ?><span style="color:var(--text-muted);font-size:12.5px;align-self:center;"><i class="fa-solid fa-tags"></i> <?= e($p['tags']) ?></span><?php endif; ?>
-          </p>
-        <?php endif; ?>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>" class="btn small secondary">✏️ Modifica</a>
-          <a href="<?= e(blogPostUrl($profile['slug'], $p)) ?>" target="_blank" class="btn small secondary">↗ Vedi online</a>
-          <?php if (!empty($dashProfile['metricool_auto_social']) && !isset($queueByPost[(int) $p['id']])): ?>
-            <?php $sqJson = json_encode(['suggest' => true, 'type' => 'blog', 'id' => (int) $p['id'], 'title' => $p['title'],
-                'img' => $p['cover_path'] ? siteUrl('/' . ltrim($p['cover_path'], '/')) : null, 'url' => siteUrl(blogPostUrl($profile['slug'], $p))]); ?>
-            <button type="button" class="btn small secondary" title="Metti in coda social (con data a scelta)" onclick='window.sqSuggest(<?= htmlspecialchars($sqJson, ENT_QUOTES) ?>)'>📤 In coda social</button>
+  <?php foreach ($posts as $p):
+    $isScheduled = strtotime($p['published_at']) > time();
+    $pCats = array_filter($categories, fn ($c) => in_array((int) $c['id'], $postCategoryIds[(int) $p['id']], true));
+    $pubUrl = blogPostUrl($profile['slug'], $p);
+    $share = json_encode(['t' => $p['title'], 'u' => siteUrl($pubUrl)], JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT);
+  ?>
+    <article class="stc stc-list blx-post">
+      <a class="stc-thumb" href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>"><?php if ($p['cover_path']): ?><img src="/<?= e($p['cover_path']) ?>" alt="" loading="lazy"><?php if (!empty($p['cover_video_path'])): ?><i class="fa-solid fa-circle-play blx-play"></i><?php endif; ?><?php else: ?><span class="stc-ph"><?= e(mb_strtoupper(mb_substr($p['title'], 0, 1))) ?></span><?php endif; ?></a>
+      <div class="stc-body">
+        <div class="stc-meta1">
+          <span class="stc-type stc-violet">Articolo</span>
+          <?php if ($isScheduled): ?><span class="stc-status stc-s-warn"><i class="fa-regular fa-clock"></i> Programmato · <?= e(formatLocalDateTime($p['published_at'], $profile)) ?></span>
+          <?php else: ?><span class="stc-status stc-s-ok"><i class="fa-solid fa-circle-check"></i> Pubblicato</span><?php endif; ?>
+          <?php if (!(int) ($p['in_feed'] ?? 1)): ?><span class="tlx-tag">Fuori dal Feed</span><?php endif; ?>
+          <?php if (isset($queueByPost[(int) $p['id']])): $qr = $queueByPost[(int) $p['id']]; $ql = $queueLabels[$qr['status']] ?? [$qr['status'], '', 'fa-share-nodes']; ?>
+            <span class="tlx-tag" title="Coda social"><i class="fa-solid <?= e($ql[2]) ?>"></i> <?= e($ql[0]) ?><?= !empty($qr['scheduled_for']) ? ' · ' . e(formatLocalDateTime($qr['scheduled_for'], $profile)) : '' ?></span>
           <?php endif; ?>
-          <form method="post" onsubmit="return confirm('Eliminare questo post?');">
+          <?php if (!empty($p['created_by'])): ?><span class="tlx-tag" title="Autore (visibile solo qui)"><i class="fa-solid fa-pen-nib"></i> <?= e($p['created_by']) ?></span><?php endif; ?>
+        </div>
+        <h3 class="stc-title"><a href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>"><?= e($p['title']) ?></a></h3>
+        <p class="blx-exc"><?= e($p['excerpt'] ?: textExcerpt($p['content'])) ?></p>
+        <?php if ($pCats || $p['tags']): ?>
+          <div class="blx-chips"><?php foreach ($pCats as $c): ?><a href="/dashboard_blog_posts.php?category=<?= (int) $c['id'] ?>" class="blx-cat"><?= e($c['name']) ?></a><?php endforeach; ?>
+            <?php if ($p['tags']): ?><span class="blx-tg"><i class="fa-solid fa-tags"></i> <?= e($p['tags']) ?></span><?php endif; ?></div>
+        <?php endif; ?>
+        <div class="stc-actions">
+          <a class="stc-act primary" href="/dashboard_blog_edit.php?id=<?= (int) $p['id'] ?>"><i class="fa-solid fa-pen"></i> <span>Modifica</span></a>
+          <a class="stc-act" href="<?= e($pubUrl) ?>" target="_blank" title="Vedi online"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Vedi online</span></a>
+          <button type="button" class="stc-act" data-share='<?= e($share) ?>' title="Condividi"><i class="fa-solid fa-share-nodes"></i> <span>Condividi</span></button>
+          <?php if (!empty($dashProfile['metricool_auto_social']) && !isset($queueByPost[(int) $p['id']])): ?>
+            <?php $sqJson = json_encode(['suggest' => true, 'type' => 'blog', 'id' => (int) $p['id'], 'title' => $p['title'], 'img' => $p['cover_path'] ? siteUrl('/' . ltrim($p['cover_path'], '/')) : null, 'url' => siteUrl($pubUrl)]); ?>
+            <button type="button" class="stc-act" data-sq='<?= e($sqJson) ?>' title="Metti in coda social"><i class="fa-solid fa-paper-plane"></i> <span>In coda social</span></button>
+          <?php endif; ?>
+          <form method="post" data-confirm="Eliminare questo articolo?" class="blx-del">
             <?= csrfField() ?>
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
-            <input type="hidden" name="q" value="<?= e($q) ?>">
-            <input type="hidden" name="in_content" value="<?= $inContent ? 1 : 0 ?>">
-            <input type="hidden" name="category" value="<?= $categoryId ?>">
-            <button class="btn small danger" type="submit">Elimina</button>
+            <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
+            <input type="hidden" name="q" value="<?= e($q) ?>"><input type="hidden" name="in_content" value="<?= $inContent ? 1 : 0 ?>"><input type="hidden" name="category" value="<?= $categoryId ?>">
+            <button type="submit" class="stc-act danger" title="Elimina"><i class="fa-solid fa-trash"></i> <span>Elimina</span></button>
           </form>
         </div>
       </div>
-    </div>
+    </article>
   <?php endforeach; ?>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
