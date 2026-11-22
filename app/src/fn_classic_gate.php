@@ -33,8 +33,9 @@ function classicDashAllowed(): bool {
     $cfg = classicDashConfig();
     if (!$cfg) {
         // Senza variabili d'ambiente: la classica è aperta solo agli amministratori del sito.
+        // ...e solo dopo aver scelto "Dashboard classica" nel menu (flag di sessione: al nuovo login si riparte da Studio).
         $uid = (int) ($_SESSION['user_id'] ?? 0);
-        return $uid > 0 && isSiteAdmin($uid);
+        return $uid > 0 && !empty($_SESSION['classic_ok']) && isSiteAdmin($uid);
     }
     $c = (string) ($_COOKIE['cdash'] ?? '');
     return $c !== '' && hash_equals(classicDashCookieValue($cfg), $c) && classicDashOwnerLoggedIn($cfg);

@@ -199,6 +199,7 @@ $dashAccountGroups = [
         ['url' => '/dashboard_log.php',              'tab' => 'log',              'icon' => 'fa-clock-rotate-left', 'label' => 'Log',              'show' => $isBandOrLabel],
         ['url' => '/guida.php',                      'tab' => 'guida',            'icon' => 'fa-circle-question', 'label' => 'Guide',               'show' => true],
         ['url' => '/dashboard_api_tokens.php',       'tab' => 'api_tokens',       'icon' => 'fa-code',           'label' => 'API',                 'show' => !empty($user['is_admin'])],
+        ['url' => '/classic_entry.php',              'tab' => 'classic',          'icon' => 'fa-clock-rotate-left', 'label' => 'Dashboard classica',  'show' => !empty($user['is_admin'])],
     ],
 ];
 

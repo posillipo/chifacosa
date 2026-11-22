@@ -342,3 +342,5 @@ panoramica), `LOCAL_TESTING.md`, `GITHUB.md`, `DEPLOY.md`, `ADMIN_SETUP.md`, `SM
 - La dashboard classica resta attiva solo per il proprietario: va aperto una volta `/classic-<TOKEN>` da loggato con il suo account; viene impostato il cookie `cdash` (HMAC, 30 giorni, httponly) e da quel momento `/dashboard*.php` funziona normalmente su quel browser.
 - Variabili d'ambiente (mai nel codice): `CLASSIC_DASH_TOKEN` (almeno 16 caratteri alfanumerici) e `CLASSIC_DASH_OWNER_EMAIL`. Opzionali: se mancano, la classica è aperta solo agli amministratori del sito (`isSiteAdmin`), senza percorso segreto. Token sbagliato → 404.
 - Codice: `app/src/fn_classic_gate.php` (richiamato a fine `functions.php`), `app/public/classic_entry.php`, regola in `.htaccess`.
+
+- Senza variabili d'ambiente: gli amministratori vedono la voce di menu "Dashboard classica" (`/classic_entry.php`, 404 per i non admin) che imposta il flag di sessione `classic_ok`; al nuovo login il flag si azzera e si riparte da Studio.
