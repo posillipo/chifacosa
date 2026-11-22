@@ -92,6 +92,7 @@ via `.htaccess` (mod_rewrite) verso i seguenti script:
 | `/slug/brani` | `brani.php` | Brani audio caricati (player HTML5) |
 | `/slug/eventi` | `eventi.php` | Prossimi concerti |
 | `/slug/contatti` | `contatti.php` | Form di contatto/booking |
+| `/slug/link` | `u.php?view=link` | Link in Bio con il tema Colorful di base, qualunque sia il tema della Home (AdminLTE, PA Italia, ...); voce "Link" nel menu AdminLTE se il profilo ha link attivi |
 | `/slug/spotify` | `artist_spotify.php` | Discografia Spotify (solo se collegata) |
 
 **Header condiviso** (`publicProfileHeader()` in `functions.php`): avatar, nome, menu di

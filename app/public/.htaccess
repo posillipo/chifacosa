@@ -155,6 +155,9 @@ RewriteRule ^api/v1/social-queue/([0-9]+)/?$ api_social_queue_item.php?id=$1 [L,
 # Webhook Telegram (riceve gli aggiornamenti dal bot)
 RewriteRule ^webhook/telegram/?$ webhook_telegram.php [L,QSA]
 
+# /nomeartista/link -> Link in Bio con il tema Colorful di base (qualunque sia il tema scelto per la Home)
+RewriteRule ^([a-zA-Z0-9_-]+)/link/?$ u.php?slug=$1&view=link [L,QSA]
+
 # /nomeartista/che-amo -> vetrina di tutti i moduli "che amo" (Band/Attori/Film/Libri, Viaggi, Brani)
 RewriteRule ^([a-zA-Z0-9_-]+)/che-amo/?$ che_amo.php?slug=$1 [L,QSA]
 
