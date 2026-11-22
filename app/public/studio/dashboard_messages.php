@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -30,29 +30,23 @@ $stmt->execute([$profile['id'], $profile['id'], $profile['id'], $profile['id'], 
 $conversations = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
+$unreadTot = array_sum(array_map(fn ($c) => (int) $c['unread'], $conversations));
 ?>
-
-  <?php if (!$conversations): ?>
-    <div class="card">
-      Nessuna conversazione ancora. Vai su <a href="/dashboard_following.php">Seguiti</a> per
-      scrivere a chi ti segue a sua volta.
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($conversations) ?></b><span>Conversazioni</span></div>
+      <div class="tlx-kpi"><b><?= $unreadTot ?></b><span>Da leggere</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_following.php"><b><i class="fa-solid fa-user-group"></i></b><span>Seguiti</span></a>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_invite.php"><b><i class="fa-solid fa-user-plus"></i></b><span>Invita</span></a>
     </div>
-  <?php endif; ?>
-  <?php foreach ($conversations as $c): ?>
-    <a href="/dashboard_chat.php?with=<?= e($c['other_slug']) ?>" class="link-item" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;">
-      <?php if ($c['avatar_path']): ?>
-        <img src="/<?= e($c['avatar_path']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">
-      <?php else: ?>
-        <div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;"><?= e(mb_strtoupper(mb_substr($c['display_name'], 0, 1))) ?></div>
-      <?php endif; ?>
-      <div style="flex:1;min-width:0;">
-        <strong><?= e($c['display_name']) ?></strong>
-        <?php if ($c['unread'] > 0): ?>
-          <span style="background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:6px;"><?= (int) $c['unread'] ?></span>
-        <?php endif; ?>
-        <br>
-        <small style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%;"><?= e(textExcerpt($c['last_message'], 60)) ?></small>
-      </div>
-    </a>
-  <?php endforeach; ?>
+    <div class="tlx-listhead"><h2>Conversazioni</h2></div>
+    <?php if (!$conversations): ?><div class="tlx-empty"><i class="fa-regular fa-comments"></i><b>Nessuna conversazione ancora</b><span>Puoi scrivere a chi ti segue a sua volta: vai su <a href="/dashboard_following.php">Seguiti</a>.</span></div><?php endif; ?>
+    <?php foreach ($conversations as $c): ?>
+      <a href="/dashboard_chat.php?with=<?= e($c['other_slug']) ?>" class="pnx<?= $c['unread'] > 0 ? ' pnx-new' : '' ?>">
+        <?php if ($c['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($c['avatar_path']) ?>" alt="" loading="lazy"><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($c['display_name'], 0, 1))) ?></span><?php endif; ?>
+        <div class="pnx-b"><b><?= e($c['display_name']) ?></b><small><?= e(textExcerpt($c['last_message'], 70)) ?></small></div>
+        <div class="pnx-act"><?php if ($c['unread'] > 0): ?><span class="kit-badge"><?= (int) $c['unread'] ?></span><?php endif; ?><small class="lkx-hint"><?= $c['last_at'] ? e(date('d/m H:i', strtotime($c['last_at']))) : '' ?></small></div>
+      </a>
+    <?php endforeach; ?>
+  </div>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

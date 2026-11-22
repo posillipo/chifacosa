@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -15,58 +15,32 @@ $items = getScheduledContentForUser((int) $profile['id'], $profile['slug']);
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-
-  <style>
-  /* Titolo su due righe al massimo (prima una sola, tagliata); su telefono i pulsanti vanno a
-     capo sotto al contenuto, a tutta larghezza, invece di sovrapporsi al titolo. */
-  .sched-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  @media (max-width: 600px) {
-    .sched-actions { width: 100%; }
-    .sched-actions .btn { flex: 1; text-align: center; }
-  }
-  </style>
-
-  <div class="section-title">Contenuti programmati (<?= count($items) ?>)</div>
-  <?php if (!$items): ?>
-    <div class="alert error">Nessun contenuto programmato al momento.</div>
-  <?php else: ?>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($items) ?></b><span>Contenuti programmati</span></div>
+      <?php $next = $items ? $items[0] : null; ?>
+      <div class="tlx-kpi"><b><?= $next ? e(formatLocalDateTime($next['scheduled_for'], $profile, 'd/m H:i')) : '—' ?></b><span>Prossima uscita</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_post.php"><b><i class="fa-solid fa-plus"></i></b><span>Nuovo aggiornamento</span></a>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_social_queue.php"><b><i class="fa-solid fa-paper-plane"></i></b><span>Coda social</span></a>
+    </div>
+    <div class="tlx-listhead"><h2>Contenuti programmati <small>(<?= count($items) ?>)</small></h2></div>
+    <?php if (!$items): ?><div class="tlx-empty"><i class="fa-regular fa-clock"></i><b>Nessun contenuto programmato</b><span>Quando imposti una data di pubblicazione nel futuro, il contenuto compare qui.</span></div><?php endif; ?>
     <?php foreach ($items as $it): ?>
-      <div class="card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;border:1px solid #f0ad4e;">
-        <a href="<?= e($it['edit_url']) ?>" class="sched-main" style="display:flex;flex:1 1 240px;gap:14px;align-items:center;text-decoration:none;color:inherit;min-width:0;">
-          <?php if ($it['cover']): ?>
-            <img src="/<?= e($it['cover']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-          <?php endif; ?>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
-              <span style="background:#f0ad4e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;">
-                ⏰ <?= e(formatLocalDateTime($it['scheduled_for'], $profile)) ?>
-              </span>
-              <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;"><?= e($it['label']) ?></span>
-            </div>
-            <p class="sched-title" style="margin:0;font-weight:600;"><?= e(textExcerpt($it['title'], 120)) ?></p>
+      <article class="stc stc-list">
+        <a class="stc-thumb" href="<?= e($it['edit_url']) ?>"><?php if ($it['cover']): ?><img src="/<?= e($it['cover']) ?>" alt="" loading="lazy"><?php else: ?><span class="stc-ph"><i class="fa-regular fa-clock"></i></span><?php endif; ?></a>
+        <div class="stc-body">
+          <div class="stc-meta1"><span class="stc-type stc-violet"><?= e($it['label']) ?></span><span class="stc-status stc-s-warn"><i class="fa-regular fa-clock"></i> <?= e(formatLocalDateTime($it['scheduled_for'], $profile)) ?></span></div>
+          <h3 class="stc-title"><a href="<?= e($it['edit_url']) ?>"><?= e(textExcerpt($it['title'], 120)) ?></a></h3>
+          <div class="stc-actions">
+            <a class="stc-act primary" href="<?= e($it['edit_url']) ?>"><i class="fa-solid fa-pen"></i> <span>Modifica</span></a>
+            <?php if ($it['preview_url']): ?>
+              <a class="stc-act" href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener"><i class="fa-regular fa-eye"></i> <span>Anteprima</span></a>
+              <button type="button" class="stc-act" data-copy="<?= e($it['preview_url']) ?>"><i class="fa-regular fa-copy"></i> <span>Copia link</span></button>
+            <?php endif; ?>
           </div>
-        </a>
-        <?php if ($it['preview_url']): ?>
-          <div class="sched-actions" style="display:flex;gap:6px;flex-shrink:0;">
-            <button type="button" class="btn small secondary schedule-preview-copy" data-url="<?= e($it['preview_url']) ?>">🔗 Copia</button>
-            <a href="<?= e($it['preview_url']) ?>" target="_blank" rel="noopener" class="btn small secondary">👁️ Anteprima</a>
-          </div>
-        <?php endif; ?>
-      </div>
+        </div>
+      </article>
     <?php endforeach; ?>
-  <?php endif; ?>
-<script>
-document.querySelectorAll('.schedule-preview-copy').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    var url = btn.getAttribute('data-url');
-    navigator.clipboard.writeText(url).then(function () {
-      var original = btn.textContent;
-      btn.textContent = '✅ Copiato!';
-      setTimeout(function () { btn.textContent = original; }, 1800);
-    }).catch(function () {
-      window.prompt('Copia questo link:', url);
-    });
-  });
-});
-</script>
+  </div>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

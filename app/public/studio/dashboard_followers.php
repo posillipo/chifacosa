@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -23,24 +23,26 @@ $followers = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-
-  <div class="card">
-    <strong><?= $total ?></strong> follower totali ·
-    <?= $last7 ?> negli ultimi 7 giorni · <?= $last30 ?> negli ultimi 30 giorni
-  </div>
-
-  <div class="section-title">Elenco follower (<?= count($followers) ?>, ultimi 200)</div>
-  <?php if (!$followers): ?>
-    <div class="card">Nessun follower ancora. Il pulsante "Segui" è già visibile sulla tua pagina pubblica.</div>
-  <?php endif; ?>
-  <?php foreach ($followers as $f): ?>
-    <?php $fullName = trim(($f['first_name'] ?? '') . ' ' . ($f['last_name'] ?? '')); ?>
-    <div class="link-item">
-      <span>
-        <?= e($f['email']) ?>
-        <?php if ($fullName !== ''): ?><br><small style="color:var(--text-muted)"><?= e($fullName) ?><?php if ($f['phone']): ?> · <?= e($f['phone']) ?><?php endif; ?><?php if ($f['postal_code']): ?> · CAP <?= e($f['postal_code']) ?><?php endif; ?></small><?php endif; ?>
-      </span>
-      <small style="color:var(--text-muted)">dal <?= date('d/m/Y', strtotime($f['created_at'])) ?></small>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= $total ?></b><span>Follower totali</span></div>
+      <div class="tlx-kpi"><b><?= $last7 ?></b><span>Ultimi 7 giorni</span></div>
+      <div class="tlx-kpi"><b><?= $last30 ?></b><span>Ultimi 30 giorni</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_invite.php"><b><i class="fa-solid fa-user-plus"></i></b><span>Invita persone</span></a>
     </div>
-  <?php endforeach; ?>
+    <div class="tlx-listhead"><h2>Elenco follower <small>(<?= count($followers) ?>, ultimi 200)</small></h2></div>
+    <?php if ($followers): ?><div class="blx-toolbar"><div class="blx-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-search="#fl-list" placeholder="Cerca per email, nome o telefono..." aria-label="Cerca"></div></div><?php endif; ?>
+    <?php if (!$followers): ?><div class="tlx-empty"><i class="fa-regular fa-heart"></i><b>Nessun follower ancora</b><span>Il pulsante «Segui» è già visibile sulla tua pagina pubblica.</span></div><?php endif; ?>
+    <div class="tlx-empty" data-filter-empty hidden><i class="fa-solid fa-magnifying-glass"></i><b>Nessun risultato</b></div>
+    <div id="fl-list">
+    <?php foreach ($followers as $f): $fullName = trim(($f['first_name'] ?? '') . ' ' . ($f['last_name'] ?? '')); ?>
+      <div class="pnx kit-item" data-state="">
+        <span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($fullName !== '' ? $fullName : $f['email'], 0, 1))) ?></span>
+        <div class="pnx-b"><b><?= e($fullName !== '' ? $fullName : $f['email']) ?></b><small><a href="mailto:<?= e($f['email']) ?>"><?= e($f['email']) ?></a><?php if ($f['phone']): ?> · <?= e($f['phone']) ?><?php endif; ?><?php if ($f['postal_code']): ?> · CAP <?= e($f['postal_code']) ?><?php endif; ?></small></div>
+        <div class="pnx-act"><small class="lkx-hint">dal <?= e(date('d/m/Y', strtotime($f['created_at']))) ?></small></div>
+      </div>
+    <?php endforeach; ?>
+    </div>
+  </div>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

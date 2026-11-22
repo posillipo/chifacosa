@@ -670,3 +670,25 @@ body.studio-mode .container [class*="-search-form"], body.studio-mode .container
 body.studio-mode .container [id$="-list-title"], body.studio-mode .container #fm-list-title { font-size: 17px; font-weight: 800; letter-spacing: -.01em; text-transform: none; color: var(--text); margin-top: 26px; }
 body.studio-mode .container .ai-panel, body.studio-mode .container [class*="-ai-panel"] { background: var(--accent-soft) !important; border: 0 !important; border-radius: 14px; }
 body.studio-mode .container [class*="badge-scheduled"], body.studio-mode .container [class*="badge-private"] { border-radius: 999px; }
+
+/* ===== Gruppo 2: messaggi, follower, prenotazioni ===== */
+body.studio-mode .pnx-img.rnd { border-radius: 50%; }
+body.studio-mode a.pnx { color: var(--text) !important; text-decoration: none; }
+body.studio-mode a.pnx:hover { box-shadow: var(--st-shadow-h); }
+body.studio-mode .pnx-new { border-left: 4px solid var(--accent); }
+body.studio-mode .pnx-lnk { display: flex; gap: 14px; align-items: center; flex: 1; min-width: 0; color: var(--text) !important; text-decoration: none; }
+body.studio-mode .kit-badge { background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 800; min-width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; }
+body.studio-mode .pnx-act { flex-direction: row; }
+body.studio-mode .ibx-av-img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+body.studio-mode .chx-h { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--st-border); border-radius: 16px; padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--st-shadow); }
+body.studio-mode .chx-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; }
+body.studio-mode .chx-day { margin: 10px 0 2px; text-align: center; }
+body.studio-mode .chx-m { align-self: flex-start; max-width: 78%; display: flex; flex-direction: column; gap: 2px; }
+body.studio-mode .chx-m.me { align-self: flex-end; align-items: flex-end; }
+body.studio-mode .chx-b { background: #fff; border: 1px solid var(--st-border); border-radius: 18px 18px 18px 4px; padding: 10px 14px; line-height: 1.45; overflow-wrap: anywhere; }
+body.studio-mode .chx-m.me .chx-b { background: var(--accent); color: #fff; border-color: var(--accent); border-radius: 18px 18px 4px 18px; }
+body.studio-mode .chx-m small { color: var(--text-muted); font-size: 11px; padding: 0 6px; }
+body.studio-mode .chx-form { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; background: linear-gradient(to top, var(--bg) 75%, transparent); padding: 12px 0 8px; }
+body.studio-mode .chx-form textarea { flex: 1; margin: 0; min-height: 46px; max-height: 160px; border-radius: 23px; padding: 12px 16px; resize: none; background: #fff; }
+body.studio-mode .chx-form .tlx-submit { width: 46px; height: 46px; padding: 0; border-radius: 50%; flex: none; }
+body.studio-mode .pnx-img.stc-ph { background: linear-gradient(135deg, #7C5CFF, #B6A2FF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }

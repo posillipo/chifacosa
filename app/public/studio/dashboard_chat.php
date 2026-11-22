@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -58,41 +58,30 @@ $messages = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-    <?php if ($other['avatar_path']): ?>
-      <img src="/<?= e($other['avatar_path']) ?>" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
-    <?php endif; ?>
-    <div>
-      <strong><?= e($other['display_name']) ?></strong><br>
-      <small style="color:var(--text-muted)"><a href="/<?= e($other['slug']) ?>" target="_blank">@<?= e($other['slug']) ?> ↗</a></small>
+  <div class="chx">
+    <header class="chx-h">
+      <a href="/dashboard_messages.php" class="lkx-btn" aria-label="Tutte le conversazioni"><i class="fa-solid fa-arrow-left"></i></a>
+      <?php if ($other['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($other['avatar_path']) ?>" alt=""><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($other['display_name'], 0, 1))) ?></span><?php endif; ?>
+      <div class="pnx-b"><b><?= e($other['display_name']) ?></b><small><a href="/dashboard_profile_view.php?slug=<?= e($other['slug']) ?>">@<?= e($other['slug']) ?></a></small></div>
+    </header>
+    <?php if (!$isMutual): ?><div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div><?php endif; ?>
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+    <div class="chx-list" id="chx-list">
+      <?php if (!$messages): ?><div class="tlx-empty"><i class="fa-regular fa-comment-dots"></i><b>Nessun messaggio ancora</b><span>Scrivi il primo!</span></div><?php endif; ?>
+      <?php $lastDay = ''; foreach ($messages as $m): $mine = (int) $m['sender_id'] === (int) $profile['id']; $day = date('d/m/Y', strtotime($m['created_at'])); ?>
+        <?php if ($day !== $lastDay): $lastDay = $day; ?><div class="tlx-day chx-day"><span><?= $day === date('d/m/Y') ? 'Oggi' : e($day) ?></span></div><?php endif; ?>
+        <div class="chx-m<?= $mine ? ' me' : '' ?>"><div class="chx-b"><?= nl2br(e($m['message'])) ?></div><small><?= e(date('H:i', strtotime($m['created_at']))) ?></small></div>
+      <?php endforeach; ?>
     </div>
-  </div>
 
-  <?php if (!$isMutual): ?>
-    <div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div>
-  <?php endif; ?>
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-    <?php foreach ($messages as $m): ?>
-      <?php $isMine = (int) $m['sender_id'] === (int) $profile['id']; ?>
-      <div style="align-self:<?= $isMine ? 'flex-end' : 'flex-start' ?>;max-width:75%;">
-        <div class="card" style="margin-bottom:2px;<?= $isMine ? 'background:var(--accent);color:#fff;' : '' ?>">
-          <?= nl2br(e($m['message'])) ?>
-        </div>
-        <small style="color:var(--text-muted);font-size:11px;"><?= date('d/m H:i', strtotime($m['created_at'])) ?></small>
-      </div>
-    <?php endforeach; ?>
-    <?php if (!$messages): ?>
-      <div class="card">Nessun messaggio ancora — scrivi il primo!</div>
+    <?php if ($isMutual): ?>
+      <form method="post" class="chx-form" id="chx-form">
+        <?= csrfField() ?>
+        <textarea name="message" rows="1" placeholder="Scrivi un messaggio..." required aria-label="Messaggio"></textarea>
+        <button type="submit" class="tlx-submit" aria-label="Invia"><i class="fa-solid fa-paper-plane"></i></button>
+      </form>
     <?php endif; ?>
   </div>
-
-  <?php if ($isMutual): ?>
-    <form method="post">
-      <?= csrfField() ?>
-      <textarea name="message" rows="3" placeholder="Scrivi un messaggio..." required></textarea>
-      <button type="submit" class="btn">Invia</button>
-    </form>
-  <?php endif; ?>
+  <script src="/studio/assets/studio-chat.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-chat.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

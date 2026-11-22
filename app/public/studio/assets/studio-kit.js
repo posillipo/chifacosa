@@ -150,6 +150,14 @@
       d.addEventListener('click', function () { d.close(); }); }
     d.querySelector('img').src = im.getAttribute('data-lightbox'); d.showModal();
   });
+  // Ricerca in elenco: input[data-search="#lista"] filtra gli elementi .kit-item per testo
+  document.addEventListener('input', function (e) {
+    var inp = e.target.closest('input[data-search]'); if (!inp) return;
+    var list = document.querySelector(inp.getAttribute('data-search')); if (!list) return;
+    var q = inp.value.trim().toLowerCase(), n = 0;
+    list.querySelectorAll('.kit-item').forEach(function (it) { var show = !q || it.textContent.toLowerCase().indexOf(q) >= 0; it.hidden = !show; if (show) n++; });
+    var empty = list.parentNode.querySelector('[data-filter-empty]'); if (empty) empty.hidden = n > 0;
+  });
   // Campo che cambia testi in base alla voce scelta: select[data-dyn] con option data-l (etichetta), data-p (segnaposto), data-h (aiuto)
   document.querySelectorAll('select[data-dyn]').forEach(function (sel) {
     function upd() {
