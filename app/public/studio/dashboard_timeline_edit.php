@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -105,210 +105,81 @@ $extraPhotosStmt->execute([$id]);
 $extraPhotos = $extraPhotosStmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
+$isPrivate = ($post['visibility'] ?? 'public') === 'private';
+$photoCount = ($post['image_path'] ? 1 : 0) + count($extraPhotos);
 ?>
-  <p><a href="/dashboard_post.php"><i class="fa-solid fa-arrow-left"></i> Torna alla Timeline</a></p>
-
   <?php if (isset($_GET['tg']) && $_GET['tg'] === 'ok'): ?><div class="alert success">Inviato su Telegram!</div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <div class="tlx-listhead"><a href="/dashboard_post.php"><i class="fa-solid fa-arrow-left"></i> Torna alla Timeline</a>
+    <?php if (!$isPrivate): ?><a href="/<?= e($profile['slug']) ?>/timeline/<?= (int) $post['id'] ?>" target="_blank">Vedi pagina pubblica <i class="fa-solid fa-arrow-up-right-from-square"></i></a><?php endif; ?></div>
 
-  <form method="post" class="card">
+  <form method="post" class="blx-form" id="blx-form">
     <?= csrfField() ?>
     <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
     <input type="hidden" name="tz_offset_minutes" value="">
-
-    <label>Titolo (opzionale)</label>
-    <input type="text" name="title" value="<?= e($post['title'] ?? '') ?>">
-
-    <label>Testo</label>
-    <textarea name="testo" id="tl-edit-testo" rows="6"><?= e($post['testo'] ?? '') ?></textarea>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-      <button type="button" class="btn small secondary" id="tl-ai-toggle">✨ Genera con AI</button>
-    </div>
-    <div id="tl-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
-      <label>Qualche parola chiave o istruzione per l'AI</label>
-      <textarea id="tl-ai-keywords" rows="2" placeholder="es. annuncio nuovo concerto sabato 14 a Milano"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn small" id="tl-ai-generate">Genera testo</button>
-        <button type="button" class="btn small secondary" id="tl-ai-cancel">Annulla</button>
+    <div class="blx-main">
+      <input type="text" name="title" class="blx-title" placeholder="Titolo (opzionale)" value="<?= e($post['title'] ?? '') ?>" maxlength="200">
+      <div class="blx-editor">
+        <textarea name="testo" id="tl-edit-testo" rows="10" data-ai-target placeholder="Scrivi qui..."><?= e($post['testo'] ?? '') ?></textarea>
       </div>
-      <p id="tl-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+      <?php studioAiBox('es. annuncio nuovo concerto sabato 14 a Milano'); ?>
+      <label class="tlx-lbl" for="tl-hash">Hashtag</label>
+      <input type="text" name="hashtags" id="tl-hash" class="kit-inp" value="<?= e($post['hashtags'] ?? '') ?>" placeholder="#musica #live">
+      <label class="tlx-lbl" for="tl-cta">Invito all'azione (call to action)</label>
+      <input type="text" name="call_to_action" id="tl-cta" class="kit-inp" value="<?= e($post['call_to_action'] ?? '') ?>" placeholder="es. Prenota ora">
     </div>
 
-    <label>Hashtag (opzionale)</label>
-    <input type="text" name="hashtags" value="<?= e($post['hashtags'] ?? '') ?>">
+    <aside class="blx-side">
+      <section class="blx-box">
+        <h3>Pubblicazione</h3>
+        <span class="tlx-lbl">Chi lo vede</span>
+        <?php studioSeg('visibility', ['public' => '<i class="fa-solid fa-earth-europe"></i> Pubblico', 'private' => '<i class="fa-solid fa-lock"></i> Solo io'], $isPrivate ? 'private' : 'public'); ?>
+        <?php studioSwitch('in_feed', 'Mostra nel Feed', (bool) ($post['in_feed'] ?? 1)); ?>
+        <label for="tl-when">Pubblica sui social dal</label>
+        <input type="datetime-local" name="publish_at" id="tl-when" value="<?= e(localDateTimeInputValue($post['publish_at'], $profile)) ?>">
+        <p class="tlx-hint">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
+      </section>
 
-    <label>Call to action (opzionale)</label>
-    <input type="text" name="call_to_action" value="<?= e($post['call_to_action'] ?? '') ?>">
+      <section class="blx-box">
+        <h3>Reindirizzamento</h3>
+        <label for="tl-redir">Link per questo post</label>
+        <input type="url" name="redirect_link" id="tl-redir" value="<?= e($post['redirect_link'] ?? '') ?>" placeholder="https://...">
+        <p class="tlx-hint">Vale solo per <b>questo post</b>, per sempre: chi apre la pagina viene portato subito lì. Diverso dal «Link personalizzato per il feed» del profilo. Vuoto = pagina normale.</p>
+      </section>
 
-    <label>Link di reindirizzamento per questo post (opzionale)</label>
-    <input type="url" name="redirect_link" value="<?= e($post['redirect_link'] ?? '') ?>" placeholder="https://...">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">
-      Diverso dal "Link personalizzato per il feed" (impostazione del profilo): questo vale solo per
-      <strong>questo post</strong>, per sempre — chi apre questa pagina viene reindirizzato subito lì,
-      indipendentemente da altri post o dalle impostazioni del profilo. Lascia vuoto per usare la pagina normale.
-    </p>
+      <?php if ($photoCount > 0): ?>
+      <section class="blx-box">
+        <h3>Foto (<?= $photoCount ?>)</h3>
+        <div class="kit-gallery">
+          <?php if ($post['image_path']): ?><div class="tlx-ph"><img src="/<?= e($post['image_path']) ?>" alt="" data-lightbox="/<?= e($post['image_path']) ?>"><span>Copertina</span>
+            <button type="submit" form="tl-del-0" title="Elimina questa foto" aria-label="Elimina la copertina">&times;</button></div><?php endif; ?>
+          <?php foreach ($extraPhotos as $ph): ?><div class="tlx-ph"><img src="/<?= e($ph['image_path']) ?>" alt="" data-lightbox="/<?= e($ph['image_path']) ?>">
+            <button type="submit" form="tl-del-<?= (int) $ph['id'] ?>" title="Elimina questa foto" aria-label="Elimina la foto">&times;</button></div><?php endforeach; ?>
+        </div>
+        <p class="tlx-hint">Tocca una foto per vederla a schermo intero, la × per toglierla.</p>
+      </section>
+      <?php endif; ?>
+    </aside>
 
-    <label>Privacy</label>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="visibility" value="public" <?= ($post['visibility'] ?? 'public') === 'private' ? '' : 'checked' ?> style="width:auto;"> Pubblico
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="visibility" value="private" <?= ($post['visibility'] ?? 'public') === 'private' ? 'checked' : '' ?> style="width:auto;"> Solo io
-      </label>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-      <input type="checkbox" name="in_feed" value="1" <?= ($post['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
-    </label></div>
-
-    <label>Pubblica sui social (opzionale)</label>
-    <input type="datetime-local" name="publish_at" value="<?= e(localDateTimeInputValue($post['publish_at'], $profile)) ?>">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
-
-    <button type="submit" class="btn">Salva modifiche</button>
-    <a href="/dashboard_post.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
+    <div class="blx-bar">
+      <a href="/dashboard_post.php" class="btn secondary">Annulla</a>
+      <button type="submit" class="tlx-submit blx-submit"><i class="fa-solid fa-check"></i> <span>Salva modifiche</span></button>
+    </div>
   </form>
 
   <?php if ($post['image_path']): ?>
-  <div class="card">
-    <div class="section-title" style="margin-top:0;">Foto</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <div style="position:relative;width:84px;">
-        <img src="/<?= e($post['image_path']) ?>" class="tl-photo-thumb" data-src="/<?= e($post['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;cursor:pointer;">
-        <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
-        <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');" style="display:contents;">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="delete_photo">
-          <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-          <input type="hidden" name="photo_id" value="0">
-          <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
-        </form>
-      </div>
-      <?php foreach ($extraPhotos as $ph): ?>
-        <div style="position:relative;width:84px;">
-          <img src="/<?= e($ph['image_path']) ?>" class="tl-photo-thumb" data-src="/<?= e($ph['image_path']) ?>" style="width:84px;height:84px;border-radius:8px;object-fit:cover;cursor:pointer;">
-          <form method="post" onsubmit="return confirm('Eliminare questa foto?');" style="display:contents;">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="delete_photo">
-            <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-            <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
-            <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
-          </form>
-        </div>
-      <?php endforeach; ?>
-    </div>
-    <p style="color:var(--text-muted);font-size:12px;margin:10px 0 0;">Clicca su una foto per vederla a tutto schermo, sulla × per eliminarla singolarmente senza toccare le altre.</p>
-  </div>
-  <div id="tl-photo-lightbox" style="display:none;position:fixed;inset:0;width:100vw;height:100vh;background:rgba(0,0,0,0.92);z-index:2000;">
-    <button type="button" id="tl-photo-lightbox-close" aria-label="Chiudi" style="position:fixed;top:16px;right:16px;z-index:2010;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:18px;cursor:pointer;">✕</button>
-    <img id="tl-photo-lightbox-img" src="" alt="" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:94vw;max-height:94vh;object-fit:contain;">
-  </div>
+    <form method="post" id="tl-del-0" data-confirm="Eliminare la copertina? La prossima foto la sostituirà."><?= csrfField() ?><input type="hidden" name="action" value="delete_photo"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><input type="hidden" name="photo_id" value="0"></form>
   <?php endif; ?>
+  <?php foreach ($extraPhotos as $ph): ?>
+    <form method="post" id="tl-del-<?= (int) $ph['id'] ?>" data-confirm="Eliminare questa foto?"><?= csrfField() ?><input type="hidden" name="action" value="delete_photo"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>"></form>
+  <?php endforeach; ?>
 
-  <?php if (($post['visibility'] ?? 'public') !== 'private'): ?>
-    <p><a href="/<?= e($profile['slug']) ?>/timeline/<?= (int) $post['id'] ?>" target="_blank">Vedi pagina pubblica ↗</a></p>
+  <?php if (!empty($profile['telegram_chat_id']) && !$isPrivate): ?>
+    <div class="blx-danger blx-tg-box"><div><b>Telegram</b><p>Invia questo post al canale <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p></div>
+      <form method="post" data-confirm="Inviare questo post su Telegram?"><?= csrfField() ?><input type="hidden" name="action" value="send_telegram"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><button class="stc-act" type="submit"><i class="fa-brands fa-telegram"></i> <span>Invia su Telegram</span></button></form></div>
   <?php endif; ?>
+  <div class="blx-danger"><div><b>Elimina aggiornamento</b><p>Elimina definitivamente questo aggiornamento. L'operazione non si può annullare.</p></div>
+    <form method="post" data-confirm="Eliminare definitivamente questo aggiornamento? L'operazione non si può annullare."><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><button class="stc-act danger" type="submit"><i class="fa-solid fa-trash"></i> <span>Elimina aggiornamento</span></button></form></div>
 
-  <?php if (!empty($profile['telegram_chat_id']) && ($post['visibility'] ?? 'public') !== 'private'): ?>
-  <div class="card">
-    <div class="section-title" style="margin-top:0;">Telegram</div>
-    <p style="color:var(--text-muted);font-size:13px;">Invia questo post manualmente al canale Telegram <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p>
-    <form method="post" onsubmit="return confirm('Inviare questo post su Telegram?');">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="send_telegram">
-      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-      <button class="btn secondary" type="submit"><i class="fa-brands fa-telegram"></i> Invia su Telegram</button>
-    </form>
-  </div>
-  <?php endif; ?>
-
-  <div class="card">
-    <div class="section-title" style="margin-top:0;color:#dc3545;">Zona pericolosa</div>
-    <form method="post" onsubmit="return confirm('Eliminare definitivamente questo aggiornamento? L\'operazione non si può annullare.');">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="delete">
-      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-      <button class="btn danger" type="submit">🗑️ Elimina aggiornamento</button>
-    </form>
-  </div>
-
-  <script>
-    (function () {
-      const toggleBtn = document.getElementById('tl-ai-toggle');
-      const panel = document.getElementById('tl-ai-panel');
-      const cancelBtn = document.getElementById('tl-ai-cancel');
-      const generateBtn = document.getElementById('tl-ai-generate');
-      const keywordsInput = document.getElementById('tl-ai-keywords');
-      const statusEl = document.getElementById('tl-ai-status');
-      const textarea = document.getElementById('tl-edit-testo');
-      const csrfInput = document.querySelector('#tl-ai-toggle').closest('form').querySelector('input[name="csrf"]');
-
-      toggleBtn.addEventListener('click', function () {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        if (panel.style.display === 'block') keywordsInput.focus();
-      });
-      cancelBtn.addEventListener('click', function () {
-        panel.style.display = 'none';
-        statusEl.textContent = '';
-      });
-
-      generateBtn.addEventListener('click', function () {
-        const keywords = keywordsInput.value.trim();
-        if (!keywords) {
-          statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-          return;
-        }
-        generateBtn.disabled = true;
-        statusEl.textContent = 'Generazione in corso...';
-
-        const body = new URLSearchParams();
-        body.set('csrf', csrfInput.value);
-        body.set('keywords', keywords);
-
-        fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            generateBtn.disabled = false;
-            if (data.ok) {
-              textarea.value = data.text;
-              statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
-            } else {
-              statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-            }
-          })
-          .catch(function () {
-            generateBtn.disabled = false;
-            statusEl.textContent = 'Errore di connessione. Riprova.';
-          });
-      });
-    })();
-
-    (function () {
-      const lightbox = document.getElementById('tl-photo-lightbox');
-      if (!lightbox) return;
-      const lightboxImg = document.getElementById('tl-photo-lightbox-img');
-      const closeBtn = document.getElementById('tl-photo-lightbox-close');
-
-      function open(src) {
-        lightboxImg.src = src;
-        lightbox.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-      }
-      function close() {
-        lightbox.style.display = 'none';
-        lightboxImg.src = '';
-        document.body.style.overflow = '';
-      }
-
-      document.querySelectorAll('.tl-photo-thumb').forEach(function (img) {
-        img.addEventListener('click', function () { open(img.dataset.src); });
-      });
-      closeBtn.addEventListener('click', close);
-      lightbox.addEventListener('click', function (e) {
-        if (e.target === lightbox) close();
-      });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && lightbox.style.display === 'block') close();
-      });
-    })();
-  </script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

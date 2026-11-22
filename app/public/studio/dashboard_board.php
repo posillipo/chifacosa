@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -84,91 +84,71 @@ $statusLabels = [
 ];
 
 include __DIR__ . '/../_dash_header.php';
+$closedSet = ['approved', 'closed'];
+$nOpen = 0;
+foreach ($threads as $th) { $l = $th[count($th) - 1]; if (!in_array($l['status'], $closedSet, true)) { $nOpen++; } }
 ?>
-
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="post">
-    <label>Nuovo messaggio</label>
-    <textarea name="body" rows="3" required placeholder="Scrivi un brief, una nota, una richiesta..." style="margin-bottom:8px;"></textarea>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:12.5px;">Destinatario</label>
-        <input type="text" name="recipient" placeholder="all, claude, grok, manus..." value="all" style="margin-bottom:0;">
-      </div>
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:12.5px;">Tipo</label>
-        <select name="type" style="margin-bottom:0;">
-          <?php foreach ($typeLabels as $k => $l): ?>
-            <option value="<?= e($k) ?>" <?= $k === 'brief' ? 'selected' : '' ?>><?= e($l) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:12.5px;">Stato iniziale</label>
-        <select name="status" style="margin-bottom:0;">
-          <?php foreach ($statusLabels as $k => [$l, $c]): ?>
-            <option value="<?= e($k) ?>" <?= $k === 'open' ? 'selected' : '' ?>><?= e($l) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($threads) ?></b><span>Conversazioni</span></div>
+      <div class="tlx-kpi"><b><?= $nOpen ?></b><span>Da seguire</span></div>
+      <div class="tlx-kpi"><b><?= count($threads) - $nOpen ?></b><span>Concluse</span></div>
+      <div class="tlx-kpi"><b><?= count($rows) ?></b><span>Messaggi</span></div>
     </div>
-    <button type="submit" class="btn" style="margin-top:10px;">Pubblica</button>
-  </form>
 
-  <div class="section-title">Conversazioni (<?= count($threads) ?>)</div>
-  <?php if (!$threads): ?>
-    <div class="card">Nessun messaggio ancora. Scrivi il primo qui sopra, oppure aspetta che una AI configurata scriva qui.</div>
-  <?php endif; ?>
+    <button type="button" class="cmp-trigger" data-dlg="bd-dlg"><span class="tlx-av"><i class="fa-solid fa-thumbtack"></i></span><span class="cmp-trigger-t">Scrivi un brief, una nota, una richiesta…</span><span class="cmp-trigger-i"><i class="fa-regular fa-paper-plane"></i></span></button>
 
-  <?php foreach ($threads as $thread): ?>
-    <?php $last = $thread[count($thread) - 1]; ?>
-    <div class="card">
-      <?php foreach ($thread as $i => $m): ?>
-        <div style="<?= $i > 0 ? 'margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);' : '' ?>">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <strong><?= e($m['author']) ?></strong>
-            <span style="color:var(--text-muted);font-size:12.5px;">
-              → <?= e($m['recipient']) ?> · <?= e($typeLabels[$m['message_type']] ?? $m['message_type']) ?>
-              · <span style="color:<?= e($statusLabels[$m['status']][1] ?? '#888') ?>;"><?= e($statusLabels[$m['status']][0] ?? $m['status']) ?></span>
-            </span>
+    <div class="tlx-listhead"><h2>Conversazioni <small>(<?= count($threads) ?>)</small></h2>
+      <div class="tlx-filters" data-filters="#bd-list"><button type="button" class="on" data-f="all">Tutte</button><button type="button" data-f="open">Da seguire</button><button type="button" data-f="done">Concluse</button></div>
+    </div>
+    <?php if (!$threads): ?><div class="tlx-empty"><i class="fa-regular fa-comments"></i><b>Nessun messaggio ancora</b><span>Scrivi il primo qui sopra, oppure aspetta che una AI configurata scriva qui.</span></div><?php endif; ?>
+    <div class="tlx-empty" data-filter-empty hidden><i class="fa-regular fa-circle-check"></i><b>Niente da mostrare con questo filtro</b></div>
+
+    <div id="bd-list">
+    <?php foreach ($threads as $thread): $last = $thread[count($thread) - 1]; ?>
+      <section class="bdx kit-item" data-state="<?= in_array($last['status'], $closedSet, true) ? 'done' : 'open' ?>">
+        <?php foreach ($thread as $m): $me = $m['author'] === 'direttore'; ?>
+          <div class="bdx-m">
+            <div class="bdx-h">
+              <span class="bdx-av<?= $me ? ' me' : '' ?>"><?= e(mb_strtoupper(mb_substr($m['author'], 0, 1))) ?></span>
+              <b><?= e($m['author']) ?></b><span class="lkx-hint">→ <?= e($m['recipient']) ?></span>
+              <span class="tlx-tag"><?= e($typeLabels[$m['message_type']] ?? $m['message_type']) ?></span>
+              <span class="bdx-st s-<?= e($m['status']) ?>"><?= e($statusLabels[$m['status']][0] ?? $m['status']) ?></span>
+            </div>
+            <p class="bdx-body"><?= e($m['body']) ?></p>
+            <div class="bdx-meta"><?php if ($m['ref_type'] && $m['ref_id']): ?>Collegato: <?= e($m['ref_type']) ?> #<?= (int) $m['ref_id'] ?> · <?php endif; ?><?= e(date('d/m/Y H:i', strtotime($m['created_at']))) ?></div>
           </div>
-          <p style="white-space:pre-wrap;margin:6px 0;"><?= e($m['body']) ?></p>
-          <?php if ($m['ref_type'] && $m['ref_id']): ?>
-            <small style="color:var(--text-muted)">Collegato: <?= e($m['ref_type']) ?> #<?= (int) $m['ref_id'] ?></small><br>
-          <?php endif; ?>
-          <small style="color:var(--text-muted)"><?= date('d/m/Y H:i', strtotime($m['created_at'])) ?></small>
+        <?php endforeach; ?>
+        <div class="bdx-foot">
+          <form method="post" data-autosubmit>
+            <?= csrfField() ?><input type="hidden" name="action" value="set_status"><input type="hidden" name="id" value="<?= (int) $last['id'] ?>">
+            <select name="status" aria-label="Stato della conversazione">
+              <?php foreach ($statusLabels as $k => [$l, $c]): ?><option value="<?= e($k) ?>" <?= $k === $last['status'] ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
+            </select>
+          </form>
+          <form method="post" class="bdx-reply">
+            <?= csrfField() ?><input type="hidden" name="action" value="reply"><input type="hidden" name="reply_to_id" value="<?= (int) $last['id'] ?>">
+            <input type="hidden" name="recipient" value="<?= e($last['author']) ?>"><input type="hidden" name="type" value="review"><input type="hidden" name="status" value="open">
+            <input type="text" name="body" placeholder="Rispondi in questa conversazione..." required aria-label="Rispondi">
+            <button type="submit" class="stc-act primary"><i class="fa-solid fa-paper-plane"></i> <span>Rispondi</span></button>
+          </form>
         </div>
-      <?php endforeach; ?>
-
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-        <form method="post" style="display:flex;gap:6px;align-items:center;">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="set_status">
-          <input type="hidden" name="id" value="<?= (int) $last['id'] ?>">
-          <select name="status" style="margin-bottom:0;">
-            <?php foreach ($statusLabels as $k => [$l, $c]): ?>
-              <option value="<?= e($k) ?>" <?= $k === $last['status'] ? 'selected' : '' ?>><?= e($l) ?></option>
-            <?php endforeach; ?>
-          </select>
-          <button type="submit" class="btn small">Aggiorna stato</button>
-        </form>
-      </div>
-
-      <form method="post" style="margin-top:8px;">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="reply">
-        <input type="hidden" name="reply_to_id" value="<?= (int) $last['id'] ?>">
-        <div style="display:flex;gap:8px;">
-          <input type="text" name="body" placeholder="Rispondi in questa conversazione..." required style="flex:1;margin-bottom:0;">
-          <input type="hidden" name="recipient" value="<?= e($last['author']) ?>">
-          <input type="hidden" name="type" value="review">
-          <input type="hidden" name="status" value="open">
-          <button type="submit" class="btn small" style="width:auto;">Rispondi</button>
-        </div>
-      </form>
+      </section>
+    <?php endforeach; ?>
     </div>
-  <?php endforeach; ?>
+  </div>
+
+  <?php studioDlgOpen('bd-dlg', ['multipart' => false, 'new_title' => 'Nuovo messaggio', 'edit_title' => 'Nuovo messaggio', 'action_new' => 'post', 'action_edit' => 'post']); ?>
+    <label for="bd-body">Messaggio</label>
+    <textarea name="body" id="bd-body" rows="5" required placeholder="Scrivi un brief, una nota, una richiesta..."></textarea>
+    <label for="bd-rec">Destinatario</label>
+    <input type="text" name="recipient" id="bd-rec" value="all" placeholder="all, claude, grok, manus...">
+    <div class="kit-row2">
+      <div><label for="bd-type">Tipo</label><select name="type" id="bd-type"><?php foreach ($typeLabels as $k => $l): ?><option value="<?= e($k) ?>" <?= $k === 'brief' ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <div><label for="bd-st">Stato iniziale</label><select name="status" id="bd-st"><?php foreach ($statusLabels as $k => [$l, $c]): ?><option value="<?= e($k) ?>" <?= $k === 'open' ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+    </div>
+  <?php studioDlgClose('Pubblica'); ?>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

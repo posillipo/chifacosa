@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -42,58 +42,42 @@ $user = currentUser();
 $profile = getActingProfile($user);
 
 include __DIR__ . '/../_dash_header.php';
+$linked = !empty($profile['spotify_show_id']);
 ?>
-
-  <?php if (!empty($profile['spotify_show_id'])): ?>
-    <div class="card">
-      <strong>Podcast collegato:</strong> <?= e($profile['spotify_show_name'] ?: $profile['spotify_show_id']) ?>
-      <br>
-      <a href="https://open.spotify.com/show/<?= e($profile['spotify_show_id']) ?>" target="_blank">Vedi su Spotify ↗</a>
-      <br><br>
-      <a href="/<?= e($profile['slug']) ?>/podcast" target="_blank">Vedi la tua pagina pubblica Podcast ↗</a>
-      <form method="post" style="margin-top:12px;" onsubmit="return confirm('Scollegare il podcast? La sezione dedicata sparirà dalla tua pagina pubblica.');">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="unlink">
-        <button class="btn danger" type="submit">Scollega podcast</button>
-      </form>
-    </div>
-  <?php else: ?>
-    <div class="alert error">Nessun podcast collegato ancora — cercalo qui sotto.</div>
-  <?php endif; ?>
-
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="search">
-    <label>Cerca il nome del tuo podcast su Spotify</label>
-    <input type="text" name="query" value="<?= e($searchQuery) ?>" placeholder="es. il nome del tuo podcast" required>
-    <button type="submit" class="btn">Cerca</button>
-  </form>
-
-  <?php if ($searchResults): ?>
-    <div class="section-title">Risultati (<?= count($searchResults) ?>) — seleziona il tuo podcast</div>
-    <?php foreach ($searchResults as $r): ?>
-      <div class="link-item">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <?php if ($r['image']): ?>
-            <img src="<?= e($r['image']) ?>" alt="" style="width:48px;height:48px;border-radius:8px;">
-          <?php endif; ?>
-          <div>
-            <strong><?= e($r['name']) ?></strong><br>
-            <small style="color:var(--text-muted)"><?= e($r['publisher']) ?> ·
-              <a href="<?= e($r['spotify_url']) ?>" target="_blank">Vedi su Spotify</a>
-            </small>
-          </div>
+  <div class="tlx">
+    <?php if ($linked): ?>
+      <div class="box">
+        <h3><i class="fa-solid fa-podcast"></i> Podcast collegato</h3>
+        <p><b><?= e($profile['spotify_show_name'] ?: $profile['spotify_show_id']) ?></b></p>
+        <div class="box-row">
+          <a class="stc-act primary" href="/<?= e($profile['slug']) ?>/podcast" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>La tua pagina Podcast</span></a>
+          <a class="stc-act" href="https://open.spotify.com/show/<?= e($profile['spotify_show_id']) ?>" target="_blank" rel="noopener"><i class="fa-brands fa-spotify"></i> <span>Vedi su Spotify</span></a>
+          <form method="post" data-confirm="Scollegare il podcast? La sezione dedicata sparirà dalla tua pagina pubblica."><?= csrfField() ?><input type="hidden" name="action" value="unlink"><button class="stc-act danger" type="submit"><i class="fa-solid fa-link-slash"></i> <span>Scollega</span></button></form>
         </div>
-        <form method="post">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="link">
-          <input type="hidden" name="show_id" value="<?= e($r['id']) ?>">
-          <input type="hidden" name="show_name" value="<?= e($r['name']) ?>">
-          <button class="btn small" type="submit">È il mio podcast</button>
-        </form>
       </div>
-    <?php endforeach; ?>
-  <?php elseif ($searchQuery !== ''): ?>
-    <div class="card">Nessun podcast trovato con questo nome. Prova con un termine diverso.</div>
-  <?php endif; ?>
+    <?php else: ?>
+      <div class="tlx-empty"><i class="fa-solid fa-podcast"></i><b>Nessun podcast collegato ancora</b><span>Cercalo qui sotto per nome: lo trovi su Spotify.</span></div>
+    <?php endif; ?>
+
+    <form method="post" class="blx-add">
+      <?= csrfField() ?><input type="hidden" name="action" value="search">
+      <input type="text" name="query" value="<?= e($searchQuery) ?>" placeholder="Cerca il nome del tuo podcast su Spotify" required aria-label="Nome del podcast">
+      <button type="submit" class="blx-new"><i class="fa-solid fa-magnifying-glass"></i> <span>Cerca</span></button>
+    </form>
+
+    <?php if ($searchResults): ?>
+      <div class="tlx-listhead"><h2>Risultati <small>(<?= count($searchResults) ?>)</small></h2><span class="lkx-hint">scegli il tuo podcast</span></div>
+      <?php foreach ($searchResults as $r): ?>
+        <div class="pnx">
+          <?php if ($r['image']): ?><img class="pnx-img" src="<?= e($r['image']) ?>" alt="" loading="lazy"><?php else: ?><span class="pnx-img stc-ph"><i class="fa-solid fa-podcast"></i></span><?php endif; ?>
+          <div class="pnx-b"><b><?= e($r['name']) ?></b><small><?= e($r['publisher']) ?> · <a href="<?= e($r['spotify_url']) ?>" target="_blank" rel="noopener">Vedi su Spotify</a></small></div>
+          <form method="post" class="pnx-act"><?= csrfField() ?><input type="hidden" name="action" value="link"><input type="hidden" name="show_id" value="<?= e($r['id']) ?>"><input type="hidden" name="show_name" value="<?= e($r['name']) ?>"><button class="stc-act primary" type="submit"><i class="fa-solid fa-check"></i> <span>È il mio podcast</span></button></form>
+        </div>
+      <?php endforeach; ?>
+    <?php elseif ($searchQuery !== ''): ?>
+      <div class="tlx-empty"><i class="fa-solid fa-magnifying-glass"></i><b>Nessun podcast trovato</b><span>Prova con un termine diverso.</span></div>
+    <?php endif; ?>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

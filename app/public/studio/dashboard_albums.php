@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -144,275 +144,92 @@ $stmt->execute([$profile['id']]);
 $albums = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
+$alPub = count(array_filter($albums, fn ($a) => (int) $a['is_public'] === 1));
 ?>
-
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-  <style>
-  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
-     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
-  .container { max-width: 1240px; }
-  .dash-two-col { display: block; }
-  .dash-two-col > div { min-width: 0; }
-  @media (min-width: 760px) {
-    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  }
-  </style>
-
-  <div class="dash-two-col">
-  <div class="dash-two-col-main">
-  <form method="post" enctype="multipart/form-data" class="card"<?= uploadProgressAttrs() ?>>
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="add">
-    <input type="hidden" name="tz_offset_minutes" value="">
-    <label>Titolo album</label>
-    <input type="text" name="title" required placeholder="es. Il nostro tour 2026">
-    <label>Descrizione (opzionale)</label>
-    <textarea name="description" id="alb-add-description" rows="4" placeholder="Racconta l'album..."></textarea>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-      <button type="button" class="btn small secondary" id="alb-add-ai-toggle">✨ Genera con AI</button>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($albums) ?></b><span>Album</span></div>
+      <div class="tlx-kpi"><b><?= $alPub ?></b><span>Pubblici</span></div>
+      <div class="tlx-kpi"><b><?= count($albums) - $alPub ?></b><span>Solo io</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/<?= e($profile['slug']) ?>/foto" target="_blank"><b><i class="fa-solid fa-arrow-up-right-from-square"></i></b><span>Pagina pubblica</span></a>
     </div>
-    <div id="alb-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
-      <label>Qualche parola chiave o istruzione per l'AI</label>
-      <textarea id="alb-add-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn small" id="alb-add-ai-generate">Genera testo</button>
-        <button type="button" class="btn small secondary" id="alb-add-ai-cancel">Annulla</button>
-      </div>
-      <p id="alb-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
+
+    <button type="button" class="cmp-trigger" data-dlg="al-dlg"><span class="tlx-av"><i class="fa-regular fa-images"></i></span><span class="cmp-trigger-t">Crea un nuovo album…</span><span class="cmp-trigger-i"><i class="fa-regular fa-image"></i></span></button>
+
+    <div class="tlx-listhead"><h2>I tuoi album <small>(<?= count($albums) ?>)</small></h2>
+      <div class="tlx-filters" data-filters="#al-list"><button type="button" class="on" data-f="all">Tutti</button><button type="button" data-f="public">Pubblici</button><button type="button" data-f="scheduled">Programmati</button><button type="button" data-f="private">Solo io</button></div>
     </div>
-    <label>Foto (fino a <?= ALBUM_MAX_PHOTOS ?>)</label>
-    <input type="file" name="images[]" accept="image/*" multiple required>
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">La prima foto selezionata diventa la copertina dell'album.</p>
-    <label>Privacy</label>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="visibility" value="public" checked style="width:auto;"> Pubblico
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="visibility" value="private" style="width:auto;"> Solo io
-      </label>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
-    </label></div>
-    <label>Pubblica sui social (opzionale)</label>
-    <input type="datetime-local" name="publish_at">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
-    <button type="submit" class="btn" style="margin-top:10px;">Crea album</button>
-  </form>
+    <?php if (!$albums): ?><div class="tlx-empty"><i class="fa-regular fa-images"></i><b>Nessun album ancora</b><span>Crea il primo con le tue foto (fino a <?= ALBUM_MAX_PHOTOS ?>): comparirà sulla tua pagina e nel Feed.</span></div><?php endif; ?>
+    <div class="tlx-empty" data-filter-empty hidden><i class="fa-regular fa-circle-check"></i><b>Niente da mostrare con questo filtro</b></div>
 
-  </div>
-
-  <div class="dash-two-col-side">
-  <div class="section-title">I tuoi album (<?= count($albums) ?>)</div>
-  <?php foreach ($albums as $al): ?>
-    <?php
+    <div id="al-list">
+    <?php foreach ($albums as $al):
       $isScheduled = $al['publish_at'] && strtotime($al['publish_at']) > time();
-      $photoCount = 1 + count(getAlbumPhotos((int) $al['id']));
+      $extra = getDB()->prepare('SELECT id, image_path FROM photo_album_photos WHERE album_id=? ORDER BY sort_order ASC, id ASC');
+      $extra->execute([(int) $al['id']]); $extra = $extra->fetchAll();
+      $photoCount = ($al['cover_path'] ? 1 : 0) + count($extra);
+      $state = !(int) $al['is_public'] ? 'private' : ($isScheduled ? 'scheduled' : 'public');
+      $pub = siteUrl('/' . $profile['slug'] . '/album/' . (int) $al['id']);
+      $share = json_encode(['t' => $al['title'], 'u' => $pub], JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT);
+      $fill = json_encode(['id' => (int) $al['id'], 'title' => $al['title'], 'description' => $al['description'] ?? '', 'visibility' => (int) $al['is_public'] === 1 ? 'public' : 'private',
+        'in_feed' => (int) ($al['in_feed'] ?? 1), 'publish_at' => localDateTimeInputValue($al['publish_at'], $profile)], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
     ?>
-    <div class="event-item" style="display:flex;gap:14px;align-items:flex-start;">
-      <?php if ($al['cover_path']): ?>
-        <img src="/<?= e($al['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-      <?php endif; ?>
-      <div style="flex:1;min-width:0;">
-        <strong><?= e($al['title']) ?></strong> <?= authorBadgeHtml($al['created_by'] ?? null) ?>
-        <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $photoCount ?> foto</span>
-        <?php if (!(int) $al['is_public']): ?>
-          <div style="color:var(--text-muted);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-lock"></i> Solo io</div>
-        <?php elseif ($isScheduled): ?>
-          <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($al['publish_at'], $profile)) ?></div>
-        <?php else: ?>
-          <div style="color:#2e7d32;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Pubblico<?= (int) ($al['in_feed'] ?? 1) ? '' : ' · non nel Feed' ?></div>
-        <?php endif; ?>
-
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <a href="/<?= e($profile['slug']) ?>/album/<?= (int) $al['id'] ?>" target="_blank" class="btn small secondary">Vedi pagina pubblica</a>
-          <form method="post" onsubmit="return confirm('Eliminare questo album? Tutte le foto verranno cancellate.');">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
-            <button class="btn small danger" type="submit">Elimina</button>
-          </form>
-        </div>
-
-        <details style="margin-top:8px;">
-          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-
-          <?php
-            $alExtraPhotos = getDB()->prepare('SELECT id, image_path FROM photo_album_photos WHERE album_id=? ORDER BY sort_order ASC, id ASC');
-            $alExtraPhotos->execute([(int) $al['id']]);
-            $alExtraPhotos = $alExtraPhotos->fetchAll();
-          ?>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-            <?php if ($al['cover_path']): ?>
-              <div style="position:relative;width:72px;">
-                <img src="/<?= e($al['cover_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
-                <span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;">Copertina</span>
-                <form method="post" onsubmit="return confirm('Eliminare la copertina? La prossima foto la sostituirà.');">
-                  <?= csrfField() ?>
-                  <input type="hidden" name="action" value="delete_photo">
-                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
-                  <input type="hidden" name="photo_id" value="0">
-                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
-                </form>
-              </div>
-            <?php endif; ?>
-            <?php foreach ($alExtraPhotos as $ph): ?>
-              <div style="position:relative;width:72px;">
-                <img src="/<?= e($ph['image_path']) ?>" style="width:72px;height:72px;border-radius:8px;object-fit:cover;">
-                <form method="post" onsubmit="return confirm('Eliminare questa foto?');">
-                  <?= csrfField() ?>
-                  <input type="hidden" name="action" value="delete_photo">
-                  <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
-                  <input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>">
-                  <button type="submit" title="Elimina questa foto" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;line-height:1;cursor:pointer;">×</button>
-                </form>
-              </div>
-            <?php endforeach; ?>
+      <article class="stc stc-list kit-item" data-state="<?= e($state) ?>">
+        <span class="stc-thumb"><?php if ($al['cover_path']): ?><img src="/<?= e($al['cover_path']) ?>" alt="" loading="lazy"><?php else: ?><span class="stc-ph"><i class="fa-regular fa-images"></i></span><?php endif; ?></span>
+        <div class="stc-body">
+          <div class="stc-meta1">
+            <span class="stc-type stc-violet">Album</span>
+            <?php if (!(int) $al['is_public']): ?><span class="stc-status stc-s-grey"><i class="fa-solid fa-lock"></i> Solo io</span>
+            <?php elseif ($isScheduled): ?><span class="stc-status stc-s-warn"><i class="fa-regular fa-clock"></i> Programmato · <?= e(formatLocalDateTime($al['publish_at'], $profile)) ?></span>
+            <?php else: ?><span class="stc-status stc-s-ok"><i class="fa-solid fa-circle-check"></i> Pubblicato</span><?php endif; ?>
+            <?php if ((int) $al['is_public'] && !(int) ($al['in_feed'] ?? 1)): ?><span class="tlx-tag">Fuori dal Feed</span><?php endif; ?>
+            <?= authorBadgeHtml($al['created_by'] ?? null) ?>
           </div>
-          <p style="color:var(--text-muted);font-size:12px;margin:6px 0 12px;">Clicca la × su una foto per eliminarla singolarmente, senza toccare le altre.</p>
-
-          <form method="post" enctype="multipart/form-data"<?= uploadProgressAttrs() ?>>
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="id" value="<?= (int) $al['id'] ?>">
-            <input type="hidden" name="tz_offset_minutes" value="">
-            <label>Titolo album</label>
-            <input type="text" name="title" value="<?= e($al['title']) ?>" required>
-            <label>Descrizione (opzionale)</label>
-            <textarea name="description" class="alb-edit-description" rows="4"><?= e($al['description'] ?? '') ?></textarea>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-              <button type="button" class="btn small secondary alb-edit-ai-toggle">✨ Genera con AI</button>
+          <h3 class="stc-title"><?= e($al['title']) ?></h3>
+          <div class="stc-meta2"><i class="fa-regular fa-images"></i> <?= $photoCount ?> foto</div>
+          <div class="stc-actions">
+            <button type="button" class="stc-act primary" data-dlg="al-dlg" data-fill='<?= e($fill) ?>'><i class="fa-solid fa-pen"></i> <span>Modifica</span></button>
+            <a class="stc-act" href="/<?= e($profile['slug']) ?>/album/<?= (int) $al['id'] ?>" target="_blank" title="Pagina pubblica"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Pagina pubblica</span></a>
+            <button type="button" class="stc-act" data-share='<?= e($share) ?>' title="Condividi"><i class="fa-solid fa-share-nodes"></i> <span>Condividi</span></button>
+            <form method="post" class="ibx-inline" data-confirm="Eliminare questo album? Tutte le foto verranno cancellate."><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $al['id'] ?>"><button class="stc-act danger" type="submit" title="Elimina"><i class="fa-solid fa-trash"></i> <span>Elimina</span></button></form>
+          </div>
+          <?php if ($photoCount > 0): ?>
+          <details class="vdx-edit"><summary><i class="fa-regular fa-images"></i> Gestisci le foto (<?= $photoCount ?>)</summary>
+            <div class="kit-gallery">
+              <?php if ($al['cover_path']): ?>
+                <div class="tlx-ph"><img src="/<?= e($al['cover_path']) ?>" alt="" data-lightbox="/<?= e($al['cover_path']) ?>"><span>Copertina</span>
+                  <form method="post" data-confirm="Eliminare la copertina? La prossima foto la sostituirà."><?= csrfField() ?><input type="hidden" name="action" value="delete_photo"><input type="hidden" name="id" value="<?= (int) $al['id'] ?>"><input type="hidden" name="photo_id" value="0"><button type="submit" title="Elimina questa foto" aria-label="Elimina la copertina">&times;</button></form></div>
+              <?php endif; ?>
+              <?php foreach ($extra as $ph): ?>
+                <div class="tlx-ph"><img src="/<?= e($ph['image_path']) ?>" alt="" data-lightbox="/<?= e($ph['image_path']) ?>">
+                  <form method="post" data-confirm="Eliminare questa foto?"><?= csrfField() ?><input type="hidden" name="action" value="delete_photo"><input type="hidden" name="id" value="<?= (int) $al['id'] ?>"><input type="hidden" name="photo_id" value="<?= (int) $ph['id'] ?>"><button type="submit" title="Elimina questa foto" aria-label="Elimina la foto">&times;</button></form></div>
+              <?php endforeach; ?>
             </div>
-            <div class="alb-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
-              <label>Qualche parola chiave o istruzione per l'AI</label>
-              <textarea class="alb-edit-ai-keywords" rows="2" placeholder="es. foto del tour estivo 2026, tappa di Milano"></textarea>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn small alb-edit-ai-generate">Genera testo</button>
-                <button type="button" class="btn small secondary alb-edit-ai-cancel">Annulla</button>
-              </div>
-              <p class="alb-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
-            </div>
-            <label>Aggiungi altre foto (opzionale — si aggiungono a quelle già presenti)</label>
-            <input type="file" name="images[]" accept="image/*" multiple>
-            <label>Privacy</label>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="visibility" value="public" <?= (int) $al['is_public'] === 1 ? 'checked' : '' ?> style="width:auto;"> Pubblico
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="visibility" value="private" <?= (int) $al['is_public'] === 0 ? 'checked' : '' ?> style="width:auto;"> Solo io
-              </label>
-            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-              <input type="checkbox" name="in_feed" value="1" <?= (int) ($al['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
-            </label></div>
-            <label>Pubblica sui social (opzionale)</label>
-            <input type="datetime-local" name="publish_at" value="<?= e(localDateTimeInputValue($al['publish_at'], $profile)) ?>">
-            <button type="submit" class="btn small" style="margin-top:10px;">Salva modifiche</button>
-          </form>
-        </details>
-      </div>
+            <p class="tlx-hint">Tocca una foto per vederla a schermo intero, la × per toglierla senza toccare le altre.</p>
+          </details>
+          <?php endif; ?>
+        </div>
+      </article>
+    <?php endforeach; ?>
     </div>
-  <?php endforeach; ?>
-  </div>
   </div>
 
-  <script>
-  (function () {
-    const toggleBtn = document.getElementById('alb-add-ai-toggle');
-    const panel = document.getElementById('alb-add-ai-panel');
-    const cancelBtn = document.getElementById('alb-add-ai-cancel');
-    const generateBtn = document.getElementById('alb-add-ai-generate');
-    const keywordsInput = document.getElementById('alb-add-ai-keywords');
-    const statusEl = document.getElementById('alb-add-ai-status');
-    const textarea = document.getElementById('alb-add-description');
-    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
-
-    toggleBtn.addEventListener('click', function () {
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') keywordsInput.focus();
-    });
-    cancelBtn.addEventListener('click', function () {
-      panel.style.display = 'none';
-      statusEl.textContent = '';
-    });
-    generateBtn.addEventListener('click', function () {
-      const keywords = keywordsInput.value.trim();
-      if (!keywords) {
-        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-        return;
-      }
-      generateBtn.disabled = true;
-      statusEl.textContent = 'Generazione in corso...';
-      const body = new URLSearchParams();
-      body.set('csrf', csrfInput.value);
-      body.set('keywords', keywords);
-      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          generateBtn.disabled = false;
-          if (data.ok) {
-            textarea.value = data.text;
-            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
-          } else {
-            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-          }
-        })
-        .catch(function () {
-          generateBtn.disabled = false;
-          statusEl.textContent = 'Errore di connessione. Riprova.';
-        });
-    });
-  })();
-
-  document.addEventListener('click', function (e) {
-    const toggleBtn = e.target.closest('.alb-edit-ai-toggle');
-    const cancelBtn = e.target.closest('.alb-edit-ai-cancel');
-    const generateBtn = e.target.closest('.alb-edit-ai-generate');
-    if (!toggleBtn && !cancelBtn && !generateBtn) return;
-
-    if (toggleBtn) {
-      const panel = toggleBtn.closest('form').querySelector('.alb-edit-ai-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') panel.querySelector('.alb-edit-ai-keywords').focus();
-      return;
-    }
-    if (cancelBtn) {
-      const panel = cancelBtn.closest('.alb-edit-ai-panel');
-      panel.style.display = 'none';
-      panel.querySelector('.alb-edit-ai-status').textContent = '';
-      return;
-    }
-    if (generateBtn) {
-      const panel = generateBtn.closest('.alb-edit-ai-panel');
-      const form = generateBtn.closest('form');
-      const keywords = panel.querySelector('.alb-edit-ai-keywords').value.trim();
-      const statusEl = panel.querySelector('.alb-edit-ai-status');
-      if (!keywords) {
-        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-        return;
-      }
-      generateBtn.disabled = true;
-      statusEl.textContent = 'Generazione in corso...';
-      const body = new URLSearchParams();
-      body.set('csrf', form.querySelector('input[name="csrf"]').value);
-      body.set('keywords', keywords);
-      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          generateBtn.disabled = false;
-          if (data.ok) {
-            form.querySelector('.alb-edit-description').value = data.text;
-            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
-          } else {
-            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-          }
-        })
-        .catch(function () {
-          generateBtn.disabled = false;
-          statusEl.textContent = 'Errore di connessione. Riprova.';
-        });
-    }
-  });
-  </script>
+  <?php studioDlgOpen('al-dlg', ['new_title' => 'Nuovo album', 'edit_title' => 'Modifica album', 'action_new' => 'add', 'action_edit' => 'edit']); ?>
+    <label for="al-title">Titolo dell'album</label>
+    <input type="text" name="title" id="al-title" required placeholder="es. Il nostro tour 2026">
+    <label for="al-desc">Descrizione <small>(opzionale)</small></label>
+    <textarea name="description" id="al-desc" rows="4" data-ai-target placeholder="Racconta l'album..."></textarea>
+    <?php studioAiBox('es. foto del tour estivo, tono nostalgico'); ?>
+    <label>Foto <small>(fino a <?= ALBUM_MAX_PHOTOS ?>; la prima è la copertina. In modifica le nuove foto si aggiungono a quelle esistenti)</small></label>
+    <input type="file" name="images[]" accept="image/*" multiple data-req-new data-preview="#al-prev">
+    <div id="al-prev" class="kit-gallery" data-preview-box hidden></div>
+    <label>Chi lo vede</label>
+    <?php studioSeg('visibility', ['public' => '<i class="fa-solid fa-earth-europe"></i> Pubblico', 'private' => '<i class="fa-solid fa-lock"></i> Solo io'], 'public'); ?>
+    <?php studioSwitch('in_feed', 'Mostra nel Feed', true); ?>
+    <label for="al-when">Pubblica sui social dal <small>(opzionale, vuoto = subito)</small></label>
+    <input type="datetime-local" name="publish_at" id="al-when">
+  <?php studioDlgClose('Salva album'); ?>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
