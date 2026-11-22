@@ -23,6 +23,7 @@ require_once __DIR__ . '/fn_account.php';
 require_once __DIR__ . '/fn_terms.php';
 require_once __DIR__ . '/fn_blog.php';
 require_once __DIR__ . '/fn_help.php';
+require_once __DIR__ . '/fn_privacy.php';
 
 
 
@@ -32,3 +33,7 @@ require_once __DIR__ . '/fn_help.php';
 if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user_id']) && !empty($_COOKIE['remember_me'])) {
     attemptRememberLogin();
 }
+
+// Profilo privato: chiude la pagina pubblica a chi non è autorizzato (vedi fn_privacy.php).
+// Dopo il ripristino della sessione, così chi è loggato viene riconosciuto.
+enforcePrivateProfileGate();
