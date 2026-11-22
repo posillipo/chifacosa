@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -47,84 +47,55 @@ $cronUrl = siteUrl('/cron_cinema_sync.php') . '?token=' . urlencode($cronToken);
 $merchantFeedUrl = siteUrl('/' . $profile['slug'] . '/cinema-feed.xml');
 
 include __DIR__ . '/../_dash_header.php';
+$hasUrl = !empty($profile['cinema_films_json_url']);
+$cronLine = '0 5 * * * curl -s "' . $cronUrl . '" >/dev/null 2>&1';
 ?>
-
   <?php if (!empty($error)): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
   <?php if ($syncResult): ?>
-    <?php if ($syncResult['ok']): ?>
-      <div class="alert success">
-        Sincronizzazione completata: <?= (int) $syncResult['added'] ?> film aggiunti,
-        <?= (int) $syncResult['updated'] ?> aggiornati, <?= (int) $syncResult['removed'] ?> rimossi
-        (<?= (int) $syncResult['total'] ?> film totali in programmazione).
+    <?php if ($syncResult['ok']): ?><div class="alert success">Sincronizzazione completata: <?= (int) $syncResult['added'] ?> film aggiunti, <?= (int) $syncResult['updated'] ?> aggiornati, <?= (int) $syncResult['removed'] ?> rimossi (<?= (int) $syncResult['total'] ?> film totali in programmazione).</div>
+    <?php else: ?><div class="alert error">Sincronizzazione non riuscita: <?= e($syncResult['error']) ?></div><?php endif; ?>
+  <?php endif; ?>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= $filmCount ?></b><span>Film pubblicati</span></div>
+      <div class="tlx-kpi"><b><?= $profile['cinema_ticket_price'] !== null ? '€ ' . e(number_format((float) $profile['cinema_ticket_price'], 2, ',', '.')) : '—' ?></b><span>Prezzo biglietto</span></div>
+      <div class="tlx-kpi"><b><?= !empty($profile['cinema_films_synced_at']) ? e(formatLocalDateTime($profile['cinema_films_synced_at'], $profile, 'd/m H:i')) : 'Mai' ?></b><span>Ultima sincronizzazione</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_links.php"><b><i class="fa-solid fa-link"></i></b><span>Pulsanti nei Link</span></a>
+    </div>
+
+    <form method="post" class="box">
+      <?= csrfField() ?><input type="hidden" name="action" value="save_url">
+      <h3><i class="fa-solid fa-film"></i> Fonte dei film</h3>
+      <label for="cn-url">Indirizzo del JSON dei film in programmazione</label>
+      <input type="url" name="json_url" id="cn-url" value="<?= e($profile['cinema_films_json_url'] ?? '') ?>" placeholder="https://.../api/v2/films/expanded.json">
+      <label for="cn-price">Prezzo del biglietto in € <small>(opzionale, per il feed Google/Meta)</small></label>
+      <input type="number" name="ticket_price" id="cn-price" step="0.01" min="0" value="<?= $profile['cinema_ticket_price'] !== null ? e((string) $profile['cinema_ticket_price']) : '' ?>" placeholder="es. 8">
+      <button type="submit" class="tlx-submit cmp-done">Salva</button>
+    </form>
+
+    <?php if ($hasUrl): ?>
+      <div class="box">
+        <h3><i class="fa-solid fa-rotate"></i> Sincronizzazione</h3>
+        <p><?= $filmCount ?> film attualmente pubblicati.<?= !empty($profile['cinema_films_synced_at']) ? ' Ultima sincronizzazione: ' . e(formatLocalDateTime($profile['cinema_films_synced_at'], $profile)) . '.' : ' Non ancora sincronizzato.' ?><?php if ($filmCount > 0): ?> <a href="/dashboard_links.php">Vedi i pulsanti nel modulo Link</a>.<?php endif; ?></p>
+        <form method="post" data-busy="Sincronizzazione in corso…"><?= csrfField() ?><input type="hidden" name="action" value="sync"><button type="submit" class="stc-act primary"><i class="fa-solid fa-rotate"></i> <span>Sincronizza ora</span></button></form>
+      </div>
+
+      <div class="box">
+        <h3><i class="fa-regular fa-clock"></i> Aggiornamento automatico</h3>
+        <p>Per aggiornare i film da solo (es. ogni giorno alle 5:00) chiedi di aggiungere questa riga al crontab del server. Sincronizza <b>tutti</b> i profili che hanno un indirizzo JSON impostato. Il token nell'indirizzo è segreto: non condividerlo.</p>
+        <div class="box-pre"><?= e($cronLine) ?><button type="button" class="stc-act" data-copy="<?= e($cronLine) ?>" aria-label="Copia"><i class="fa-regular fa-copy"></i></button></div>
+      </div>
+
+      <div class="box">
+        <h3><i class="fa-solid fa-bag-shopping"></i> Feed prodotti per Google Merchant e Meta</h3>
+        <p>Un file XML con un «prodotto» per ogni film in programmazione (titolo, descrizione, locandina, link, prezzo), sempre aggiornato. Incolla l'indirizzo in Google Merchant Center («Recupero pianificato») o Meta Commerce Manager («Origine dati → Feed programmato»).</p>
+        <?php if ($profile['cinema_ticket_price'] === null): ?><div class="alert error">Imposta prima il prezzo del biglietto: senza un prezzo il feed non è utilizzabile da Google e Meta.</div><?php endif; ?>
+        <div class="box-pre"><?= e($merchantFeedUrl) ?><button type="button" class="stc-act" data-copy="<?= e($merchantFeedUrl) ?>" aria-label="Copia"><i class="fa-regular fa-copy"></i></button></div>
       </div>
     <?php else: ?>
-      <div class="alert error">Sincronizzazione non riuscita: <?= e($syncResult['error']) ?></div>
+      <div class="tlx-empty"><i class="fa-solid fa-film"></i><b>Collega la fonte dei film</b><span>Inserisci l'indirizzo del JSON qui sopra: poi potrai sincronizzare i film e generare il feed.</span></div>
     <?php endif; ?>
-  <?php endif; ?>
-
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="save_url">
-    <label>URL del JSON film in programmazione</label>
-    <input type="url" name="json_url" value="<?= e($profile['cinema_films_json_url'] ?? '') ?>" placeholder="https://.../api/v2/films/expanded.json">
-    <label>Prezzo biglietto (opzionale, in euro — per il feed Google/Meta)</label>
-    <input type="number" name="ticket_price" step="0.01" min="0" value="<?= $profile['cinema_ticket_price'] !== null ? e((string) $profile['cinema_ticket_price']) : '' ?>" placeholder="es. 8.00">
-    <button type="submit" class="btn">Salva</button>
-  </form>
-
-  <?php if (!empty($profile['cinema_films_json_url'])): ?>
-    <div class="card">
-      <strong>Stato sincronizzazione</strong>
-      <p style="color:var(--text-muted);margin:6px 0 14px;">
-        <?= $filmCount ?> film attualmente pubblicati.
-        <?php if (!empty($profile['cinema_films_synced_at'])): ?>
-          Ultima sincronizzazione: <?= e(formatLocalDateTime($profile['cinema_films_synced_at'], $profile)) ?>.
-        <?php else: ?>
-          Non ancora sincronizzato.
-        <?php endif; ?>
-        <?php if ($filmCount > 0): ?> — <a href="/dashboard_links.php">vedi i pulsanti nel modulo Link</a>.<?php endif; ?>
-      </p>
-      <form method="post">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="sync">
-        <button type="submit" class="btn">Sincronizza ora</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <strong>Aggiornamento automatico periodico</strong>
-      <p style="color:var(--text-muted)">
-        Per aggiornare i film da solo (es. una volta al giorno) senza dover aprire questa pagina,
-        chiedi di aggiungere questa riga al crontab del server (es. ogni giorno alle 5:00):
-      </p>
-      <pre style="background:rgba(0,0,0,0.05);padding:10px 12px;border-radius:8px;overflow-x:auto;font-size:12.5px;">0 5 * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
-      <p style="color:var(--text-muted);font-size:12.5px;">
-        Sincronizza automaticamente <strong>tutti</strong> i profili che hanno un URL JSON
-        configurato in questa pagina, non solo il tuo — basta impostarlo una volta sul server.
-        Il token nell'URL è segreto: non condividerlo.
-      </p>
-    </div>
-
-    <div class="card">
-      <strong>Feed prodotti per Google Merchant Center / Meta Commerce Manager</strong>
-      <p style="color:var(--text-muted)">
-        Un file XML con un "prodotto" per ogni film in programmazione (titolo, descrizione,
-        locandina, link alla pagina del film, prezzo), nel formato richiesto da entrambe le
-        piattaforme — generato al momento da questo stesso URL, sempre aggiornato col JSON
-        configurato sopra, senza bisogno di sincronizzarlo prima.
-      </p>
-      <?php if ($profile['cinema_ticket_price'] === null): ?>
-        <div class="alert error" style="margin-bottom:12px;">
-          Imposta prima il prezzo del biglietto qui sopra: senza un prezzo il feed non è
-          utilizzabile da Google/Meta.
-        </div>
-      <?php endif; ?>
-      <pre style="background:rgba(0,0,0,0.05);padding:10px 12px;border-radius:8px;overflow-x:auto;font-size:12.5px;word-break:break-all;"><?= e($merchantFeedUrl) ?></pre>
-      <p style="color:var(--text-muted);font-size:12.5px;">
-        Incolla questo indirizzo nella configurazione del feed su Google Merchant Center
-        ("Recupero pianificato") o su Meta Commerce Manager ("Origine dati > Feed programmato").
-      </p>
-    </div>
-  <?php endif; ?>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

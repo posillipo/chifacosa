@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -138,306 +138,114 @@ $stmt->execute([$profile['id']]);
 $events = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
+$geoMissing = count(eventsMissingGeo((int) $profile['id']));
+$now = time();
+$evNext = 0; $evSched = 0; $evRes = 0;
+foreach ($events as $x) {
+    $past = !(int) ($x['is_perpetual'] ?? 0) && ($x['recurrence'] ?? 'none') === 'none' && strtotime($x['event_date']) < $now;
+    if (!$past) { $evNext++; }
+    if (!empty($x['publish_at']) && strtotime($x['publish_at']) > $now) { $evSched++; }
+    if ((int) $x['accepts_reservations'] === 1) { $evRes++; }
+}
+$months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['geo']) && preg_match('/^(\d+)-(\d+)-(\d+)$/', $_GET['geo'], $gm)): ?>
     <div class="alert success"><?= (int) $gm[1] ?> posizioni calcolate<?= (int) $gm[2] ? ', ' . (int) $gm[2] . ' indirizzi non trovati (controlla locale e città)' : '' ?><?= (int) $gm[3] ? '. Ne restano ' . (int) $gm[3] . ': premi di nuovo il pulsante.' : '. Tutti gli eventi con indirizzo hanno ora una posizione.' ?></div>
   <?php endif; ?>
-  <?php $geoMissing = count(eventsMissingGeo((int) $profile['id'])); ?>
   <?php if ($geoMissing > 0): ?>
-    <div class="card">
-      <strong>📍 Mappa degli eventi</strong>
-      <p style="color:var(--text-muted);margin:6px 0 12px;font-size:13.5px;">
-        <?= $geoMissing ?> event<?= $geoMissing === 1 ? 'o' : 'i' ?> senza posizione sulla mappa pubblica. La posizione si calcola da locale, città e provincia (OpenStreetMap, gratuito):
-        qui si elaborano 8 eventi per volta, ci vuole circa un secondo ciascuno. I nuovi eventi vengono posizionati da soli al salvataggio.
-      </p>
-      <form method="post" onsubmit="var b=this.querySelector('button');b.disabled=true;b.textContent='Calcolo in corso… (circa 10 secondi)';">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="geocode_missing">
-        <button type="submit" class="btn">Calcola le posizioni</button>
-      </form>
+    <div class="evx-geo">
+      <div><b><i class="fa-solid fa-location-dot"></i> Mappa degli eventi</b>
+        <p><?= $geoMissing ?> event<?= $geoMissing === 1 ? 'o' : 'i' ?> senza posizione sulla mappa pubblica. Si calcola da locale, città e provincia (OpenStreetMap, gratuito): 8 eventi per volta, circa un secondo ciascuno. I nuovi eventi vengono posizionati da soli al salvataggio.</p></div>
+      <form method="post" data-busy="Calcolo in corso… (circa 10 secondi)"><?= csrfField() ?><input type="hidden" name="action" value="geocode_missing"><button type="submit" class="stc-act primary"><i class="fa-solid fa-location-crosshairs"></i> <span>Calcola le posizioni</span></button></form>
     </div>
   <?php endif; ?>
 
-  <style>
-  /* Pagina a due colonne: modulo di inserimento a sinistra, elenco di quanto già inserito a destra.
-     Sotto i 760px le colonne si impilano (prima il modulo, poi l'elenco). */
-  .container { max-width: 1240px; }
-  .dash-two-col { display: block; }
-  .dash-two-col > div { min-width: 0; }
-  @media (min-width: 760px) {
-    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  }
-  </style>
-
-  <div class="dash-two-col">
-  <div class="dash-two-col-main">
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="add">
-    <input type="hidden" name="tz_offset_minutes" value="">
-    <label>Nome evento</label>
-    <input type="text" name="title" required>
-    <label>Locale</label>
-    <input type="text" name="venue">
-    <label>Città</label>
-    <input type="text" name="city">
-    <label>Provincia (opzionale)</label>
-    <input type="text" name="provincia" placeholder="es. Napoli">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Usata per raggruppare i tuoi eventi nel riquadro "Eventi per provincia" e, con locale e città, per mostrare l'evento sulla mappa.</p>
-    <label>Data e ora</label>
-    <input type="datetime-local" name="event_date" required>
-    <label>Link biglietti (opzionale)</label>
-    <input type="url" name="ticket_url" placeholder="https://...">
-    <label>Descrizione (opzionale)</label>
-    <textarea name="description" id="ev-add-description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."></textarea>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-      <button type="button" class="btn small secondary" id="ev-add-ai-toggle">✨ Genera con AI</button>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= count($events) ?></b><span>Eventi</span></div>
+      <div class="tlx-kpi"><b><?= $evNext ?></b><span>In arrivo</span></div>
+      <div class="tlx-kpi"><b><?= $evRes ?></b><span>Con prenotazioni</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_reservations.php"><b><i class="fa-solid fa-chair"></i></b><span>Vedi le prenotazioni</span></a>
     </div>
-    <div id="ev-add-ai-panel" class="card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
-      <label>Qualche parola chiave o istruzione per l'AI</label>
-      <textarea id="ev-add-ai-keywords" rows="2" placeholder="es. concerto acustico sabato, ospite speciale a sorpresa"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn small" id="ev-add-ai-generate">Genera testo</button>
-        <button type="button" class="btn small secondary" id="ev-add-ai-cancel">Annulla</button>
-      </div>
-      <p id="ev-add-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
-    </div>
-    <label>Pubblicazione programmata (opzionale)</label>
-    <input type="datetime-local" name="publish_at">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Se impostata, l'evento resta nascosto fino a questa data e ora.</p>
-    <label>Copertina (opzionale, jpg/png/webp)</label>
-    <input type="file" name="cover" accept="image/*">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Comparirà così come l'hai caricata, senza ritagli — qualsiasi proporzione va bene.</p>
-    <label>Ricorrenza</label>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="recurrence" value="none" checked style="width:auto;"> Data singola
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="recurrence" value="weekdays" style="width:auto;"> Dal Lunedì al Venerdì
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-        <input type="radio" name="recurrence" value="weekend" style="width:auto;"> Solo Weekend
-      </label>
-    </div>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 8px;">
-      <input type="checkbox" name="is_perpetual" value="1" style="width:auto;margin-bottom:0;">
-      Evento perpetuo (nessuna data di fine — resta sempre visibile in "Prossimi eventi")
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
-      <input type="checkbox" name="accepts_reservations" value="1" style="width:auto;margin-bottom:0;">
-      Accetta prenotazioni per questo evento
-    </label>
-    <button type="submit" class="btn">Aggiungi evento</button>
-  </form>
 
-  </div>
+    <button type="button" class="cmp-trigger" data-dlg="ev-dlg"><span class="tlx-av"><i class="fa-regular fa-calendar-plus"></i></span><span class="cmp-trigger-t">Crea un nuovo evento…</span><span class="cmp-trigger-i"><i class="fa-regular fa-image"></i></span></button>
 
-  <div class="dash-two-col-side">
-  <div class="section-title">Prossimi eventi (<?= count($events) ?>)</div>
-  <?php foreach ($events as $ev): ?>
-    <div class="event-item" style="display:flex;gap:14px;align-items:flex-start;">
-      <?php if ($ev['cover_path']): ?>
-        <img src="/<?= e($ev['cover_path']) ?>" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-      <?php endif; ?>
-      <div style="flex:1;min-width:0;">
-        <div class="date"><?= e(formatLocalDateTime($ev['event_date'], $profile)) ?></div>
-        <strong><?= e($ev['title']) ?></strong> <?= authorBadgeHtml($ev['created_by'] ?? null) ?>
-        <?php if ($ev['venue'] || $ev['city']): ?>
-          <div style="color:var(--text-muted)"><?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?></div>
-        <?php endif; ?>
-        <?php if (!empty($ev['publish_at']) && strtotime($ev['publish_at']) > time()): ?>
-          <div style="color:#e67e22;font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(date('d/m/Y H:i', strtotime($ev['publish_at']))) ?></div>
-        <?php endif; ?>
-        <?php if ((int) $ev['accepts_reservations'] === 1): ?>
-          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-chair"></i> Prenotazioni attive</div>
-        <?php endif; ?>
-        <?php $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false)); ?>
-        <?php if ($scheduleLabel): ?>
-          <div style="color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px;"><i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?></div>
-        <?php endif; ?>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <form method="post">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="toggle_reservations">
-            <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
-            <button class="btn small secondary" type="submit"><?= (int) $ev['accepts_reservations'] === 1 ? 'Disattiva prenotazioni' : 'Attiva prenotazioni' ?></button>
-          </form>
-          <form method="post" onsubmit="return confirm('Eliminare questo evento?');">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
-            <button class="btn small danger" type="submit">Elimina</button>
-          </form>
+    <div class="tlx-listhead"><h2>I tuoi eventi <small>(<?= count($events) ?>)</small></h2>
+      <div class="tlx-filters" data-filters="#ev-list"><button type="button" class="on" data-f="all">Tutti</button><button type="button" data-f="next">In arrivo</button><button type="button" data-f="past">Passati</button><button type="button" data-f="sched">Programmati</button><button type="button" data-f="rec">Ricorrenti</button></div>
+    </div>
+    <?php if (!$events): ?><div class="tlx-empty"><i class="fa-regular fa-calendar"></i><b>Nessun evento ancora</b><span>Crea il primo: comparirà sulla tua pagina, sulla mappa e nel Feed.</span></div><?php endif; ?>
+    <div class="tlx-empty" data-filter-empty hidden><i class="fa-regular fa-circle-check"></i><b>Niente da mostrare con questo filtro</b></div>
+
+    <div id="ev-list">
+    <?php foreach ($events as $ev):
+      $ts = strtotime($ev['event_date']);
+      $rec = ($ev['recurrence'] ?? 'none') !== 'none' || (int) ($ev['is_perpetual'] ?? 0) === 1;
+      $isPast = !$rec && $ts < $now;
+      $isSched = !empty($ev['publish_at']) && strtotime($ev['publish_at']) > $now;
+      $state = trim(($isPast ? 'past' : 'next') . ($isSched ? ' sched' : '') . ($rec ? ' rec' : ''));
+      $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false));
+      $pub = siteUrl('/' . $profile['slug'] . '/eventi/' . (int) $ev['id']);
+      $share = json_encode(['t' => $ev['title'], 'u' => $pub], JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT);
+      $fill = json_encode(['id' => (int) $ev['id'], 'title' => $ev['title'], 'venue' => $ev['venue'] ?? '', 'city' => $ev['city'] ?? '', 'provincia' => $ev['provincia'] ?? '',
+        'event_date' => date('Y-m-d\TH:i', $ts), 'ticket_url' => $ev['ticket_url'] ?? '', 'description' => $ev['description'] ?? '',
+        'publish_at' => !empty($ev['publish_at']) ? date('Y-m-d\TH:i', strtotime($ev['publish_at'])) : '', 'recurrence' => $ev['recurrence'] ?? 'none',
+        'is_perpetual' => (int) ($ev['is_perpetual'] ?? 0), 'accepts_reservations' => (int) $ev['accepts_reservations']], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+    ?>
+      <article class="stc stc-list kit-item<?= $isPast ? ' off' : '' ?>" data-state="<?= e($state) ?>">
+        <?php if ($ev['cover_path']): ?><span class="stc-thumb"><img src="/<?= e($ev['cover_path']) ?>" alt="" loading="lazy"></span>
+        <?php else: ?><span class="stc-thumb evx-date"><b><?= date('j', $ts) ?></b><small><?= e($months[(int) date('n', $ts) - 1]) ?></small></span><?php endif; ?>
+        <div class="stc-body">
+          <div class="stc-meta1">
+            <span class="stc-type stc-violet">Evento</span>
+            <?php if ($isPast): ?><span class="stc-status stc-s-grey"><i class="fa-solid fa-flag-checkered"></i> Concluso</span>
+            <?php elseif ($isSched): ?><span class="stc-status stc-s-warn"><i class="fa-regular fa-clock"></i> Programmato · <?= e(date('d/m/Y H:i', strtotime($ev['publish_at']))) ?></span>
+            <?php else: ?><span class="stc-status stc-s-ok"><i class="fa-solid fa-circle-check"></i> Pubblicato</span><?php endif; ?>
+            <?php if ($scheduleLabel): ?><span class="tlx-tag"><i class="fa-solid fa-repeat"></i> <?= e($scheduleLabel) ?></span><?php endif; ?>
+            <?= authorBadgeHtml($ev['created_by'] ?? null) ?>
+          </div>
+          <h3 class="stc-title"><?= e($ev['title']) ?></h3>
+          <div class="stc-meta2"><i class="fa-regular fa-clock"></i> <?= e(formatLocalDateTime($ev['event_date'], $profile)) ?><?php if ($ev['venue'] || $ev['city']): ?> · <i class="fa-solid fa-location-dot"></i> <?= e($ev['venue']) ?><?= $ev['venue'] && $ev['city'] ? ', ' : '' ?><?= e($ev['city']) ?><?php endif; ?></div>
+          <div class="stc-actions">
+            <button type="button" class="stc-act primary" data-dlg="ev-dlg" data-fill='<?= e($fill) ?>'><i class="fa-solid fa-pen"></i> <span>Modifica</span></button>
+            <a class="stc-act" href="/<?= e($profile['slug']) ?>/eventi/<?= (int) $ev['id'] ?>" target="_blank" title="Pagina pubblica"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Pagina pubblica</span></a>
+            <button type="button" class="stc-act" data-share='<?= e($share) ?>' title="Condividi"><i class="fa-solid fa-share-nodes"></i> <span>Condividi</span></button>
+            <label class="tlx-switch kit-sw" title="Accetta prenotazioni"><input type="checkbox" <?= (int) $ev['accepts_reservations'] === 1 ? 'checked' : '' ?> data-post='<?= e(json_encode(['action' => 'toggle_reservations', 'id' => (int) $ev['id']])) ?>' data-msg-on="Prenotazioni attive" data-msg-off="Prenotazioni chiuse"><i></i><span class="kit-sw-l">Prenotazioni</span></label>
+            <form method="post" class="ibx-inline" data-confirm="Eliminare questo evento?"><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $ev['id'] ?>"><button class="stc-act danger" type="submit" title="Elimina"><i class="fa-solid fa-trash"></i> <span>Elimina</span></button></form>
+          </div>
         </div>
-
-        <details style="margin-top:8px;">
-          <summary class="btn small secondary" style="display:inline-block;cursor:pointer;">✏️ Modifica</summary>
-          <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="id" value="<?= (int)$ev['id'] ?>">
-            <input type="hidden" name="tz_offset_minutes" value="">
-            <label>Nome evento</label>
-            <input type="text" name="title" value="<?= e($ev['title']) ?>" required>
-            <label>Locale</label>
-            <input type="text" name="venue" value="<?= e($ev['venue'] ?? '') ?>">
-            <label>Città</label>
-            <input type="text" name="city" value="<?= e($ev['city'] ?? '') ?>">
-            <label>Provincia (opzionale)</label>
-            <input type="text" name="provincia" value="<?= e($ev['provincia'] ?? '') ?>" placeholder="es. Napoli">
-            <label>Data e ora</label>
-            <input type="datetime-local" name="event_date" value="<?= e(date('Y-m-d\TH:i', strtotime($ev['event_date']))) ?>" required>
-            <label>Link biglietti (opzionale)</label>
-            <input type="url" name="ticket_url" value="<?= e($ev['ticket_url'] ?? '') ?>" placeholder="https://...">
-            <label>Descrizione (opzionale)</label>
-            <textarea name="description" class="ev-edit-description" rows="4" placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."><?= e($ev['description'] ?? '') ?></textarea>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-              <button type="button" class="btn small secondary ev-edit-ai-toggle">✨ Genera con AI</button>
-            </div>
-            <div class="ev-edit-ai-panel card" style="display:none;background:var(--bg-alt,#f7f7f9);margin:-8px 0 14px;">
-              <label>Qualche parola chiave o istruzione per l'AI</label>
-              <textarea class="ev-edit-ai-keywords" rows="2" placeholder="es. concerto acustico sabato, ospite speciale a sorpresa"></textarea>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn small ev-edit-ai-generate">Genera testo</button>
-                <button type="button" class="btn small secondary ev-edit-ai-cancel">Annulla</button>
-              </div>
-              <p class="ev-edit-ai-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
-            </div>
-            <label>Pubblicazione programmata (opzionale)</label>
-            <input type="datetime-local" name="publish_at" value="<?= !empty($ev['publish_at']) ? e(date('Y-m-d\TH:i', strtotime($ev['publish_at']))) : '' ?>">
-            <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Se impostata, l'evento resta nascosto fino a questa data e ora. Lascia vuoto per pubblicare subito.</p>
-            <label>Copertina (opzionale — lascia vuoto per non cambiarla)</label>
-            <input type="file" name="cover" accept="image/*">
-            <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
-              <?= $ev['cover_path'] ? 'Hai già caricato una copertina — seleziona un nuovo file per sostituirla.' : 'Comparirà così come l\'hai caricata, senza ritagli — qualsiasi proporzione va bene.' ?>
-            </p>
-            <label>Ricorrenza</label>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="recurrence" value="none" <?= ($ev['recurrence'] ?? 'none') === 'none' ? 'checked' : '' ?> style="width:auto;"> Data singola
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="recurrence" value="weekdays" <?= ($ev['recurrence'] ?? '') === 'weekdays' ? 'checked' : '' ?> style="width:auto;"> Dal Lunedì al Venerdì
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-                <input type="radio" name="recurrence" value="weekend" <?= ($ev['recurrence'] ?? '') === 'weekend' ? 'checked' : '' ?> style="width:auto;"> Solo Weekend
-              </label>
-            </div>
-            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 8px;">
-              <input type="checkbox" name="is_perpetual" value="1" <?= (int) ($ev['is_perpetual'] ?? 0) === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
-              Evento perpetuo (nessuna data di fine — resta sempre visibile in "Prossimi eventi")
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:4px 0 16px;">
-              <input type="checkbox" name="accepts_reservations" value="1" <?= (int) $ev['accepts_reservations'] === 1 ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
-              Accetta prenotazioni per questo evento
-            </label>
-            <button type="submit" class="btn small">Salva modifiche</button>
-          </form>
-        </details>
-      </div>
+      </article>
+    <?php endforeach; ?>
     </div>
-  <?php endforeach; ?>
-  </div>
   </div>
 
-  <script>
-  (function () {
-    const toggleBtn = document.getElementById('ev-add-ai-toggle');
-    const panel = document.getElementById('ev-add-ai-panel');
-    const cancelBtn = document.getElementById('ev-add-ai-cancel');
-    const generateBtn = document.getElementById('ev-add-ai-generate');
-    const keywordsInput = document.getElementById('ev-add-ai-keywords');
-    const statusEl = document.getElementById('ev-add-ai-status');
-    const textarea = document.getElementById('ev-add-description');
-    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
-
-    toggleBtn.addEventListener('click', function () {
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') keywordsInput.focus();
-    });
-    cancelBtn.addEventListener('click', function () {
-      panel.style.display = 'none';
-      statusEl.textContent = '';
-    });
-    generateBtn.addEventListener('click', function () {
-      const keywords = keywordsInput.value.trim();
-      if (!keywords) {
-        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-        return;
-      }
-      generateBtn.disabled = true;
-      statusEl.textContent = 'Generazione in corso...';
-      const body = new URLSearchParams();
-      body.set('csrf', csrfInput.value);
-      body.set('keywords', keywords);
-      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          generateBtn.disabled = false;
-          if (data.ok) {
-            textarea.value = data.text;
-            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
-          } else {
-            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-          }
-        })
-        .catch(function () {
-          generateBtn.disabled = false;
-          statusEl.textContent = 'Errore di connessione. Riprova.';
-        });
-    });
-  })();
-
-  document.addEventListener('click', function (e) {
-    const toggleBtn = e.target.closest('.ev-edit-ai-toggle');
-    const cancelBtn = e.target.closest('.ev-edit-ai-cancel');
-    const generateBtn = e.target.closest('.ev-edit-ai-generate');
-    if (!toggleBtn && !cancelBtn && !generateBtn) return;
-
-    if (toggleBtn) {
-      const panel = toggleBtn.closest('form').querySelector('.ev-edit-ai-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') panel.querySelector('.ev-edit-ai-keywords').focus();
-      return;
-    }
-    if (cancelBtn) {
-      const panel = cancelBtn.closest('.ev-edit-ai-panel');
-      panel.style.display = 'none';
-      panel.querySelector('.ev-edit-ai-status').textContent = '';
-      return;
-    }
-    if (generateBtn) {
-      const panel = generateBtn.closest('.ev-edit-ai-panel');
-      const form = generateBtn.closest('form');
-      const keywords = panel.querySelector('.ev-edit-ai-keywords').value.trim();
-      const statusEl = panel.querySelector('.ev-edit-ai-status');
-      if (!keywords) {
-        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-        return;
-      }
-      generateBtn.disabled = true;
-      statusEl.textContent = 'Generazione in corso...';
-      const body = new URLSearchParams();
-      body.set('csrf', form.querySelector('input[name="csrf"]').value);
-      body.set('keywords', keywords);
-      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          generateBtn.disabled = false;
-          if (data.ok) {
-            form.querySelector('.ev-edit-description').value = data.text;
-            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di salvare.';
-          } else {
-            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-          }
-        })
-        .catch(function () {
-          generateBtn.disabled = false;
-          statusEl.textContent = 'Errore di connessione. Riprova.';
-        });
-    }
-  });
-  </script>
+  <?php studioDlgOpen('ev-dlg', ['new_title' => 'Nuovo evento', 'edit_title' => 'Modifica evento', 'action_new' => 'add', 'action_edit' => 'edit']); ?>
+    <label for="ev-title">Nome dell'evento</label>
+    <input type="text" name="title" id="ev-title" required>
+    <div class="kit-row2">
+      <div><label for="ev-venue">Locale</label><input type="text" name="venue" id="ev-venue"></div>
+      <div><label for="ev-city">Città</label><input type="text" name="city" id="ev-city"></div>
+    </div>
+    <label for="ev-prov">Provincia <small>(opzionale)</small></label>
+    <input type="text" name="provincia" id="ev-prov" placeholder="es. Napoli">
+    <p class="tlx-hint">Serve per raggruppare gli eventi per provincia e, con locale e città, per mostrarli sulla mappa.</p>
+    <label for="ev-date">Data e ora</label>
+    <input type="datetime-local" name="event_date" id="ev-date" required>
+    <label for="ev-ticket">Link biglietti <small>(opzionale)</small></label>
+    <input type="url" name="ticket_url" id="ev-ticket" placeholder="https://...">
+    <label for="ev-desc">Descrizione <small>(opzionale)</small></label>
+    <textarea name="description" id="ev-desc" rows="4" data-ai-target placeholder="Racconta l'evento: scaletta, ospiti, informazioni utili..."></textarea>
+    <?php studioAiBox('es. concerto acustico sabato, ospite speciale a sorpresa'); ?>
+    <label>Copertina <small>(opzionale: in modifica, vuoto = resta quella attuale)</small></label>
+    <input type="file" name="cover" accept="image/*" data-preview="#ev-prev">
+    <div id="ev-prev" class="kit-gallery" data-preview-box hidden></div>
+    <label>Ricorrenza</label>
+    <?php studioSeg('recurrence', ['none' => 'Data singola', 'weekdays' => 'Lun–Ven', 'weekend' => 'Weekend'], 'none'); ?>
+    <?php studioSwitch('is_perpetual', 'Evento perpetuo (sempre visibile in «Prossimi eventi»)', false); ?>
+    <?php studioSwitch('accepts_reservations', 'Accetta prenotazioni', false); ?>
+    <label for="ev-pub">Pubblicazione programmata <small>(opzionale: l'evento resta nascosto fino a quel momento)</small></label>
+    <input type="datetime-local" name="publish_at" id="ev-pub">
+  <?php studioDlgClose('Salva evento'); ?>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

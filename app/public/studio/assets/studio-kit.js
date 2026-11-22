@@ -129,4 +129,34 @@
     });
     var empty = list.parentNode.querySelector('[data-filter-empty]'); if (empty) empty.hidden = n > 0;
   });
+
+  // ---------- Piccoli aiuti ----------
+  // Modulo con data-busy="testo": al primo invio disabilita il pulsante e mostra il testo (operazioni lunghe)
+  document.addEventListener('submit', function (e) {
+    var f = e.target; var m = f.getAttribute && f.getAttribute('data-busy'); if (!m) return;
+    var b = f.querySelector('button[type=submit]'); if (b) { setTimeout(function () { b.disabled = true; b.textContent = m; }, 0); }
+  });
+  // Copia negli appunti: [data-copy="testo"]
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copy]'); if (!b) return;
+    var t = b.getAttribute('data-copy');
+    if (navigator.clipboard) { navigator.clipboard.writeText(t).then(function () { toast('Copiato'); }, function () { toast(t); }); } else { toast(t); }
+  });
+  // Foto a tutto schermo: img[data-lightbox="/percorso.jpg"]
+  document.addEventListener('click', function (e) {
+    var im = e.target.closest('[data-lightbox]'); if (!im) return;
+    var d = document.getElementById('kit-lb');
+    if (!d) { d = document.createElement('dialog'); d.id = 'kit-lb'; d.className = 'kit-lb'; d.innerHTML = '<img alt=""><button type="button" aria-label="Chiudi">&times;</button>'; document.body.appendChild(d);
+      d.addEventListener('click', function () { d.close(); }); }
+    d.querySelector('img').src = im.getAttribute('data-lightbox'); d.showModal();
+  });
+  // Campo che cambia testi in base alla voce scelta: select[data-dyn] con option data-l (etichetta), data-p (segnaposto), data-h (aiuto)
+  document.querySelectorAll('select[data-dyn]').forEach(function (sel) {
+    function upd() {
+      var o = sel.options[sel.selectedIndex], f = sel.form;
+      var l = f.querySelector('[data-dyn-label]'), i = f.querySelector('[data-dyn-input]'), h = f.querySelector('[data-dyn-help]');
+      if (l) l.textContent = o.getAttribute('data-l'); if (i) i.placeholder = o.getAttribute('data-p'); if (h) h.textContent = o.getAttribute('data-h');
+    }
+    sel.addEventListener('change', upd); upd();
+  });
 })();

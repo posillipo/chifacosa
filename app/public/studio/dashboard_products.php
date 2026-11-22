@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -81,136 +81,85 @@ $qs = function (array $over = []) use ($filters, $disc) {
 };
 
 include __DIR__ . '/../_dash_header.php';
+$visibleN = $totalAll - $hiddenCount;
+$feedDyn = ['google' => ['URL del feed (Google Shopping, XML)', 'https://esempio.it/feed-google-shopping.xml', 'Feed prodotti in formato Google Shopping (RSS), come quello di PrestaShop.'],
+            'woocommerce' => ['Indirizzo del sito WooCommerce', 'https://www.esempio.it', "Basta l'indirizzo del sito: i prodotti si leggono dalla sua API pubblica (prezzi, immagini, categorie). Senza API si usa il feed RSS, con meno dati."]];
 ?>
-
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-  <?php if (isset($deletedCount)): ?>
-    <div class="alert success"><?= (int) $deletedCount ?> prodotti eliminati da questo profilo. Ora puoi ripetere l'importazione con <strong>Aggiorna prodotti</strong>.</div>
-  <?php endif; ?>
-  <?php if ($syncResult): ?>
-    <div class="alert <?= $syncResult['ok'] ? 'success' : 'error' ?>">
-      <?= $syncResult['ok']
-        ? 'Aggiornamento completato: ' . (int) $syncResult['added'] . ' prodotti aggiunti, ' . (int) $syncResult['updated'] . ' aggiornati, ' . (int) $syncResult['hidden'] . ' nascosti (' . (int) $syncResult['total'] . ' nel feed).'
-        : 'Aggiornamento non riuscito: ' . e($syncResult['error']) ?>
-    </div>
-  <?php endif; ?>
-
-  <div class="section-title">Feed prodotti</div>
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="save_feed">
-    <label>Tipo di feed</label>
-    <select name="feed_type" id="feed-type">
-      <?php foreach (PRODUCT_FEED_TYPES as $k => $label): ?>
-        <option value="<?= e($k) ?>" <?= ($feed['feed_type'] ?? 'google') === $k ? 'selected' : '' ?>><?= e($label) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <label id="feed-url-label">URL del feed</label>
-    <input type="url" name="feed_url" id="feed-url" value="<?= e($feed['feed_url'] ?? '') ?>">
-    <span id="feed-url-help" style="display:block;color:var(--text-muted);font-size:12.5px;margin:-4px 0 10px;"></span>
-    <script>
-    (function () {
-      var sel = document.getElementById('feed-type'), inp = document.getElementById('feed-url'),
-          lab = document.getElementById('feed-url-label'), help = document.getElementById('feed-url-help');
-      var txt = {
-        google: ['URL del feed (Google Shopping, XML)', 'https://esempio.it/feed-google-shopping.xml', 'Feed prodotti in formato Google Shopping (RSS), come quello di PrestaShop.'],
-        woocommerce: ['Indirizzo del sito WooCommerce', 'https://www.esempio.it', 'Basta l\'indirizzo del sito: i prodotti si leggono dalla sua API pubblica (prezzi, immagini, categorie). Senza API si usa il feed RSS, con meno dati.']
-      };
-      function upd() { var t = txt[sel.value] || txt.google; lab.textContent = t[0]; inp.placeholder = t[1]; help.textContent = t[2]; }
-      sel.addEventListener('change', upd); upd();
-    })();
-    </script>
-    <button type="submit" class="btn">Salva</button>
-    <span style="color:var(--text-muted);font-size:12.5px;">Lascia vuoto e salva per scollegare il feed (i prodotti già importati restano).</span>
-  </form>
-
-  <?php if ($feed): ?>
-    <div class="card">
-      <strong>Aggiornamento</strong>
-      <p style="color:var(--text-muted);margin:6px 0 14px;">
-        <?= $totalAll - $hiddenCount ?> prodotti nel catalogo<?= $hiddenCount ? ' (' . $hiddenCount . ' nascosti)' : '' ?>.
-        <?php if (!empty($feed['last_synced_at'])): ?>
-          Ultimo aggiornamento: <?= e(formatLocalDateTime($feed['last_synced_at'], $profile)) ?>.
-        <?php else: ?>Non ancora aggiornato.<?php endif; ?>
-        <?php if (!empty($feed['last_result'])): ?><br><span style="font-size:12.5px;">Esito: <?= e($feed['last_result']) ?></span><?php endif; ?>
-      </p>
-      <form method="post" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Aggiornamento in corso… (può richiedere un minuto)';">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="sync">
-        <button type="submit" class="btn">Aggiorna prodotti</button>
-      </form>
-    </div>
-  <?php endif; ?>
-
-  <?php if ($totalAll > 0): ?>
-    <?php
-      $stmtPub = getDB()->prepare('SELECT COUNT(*) FROM product_publications WHERE user_id = ?');
-      $stmtPub->execute([$uid]);
-      $pubCount = (int) $stmtPub->fetchColumn();
-      $delMsg = 'Eliminare TUTTI i ' . $totalAll . ' prodotti del profilo "' . ($profile['display_name'] ?? $profile['slug'] ?? '') . '"?'
-              . ($pubCount > 0 ? ' Verranno cancellate anche ' . $pubCount . ' registrazioni di pubblicazioni social collegate.' : '')
-              . ' L\'operazione non si può annullare, ma potrai importare di nuovo il feed.';
-    ?>
-    <div class="card" style="border:1px solid #e0b4b4;">
-      <strong>Elimina i prodotti importati</strong>
-      <p style="color:var(--text-muted);margin:6px 0 12px;font-size:13.5px;">
-        Svuota il catalogo di questo profilo (<?= (int) $totalAll ?> prodotti). Il feed resta collegato: dopo puoi ripetere l'importazione con <em>Aggiorna prodotti</em>.
-        Gli altri profili non vengono toccati.
-      </p>
-      <form method="post" onsubmit="return confirm(<?= e(json_encode($delMsg, JSON_UNESCAPED_UNICODE)) ?>);">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="delete_all_products">
-        <button type="submit" class="btn danger">Elimina tutti i prodotti</button>
-      </form>
+  <?php if (isset($deletedCount)): ?><div class="alert success"><?= (int) $deletedCount ?> prodotti eliminati da questo profilo. Ora puoi ripetere l'importazione con <strong>Aggiorna prodotti</strong>.</div><?php endif; ?>
+  <?php if ($syncResult): ?><div class="alert <?= $syncResult['ok'] ? 'success' : 'error' ?>"><?= $syncResult['ok'] ? 'Aggiornamento completato: ' . (int) $syncResult['added'] . ' prodotti aggiunti, ' . (int) $syncResult['updated'] . ' aggiornati, ' . (int) $syncResult['hidden'] . ' nascosti (' . (int) $syncResult['total'] . ' totali).' : 'Aggiornamento non riuscito: ' . e($syncResult['error']) ?></div><?php endif; ?>
+  <div class="tlx">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= $totalAll ?></b><span>Prodotti importati</span></div>
+      <div class="tlx-kpi"><b><?= $visibleN ?></b><span>Visibili</span></div>
+      <div class="tlx-kpi"><b><?= $hiddenCount ?></b><span>Nascosti</span></div>
+      <div class="tlx-kpi"><b><?= !empty($feed['last_synced_at']) ? e(formatLocalDateTime($feed['last_synced_at'], $profile, 'd/m H:i')) : 'Mai' ?></b><span>Ultimo aggiornamento</span></div>
     </div>
 
-    <div class="section-title">Prodotti (<?= (int) $res['total'] ?>)</div>
-    <form method="get" class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-      <div style="flex:1;min-width:160px;"><label>Cerca</label><input type="text" name="q" value="<?= e($filters['q']) ?>"></div>
-      <div style="flex:1;min-width:180px;"><label>Categoria</label>
-        <select name="category">
-          <option value="">Tutte</option>
-          <?php foreach ($categories as $c): ?>
-            <option value="<?= e($c['path']) ?>" <?= $filters['category'] === $c['path'] ? 'selected' : '' ?>><?= e($c['path']) ?> (<?= (int) $c['products'] ?>)</option>
-          <?php endforeach; ?>
-        </select></div>
-      <div><label>Sconto</label>
-        <select name="discount">
-          <option value="">Tutti</option>
-          <option value="1" <?= $disc === '1' ? 'selected' : '' ?>>Scontati</option>
-          <option value="0" <?= $disc === '0' ? 'selected' : '' ?>>Non scontati</option>
-        </select></div>
-      <button type="submit" class="btn">Filtra</button>
+    <form method="post" class="box">
+      <?= csrfField() ?><input type="hidden" name="action" value="save_feed">
+      <h3><i class="fa-solid fa-bag-shopping"></i> Feed prodotti</h3>
+      <label for="feed-type">Tipo di feed</label>
+      <select name="feed_type" id="feed-type" data-dyn>
+        <?php foreach (PRODUCT_FEED_TYPES as $k => $label): $d = $feedDyn[$k] ?? $feedDyn['google']; ?>
+          <option value="<?= e($k) ?>" data-l="<?= e($d[0]) ?>" data-p="<?= e($d[1]) ?>" data-h="<?= e($d[2]) ?>" <?= ($feed['feed_type'] ?? 'google') === $k ? 'selected' : '' ?>><?= e($label) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <label for="feed-url" data-dyn-label>URL del feed</label>
+      <input type="url" name="feed_url" id="feed-url" value="<?= e($feed['feed_url'] ?? '') ?>" data-dyn-input>
+      <p class="tlx-hint" data-dyn-help></p>
+      <div class="box-row"><button type="submit" class="tlx-submit cmp-done">Salva</button><span class="tlx-hint">Lascia vuoto e salva per scollegare il feed (i prodotti già importati restano).</span></div>
     </form>
 
-    <?php foreach ($res['rows'] as $row): $pr = productSerialize($row); ?>
-      <div class="blog-item" style="display:flex;gap:14px;align-items:flex-start;">
-        <?php if ($pr['image_url']): ?>
-          <img src="<?= e($pr['image_url']) ?>" loading="lazy" referrerpolicy="no-referrer" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;" alt="">
-        <?php endif; ?>
-        <div style="flex:1;min-width:0;">
-          <strong><?= e($pr['title']) ?></strong>
-          <div style="color:var(--text-muted);font-size:12.5px;">
-            <?php if ($pr['has_discount']): ?>
-              €<?= number_format($pr['price_sale'], 2, ',', '.') ?> <s>€<?= number_format($pr['price_regular'], 2, ',', '.') ?></s> (−<?= (int) $pr['discount_percent'] ?>%)
-            <?php elseif ($pr['price_regular'] !== null): ?>
-              €<?= number_format($pr['price_regular'], 2, ',', '.') ?>
-            <?php endif; ?>
-            <?= $pr['category'] ? ' · ' . e($pr['category']) : '' ?>
-            <?= $pr['in_stock'] ? '' : ' · esaurito' ?>
-            <?= $pr['times_published'] ? ' · pubblicato ' . (int) $pr['times_published'] . ' volte' : '' ?>
-            <?php if ($pr['link']): ?> · <a href="<?= e($pr['link']) ?>" target="_blank" rel="noopener">pagina prodotto</a><?php endif; ?>
-          </div>
-        </div>
+    <?php if ($feed): ?>
+      <div class="box">
+        <h3><i class="fa-solid fa-rotate"></i> Aggiornamento</h3>
+        <p><?= $visibleN ?> prodotti nel catalogo<?= $hiddenCount ? ' (' . $hiddenCount . ' nascosti)' : '' ?>.<?= !empty($feed['last_synced_at']) ? ' Ultimo aggiornamento: ' . e(formatLocalDateTime($feed['last_synced_at'], $profile)) . '.' : ' Non ancora aggiornato.' ?><?php if (!empty($feed['last_result'])): ?><br><small>Esito: <?= e($feed['last_result']) ?></small><?php endif; ?></p>
+        <form method="post" data-busy="Aggiornamento in corso… (può richiedere un minuto)"><?= csrfField() ?><input type="hidden" name="action" value="sync"><button type="submit" class="stc-act primary"><i class="fa-solid fa-rotate"></i> <span>Aggiorna prodotti</span></button></form>
       </div>
-    <?php endforeach; ?>
-
-    <?php if ($pages > 1): ?>
-      <p style="display:flex;gap:10px;align-items:center;">
-        <?php if ($res['page'] > 1): ?><a class="btn small secondary" href="<?= e($qs(['page' => $res['page'] - 1])) ?>">← Precedenti</a><?php endif; ?>
-        <span>Pagina <?= (int) $res['page'] ?> di <?= $pages ?></span>
-        <?php if ($res['page'] < $pages): ?><a class="btn small secondary" href="<?= e($qs(['page' => $res['page'] + 1])) ?>">Successivi →</a><?php endif; ?>
-      </p>
     <?php endif; ?>
-  <?php endif; ?>
+
+    <?php if ($totalAll > 0):
+      $stmtPub = getDB()->prepare('SELECT COUNT(*) FROM product_publications WHERE user_id = ?'); $stmtPub->execute([$uid]); $pubCount = (int) $stmtPub->fetchColumn();
+      $delMsg = 'Eliminare TUTTI i ' . $totalAll . ' prodotti del profilo "' . ($profile['display_name'] ?? $profile['slug'] ?? '') . '"?'
+              . ($pubCount > 0 ? ' Verranno cancellate anche ' . $pubCount . ' registrazioni di pubblicazioni social collegate.' : '')
+              . " L'operazione non si può annullare, ma potrai importare di nuovo il feed.";
+    ?>
+      <div class="tlx-listhead"><h2>Prodotti <small>(<?= (int) $res['total'] ?>)</small></h2></div>
+      <form method="get" class="blx-toolbar">
+        <div class="blx-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" name="q" value="<?= e($filters['q']) ?>" placeholder="Cerca un prodotto..."></div>
+        <select name="category" aria-label="Categoria"><option value="">Tutte le categorie</option><?php foreach ($categories as $c): ?><option value="<?= e($c['path']) ?>" <?= $filters['category'] === $c['path'] ? 'selected' : '' ?>><?= e($c['path']) ?> (<?= (int) $c['products'] ?>)</option><?php endforeach; ?></select>
+        <select name="discount" aria-label="Sconto"><option value="">Tutti</option><option value="1" <?= $disc === '1' ? 'selected' : '' ?>>Scontati</option><option value="0" <?= $disc === '0' ? 'selected' : '' ?>>Non scontati</option></select>
+        <button type="submit" class="tlx-chip">Filtra</button>
+      </form>
+      <div class="prx">
+        <?php foreach ($res['rows'] as $row): $p = productSerialize($row); ?>
+          <article class="prx-c">
+            <?php if ($p['image_url']): ?><img src="<?= e($p['image_url']) ?>" loading="lazy" referrerpolicy="no-referrer" alt=""><?php else: ?><span class="stc-ph prx-ph"><i class="fa-solid fa-bag-shopping"></i></span><?php endif; ?>
+            <div class="prx-b">
+              <b><?= e($p['title']) ?></b>
+              <div class="prx-p"><?php if ($p['has_discount']): ?>€<?= number_format($p['price_sale'], 2, ',', '.') ?> <s>€<?= number_format($p['price_regular'], 2, ',', '.') ?></s> <span class="prx-off">−<?= (int) $p['discount_percent'] ?>%</span><?php elseif ($p['price_regular'] !== null): ?>€<?= number_format($p['price_regular'], 2, ',', '.') ?><?php endif; ?></div>
+              <small class="lkx-hint"><?= $p['category'] ? e($p['category']) : '' ?><?= $p['in_stock'] ? '' : ' · esaurito' ?><?= $p['times_published'] ? ' · pubblicato ' . (int) $p['times_published'] . ' volte' : '' ?></small>
+              <?php if ($p['link']): ?><a href="<?= e($p['link']) ?>" target="_blank" rel="noopener" class="lkx-hint">Pagina prodotto ↗</a><?php endif; ?>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($pages > 1): ?>
+        <div class="pnx-pg">
+          <?php if ($res['page'] > 1): ?><a class="stc-act" href="<?= e($qs(['page' => $res['page'] - 1])) ?>"><i class="fa-solid fa-arrow-left"></i> <span>Precedenti</span></a><?php endif; ?>
+          <span>Pagina <?= (int) $res['page'] ?> di <?= $pages ?></span>
+          <?php if ($res['page'] < $pages): ?><a class="stc-act" href="<?= e($qs(['page' => $res['page'] + 1])) ?>"><span>Successivi</span> <i class="fa-solid fa-arrow-right"></i></a><?php endif; ?>
+        </div>
+      <?php endif; ?>
+
+      <div class="box box-danger">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Elimina i prodotti importati</h3>
+        <p>Svuota il catalogo di questo profilo (<?= $totalAll ?> prodotti). Il feed resta collegato: dopo puoi ripetere l'importazione con «Aggiorna prodotti». Gli altri profili non vengono toccati.</p>
+        <form method="post" data-confirm="<?= e($delMsg) ?>"><?= csrfField() ?><input type="hidden" name="action" value="delete_all_products"><button type="submit" class="stc-act danger"><i class="fa-solid fa-trash"></i> <span>Elimina tutti i prodotti</span></button></form>
+      </div>
+    <?php endif; ?>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
