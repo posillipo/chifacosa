@@ -6,9 +6,9 @@
 // Riconosce la piattaforma social da un URL, tra quelle mostrate come icona in cima alla pagina
 // pubblica. Ogni voce ha una "key" univoca usata per la deduplicazione (un solo link per
 // piattaforma viene mostrato come icona) e una classe Font Awesome completa per l'icona.
-function detectPlatform(string $url): ?array {
-    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-    $map = [
+// Elenco dominio => piattaforma (unica fonte: usata da detectPlatform e dalla dashboard Studio).
+function platformMap(): array {
+    return [
         'spotify.com'      => ['key' => 'spotify',    'icon_class' => 'fa-brands fa-spotify',    'label' => 'Spotify'],
         'music.apple.com'  => ['key' => 'apple_music','icon_class' => 'fa-brands fa-apple',      'label' => 'Apple Music'],
         'instagram.com'    => ['key' => 'instagram',  'icon_class' => 'fa-brands fa-instagram',  'label' => 'Instagram'],
@@ -26,6 +26,11 @@ function detectPlatform(string $url): ?array {
         'pinterest.com'    => ['key' => 'pinterest',  'icon_class' => 'fa-brands fa-pinterest',  'label' => 'Pinterest'],
         'pin.it'           => ['key' => 'pinterest',  'icon_class' => 'fa-brands fa-pinterest',  'label' => 'Pinterest'],
     ];
+}
+
+function detectPlatform(string $url): ?array {
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $map = platformMap();
     foreach ($map as $domain => $info) {
         if ($host === $domain || str_ends_with($host, '.' . $domain)) {
             return $info;
