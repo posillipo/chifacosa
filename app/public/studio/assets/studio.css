@@ -651,3 +651,22 @@ body.studio-mode .kit-inp { width: 100%; margin: 0 0 12px; height: 44px; border-
 body.studio-mode .blx-main > .tlx-lbl { margin-top: 12px; }
 body.studio-mode .blx-main .kit-ai { margin-top: 8px; }
 body.studio-mode .blx-main .tlx-ai { margin-top: 8px; }
+
+/* ===== Pagine "Che Amo" e Brani (generate): veste nuova sopra il markup originale ===== */
+body.studio-mode .container .link-item { align-items: flex-start; gap: 10px; padding: 14px; margin-bottom: 12px; box-shadow: var(--st-shadow); border-radius: 18px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+body.studio-mode .container .link-item div[style*="display:flex"] { flex-wrap: wrap; }
+body.studio-mode .container .link-item img { border-radius: 12px; }
+body.studio-mode .container .link-item > div:first-child strong { font-size: 15px; }
+body.studio-mode .container .link-item input, body.studio-mode .container .link-item textarea, body.studio-mode .container .link-item select { max-width: 100%; min-width: 0; width: 100%; border-radius: 12px; background: #fff; }
+body.studio-mode .container .link-item input[type=radio], body.studio-mode .container .link-item input[type=checkbox] { width: auto; min-width: 0; }
+body.studio-mode .container .link-item input[type=file] { width: 100%; font-size: 13px; }
+body.studio-mode .container .link-item form { min-width: 0; max-width: 100%; }
+body.studio-mode .container [class*="-pub-editor"] { background: var(--bg); border-radius: 16px; padding: 14px; margin-top: 10px !important; display: block; }
+body.studio-mode .container [class*="-pub-editor"] label { font-weight: 600; font-size: 13px; color: var(--text); }
+body.studio-mode .container [class*="-pub-editor"] label[style*="display:flex"] { font-weight: 500; }
+body.studio-mode .container [class*="-pub-block"] { min-width: 0; max-width: 100%; }
+body.studio-mode .container [class*="-pub-toggle"] { background: var(--accent-soft) !important; color: #5B3FD6 !important; border: 0 !important; font-weight: 700; }
+body.studio-mode .container [class*="-search-form"], body.studio-mode .container form.card { border-radius: 18px; }
+body.studio-mode .container [id$="-list-title"], body.studio-mode .container #fm-list-title { font-size: 17px; font-weight: 800; letter-spacing: -.01em; text-transform: none; color: var(--text); margin-top: 26px; }
+body.studio-mode .container .ai-panel, body.studio-mode .container [class*="-ai-panel"] { background: var(--accent-soft) !important; border: 0 !important; border-radius: 14px; }
+body.studio-mode .container [class*="badge-scheduled"], body.studio-mode .container [class*="badge-private"] { border-radius: 999px; }
