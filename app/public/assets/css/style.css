@@ -12,6 +12,12 @@
    del suo contenitore: senza questo, una foto grande caricata da chi gestisce il profilo poteva
    sfondare la larghezza della pagina su schermi stretti. */
 img, video { max-width: 100%; height: auto; }
+/* Pixel di tracciamento (Metricool, Meta, ecc.) incollati dall'admin nelle impostazioni: finiscono come figli
+   diretti del body. Nel layout a colonna del tema Colorful un'immagine 1x1 verrebbe allargata a tutta
+   la larghezza (e altrettanto in altezza), spingendo giù l'intera pagina: non devono mai vedersi. */
+body > img:not([class]):not([id]),
+img[src*="tracker.metricool.com"],
+img[src*="facebook.com/tr"] { display: none !important; }
 form input[type=file] { max-width: 100%; }
 /* La pagina non deve mai scorrere in orizzontale: bloccarlo solo su <body> (come fatto finora)
    non basta su alcuni browser mobile, dove è <html> a scorrere davvero — va bloccato su
