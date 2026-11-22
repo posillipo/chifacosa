@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: azioni identiche alla pagina originale + 'reorder' (trascinamento) */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -133,6 +133,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: /dashboard_links.php?sync_error=' . rawurlencode($result['error']));
         }
         exit;
+    } elseif ($action === 'reorder') {
+        // Nuovo ordine dal trascinamento: elenco di id separati da virgola, solo link di questo profilo.
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['ids'] ?? '')))));
+        $pos = 1;
+        $upd = getDB()->prepare('UPDATE links SET sort_order=? WHERE id=? AND user_id=?');
+        foreach ($ids as $rid) {
+            $upd->execute([$pos++, $rid, $profile['id']]);
+        }
+        http_response_code(204);
+        exit;
     } elseif ($action === 'move_up' || $action === 'move_down') {
         $id = (int) ($_POST['id'] ?? 0);
         $stmt = getDB()->prepare('SELECT id, sort_order FROM links WHERE user_id=? ORDER BY sort_order ASC, id ASC');
@@ -178,259 +188,177 @@ foreach ($links as $i => $l) {
     $linkIndex[$l['id']] = $i;
 }
 
-function renderLinkItem(array $l, int $idx, int $total): void {
-    $platform = $l['platform'] ?? null;
-    $type = $l['link_type'] ?? 'link';
-?>
-  <div class="link-item">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <?php if ($type === 'divider'): ?>
-        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--text-rgb),0.12);color:var(--text-muted);font-size:16px;"><i class="fa-solid fa-grip-lines"></i></span>
-      <?php elseif ($type === 'map'): ?>
-        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--text-rgb),0.12);color:var(--text-muted);font-size:16px;"><i class="fa-solid fa-location-dot"></i></span>
-      <?php elseif ($platform): ?>
-        <span style="width:40px;height:40px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-text,#fff);font-size:16px;"><i class="<?= e($platform['icon_class']) ?>"></i></span>
-      <?php elseif ($l['cover_path']): ?>
-        <img src="/<?= e($l['cover_path']) ?>" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-      <?php endif; ?>
-      <div>
-        <strong><?= e($l['label']) ?></strong>
-        <?php if ($type === 'divider'): ?><span style="color:var(--text-muted);font-size:12px;"> · separatore</span>
-        <?php elseif ($type === 'map'): ?><span style="color:var(--text-muted);font-size:12px;"> · mappa</span>
-        <?php elseif ($platform): ?><span style="color:var(--accent);font-size:12px;"> · icona <?= e($platform['label']) ?></span>
-        <?php elseif ($type === 'film'): ?><span style="color:var(--text-muted);font-size:12px;"> · film (sincronizzato da Cinema)</span><?php endif; ?>
-        <?php if (!$l['is_active']): ?><span style="color:#ff8a8a;font-size:12px;"> · nascosto</span><?php endif; ?>
-        <br>
-        <?php if ($type === 'divider'): ?>
-          <small style="color:var(--text-muted)">titolo di sezione, non cliccabile</small>
-        <?php elseif ($type === 'map'): ?>
-          <small style="color:var(--text-muted)"><?= number_format((float)$l['map_lat'], 5) ?>, <?= number_format((float)$l['map_lng'], 5) ?></small>
-        <?php else: ?>
-          <small style="color:var(--text-muted)"><?= e($l['url']) ?> · <?= (int)$l['click_count'] ?> click</small>
-        <?php endif; ?>
-      </div>
-    </div>
-    <div class="icon-btn-group">
-      <form method="post" title="Sposta su">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="move_up">
-        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-        <button class="icon-btn" type="submit" <?= $idx === 0 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-up"></i></button>
-      </form>
-      <form method="post" title="Sposta giù">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="move_down">
-        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-        <button class="icon-btn" type="submit" <?= $idx === $total - 1 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-down"></i></button>
-      </form>
-      <a class="icon-btn" href="/dashboard_links.php?edit=<?= (int)$l['id'] ?>" title="Modifica"><i class="fa-solid fa-pen"></i></a>
-      <form method="post" title="<?= $l['is_active'] ? 'Nascondi' : 'Mostra' ?>">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="toggle">
-        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-        <button class="icon-btn" type="submit"><i class="fa-solid <?= $l['is_active'] ? 'fa-eye' : 'fa-eye-slash' ?>"></i></button>
-      </form>
-      <form method="post" onsubmit="return confirm('Eliminare questo link?');" title="Elimina">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="delete">
-        <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
-        <button class="icon-btn danger" type="submit"><i class="fa-solid fa-trash"></i></button>
-      </form>
-    </div>
-  </div>
-<?php
+$linkJson = [];
+$totalClicks = 0; $maxClicks = 0; $activeN = 0;
+foreach ($links as $l) {
+    $totalClicks += (int) $l['click_count'];
+    $maxClicks = max($maxClicks, (int) $l['click_count']);
+    if ($l['is_active']) { $activeN++; }
 }
-
+$socialIds = array_map(fn ($l) => (int) $l['id'], $socialLinks);
+$pubUrl = siteUrl('/' . $profile['slug']);
+$tlName = trim((string) ($profile['display_name'] ?? ''));
+$tlAvatar = !empty($profile['avatar_path']) ? '/' . ltrim($profile['avatar_path'], '/') : '';
 include __DIR__ . '/../_dash_header.php';
+$share = json_encode(['t' => $tlName ?: $profile['slug'], 'u' => $pubUrl], JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['error'])): ?><div class="alert error">Inserisci un'etichetta e un URL valido.</div><?php endif; ?>
-  <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato su OpenStreetMap. Prova a scriverlo in modo più preciso (via, numero civico, città), oppure inserisci direttamente le coordinate.</div><?php endif; ?>
-  <?php if (isset($_GET['map_input_error'])): ?><div class="alert error">Inserisci un indirizzo oppure delle coordinate (latitudine e longitudine).</div><?php endif; ?>
-  <?php if (isset($_GET['sync_ok'])): ?>
-    <div class="alert success">
-      Sincronizzazione completata: <?= (int) ($_GET['added'] ?? 0) ?> pulsanti aggiunti,
-      <?= (int) ($_GET['updated'] ?? 0) ?> aggiornati, <?= (int) ($_GET['removed'] ?? 0) ?> rimossi.
-    </div>
-  <?php endif; ?>
+  <?php if (isset($_GET['geocode_error'])): ?><div class="alert error">Indirizzo non trovato. Prova a scriverlo in modo più preciso (via, numero civico, città).</div><?php endif; ?>
+  <?php if (isset($_GET['map_input_error'])): ?><div class="alert error">Inserisci un indirizzo oppure le coordinate.</div><?php endif; ?>
+  <?php if (isset($_GET['sync_ok'])): ?><div class="alert success">Sezioni sincronizzate: <?= (int) ($_GET['added'] ?? 0) ?> aggiunte, <?= (int) ($_GET['updated'] ?? 0) ?> aggiornate, <?= (int) ($_GET['removed'] ?? 0) ?> rimosse.</div><?php endif; ?>
   <?php if (isset($_GET['sync_error'])): ?><div class="alert error"><?= e($_GET['sync_error']) ?></div><?php endif; ?>
 
-  <style>
-  /* Pagina a due colonne: moduli di inserimento a sinistra, elenco dei link a destra. Sotto i 760px si impilano. */
-  .container { max-width: 1240px; }
-  .dash-two-col { display: block; }
-  .dash-two-col > div { min-width: 0; }
-  @media (min-width: 760px) {
-    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  }
-  </style>
+  <div class="lkx" data-profile="<?= e($tlName ?: $profile['slug']) ?>" data-slug="<?= e($profile['slug']) ?>" data-avatar="<?= e($tlAvatar) ?>"
+       data-platforms='<?= e(json_encode(array_values(array_map(fn ($d, $i) => ['d' => $d, 'k' => $i['key'], 'i' => $i['icon_class'], 'l' => $i['label']], array_keys(platformMap()), platformMap())), JSON_UNESCAPED_SLASHES)) ?>'>
 
-  <div class="dash-two-col">
-  <div class="dash-two-col-main">
-  <div class="card">
-    <strong>🧩 Tasto Speciale — Link delle sezioni del sito</strong>
-    <p style="color:var(--text-muted);font-size:13px;margin:6px 0 12px;">
-      Crea/aggiorna automaticamente un pulsante per ogni sezione del tuo profilo che ha già
-      contenuti pubblicati, dietro un separatore dedicato.
-    </p>
-    <form method="post">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="sync_section_links">
-      <button type="submit" class="btn">Genera/aggiorna i link delle sezioni</button>
-    </form>
-  </div>
-
-  <?php if ($editingLink && ($editingLink['link_type'] ?? 'link') === 'divider'): ?>
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="update_divider">
-    <input type="hidden" name="id" value="<?= (int)$editingLink['id'] ?>">
-    <strong>Modifica separatore</strong>
-    <label>Titolo della sezione</label>
-    <input type="text" name="label" value="<?= e($editingLink['label']) ?>" required>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button type="submit" class="btn">Salva modifiche</button>
-      <a href="/dashboard_links.php" class="btn secondary">Annulla</a>
-    </div>
-  </form>
-  <?php elseif ($editingLink && ($editingLink['link_type'] ?? 'link') === 'map'): ?>
-  <form method="post" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="update_map">
-    <input type="hidden" name="id" value="<?= (int)$editingLink['id'] ?>">
-    <strong>Modifica mappa</strong>
-    <label>Etichetta</label>
-    <input type="text" name="label" value="<?= e($editingLink['label']) ?>">
-    <label>Nuovo indirizzo (lascia vuoto per non spostare la mappa)</label>
-    <input type="text" name="address" placeholder="Via Roma 1, Napoli">
-    <p style="color:var(--text-muted);font-size:12px;margin-top:-8px;">oppure, in alternativa, inserisci direttamente le coordinate:</p>
-    <div style="display:flex;gap:10px;">
-      <div style="flex:1;">
-        <label>Latitudine</label>
-        <input type="text" name="map_lat" placeholder="es. 40.85216" inputmode="decimal">
-      </div>
-      <div style="flex:1;">
-        <label>Longitudine</label>
-        <input type="text" name="map_lng" placeholder="es. 14.26811" inputmode="decimal">
+    <div class="lkx-top">
+      <div class="tlx-kpis">
+        <div class="tlx-kpi"><b id="lkx-n"><?= $activeN ?></b><span>Link visibili</span></div>
+        <div class="tlx-kpi"><b><?= $totalClicks ?></b><span>Click totali</span></div>
+        <a class="tlx-kpi tlx-kpi-link" href="/<?= e($profile['slug']) ?>" target="_blank"><b><i class="fa-solid fa-arrow-up-right-from-square"></i></b><span>Apri la tua pagina</span></a>
+        <button type="button" class="tlx-kpi tlx-kpi-link lkx-copy" data-share='<?= e($share) ?>'><b><i class="fa-solid fa-share-nodes"></i></b><span>Condividi il link</span></button>
       </div>
     </div>
-    <p style="color:var(--text-muted);font-size:12px;">
-      Posizione attuale: <?= number_format((float)$editingLink['map_lat'], 5) ?>, <?= number_format((float)$editingLink['map_lng'], 5) ?>
-    </p>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button type="submit" class="btn">Salva modifiche</button>
-      <a href="/dashboard_links.php" class="btn secondary">Annulla</a>
-    </div>
-  </form>
-  <?php elseif ($editingLink): ?>
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="update_link">
-    <input type="hidden" name="id" value="<?= (int)$editingLink['id'] ?>">
-    <strong>Modifica link</strong>
-    <label>Etichetta</label>
-    <input type="text" name="label" value="<?= e($editingLink['label']) ?>" required>
-    <label>URL</label>
-    <input type="url" name="url" value="<?= e($editingLink['url']) ?>" required>
-    <label>Copertina quadrata (opzionale, jpg/png/webp)</label>
-    <?php if ($editingLink['cover_path']): ?>
-      <img src="/<?= e($editingLink['cover_path']) ?>" style="width:56px;height:56px;border-radius:8px;object-fit:cover;margin-bottom:8px;">
-    <?php endif; ?>
-    <input type="file" name="cover" accept="image/*">
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;margin-top:10px;">
-      <input type="checkbox" name="is_website_icon" value="1" style="width:auto;" <?= !empty($editingLink['is_website_icon']) ? 'checked' : '' ?>>
-      È il tuo sito web personale? (comparirà come icona "sito web" invece di pulsante)
-    </label>
-    <div style="display:flex;gap:8px;">
-      <button type="submit" class="btn">Salva modifiche</button>
-      <a href="/dashboard_links.php" class="btn secondary">Annulla</a>
-    </div>
-  </form>
-  <?php else: ?>
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="add">
-    <label>Etichetta (es. "Ascolta su Spotify", "Instagram")</label>
-    <input type="text" name="label" required>
-    <label>URL</label>
-    <input type="url" name="url" placeholder="https://..." required>
-    <label>Copertina quadrata (opzionale, jpg/png/webp)</label>
-    <input type="file" name="cover" accept="image/*">
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;margin-top:10px;">
-      <input type="checkbox" name="is_website_icon" value="1" style="width:auto;">
-      È il tuo sito web personale? (comparirà come icona "sito web" invece di pulsante)
-    </label>
-    <button type="submit" class="btn">Aggiungi link</button>
-  </form>
 
-  <details class="help-box" style="margin-top:14px;">
-    <summary>➕ Aggiungi un separatore</summary>
-    <p style="color:var(--text-muted);font-size:13px;">
-      Solo un titolo per dividere i link in sezioni (es. "Per prenotare", "Dove siamo") — non è
-      cliccabile, serve solo a organizzare la lista sulla pagina pubblica.
-    </p>
-    <form method="post" style="margin-top:10px;">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="add_divider">
-      <label>Titolo della sezione</label>
-      <input type="text" name="label" required>
-      <button type="submit" class="btn secondary">Aggiungi separatore</button>
-    </form>
-  </details>
+    <div class="lkx-grid">
+      <div class="lkx-main">
+        <form method="post" enctype="multipart/form-data" class="lkx-add" id="lkx-add" autocomplete="off">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" id="lkx-action" value="add">
+          <input type="hidden" name="label" id="lkx-label-h">
+          <input type="hidden" name="url" id="lkx-url-h">
+          <input type="hidden" name="address" id="lkx-addr-h">
+          <input type="checkbox" name="is_website_icon" value="1" id="lkx-site-h" hidden>
+          <label class="lkx-bar" for="lkx-q">
+            <i class="fa-solid fa-link"></i>
+            <input type="text" id="lkx-q" placeholder="Incolla un link, scrivi un titolo o un indirizzo…" inputmode="url" autocapitalize="off" spellcheck="false">
+            <button type="button" class="lkx-clear" id="lkx-clear" aria-label="Svuota" hidden><i class="fa-solid fa-xmark"></i></button>
+          </label>
 
-  <details class="help-box" style="margin-top:10px;">
-    <summary>📍 Aggiungi una mappa (gratuita)</summary>
-    <p style="color:var(--text-muted);font-size:13px;">
-      Cerca un indirizzo e mostra una mappa interattiva sulla tua pagina pubblica — tramite
-      OpenStreetMap, un servizio completamente gratuito, senza chiave API e senza costi anche con
-      molte visite (a differenza di Google Maps). In alternativa all'indirizzo puoi inserire
-      direttamente le coordinate (utile se l'indirizzo non viene trovato, o se il punto esatto
-      non ha un indirizzo preciso).
-    </p>
-    <form method="post" style="margin-top:10px;">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="add_map">
-      <label>Etichetta (opzionale)</label>
-      <input type="text" name="label" placeholder="La nostra sede">
-      <label>Indirizzo</label>
-      <input type="text" name="address" placeholder="Via Roma 1, Napoli">
-      <p style="color:var(--text-muted);font-size:12px;margin-top:-8px;">oppure, in alternativa, inserisci direttamente le coordinate:</p>
-      <div style="display:flex;gap:10px;">
-        <div style="flex:1;">
-          <label>Latitudine</label>
-          <input type="text" name="map_lat" placeholder="es. 40.85216" inputmode="decimal">
+          <div class="lkx-sug" id="lkx-sug" hidden>
+            <span class="lkx-sug-ic" id="lkx-sug-ic"><i class="fa-solid fa-link"></i></span>
+            <div class="lkx-sug-b">
+              <small id="lkx-sug-t">Link riconosciuto</small>
+              <input type="text" id="lkx-sug-label" maxlength="150" placeholder="Nome del pulsante" aria-label="Nome del pulsante">
+              <label class="tlx-switch" id="lkx-site-row" hidden><input type="checkbox" id="lkx-site"><i></i><span>È il mio sito web (icona in alto)</span></label>
+            </div>
+            <button type="submit" class="lkx-go" id="lkx-go"><i class="fa-solid fa-plus"></i> <span>Aggiungi</span></button>
+          </div>
+
+          <div class="lkx-text" id="lkx-text" hidden>
+            <p>Non è un link. Cosa vuoi creare?</p>
+            <div class="lkx-text-b">
+              <button type="button" class="lkx-opt" data-kind="divider"><i class="fa-solid fa-grip-lines"></i><span><b>Separatore</b><small>Un titolo che divide la lista, es. «Per prenotare»</small></span></button>
+              <button type="button" class="lkx-opt" data-kind="map"><i class="fa-solid fa-location-dot"></i><span><b>Mappa</b><small>Mostra una mappa di questo indirizzo</small></span></button>
+            </div>
+          </div>
+
+          <div class="lkx-tiles" id="lkx-tiles" aria-label="Aggiunta rapida">
+            <button type="button" data-p="instagram.com/"><i class="fa-brands fa-instagram"></i><span>Instagram</span></button>
+            <button type="button" data-p="open.spotify.com/"><i class="fa-brands fa-spotify"></i><span>Spotify</span></button>
+            <button type="button" data-p="youtube.com/@"><i class="fa-brands fa-youtube"></i><span>YouTube</span></button>
+            <button type="button" data-p="tiktok.com/@"><i class="fa-brands fa-tiktok"></i><span>TikTok</span></button>
+            <button type="button" data-p="facebook.com/"><i class="fa-brands fa-facebook-f"></i><span>Facebook</span></button>
+            <button type="button" data-p="wa.me/39"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></button>
+            <button type="button" data-p="https://" data-site="1"><i class="fa-solid fa-globe"></i><span>Sito web</span></button>
+            <button type="button" data-kind="map"><i class="fa-solid fa-location-dot"></i><span>Mappa</span></button>
+            <button type="button" data-kind="divider"><i class="fa-solid fa-grip-lines"></i><span>Separatore</span></button>
+          </div>
+        </form>
+
+        <div class="tlx-listhead"><h2>I tuoi link <small id="lkx-count">(<?= count($links) ?>)</small></h2><span class="lkx-hint"><i class="fa-solid fa-grip-vertical"></i> Trascina per riordinare</span></div>
+
+        <?php if (!$links): ?>
+          <div class="tlx-empty" id="lkx-empty"><i class="fa-solid fa-link"></i><b>Ancora nessun link</b><span>Incolla un indirizzo qui sopra o tocca una delle icone: ci penso io a riconoscerlo.</span></div>
+        <?php endif; ?>
+
+        <div class="lkx-list" id="lkx-list">
+          <?php foreach ($links as $l):
+            $type = $l['link_type'] ?? 'link';
+            $platform = in_array((int) $l['id'], $socialIds, true) ? ($l['platform'] ?? null) : null;
+            foreach ($socialLinks as $sl) { if ((int) $sl['id'] === (int) $l['id']) { $platform = $sl['platform']; } }
+            $det = $type === 'link' ? detectPlatform($l['url']) : null;
+            $icon = $type === 'divider' ? 'fa-solid fa-grip-lines' : ($type === 'map' ? 'fa-solid fa-location-dot' : ($det['icon_class'] ?? (!empty($l['is_website_icon']) ? 'fa-solid fa-globe' : 'fa-solid fa-link')));
+            $clicks = (int) $l['click_count'];
+            $pct = $maxClicks > 0 ? max(4, (int) round($clicks / $maxClicks * 100)) : 0;
+          ?>
+          <article class="lkx-item<?= $l['is_active'] ? '' : ' off' ?> lkx-t-<?= e($type) ?>" data-id="<?= (int) $l['id'] ?>" data-type="<?= e($type) ?>"
+                   data-label="<?= e($l['label']) ?>" data-url="<?= e($l['url']) ?>" data-active="<?= (int) $l['is_active'] ?>" data-site="<?= (int) !empty($l['is_website_icon']) ?>"
+                   data-icon="<?= e($icon) ?>" data-pk="<?= e($det['key'] ?? '') ?>" data-lat="<?= e((string) ($l['map_lat'] ?? '')) ?>" data-lng="<?= e((string) ($l['map_lng'] ?? '')) ?>"
+                   data-cover="<?= e((string) ($l['cover_path'] ?? '')) ?>">
+            <span class="lkx-grip" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="lkx-ic<?= $type === 'link' && $l['cover_path'] ? ' has-img' : '' ?>"><?php if ($type === 'link' && $l['cover_path']): ?><img src="/<?= e($l['cover_path']) ?>" alt=""><?php else: ?><i class="<?= e($icon) ?>"></i><?php endif; ?></span>
+            <div class="lkx-b">
+              <b><?= e($l['label']) ?></b>
+              <?php if ($type === 'divider'): ?><small>Separatore · titolo di sezione</small>
+              <?php elseif ($type === 'map'): ?><small>Mappa · <?= number_format((float) $l['map_lat'], 4) ?>, <?= number_format((float) $l['map_lng'], 4) ?></small>
+              <?php else: ?><small><?= e(preg_replace('~^https?://(www\.)?~i', '', $l['url'])) ?></small><?php endif; ?>
+              <?php if ($type === 'link'): ?>
+                <span class="lkx-stat"><span class="lkx-bar-c"><i style="--w:<?= $pct ?>%"></i></span><em><?= $clicks ?> click</em></span>
+              <?php endif; ?>
+            </div>
+            <?php if ($platform): ?><span class="lkx-tag" title="Compare come icona in cima alla tua pagina"><i class="fa-solid fa-arrow-up"></i> In alto</span><?php endif; ?>
+            <div class="lkx-act">
+              <label class="tlx-switch lkx-sw" title="Visibile sulla tua pagina"><input type="checkbox" class="lkx-toggle" <?= $l['is_active'] ? 'checked' : '' ?>><i></i></label>
+              <button type="button" class="lkx-btn lkx-edit" title="Modifica" aria-label="Modifica"><i class="fa-solid fa-pen"></i></button>
+              <button type="button" class="lkx-btn danger lkx-del" title="Elimina" aria-label="Elimina"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </article>
+          <?php endforeach; ?>
         </div>
-        <div style="flex:1;">
-          <label>Longitudine</label>
-          <input type="text" name="map_lng" placeholder="es. 14.26811" inputmode="decimal">
+
+        <div class="lkx-sync">
+          <div><b><i class="fa-solid fa-wand-magic-sparkles"></i> Collega le sezioni del sito</b>
+            <p>Crea o aggiorna da solo un pulsante per ogni sezione del tuo profilo che ha già contenuti (Blog, Eventi, Video…), sotto un separatore dedicato.</p></div>
+          <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="sync_section_links"><button type="submit" class="stc-act"><i class="fa-solid fa-rotate"></i> <span>Genera / aggiorna</span></button></form>
         </div>
       </div>
-      <button type="submit" class="btn secondary">Trova e aggiungi mappa</button>
+
+      <aside class="lkx-side" aria-label="Anteprima della tua pagina">
+        <div class="tlx-lbl">Così appare la tua pagina</div>
+        <div class="lkx-phone"><div class="lkx-screen" id="lkx-prev"></div></div>
+      </aside>
+    </div>
+
+    <button type="button" class="lkx-fab" id="lkx-prev-open"><i class="fa-regular fa-eye"></i> Anteprima</button>
+  </div>
+
+  <dialog class="cmp lkx-dlg" id="lkx-dlg" aria-labelledby="lkx-dlg-t">
+    <form method="post" enctype="multipart/form-data" class="cmp-form" id="lkx-form">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" id="lkx-d-action" value="update_link">
+      <input type="hidden" name="id" id="lkx-d-id">
+      <section class="cmp-panel">
+        <header class="cmp-head"><h2 id="lkx-dlg-t">Modifica</h2><button type="button" class="cmp-x" data-lkx-close aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button></header>
+        <div class="cmp-body">
+          <label for="lkx-d-label">Nome</label>
+          <input type="text" name="label" id="lkx-d-label" required maxlength="150">
+          <div data-t="link">
+            <label for="lkx-d-url">Indirizzo (URL)</label>
+            <input type="url" name="url" id="lkx-d-url" placeholder="https://...">
+            <label>Immagine quadrata (opzionale)</label>
+            <div class="lkx-cover"><img id="lkx-d-cover" alt="" hidden><input type="file" name="cover" accept="image/*"></div>
+            <label class="tlx-switch"><input type="checkbox" name="is_website_icon" value="1" id="lkx-d-site"><i></i><span>È il mio sito web (icona in alto)</span></label>
+          </div>
+          <div data-t="map">
+            <label for="lkx-d-addr">Nuovo indirizzo <small>(vuoto = non sposta la mappa)</small></label>
+            <input type="text" name="address" id="lkx-d-addr" placeholder="Via Roma 1, Napoli">
+            <details class="tlx-adv"><summary>Oppure inserisci le coordinate</summary>
+              <div class="lkx-coords"><input type="text" name="map_lat" id="lkx-d-lat" placeholder="Latitudine" inputmode="decimal"><input type="text" name="map_lng" id="lkx-d-lng" placeholder="Longitudine" inputmode="decimal"></div>
+            </details>
+          </div>
+        </div>
+        <footer class="cmp-foot"><button type="submit" class="tlx-submit"><i class="fa-solid fa-check"></i> <span>Salva</span></button></footer>
+      </section>
     </form>
-  </details>
-  <?php endif; ?>
+  </dialog>
 
-  </div>
+  <dialog class="cmp lkx-pdlg" id="lkx-pdlg" aria-label="Anteprima">
+    <header class="cmp-head"><h2>Anteprima</h2><button type="button" class="cmp-x" data-lkx-close aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button></header>
+    <div class="cmp-body"><div class="lkx-phone"><div class="lkx-screen" id="lkx-prev2"></div></div></div>
+  </dialog>
 
-  <div class="dash-two-col-side">
-  <div class="section-title">I tuoi link (<?= count($links) ?>)</div>
-  <p style="color:var(--text-muted);font-size:13px;">
-    Le icone (Spotify, Apple Music, Instagram, Facebook, TikTok, YouTube, LinkedIn, SoundCloud,
-    Pinterest, X, WhatsApp, sito web) vengono riconosciute automaticamente e mostrate in cima alla pagina
-    pubblica — solo la <strong>prima</strong> di ciascun tipo, seguendo l'ordine in cui i link
-    compaiono qui sotto; eventuali duplicati restano tra i pulsanti. Usa le frecce per decidere
-    l'ordine.
-  </p>
-
-  <?php if ($socialLinks): ?>
-    <div class="section-title" style="margin-top:22px;">Icone social (<?= count($socialLinks) ?>)</div>
-    <?php foreach ($socialLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
-  <?php endif; ?>
-
-  <?php if ($actionLinks): ?>
-    <div class="section-title" style="margin-top:22px;">Link e sezioni (<?= count($actionLinks) ?>)</div>
-    <?php foreach ($actionLinks as $l): renderLinkItem($l, $linkIndex[$l['id']], count($links)); endforeach; ?>
-  <?php endif; ?>
-  </div>
-  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-links.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-links.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
