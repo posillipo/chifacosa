@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale (conteggi, visibilità, riordino), cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -104,60 +104,46 @@ if (!in_array('cheamo', $hiddenKeys, true)) {
 }
 
 include __DIR__ . '/../_dash_header.php';
+$camColor = ['bandcheamo' => 1, 'attorichamo' => 2, 'filmcheamo' => 3, 'libricheamo' => 4, 'viaggi' => 5, 'brani' => 6, 'playlistcheamo' => 1, 'albumcheamo' => 2,
+    'ricettecheamo' => 3, 'squadrecheamo' => 4, 'calciatoricheamo' => 5, 'partitecheamo' => 6, 'pubblicazionicheamo' => 1];
+$camTotal = 0; $camActive = 0;
+foreach ($cheAmoNavRows as $r) { $camTotal += $counts[$r['key']]; if ($counts[$r['key']] > 0) { $camActive++; } }
 ?>
-  <div id="che-amo-reorder-msg" class="alert success" style="display:none;">Ordine aggiornato.</div>
+  <div class="tlx cam">
+    <div class="tlx-kpis">
+      <div class="tlx-kpi"><b><?= $camTotal ?></b><span>Elementi in tutto</span></div>
+      <div class="tlx-kpi"><b><?= $camActive ?> / <?= count($cheAmoNavRows) ?></b><span>Raccolte in uso</span></div>
+      <a class="tlx-kpi tlx-kpi-link" href="/<?= e($profile['slug']) ?>/che-amo" target="_blank"><b><i class="fa-solid fa-arrow-up-right-from-square"></i></b><span>Apri la vetrina pubblica</span></a>
+      <a class="tlx-kpi tlx-kpi-link" href="/dashboard_nav_menu.php"><b><i class="fa-solid fa-sliders"></i></b><span>Menu di navigazione</span></a>
+    </div>
 
-  <div id="che-amo-sortable-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
-    <?php foreach ($cheAmoNavRows as $row): ?>
-      <?php $key = $row['key']; $m = CHE_AMO_MODULES[$key]; ?>
-      <div class="che-amo-tile-wrap" data-id="<?= $row['id'] ?>" style="position:relative;">
-        <i class="fa-solid fa-grip-vertical che-amo-drag-handle"
-           style="position:absolute;top:12px;right:12px;z-index:2;cursor:grab;color:var(--text-muted);padding:6px;"></i>
-        <a href="<?= e($moduleUrls[$key]) ?>" class="card" style="display:block;text-decoration:none;color:inherit;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <span style="width:40px;height:40px;border-radius:10px;background:rgba(108,92,231,0.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">
-              <i class="<?= e($m['icon']) ?>"></i>
-            </span>
-            <strong><?= e($m['label']) ?></strong>
-          </div>
-          <p style="margin:0;color:var(--text-muted);font-size:13.5px;">
-            <?= $counts[$key] ?> element<?= $counts[$key] === 1 ? 'o' : 'i' ?>
-          </p>
-        </a>
-      </div>
-    <?php endforeach; ?>
+    <div class="tlx-listhead"><h2>Le cose che ami</h2><span class="lkx-hint"><i class="fa-solid fa-grip-vertical"></i> Trascina per riordinare</span></div>
+
+    <?php if (!$cheAmoNavRows): ?>
+      <div class="tlx-empty"><i class="fa-solid fa-heart"></i><b>Nessuna raccolta attiva</b><span>Le raccolte sono nascoste dal Menu di navigazione o disattivate per il sito.</span></div>
+    <?php endif; ?>
+
+    <div class="cam-grid" id="che-amo-sortable-list" data-csrf="<?= e(csrfToken()) ?>">
+      <?php foreach ($cheAmoNavRows as $row):
+        $key = $row['key']; $m = CHE_AMO_MODULES[$key]; $n = $counts[$key]; ?>
+        <div class="cam-tile cam-c<?= (int) ($camColor[$key] ?? 1) ?><?= $n === 0 ? ' is-empty' : '' ?> che-amo-tile-wrap" data-id="<?= $row['id'] ?>">
+          <span class="cam-grip che-amo-drag-handle" aria-label="Trascina per riordinare"><i class="fa-solid fa-grip-vertical"></i></span>
+          <a href="<?= e($moduleUrls[$key]) ?>" class="cam-card">
+            <span class="cam-ic"><i class="<?= e($m['icon']) ?>"></i></span>
+            <b><?= e($m['label']) ?></b>
+            <?php if ($n > 0): ?>
+              <span class="cam-n"><?= $n ?> element<?= $n === 1 ? 'o' : 'i' ?></span>
+              <span class="cam-go">Gestisci <i class="fa-solid fa-arrow-right"></i></span>
+            <?php else: ?>
+              <span class="cam-n">Ancora vuoto</span>
+              <span class="cam-go cam-add"><i class="fa-solid fa-plus"></i> Aggiungi il primo</span>
+            <?php endif; ?>
+          </a>
+        </div>
+      <?php endforeach; ?>
+    </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script>
-  (function () {
-    var list = document.getElementById('che-amo-sortable-list');
-    if (!list || typeof Sortable === 'undefined') return;
-    var msg = document.getElementById('che-amo-reorder-msg');
-    var msgTimer = null;
-
-    Sortable.create(list, {
-      handle: '.che-amo-drag-handle',
-      animation: 150,
-      onEnd: function () {
-        var ids = Array.prototype.map.call(list.querySelectorAll('.che-amo-tile-wrap'), function (el) {
-          return el.getAttribute('data-id');
-        });
-        var body = new URLSearchParams();
-        body.set('csrf', <?= json_encode(csrfToken()) ?>);
-        body.set('action', 'reorder');
-        ids.forEach(function (id) { body.append('order[]', id); });
-
-        fetch('/dashboard_che_amo.php', { method: 'POST', body: body })
-          .then(function (r) { return r.json(); })
-          .then(function () {
-            msg.style.display = 'block';
-            clearTimeout(msgTimer);
-            msgTimer = setTimeout(function () { msg.style.display = 'none'; }, 2000);
-          })
-          .catch(function () {});
-      }
-    });
-  })();
-  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+  <script src="/studio/assets/studio-cheamo.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-cheamo.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

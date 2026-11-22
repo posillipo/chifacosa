@@ -500,3 +500,21 @@ body.studio-mode .lkx-main { max-width: 100%; }
   body.studio-mode .lkx-sw { margin-right: 2px; }
   body.studio-mode .lkx-grip { width: 22px; }
 }
+
+/* ===== Pagina Che Amo (.cam) ===== */
+body.studio-mode .cam-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+body.studio-mode .cam-tile { position: relative; --c: #7C5CFF; --cs: #F1EDFF; }
+body.studio-mode .cam-c2 { --c: #EF4444; --cs: #FEF2F2; } body.studio-mode .cam-c3 { --c: #0EA5E9; --cs: #E0F2FE; }
+body.studio-mode .cam-c4 { --c: #F59E0B; --cs: #FEF3C7; } body.studio-mode .cam-c5 { --c: #16A34A; --cs: #DCFCE7; } body.studio-mode .cam-c6 { --c: #EC4899; --cs: #FCE7F3; }
+body.studio-mode a.cam-card { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--st-border); border-radius: 18px; box-shadow: var(--st-shadow); padding: 18px; color: var(--text) !important; height: 100%; transition: .15s; }
+body.studio-mode a.cam-card:hover { box-shadow: var(--st-shadow-h); transform: translateY(-2px); border-color: var(--c); }
+body.studio-mode .cam-ic { width: 52px; height: 52px; border-radius: 16px; background: var(--cs); color: var(--c); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 8px; }
+body.studio-mode a.cam-card > b { font-size: 16px; }
+body.studio-mode .cam-n { color: var(--text-muted); font-size: 13px; }
+body.studio-mode .cam-go { margin-top: 10px; color: var(--c); font-weight: 700; font-size: 13px; }
+body.studio-mode .cam-tile.is-empty a.cam-card { background: var(--bg); border-style: dashed; box-shadow: none; }
+body.studio-mode .cam-tile.is-empty .cam-ic { opacity: .7; }
+body.studio-mode .cam-grip { position: absolute; top: 10px; right: 10px; z-index: 2; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: #9CA3AF; cursor: grab; border-radius: 10px; touch-action: none; }
+body.studio-mode .cam-grip:hover { background: var(--bg); color: var(--text); }
+body.studio-mode .cam-grip:active { cursor: grabbing; }
+@media (max-width: 639px) { body.studio-mode .cam-grid { grid-template-columns: 1fr 1fr; gap: 10px; } body.studio-mode a.cam-card { padding: 14px; } body.studio-mode .cam-ic { width: 44px; height: 44px; font-size: 19px; } }
