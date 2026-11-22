@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -118,167 +118,14 @@ $stmt->execute([$profile['id']]);
 $recentPosts = $stmt->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
+require_once __DIR__ . '/_studio_blog.php';
+$bc = getDB()->prepare('SELECT (SELECT COUNT(*) FROM blog_posts WHERE user_id=?) p, (SELECT COUNT(*) FROM blog_categories WHERE user_id=?) c');
+$bc->execute([$profile['id'], $profile['id']]);
+$bcr = $bc->fetch();
+$blogCounts = ['posts' => (int) $bcr['p'], 'cats' => (int) $bcr['c'], 'tags' => count(getBlogTagCounts((int) $profile['id']))];
+$tagList = array_slice(array_keys(getBlogTagCounts((int) $profile['id'])), 0, 12);
+studioBlogHead('posts', $blogCounts);
 ?>
-  <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
-
-
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-  <style>
-  /* Pagina a due colonne: modulo a sinistra, ultimi articoli a destra. Sotto i 760px si impilano. */
-  .container { max-width: 1240px; }
-  .dash-two-col { display: block; }
-  .dash-two-col > div { min-width: 0; }
-  @media (min-width: 760px) {
-    .dash-two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  }
-  </style>
-
-  <div class="dash-two-col">
-  <div class="dash-two-col-main">
-  <div class="section-title">Nuovo articolo</div>
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="tz_offset_minutes" value="">
-    <label>Titolo post</label>
-    <input type="text" name="title" required>
-    <label>Contenuto</label>
-    <textarea name="content" id="blog-ai-testo" rows="10" required></textarea>
-    <div id="blog-ai-caption-box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;">
-      <button type="button" class="btn small secondary" id="blog-ai-caption-toggle">✨ Genera con AI</button>
-    </div>
-    <div id="blog-ai-caption-panel" class="card" style="display:none;margin:-8px 0 14px;">
-      <label>Qualche parola chiave o istruzione per l'AI</label>
-      <textarea id="blog-ai-caption-keywords" rows="2" placeholder="es. articolo sul nuovo album, tono entusiasta"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn small" id="blog-ai-caption-generate">Genera testo</button>
-        <button type="button" class="btn small secondary" id="blog-ai-caption-cancel">Annulla</button>
-      </div>
-      <p id="blog-ai-caption-status" style="color:var(--text-muted);font-size:12.5px;margin:8px 0 0;"></p>
-    </div>
-    <label>Copertina quadrata (opzionale, jpg/png/webp — usata anche come immagine di anteprima quando condividi il link)</label>
-    <input type="file" name="cover" accept="image/*">
-    <label>Oppure video di copertina (opzionale, MP4/MOV/WebM, max 200 MB — al posto dell'immagine)</label>
-    <input type="file" name="cover_video" accept="video/mp4,video/quicktime,video/webm,.m4v">
-
-    <label>Album collegato (opzionale)</label>
-    <select name="album_id">
-      <option value="">— Nessun album —</option>
-      <?php foreach ($albums as $al): ?>
-        <option value="<?= (int) $al['id'] ?>"><?= e($al['title']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <?php if (!$albums): ?>
-      <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Non hai ancora nessun album nella sezione Foto.</p>
-    <?php endif; ?>
-
-    <label>Tag (opzionale, separati da virgola)</label>
-    <input type="text" name="tags" placeholder="es. concerti, novità, napoli">
-
-    <?php if ($categories): ?>
-      <label>Categorie (opzionale, puoi sceglierne più di una)</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px;">
-        <?php foreach ($categories as $cat): ?>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-            <input type="checkbox" name="category_ids[]" value="<?= (int) $cat['id'] ?>" style="width:auto;">
-            <?= e($cat['name']) ?>
-          </label>
-        <?php endforeach; ?>
-      </div>
-    <?php else: ?>
-      <p style="color:var(--text-muted);font-size:12.5px;">Non hai ancora nessuna categoria — <a href="/dashboard_blog_categories.php">creane una</a> per poterla assegnare qui.</p>
-    <?php endif; ?>
-
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
-      <input type="checkbox" name="in_feed" value="1" checked style="width:auto;"> Includi nel Feed
-    </label>
-
-    <label>Pubblica sui social (opzionale)</label>
-    <input type="datetime-local" name="published_at">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Lascia vuoto per pubblicare subito.</p>
-
-    <button type="submit" class="btn">Pubblica</button>
-  </form>
-  </div>
-
-  <div class="dash-two-col-side">
-    <div class="section-title">I tuoi articoli (ultimi <?= count($recentPosts) ?>)</div>
-    <?php if (!$recentPosts): ?>
-      <div class="card" style="color:var(--text-muted);">Non hai ancora scritto nessun articolo.</div>
-    <?php endif; ?>
-    <?php foreach ($recentPosts as $rp): ?>
-      <?php $rpScheduled = strtotime($rp['published_at']) > time(); ?>
-      <div class="blog-item" style="display:flex;gap:12px;align-items:flex-start;">
-        <?php if ($rp['cover_path']): ?>
-          <img src="/<?= e($rp['cover_path']) ?>" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;">
-        <?php endif; ?>
-        <div style="flex:1;min-width:0;">
-          <?php if ($rpScheduled): ?>
-            <div style="color:#f0ad4e;font-size:12.5px;font-weight:700;"><i class="fa-solid fa-clock"></i> Programmato per il <?= e(formatLocalDateTime($rp['published_at'], $profile)) ?></div>
-          <?php else: ?>
-            <div class="date"><?= e(formatLocalDateTime($rp['published_at'], $profile)) ?></div>
-          <?php endif; ?>
-          <strong><?= e($rp['title']) ?></strong>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-            <a href="/dashboard_blog_edit.php?id=<?= (int) $rp['id'] ?>" class="btn small secondary">✏️ Modifica</a>
-            <a href="<?= e(blogPostUrl($profile['slug'], $rp)) ?>" target="_blank" class="btn small secondary">↗ Vedi online</a>
-          </div>
-        </div>
-      </div>
-    <?php endforeach; ?>
-    <p><a href="/dashboard_blog_posts.php">Tutti gli articoli →</a></p>
-  </div>
-  </div>
-
-  <script>
-  (function () {
-    const toggleBtn = document.getElementById('blog-ai-caption-toggle');
-    const panel = document.getElementById('blog-ai-caption-panel');
-    const cancelBtn = document.getElementById('blog-ai-caption-cancel');
-    const generateBtn = document.getElementById('blog-ai-caption-generate');
-    const keywordsInput = document.getElementById('blog-ai-caption-keywords');
-    const statusEl = document.getElementById('blog-ai-caption-status');
-    const textarea = document.getElementById('blog-ai-testo');
-    const csrfInput = toggleBtn.closest('form').querySelector('input[name="csrf"]');
-
-    toggleBtn.addEventListener('click', function () {
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') keywordsInput.focus();
-    });
-    cancelBtn.addEventListener('click', function () {
-      panel.style.display = 'none';
-      statusEl.textContent = '';
-    });
-
-    generateBtn.addEventListener('click', function () {
-      const keywords = keywordsInput.value.trim();
-      if (!keywords) {
-        statusEl.textContent = 'Scrivi almeno qualche parola chiave.';
-        return;
-      }
-      generateBtn.disabled = true;
-      statusEl.textContent = 'Generazione in corso...';
-
-      const body = new URLSearchParams();
-      body.set('csrf', csrfInput.value);
-      body.set('keywords', keywords);
-
-      fetch('/dashboard_ai_caption.php', { method: 'POST', body: body })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          generateBtn.disabled = false;
-          if (data.ok) {
-            textarea.value = data.text;
-            statusEl.textContent = 'Fatto! Puoi modificare il testo prima di pubblicare.';
-          } else {
-            statusEl.textContent = data.error || 'Qualcosa è andato storto.';
-          }
-        })
-        .catch(function () {
-          generateBtn.disabled = false;
-          statusEl.textContent = 'Errore di connessione. Riprova.';
-        });
-    });
-  })();
-  </script>
+  <?php studioBlogForm('new', ['profile' => $profile, 'post' => ['title' => $_POST['title'] ?? '', 'content' => $_POST['content'] ?? '', 'tags' => $_POST['tags'] ?? ''], 'categories' => $categories, 'albums' => $albums, 'selected' => array_filter(array_map('intval', $_POST['category_ids'] ?? [])), 'tagList' => $tagList]); ?>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

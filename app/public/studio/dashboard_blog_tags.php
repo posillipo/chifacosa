@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -56,38 +56,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $tagCounts = getBlogTagCounts((int) $profile['id']);
 
 include __DIR__ . '/../_dash_header.php';
+require_once __DIR__ . '/_studio_blog.php';
+$bc = getDB()->prepare('SELECT (SELECT COUNT(*) FROM blog_posts WHERE user_id=?) p, (SELECT COUNT(*) FROM blog_categories WHERE user_id=?) c');
+$bc->execute([$profile['id'], $profile['id']]);
+$bcr = $bc->fetch();
+$blogCounts = ['posts' => (int) $bcr['p'], 'cats' => (int) $bcr['c'], 'tags' => count(getBlogTagCounts((int) $profile['id']))];
+studioBlogHead('tags', $blogCounts);
 ?>
-  <p><a href="/dashboard_blog.php"><i class="fa-solid fa-arrow-left"></i> Torna al blog</a></p>
-
-
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-
-  <div class="section-title">Tag (<?= count($tagCounts) ?>)</div>
   <?php if (!$tagCounts): ?>
-    <div class="alert error">Nessun tag ancora — aggiungine scrivendo o modificando un articolo.</div>
-  <?php else: ?>
+    <div class="tlx-empty"><i class="fa-solid fa-tags"></i><b>Nessun tag ancora</b><span>Aggiungili scrivendo o modificando un articolo.</span></div>
+  <?php endif; ?>
+  <div class="blx-taglist">
     <?php foreach ($tagCounts as $tag => $count): ?>
-      <div class="link-item">
-        <div>
-          <strong><?= e($tag) ?></strong>
-          <span style="color:var(--text-muted);font-size:12.5px;"> · <?= $count ?> articol<?= $count === 1 ? 'o' : 'i' ?></span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <form method="post" style="display:flex;gap:6px;align-items:center;">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="rename_tag">
-            <input type="hidden" name="tag" value="<?= e($tag) ?>">
-            <input type="text" name="new_name" placeholder="Nuovo nome" style="margin-bottom:0;width:140px;" required>
-            <button type="submit" class="btn small secondary">Rinomina</button>
-          </form>
-          <form method="post" onsubmit="return confirm('Eliminare il tag &quot;<?= e($tag) ?>&quot; da tutti gli articoli?');">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="delete_tag">
-            <input type="hidden" name="tag" value="<?= e($tag) ?>">
-            <button type="submit" class="btn small danger">Elimina</button>
-          </form>
-        </div>
+      <div class="blx-tagrow">
+        <div class="blx-tagname"><b>#<?= e($tag) ?></b><small><?= $count ?> articol<?= $count === 1 ? 'o' : 'i' ?></small></div>
+        <form method="post" class="blx-rename">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="rename_tag"><input type="hidden" name="tag" value="<?= e($tag) ?>">
+          <input type="text" name="new_name" placeholder="Nuovo nome" required aria-label="Nuovo nome per <?= e($tag) ?>">
+          <button type="submit" class="stc-act">Rinomina</button>
+        </form>
+        <form method="post" data-confirm="Eliminare il tag «<?= e($tag) ?>» da tutti gli articoli?">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="delete_tag"><input type="hidden" name="tag" value="<?= e($tag) ?>">
+          <button type="submit" class="stc-act danger" title="Elimina"><i class="fa-solid fa-trash"></i></button>
+        </form>
       </div>
     <?php endforeach; ?>
-  <?php endif; ?>
+  </div>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -153,98 +153,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 include __DIR__ . '/../_dash_header.php';
+require_once __DIR__ . '/_studio_blog.php';
+$bc = getDB()->prepare('SELECT (SELECT COUNT(*) FROM blog_posts WHERE user_id=?) p, (SELECT COUNT(*) FROM blog_categories WHERE user_id=?) c');
+$bc->execute([$profile['id'], $profile['id']]);
+$bcr = $bc->fetch();
+$blogCounts = ['posts' => (int) $bcr['p'], 'cats' => (int) $bcr['c'], 'tags' => count(getBlogTagCounts((int) $profile['id']))];
+$tagList = array_slice(array_keys(getBlogTagCounts((int) $profile['id'])), 0, 12);
+studioBlogHead('posts', $blogCounts);
 ?>
-  <p><a href="/dashboard_blog_posts.php"><i class="fa-solid fa-arrow-left"></i> Torna agli articoli</a></p>
-
   <?php if (isset($_GET['tg']) && $_GET['tg'] === 'ok'): ?><div class="alert success">Inviato su Telegram!</div><?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <div class="tlx-listhead"><span></span><a href="<?= e(blogPostUrl($profile['slug'], $post)) ?>" target="_blank">Vedi online <i class="fa-solid fa-arrow-up-right-from-square"></i></a></div>
+  <?php studioBlogForm('edit', ['profile' => $profile, 'post' => $post, 'categories' => $categories, 'albums' => $albums, 'selected' => $selectedCategoryIds, 'tagList' => $tagList]); ?>
 
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-    <input type="hidden" name="tz_offset_minutes" value="">
-    <label>Titolo post</label>
-    <input type="text" name="title" value="<?= e($post['title']) ?>" required>
-    <label>Contenuto</label>
-    <textarea name="content" rows="16" required><?= e($post['content']) ?></textarea>
-
-    <?php if (!empty($post['cover_video_path'])): ?>
-      <label>Video di copertina attuale</label>
-      <video src="/<?= e($post['cover_video_path']) ?>" <?= $post['cover_path'] ? 'poster="/' . e($post['cover_path']) . '"' : '' ?> controls preload="none" style="width:220px;max-width:100%;border-radius:8px;display:block;margin-bottom:10px;"></video>
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:14px;">
-        <input type="checkbox" name="remove_cover" value="1" style="width:auto;">
-        Rimuovi il video di copertina (senza sostituirlo)
-      </label>
-    <?php elseif ($post['cover_path']): ?>
-      <label>Copertina attuale</label>
-      <img src="/<?= e($post['cover_path']) ?>" style="width:120px;height:120px;border-radius:8px;object-fit:cover;display:block;margin-bottom:10px;">
-      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:14px;">
-        <input type="checkbox" name="remove_cover" value="1" style="width:auto;">
-        Rimuovi la copertina attuale (senza sostituirla)
-      </label>
-    <?php endif; ?>
-    <label>Nuova copertina (opzionale — lascia vuoto per non cambiarla)</label>
-    <input type="file" name="cover" accept="image/*">
-    <label>Oppure nuovo video di copertina (MP4/MOV/WebM, max 200 MB — sostituisce l'immagine o il video attuale)</label>
-    <input type="file" name="cover_video" accept="video/mp4,video/quicktime,video/webm,.m4v">
-
-    <label>Album collegato (opzionale)</label>
-    <select name="album_id">
-      <option value="">— Nessun album —</option>
-      <?php foreach ($albums as $al): ?>
-        <option value="<?= (int) $al['id'] ?>" <?= (int) ($post['album_id'] ?? 0) === (int) $al['id'] ? 'selected' : '' ?>><?= e($al['title']) ?></option>
-      <?php endforeach; ?>
-    </select>
-
-    <label>Tag (opzionale, separati da virgola)</label>
-    <input type="text" name="tags" value="<?= e($post['tags'] ?? '') ?>" placeholder="es. concerti, novità, napoli">
-
-    <?php if ($categories): ?>
-      <label>Categorie (opzionale, puoi sceglierne più di una)</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px;">
-        <?php foreach ($categories as $cat): ?>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:0;">
-            <input type="checkbox" name="category_ids[]" value="<?= (int) $cat['id'] ?>" style="width:auto;" <?= in_array((int) $cat['id'], $selectedCategoryIds, true) ? 'checked' : '' ?>>
-            <?= e($cat['name']) ?>
-          </label>
-        <?php endforeach; ?>
-      </div>
-    <?php else: ?>
-      <p style="color:var(--text-muted);font-size:12.5px;">Non hai ancora nessuna categoria — creane una dalla pagina Blog per poterla assegnare qui.</p>
-    <?php endif; ?>
-
-    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
-      <input type="checkbox" name="in_feed" value="1" <?= (int) ($post['in_feed'] ?? 1) ? 'checked' : '' ?> style="width:auto;"> Includi nel Feed
-    </label>
-
-    <label>Data di pubblicazione</label>
-    <input type="datetime-local" name="published_at" value="<?= e(localDateTimeInputValue($post['published_at'], $profile)) ?>">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Impostala nel futuro per (ri)programmare l'articolo.</p>
-
-    <button type="submit" class="btn">Salva modifiche</button>
-    <a href="/dashboard_blog_posts.php" class="btn secondary" style="margin-left:8px;">Annulla</a>
-  </form>
-
-  <div class="card" style="margin-top:14px;border:1px solid #e74c3c33;">
-    <div class="section-title" style="margin-top:0;color:#e74c3c;">Elimina articolo</div>
-    <p style="color:var(--text-muted);font-size:13px;">Elimina definitivamente questo articolo e la sua copertina. Se è in coda social e non è ancora stato elaborato, viene tolto anche dalla coda; se è già programmato su Metricool va tolto da lì.</p>
-    <form method="post" onsubmit="return confirm('Eliminare definitivamente questo articolo?');">
+  <div class="blx-danger">
+    <div>
+      <b>Elimina articolo</b>
+      <p>Elimina definitivamente l'articolo e la sua copertina. Se è in coda social e non è ancora elaborato, viene tolto anche dalla coda; se è già programmato su Metricool va tolto da lì.</p>
+    </div>
+    <form method="post" data-confirm="Eliminare definitivamente questo articolo?">
       <?= csrfField() ?>
-      <input type="hidden" name="action" value="delete">
-      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-      <button class="btn danger" type="submit"><i class="fa-solid fa-trash"></i> Elimina articolo</button>
+      <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
+      <button class="stc-act danger" type="submit"><i class="fa-solid fa-trash"></i> <span>Elimina articolo</span></button>
     </form>
   </div>
-
   <?php if (!empty($profile['telegram_chat_id'])): ?>
-  <div class="card" style="margin-top:14px;">
-    <div class="section-title" style="margin-top:0;">Telegram</div>
-    <p style="color:var(--text-muted);font-size:13px;">Invia questo articolo manualmente al canale Telegram <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p>
-    <form method="post" onsubmit="return confirm('Inviare questo articolo su Telegram?');">
+  <div class="blx-danger blx-tg-box">
+    <div><b>Telegram</b><p>Invia questo articolo al canale <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p></div>
+    <form method="post" data-confirm="Inviare questo articolo su Telegram?">
       <?= csrfField() ?>
-      <input type="hidden" name="action" value="send_telegram">
-      <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-      <button class="btn secondary" type="submit"><i class="fa-brands fa-telegram"></i> Invia su Telegram</button>
+      <input type="hidden" name="action" value="send_telegram"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
+      <button class="stc-act" type="submit"><i class="fa-brands fa-telegram"></i> <span>Invia su Telegram</span></button>
     </form>
   </div>
   <?php endif; ?>
