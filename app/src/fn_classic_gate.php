@@ -3,7 +3,7 @@
 // - Le pagine /dashboard*.php (fuori da /studio/) rimandano alla versione Studio equivalente, per tutti.
 // - Solo il proprietario, entrando una volta dal percorso segreto /classic-<TOKEN>, riceve un cookie che
 //   riattiva la dashboard classica. Il token sta SOLO nella variabile d'ambiente CLASSIC_DASH_TOKEN, l'account
-//   proprietario in CLASSIC_DASH_OWNER_EMAIL. Se una delle due manca la classica resta chiusa a tutti.
+//   proprietario in CLASSIC_DASH_OWNER_EMAIL. Se mancano, la classica è aperta solo agli amministratori del sito (nessuna configurazione richiesta).
 
 function classicDashConfig(): ?array {
     $t = (string) getenv('CLASSIC_DASH_TOKEN');
@@ -32,7 +32,9 @@ function classicDashOwnerLoggedIn(array $cfg): bool {
 function classicDashAllowed(): bool {
     $cfg = classicDashConfig();
     if (!$cfg) {
-        return false;
+        // Senza variabili d'ambiente: la classica è aperta solo agli amministratori del sito.
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        return $uid > 0 && isSiteAdmin($uid);
     }
     $c = (string) ($_COOKIE['cdash'] ?? '');
     return $c !== '' && hash_equals(classicDashCookieValue($cfg), $c) && classicDashOwnerLoggedIn($cfg);
