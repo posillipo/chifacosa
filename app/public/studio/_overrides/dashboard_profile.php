@@ -17,6 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $genere = trim($_POST['genere'] ?? '');
     $citta = trim($_POST['citta'] ?? '');
     $provincia = trim($_POST['provincia'] ?? '');
+    // Città e provincia sono obbligatorie (anche dopo la registrazione): la provincia è una sigla valida (NA, MI, RM...).
+    $provinciaSigla = provinceNormalize($provincia);
+    $error = locationComplete($citta, $provincia) ? null : 'Città e provincia sono obbligatorie: indica il comune e scegli la provincia.';
     $telefono = trim($_POST['telefono'] ?? '');
     $timezone = trim($_POST['timezone'] ?? '');
     $timezone = isset(TIMEZONE_OPTIONS[$timezone]) ? $timezone : 'rome';
@@ -29,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // senza ritaglio ma comunque funzionante. In entrambi i casi il risultato finale passa
     // sempre da compressImageToJpeg(), che garantisce JPEG e non oltre 250KB indipendentemente
     // da cosa arriva dal browser.
+    if ($error === null) {
     $croppedData = $_POST['avatar_cropped_data'] ?? '';
     if ($croppedData !== '' && preg_match('#^data:image/(jpeg|png);base64,#', $croppedData, $m)) {
         $raw = base64_decode(substr($croppedData, strpos($croppedData, ',') + 1), true);
@@ -64,18 +68,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    }
+
     if (!$error) {
         $stmt = getDB()->prepare('UPDATE profiles SET display_name=?, bio=?, avatar_path=?, theme_color=?, genere=?, citta=?, provincia=?, telefono=?, dashboard_theme=? WHERE user_id=?');
-        $stmt->execute([$displayName, $bio, $avatarPath, $themeColor, $genere ?: null, $citta ?: null, $provincia ?: null, $telefono ?: null, $timezone, $profile['id']]);
+        $stmt->execute([$displayName, $bio, $avatarPath, $themeColor, $genere ?: null, $citta, $provinciaSigla, $telefono ?: null, $timezone, $profile['id']]);
         // Profilo privato (migrazione 2026_11_33): nascosto da ricerche/liste, pagina pubblica chiusa ai non autorizzati.
         if (profilesHavePrivateColumn()) {
             getDB()->prepare('UPDATE profiles SET is_private=? WHERE user_id=?')->execute([!empty($_POST['is_private']) ? 1 : 0, $profile['id']]);
         }
+        // Coordinate del comune (solo città+provincia) per la Directory; non blocca mai il salvataggio.
+        profileGeocodeAndSave((int) $profile['id']);
         $success = 'Profilo aggiornato.';
         $user = currentUser(true);
         $profile = getActingProfile($user);
+    } else {
+        // Errore: si ridisegna il modulo con quanto appena scritto, non con i vecchi valori.
+        $profile = array_merge($profile, ['display_name' => $displayName, 'bio' => $bio, 'theme_color' => $themeColor, 'genere' => $genere, 'citta' => $citta, 'provincia' => $provincia, 'telefono' => $telefono]);
     }
 }
+
+$needLocation = isset($_GET['need_location']) && !locationComplete($profile['citta'] ?? '', $profile['provincia'] ?? '');
 
 $isPrivateNow = false;
 if (profilesHavePrivateColumn()) {
@@ -87,6 +100,7 @@ if (profilesHavePrivateColumn()) {
 include __DIR__ . '/../_dash_header.php';
 ?>
   <div class="tlx tlx-narrow">
+    <?php if (!empty($needLocation)): ?><div class="alert error">Per usare la dashboard devi indicare <b>città e provincia</b>. Compilali qui sotto e salva.</div><?php endif; ?>
     <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
@@ -111,8 +125,8 @@ include __DIR__ . '/../_dash_header.php';
       <label for="pf-gen">Genere musicale</label>
       <input type="text" id="pf-gen" name="genere" value="<?= e($profile['genere'] ?? '') ?>" placeholder="es. Rock, Pop, Cantautore...">
       <div class="pfx-row">
-        <div><label for="pf-city">Città</label><input type="text" id="pf-city" name="citta" value="<?= e($profile['citta'] ?? '') ?>"></div>
-        <div><label for="pf-prov">Provincia</label><input type="text" id="pf-prov" name="provincia" value="<?= e($profile['provincia'] ?? '') ?>" placeholder="es. Na, Mi, Rm..."></div>
+        <div><label for="pf-city">Città <span class="pfx-req">*</span></label><input type="text" id="pf-city" name="citta" required minlength="2" value="<?= e($profile['citta'] ?? '') ?>" placeholder="Il tuo comune"></div>
+        <div><label for="pf-prov">Provincia <span class="pfx-req">*</span></label><?php $provSel = provinceNormalize($profile['provincia'] ?? ''); ?><select id="pf-prov" name="provincia" required><option value="">Scegli…</option><?php foreach (provinceList() as $sg => $pn): ?><option value="<?= e($sg) ?>" <?= $provSel === $sg ? 'selected' : '' ?>><?= e($pn) ?> (<?= e($sg) ?>)</option><?php endforeach; ?></select></div>
       </div>
       <label for="pf-tel">Telefono</label>
       <input type="text" id="pf-tel" name="telefono" value="<?= e($profile['telefono'] ?? '') ?>">

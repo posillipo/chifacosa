@@ -25,6 +25,7 @@ require_once __DIR__ . '/fn_blog.php';
 require_once __DIR__ . '/fn_help.php';
 require_once __DIR__ . '/fn_privacy.php';
 require_once __DIR__ . '/fn_classic_gate.php';
+require_once __DIR__ . '/fn_geo_profile.php';
 
 
 
@@ -41,3 +42,6 @@ enforcePrivateProfileGate();
 
 // Dashboard classica: solo per il proprietario (vedi fn_classic_gate.php).
 enforceClassicDashGate();
+
+// Città e provincia obbligatorie per entrare nella dashboard (vedi fn_geo_profile.php).
+enforceProfileLocationGate();
