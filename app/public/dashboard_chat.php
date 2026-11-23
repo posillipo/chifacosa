@@ -17,11 +17,13 @@ if (!$other || (int) $other['id'] === (int) $profile['id']) {
 }
 
 $isMutual = areMutualFollowers((int) $profile['id'], (int) $other['id']);
+// Solo gli amministratori del sito possono scrivere anche a chi non li segue (e non seguono): uno o più messaggi.
+$canWrite = $isMutual || !empty($user['is_admin']);
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    if (!$isMutual) {
+    if (!$canWrite) {
         $error = 'Potete scrivervi solo se vi seguite a vicenda.';
     } else {
         $message = trim($_POST['message'] ?? '');
@@ -67,7 +69,7 @@ include __DIR__ . '/_dash_header.php';
     </div>
   </div>
 
-  <?php if (!$isMutual): ?>
+  <?php if (!$canWrite): ?>
     <div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div>
   <?php endif; ?>
   <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
@@ -87,7 +89,7 @@ include __DIR__ . '/_dash_header.php';
     <?php endif; ?>
   </div>
 
-  <?php if ($isMutual): ?>
+  <?php if ($canWrite): ?>
     <form method="post">
       <?= csrfField() ?>
       <textarea name="message" rows="3" placeholder="Scrivi un messaggio..." required></textarea>

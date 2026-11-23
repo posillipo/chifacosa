@@ -18,11 +18,13 @@ if (!$other || (int) $other['id'] === (int) $profile['id']) {
 }
 
 $isMutual = areMutualFollowers((int) $profile['id'], (int) $other['id']);
+// Solo gli amministratori del sito possono scrivere anche a chi non li segue (e non seguono): uno o più messaggi.
+$canWrite = $isMutual || !empty($user['is_admin']);
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
-    if (!$isMutual) {
+    if (!$canWrite) {
         $error = 'Potete scrivervi solo se vi seguite a vicenda.';
     } else {
         $message = trim($_POST['message'] ?? '');
@@ -64,7 +66,7 @@ include __DIR__ . '/../_dash_header.php';
       <?php if ($other['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($other['avatar_path']) ?>" alt=""><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($other['display_name'], 0, 1))) ?></span><?php endif; ?>
       <div class="pnx-b"><b><?= e($other['display_name']) ?></b><small><a href="/dashboard_profile_view.php?slug=<?= e($other['slug']) ?>">@<?= e($other['slug']) ?></a></small></div>
     </header>
-    <?php if (!$isMutual): ?><div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div><?php endif; ?>
+    <?php if (!$canWrite): ?><div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div><?php endif; ?>
     <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
     <div class="chx-list" id="chx-list">
@@ -75,7 +77,7 @@ include __DIR__ . '/../_dash_header.php';
       <?php endforeach; ?>
     </div>
 
-    <?php if ($isMutual): ?>
+    <?php if ($canWrite): ?>
       <form method="post" class="chx-form" id="chx-form">
         <?= csrfField() ?>
         <textarea name="message" rows="1" placeholder="Scrivi un messaggio..." required aria-label="Messaggio"></textarea>

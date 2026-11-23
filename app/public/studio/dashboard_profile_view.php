@@ -32,6 +32,8 @@ $isSelf = $target && (int) $target['id'] === $actingId;
 $following = $target && !$isSelf && isFollowingAccount($actingId, (int) $target['id']);
 $followedBack = $target && !$isSelf && isFollowingAccount((int) $target['id'], $actingId);
 $mutual = $following && $followedBack;
+// Il pulsante Messaggi: a chi si segue a vicenda, e sempre agli amministratori del sito.
+$canMessage = $mutual || !empty($user['is_admin']);
 $followers = $target ? getAccountFollowerCount((int) $target['id']) : 0;
 
 $latest = [];
@@ -72,7 +74,7 @@ include __DIR__ . '/../_dash_header.php';
           <form method="post" action="/follow_account.php"><?= csrfField() ?><input type="hidden" name="user_id" value="<?= (int) $target['id'] ?>"><input type="hidden" name="redirect" value="<?= e($here) ?>">
             <?php if ($following): ?><input type="hidden" name="action" value="unfollow"><button type="submit" class="stc-act"><i class="fa-solid fa-user-check"></i> <span>Non seguire più</span></button>
             <?php else: ?><input type="hidden" name="action" value="follow"><button type="submit" class="stc-act primary"><i class="fa-solid fa-user-plus"></i> <span>Segui</span></button><?php endif; ?></form>
-          <?php if ($mutual): ?><a class="stc-act" href="/dashboard_chat.php?with=<?= e(rawurlencode($target['slug'])) ?>"><i class="fa-regular fa-comment"></i> <span>Scrivi un messaggio</span></a><?php endif; ?>
+          <?php if ($canMessage): ?><a class="stc-act" href="/dashboard_chat.php?with=<?= e(rawurlencode($target['slug'])) ?>"><i class="fa-regular fa-comment"></i> <span>Scrivi un messaggio</span></a><?php endif; ?>
         <?php endif; ?>
         <a class="stc-act" href="/<?= e($target['slug']) ?>" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Pagina pubblica</span></a>
       </div>
