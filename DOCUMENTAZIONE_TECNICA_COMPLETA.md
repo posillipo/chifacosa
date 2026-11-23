@@ -344,3 +344,7 @@ panoramica), `LOCAL_TESTING.md`, `GITHUB.md`, `DEPLOY.md`, `ADMIN_SETUP.md`, `SM
 - Codice: `app/src/fn_classic_gate.php` (richiamato a fine `functions.php`), `app/public/classic_entry.php`, regola in `.htaccess`.
 
 - Senza variabili d'ambiente: gli amministratori vedono la voce di menu "Dashboard classica" (`/classic_entry.php`, 404 per i non admin) che imposta il flag di sessione `classic_ok`; al nuovo login il flag si azzera e si riparte da Studio.
+
+## Studio: pagine riscritte (gruppo 4)
+
+Profilo, Spotify, YouTube, Telegram, Metricool, Log, API e Coda Social hanno una vista Studio dedicata in `app/public/studio/_overrides/` (logica PHP identica all'originale; solo la parte visiva cambia). La Coda Social usa `studio/assets/studio-queue.js` (anteprima, sospendi/riattiva, rimuovi, riprogramma, stessa API `api_social_queue_action.php`). Il ritaglio dell'avatar nel profilo usa gli stessi id e lo stesso `assets/js/avatar-crop.js`.

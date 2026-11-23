@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -23,24 +23,18 @@ if ($adminCount > 0) {
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-
-  <?php if ($adminCount === 0): ?>
-    <div class="card">
-      Il registro non è ancora attivo: non hai condiviso la gestione del profilo con nessuno.
-      Vai su <a href="/dashboard_team.php">Team e co-admin</a> per farlo.
-    </div>
-  <?php elseif (!$logs): ?>
-    <div class="card">Registro attivo, ma nessuna azione registrata finora.</div>
-  <?php else: ?>
-    <div class="section-title">Azioni recenti (<?= count($logs) ?>)</div>
-    <?php foreach ($logs as $l): ?>
-      <div class="link-item">
-        <div>
-          <strong>@<?= e($l['actor_slug']) ?></strong> — <?= e($l['action']) ?>
-          <?php if ($l['details']): ?><br><small style="color:var(--text-muted)"><?= e($l['details']) ?></small><?php endif; ?>
+  <div class="tlx">
+    <?php if ($adminCount === 0): ?>
+      <div class="tlx-empty"><i class="fa-solid fa-clock-rotate-left"></i><b>Il registro non è ancora attivo</b><span>Non hai condiviso la gestione del profilo con nessuno. Vai su <a href="/dashboard_team.php">Team e co-admin</a> per farlo.</span></div>
+    <?php elseif (!$logs): ?>
+      <div class="tlx-empty"><i class="fa-solid fa-clock-rotate-left"></i><b>Registro attivo</b><span>Nessuna azione registrata finora.</span></div>
+    <?php else: ?>
+      <div class="tlx-listhead"><h2>Azioni recenti <small>(<?= count($logs) ?>)</small></h2></div>
+      <?php foreach ($logs as $l): ?>
+        <div class="pnx">
+          <div class="pnx-b"><span class="pnx-t"><?= formatLocalDateTime($l['created_at'], $profile) ?></span><b>@<?= e($l['actor_slug']) ?> — <?= e($l['action']) ?></b><?php if ($l['details']): ?><small><?= e($l['details']) ?></small><?php endif; ?></div>
         </div>
-        <small style="color:var(--text-muted)"><?= formatLocalDateTime($l['created_at'], $profile) ?></small>
-      </div>
-    <?php endforeach; ?>
-  <?php endif; ?>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

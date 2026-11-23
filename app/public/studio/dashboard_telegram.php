@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -93,124 +93,57 @@ try {
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-
-  <?php if (!getTelegramBotToken()): ?>
-    <div class="alert error">
-      L'integrazione Telegram non è ancora attiva. L'amministratore del sito deve configurare
-      il Bot Token nella sezione Admin → Telegram.
-    </div>
-  <?php else: ?>
-
-    <!-- ═══ SEZIONE 1: Pubblica da Telegram ═══ -->
-    <div class="section-title">📲 Pubblica da Telegram</div>
-
-
-    <?php if (!empty($profile['telegram_user_id'])): ?>
-      <div class="card">
-        <strong>✅ Account Telegram collegato</strong>
-        <p style="color:var(--text-muted)">
-          Invia una foto<?php if ($botUsername): ?> a <a href="https://t.me/<?= e($botUsername) ?>" target="_blank">@<?= e($botUsername) ?></a><?php endif; ?>
-          in chat privata. Il bot ti chiederà dove pubblicarla.
-        </p>
-        <form method="post" onsubmit="return confirm('Scollegare il tuo account Telegram personale?');" style="margin-top:8px;">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="unlink_user">
-          <button class="btn danger small" type="submit">Scollega account</button>
-        </form>
-      </div>
+  <div class="tlx tlx-narrow">
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+    <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+    <?php if (!getTelegramBotToken()): ?>
+      <div class="tlx-empty"><i class="fa-brands fa-telegram"></i><b>Telegram non è ancora attivo</b><span>L'amministratore del sito deve configurare il Bot Token in Admin → Telegram.</span></div>
     <?php else: ?>
-      <div class="card">
-        <?php
-        $linkCode = $profile['telegram_link_code'] ?? null;
-        $linkExpires = $profile['telegram_link_expires'] ?? null;
-        $codeValid = $linkCode && $linkExpires && strtotime($linkExpires) > time();
-        ?>
-        <?php if ($codeValid): ?>
-          <strong>Il tuo codice di collegamento:</strong>
-          <div style="margin:12px 0;padding:14px;background:var(--bg-alt,#f0f0f0);border-radius:8px;text-align:center;">
-            <code style="font-size:1.4em;letter-spacing:2px;font-weight:bold;"><?= e($linkCode) ?></code>
-          </div>
-          <p style="color:var(--text-muted)">
-            1. Apri Telegram e cerca <?php if ($botUsername): ?><a href="https://t.me/<?= e($botUsername) ?>" target="_blank">@<?= e($botUsername) ?></a><?php else: ?>il bot<?php endif; ?><br>
-            2. Invia questo messaggio al bot:<br>
-            <code>/start <?= e($linkCode) ?></code>
-          </p>
-          <p style="color:var(--text-muted);font-size:12.5px;">Il codice scade tra 10 minuti.</p>
-          <form method="post" style="margin-top:6px;">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="generate_code">
-            <button class="btn secondary small" type="submit">Genera nuovo codice</button>
-          </form>
-        <?php else: ?>
-          <p>Collega il tuo account Telegram per poter pubblicare foto e testi inviandoli al bot.</p>
-          <form method="post" style="margin-top:8px;">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="generate_code">
-            <button class="btn" type="submit">Genera codice di collegamento</button>
-          </form>
-        <?php endif; ?>
-      </div>
-    <?php endif; ?>
-
-    <!-- ═══ SEZIONE 2: Canale per pubblicazione automatica ═══ -->
-    <div class="section-title" style="margin-top:28px;">📢 Canale Telegram (pubblicazione automatica)</div>
-
-    <details class="help-box">
-      <summary>ℹ️ Come funziona</summary>
-      <p style="color:var(--text-muted)">
-        Collega un canale o gruppo Telegram: ogni volta che pubblichi un post Timeline o un
-        articolo Blog dal sito, il contenuto verrà inviato automaticamente anche lì.
-      </p>
-    </details>
-
-    <?php if (!empty($profile['telegram_chat_id'])): ?>
-      <div class="card">
-        <strong>Canale collegato:</strong> <?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?>
-        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-          <form method="post">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="toggle_auto">
-            <button class="btn <?= empty($profile['telegram_auto_publish']) ? '' : 'secondary' ?>" type="submit">
-              <?= empty($profile['telegram_auto_publish']) ? '🔔 Attiva pubblicazione automatica' : '🔕 Disattiva pubblicazione automatica' ?>
-            </button>
-          </form>
-          <form method="post">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="test_message">
-            <button class="btn secondary" type="submit">📩 Invia messaggio di test</button>
-          </form>
-          <form method="post" onsubmit="return confirm('Scollegare il canale Telegram? La pubblicazione automatica verrà disattivata.');">
-            <?= csrfField() ?>
-            <input type="hidden" name="action" value="unlink">
-            <button class="btn danger" type="submit">Scollega canale</button>
-          </form>
+      <div class="tlx-listhead"><h2>Pubblica da Telegram</h2></div>
+      <?php if (!empty($profile['telegram_user_id'])): ?>
+        <div class="box">
+          <h3><i class="fa-solid fa-circle-check"></i> Account Telegram collegato</h3>
+          <p>Invia una foto<?php if ($botUsername): ?> a <a href="https://t.me/<?= e($botUsername) ?>" target="_blank" rel="noopener">@<?= e($botUsername) ?></a><?php endif; ?> in chat privata. Il bot ti chiederà dove pubblicarla.</p>
+          <form method="post" data-confirm="Scollegare il tuo account Telegram personale?"><?= csrfField() ?><input type="hidden" name="action" value="unlink_user"><button class="stc-act danger" type="submit"><i class="fa-solid fa-link-slash"></i> <span>Scollega account</span></button></form>
         </div>
-      </div>
+      <?php else: ?>
+        <?php $linkCode = $profile['telegram_link_code'] ?? null; $linkExpires = $profile['telegram_link_expires'] ?? null; $codeValid = $linkCode && $linkExpires && strtotime($linkExpires) > time(); ?>
+        <div class="box">
+          <?php if ($codeValid): ?>
+            <h3>Il tuo codice di collegamento</h3>
+            <div class="tgx-code" data-copy="/start <?= e($linkCode) ?>"><code><?= e($linkCode) ?></code></div>
+            <p>1. Apri Telegram e cerca <?php if ($botUsername): ?><a href="https://t.me/<?= e($botUsername) ?>" target="_blank" rel="noopener">@<?= e($botUsername) ?></a><?php else: ?>il bot<?php endif; ?><br>2. Invia al bot questo messaggio: <code>/start <?= e($linkCode) ?></code></p>
+            <p class="tlx-hint">Il codice scade tra 10 minuti.</p>
+            <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="generate_code"><button class="stc-act" type="submit"><i class="fa-solid fa-rotate"></i> <span>Genera nuovo codice</span></button></form>
+          <?php else: ?>
+            <h3><i class="fa-brands fa-telegram"></i> Collega il tuo account</h3>
+            <p>Così puoi pubblicare foto e testi inviandoli al bot.</p>
+            <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="generate_code"><button class="tlx-submit cmp-done" type="submit">Genera codice di collegamento</button></form>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
 
-      <div class="card">
-        <strong>Stato pubblicazione automatica:</strong>
-        <?php if (!empty($profile['telegram_auto_publish'])): ?>
-          <span style="color:#27ae60;font-weight:600;">Attiva</span> — i nuovi post Timeline e articoli Blog
-          verranno inviati automaticamente al canale Telegram.
-        <?php else: ?>
-          <span style="color:var(--text-muted);font-weight:600;">Disattivata</span> — i contenuti non verranno
-          inviati su Telegram. Puoi comunque inviare manualmente dalla pagina di modifica del post.
-        <?php endif; ?>
-      </div>
+      <div class="tlx-listhead"><h2>Canale per la pubblicazione automatica</h2></div>
+      <div class="box"><p>Collega un canale o gruppo Telegram: ogni post Timeline o articolo Blog che pubblichi dal sito verrà inviato automaticamente anche lì.</p></div>
+      <?php if (!empty($profile['telegram_chat_id'])): ?>
+        <div class="box">
+          <h3><i class="fa-solid fa-bullhorn"></i> <?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></h3>
+          <p>Pubblicazione automatica: <b><?= !empty($profile['telegram_auto_publish']) ? 'attiva' : 'disattivata' ?></b>.<?= !empty($profile['telegram_auto_publish']) ? ' I nuovi post e articoli vanno anche sul canale.' : ' Puoi comunque inviare a mano dalla pagina di modifica del post.' ?></p>
+          <div class="box-row">
+            <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="toggle_auto"><button class="stc-act primary" type="submit"><i class="fa-solid <?= empty($profile['telegram_auto_publish']) ? 'fa-bell' : 'fa-bell-slash' ?>"></i> <span><?= empty($profile['telegram_auto_publish']) ? 'Attiva automatica' : 'Disattiva automatica' ?></span></button></form>
+            <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="test_message"><button class="stc-act" type="submit"><i class="fa-regular fa-paper-plane"></i> <span>Messaggio di test</span></button></form>
+            <form method="post" data-confirm="Scollegare il canale Telegram? La pubblicazione automatica verrà disattivata."><?= csrfField() ?><input type="hidden" name="action" value="unlink"><button class="stc-act danger" type="submit"><i class="fa-solid fa-link-slash"></i> <span>Scollega</span></button></form>
+          </div>
+        </div>
+      <?php endif; ?>
+      <form method="post" class="box">
+        <?= csrfField() ?><input type="hidden" name="action" value="link">
+        <h3><?= empty($profile['telegram_chat_id']) ? 'Collega un canale Telegram' : 'Cambia canale collegato' ?></h3>
+        <input type="text" name="chat_id" placeholder="@nomecanale, t.me/nomecanale oppure ID numerico" required>
+        <p class="tlx-hint">Il bot deve essere aggiunto come <b>amministratore</b> nel canale prima di collegarlo.</p>
+        <button type="submit" class="tlx-submit cmp-done">Collega canale</button>
+      </form>
     <?php endif; ?>
-
-    <form method="post" class="card">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="link">
-      <label><?= empty($profile['telegram_chat_id']) ? 'Collega un canale Telegram' : 'Cambia canale collegato' ?></label>
-      <input type="text" name="chat_id" placeholder="@nomecanale, t.me/nomecanale oppure ID numerico" required>
-      <p style="color:var(--text-muted);font-size:13px;margin-top:-8px;">
-        Il bot deve essere aggiunto come <strong>amministratore</strong> nel canale prima di collegarlo.
-      </p>
-      <button type="submit" class="btn">Collega canale</button>
-    </form>
-
-  <?php endif; ?>
+  </div>
+<script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
