@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = getDB()->prepare('UPDATE profiles SET telegram_user_id=NULL WHERE user_id=?');
         $stmt->execute([$profile['id']]);
         $success = 'Account Telegram scollegato.';
-        $user = currentUser();
+        $user = currentUser(true);
         $profile = getActingProfile($user);
     } elseif ($action === 'link') {
         $input = trim($_POST['chat_id'] ?? '');
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$user = currentUser();
+$user = currentUser(true);
 $profile = getActingProfile($user);
 
 // Recupera il bot username per il link

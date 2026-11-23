@@ -315,8 +315,7 @@ body.studio-mode .blx-tg-box { border-color: var(--st-border); }
 }
 
 /* Colonna centrale più ampia su desktop (prima 720px) */
-body.studio-mode .container { max-width: 1080px; }
-@media (min-width: 1500px) { body.studio-mode .container { max-width: 1180px; } }
+body.studio-mode .container { max-width: 800px; }
 
 /* ===== Popup "Crea aggiornamento" (.cmp) ===== */
 body.studio-mode .cmp [hidden], body.studio-mode .cmp-sum[hidden] { display: none !important; }
@@ -694,7 +693,7 @@ body.studio-mode .chx-form .tlx-submit { width: 46px; height: 46px; padding: 0; 
 body.studio-mode .pnx-img.stc-ph { background: linear-gradient(135deg, #7C5CFF, #B6A2FF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
 
 /* ===== Gruppo 3: profilo, password, team ===== */
-body.studio-mode .tlx-narrow { max-width: 640px; margin: 0 auto; }
+body.studio-mode .tlx-narrow { max-width: 100%; margin: 0 auto; }
 body.studio-mode .box input[type=password] { width: 100%; margin: 0; height: 44px; border-radius: 12px; }
 body.studio-mode .box-list { margin: 0 0 12px 18px; padding: 0; color: var(--text); font-size: 14px; line-height: 1.6; }
 body.studio-mode .pvx { text-align: center; padding: 28px 20px; }
