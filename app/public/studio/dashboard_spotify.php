@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Ricarichiamo l'utente per avere il collegamento Spotify aggiornato dopo un eventuale salvataggio
-$user = currentUser();
+$user = currentUser(true);
 $profile = getActingProfile($user);
 
 include __DIR__ . '/../_dash_header.php';

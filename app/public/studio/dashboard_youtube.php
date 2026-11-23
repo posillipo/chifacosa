@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$user = currentUser();
+$user = currentUser(true);
 $profile = getActingProfile($user);
 
 include __DIR__ . '/../_dash_header.php';

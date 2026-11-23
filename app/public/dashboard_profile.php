@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             getDB()->prepare('UPDATE profiles SET is_private=? WHERE user_id=?')->execute([!empty($_POST['is_private']) ? 1 : 0, $profile['id']]);
         }
         $success = 'Profilo aggiornato.';
-        $user = currentUser();
+        $user = currentUser(true);
         $profile = getActingProfile($user);
     }
 }

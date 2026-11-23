@@ -17,10 +17,13 @@ function publicActingUserId(): ?int {
 }
 
 
-function currentUser(): ?array {
+// $refresh = true: rilegge i dati dal database ignorando la copia in memoria. Serve alle pagine che salvano
+// e poi si ridisegnano nella stessa richiesta (altrimenti mostrerebbero ancora i valori vecchi fino a un F5).
+function currentUser(bool $refresh = false): ?array {
     attemptRememberLogin();
     if (empty($_SESSION['user_id'])) return null;
     static $cache = null;
+    if ($refresh) $cache = null;
     if ($cache !== null) return $cache;
     $stmt = getDB()->prepare('SELECT u.*, p.display_name, p.bio, p.avatar_path, p.theme_color, p.page_theme, p.dashboard_theme, p.spotify_artist_id, p.spotify_artist_name, p.spotify_show_id, p.spotify_show_name, p.youtube_channel_id, p.youtube_channel_name, p.telegram_chat_id, p.telegram_chat_title, p.telegram_auto_publish, p.telegram_user_id, p.telegram_link_code, p.telegram_link_expires, p.genere, p.citta, p.provincia, p.telefono, p.custom_feed_guid, p.custom_feed_guid_since, p.privacy_tracking_settings, p.cinema_films_json_url, p.cinema_films_synced_at, p.cinema_ticket_price, p.menu_preconto_enabled, p.metricool_blog_id, p.metricool_networks, p.metricool_auto_social
                               FROM users u LEFT JOIN profiles p ON p.user_id = u.id
