@@ -78,6 +78,30 @@ include __DIR__ . '/../_dash_header.php';
     <?php elseif ($searchQuery !== ''): ?>
       <div class="tlx-empty"><i class="fa-solid fa-circle-question"></i><b>Nessun artista trovato</b><span>Prova con un termine diverso.</span></div>
     <?php endif; ?>
+
+    <?php if (!empty($profile['spotify_artist_id'])):
+      $spAlbums = array_slice(spotifyGetArtistAlbums($profile['spotify_artist_id']), 0, 12);
+      $spTracks = array_slice(spotifyGetArtistTopTracks($profile['spotify_artist_id']), 0, 5); ?>
+      <div class="tlx-listhead"><h2>Dischi e singoli <small>(<?= count($spAlbums) ?>)</small></h2></div>
+      <?php if (!$spAlbums): ?><div class="tlx-empty"><i class="fa-solid fa-compact-disc"></i><b>Nessun disco trovato</b><span>Spotify non ha restituito contenuti per questo artista.</span></div><?php endif; ?>
+      <div class="mdx-grid">
+        <?php foreach ($spAlbums as $a): ?>
+          <a class="mdx-card" href="<?= e((string) $a['spotify_url']) ?>" target="_blank" rel="noopener">
+            <?php if ($a['image']): ?><img src="<?= e($a['image']) ?>" alt="" loading="lazy"><?php else: ?><span class="mdx-ph"><i class="fa-solid fa-compact-disc"></i></span><?php endif; ?>
+            <b><?= e($a['name']) ?></b><small><?= e(ucfirst((string) $a['type'])) ?><?= $a['release_date'] ? ' · ' . e(substr($a['release_date'], 0, 4)) : '' ?></small>
+          </a>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($spTracks): ?>
+        <div class="tlx-listhead"><h2>Brani più ascoltati</h2></div>
+        <?php foreach ($spTracks as $t): ?>
+          <a class="pnx" href="<?= e((string) $t['spotify_url']) ?>" target="_blank" rel="noopener">
+            <?php if ($t['image']): ?><img class="pnx-img" src="<?= e($t['image']) ?>" alt="" loading="lazy"><?php endif; ?>
+            <div class="pnx-b"><b><?= e($t['name']) ?></b><small><?= e($t['album_name']) ?></small></div>
+          </a>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    <?php endif; ?>
   </div>
 <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

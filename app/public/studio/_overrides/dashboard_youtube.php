@@ -63,6 +63,20 @@ include __DIR__ . '/../_dash_header.php';
       <input type="text" name="channel_link" placeholder="https://www.youtube.com/@tuoband" required>
       <button type="submit" class="tlx-submit cmp-done">Collega canale</button>
     </form>
+
+    <?php if (!empty($profile['youtube_channel_id'])):
+      $ytVideos = youtubeGetChannelVideos('UU' . substr($profile['youtube_channel_id'], 2), 12); ?>
+      <div class="tlx-listhead"><h2>Ultimi video <small>(<?= count($ytVideos) ?>)</small></h2></div>
+      <?php if (!$ytVideos): ?><div class="tlx-empty"><i class="fa-brands fa-youtube"></i><b>Nessun video trovato</b><span>YouTube non ha restituito video per questo canale (o la chiave API non è configurata).</span></div><?php endif; ?>
+      <div class="mdx-grid">
+        <?php foreach ($ytVideos as $v): ?>
+          <a class="mdx-card mdx-wide" href="https://www.youtube.com/watch?v=<?= e($v['video_id']) ?>" target="_blank" rel="noopener">
+            <?php if ($v['thumbnail']): ?><img src="<?= e($v['thumbnail']) ?>" alt="" loading="lazy"><?php else: ?><span class="mdx-ph"><i class="fa-brands fa-youtube"></i></span><?php endif; ?>
+            <b><?= e($v['title']) ?></b><small><?= $v['published_at'] ? e(date('d/m/Y', strtotime($v['published_at']))) : '' ?></small>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </div>
 <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
