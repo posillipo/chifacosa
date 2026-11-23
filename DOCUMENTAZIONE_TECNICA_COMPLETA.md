@@ -348,3 +348,5 @@ panoramica), `LOCAL_TESTING.md`, `GITHUB.md`, `DEPLOY.md`, `ADMIN_SETUP.md`, `SM
 ## Studio: pagine riscritte (gruppo 4)
 
 Profilo, Spotify, YouTube, Telegram, Metricool, Log, API e Coda Social hanno una vista Studio dedicata in `app/public/studio/_overrides/` (logica PHP identica all'originale; solo la parte visiva cambia). La Coda Social usa `studio/assets/studio-queue.js` (anteprima, sospendi/riattiva, rimuovi, riprogramma, stessa API `api_social_queue_action.php`). Il ritaglio dell'avatar nel profilo usa gli stessi id e lo stesso `assets/js/avatar-crop.js`.
+
+Nelle pagine Studio Spotify, Podcast e YouTube sotto il collegamento si vedono i contenuti del profilo agganciato (dischi e brani più ascoltati; ultimi 10 episodi; ultimi 12 video), letti con le stesse funzioni e la stessa cache delle pagine pubbliche (`spotifyGetArtistAlbums`, `spotifyGetArtistTopTracks`, `spotifyGetShowEpisodes`, `youtubeGetChannelVideos`).

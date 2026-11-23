@@ -77,6 +77,18 @@ $linked = !empty($profile['spotify_show_id']);
     <?php elseif ($searchQuery !== ''): ?>
       <div class="tlx-empty"><i class="fa-solid fa-magnifying-glass"></i><b>Nessun podcast trovato</b><span>Prova con un termine diverso.</span></div>
     <?php endif; ?>
+
+    <?php if ($linked):
+      $epList = spotifyGetShowEpisodes($profile['spotify_show_id'], 10); ?>
+      <div class="tlx-listhead"><h2>Ultimi episodi <small>(<?= count($epList) ?>)</small></h2></div>
+      <?php if (!$epList): ?><div class="tlx-empty"><i class="fa-solid fa-podcast"></i><b>Nessun episodio trovato</b><span>Spotify non ha restituito episodi per questo podcast.</span></div><?php endif; ?>
+      <?php foreach ($epList as $ep): ?>
+        <a class="pnx" href="<?= e((string) $ep['spotify_url']) ?>" target="_blank" rel="noopener">
+          <?php if ($ep['image']): ?><img class="pnx-img" src="<?= e($ep['image']) ?>" alt="" loading="lazy"><?php endif; ?>
+          <div class="pnx-b"><span class="pnx-t"><?= $ep['release_date'] ? e(date('d/m/Y', strtotime($ep['release_date']))) : '' ?><?= $ep['duration_ms'] ? ' · ' . gmdate('i:s', (int) ($ep['duration_ms'] / 1000)) . ' min' : '' ?></span><b><?= e($ep['name']) ?></b><?php if ($ep['description']): ?><small><?= e($ep['description']) ?></small><?php endif; ?></div>
+        </a>
+      <?php endforeach; ?>
+    <?php endif; ?>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
   <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
