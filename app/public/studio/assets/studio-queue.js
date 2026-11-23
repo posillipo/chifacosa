@@ -20,7 +20,8 @@
         var meta = document.getElementById('sq-dlg-meta'); meta.textContent = '';
         (d.meta || []).forEach(function (m) { var s = document.createElement('span'); s.textContent = m; meta.appendChild(s); });
         mediaBox.textContent = '';
-        if (d.image) { var i = document.createElement('img'); i.src = d.image; i.alt = ''; mediaBox.appendChild(fig('Immagine', i)); }
+        var imgs = (d.images && d.images.length) ? d.images : (d.image ? [d.image] : []);
+        imgs.forEach(function (u, n) { var i = document.createElement('img'); i.src = u; i.alt = ''; mediaBox.appendChild(fig(imgs.length > 1 ? 'Immagine ' + (n + 1) + ' di ' + imgs.length : 'Immagine', i)); });
         if (d.story) { var j = document.createElement('img'); j.src = d.story; j.alt = ''; mediaBox.appendChild(fig('Immagine Story', j, 'story')); }
         if (d.video) { var v = document.createElement('video'); v.src = d.video; v.controls = true; v.preload = 'metadata'; v.playsInline = true; mediaBox.appendChild(fig('Video', v)); }
         dlg.showModal();

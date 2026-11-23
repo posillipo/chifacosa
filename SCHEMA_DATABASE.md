@@ -132,3 +132,6 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
 - `page_help` (guide delle pagine, popup "?"): `page_key` (chiave primaria, nome del file della pagina senza `.php`),
   `title`, `body` (testo breve), `more` (approfondimento, opzionale), `doc_url` (link esterno "Approfondisci", opzionale),
   `sort_order`, `updated_at`. Nessuna chiave esterna. Migrazione `2026_11_29_page_help.sql`.
+
+### social_queue.image_urls (migrazione 2026_11_35)
+`TEXT NULL` — JSON con fino a 10 URL di immagini (carosello/galleria) passati esplicitamente a `enqueue_social_queue`; la prima è anche in `image_url`. Per i post Timeline l'elenco è letto dal post (foto principale + `timeline_post_photos`) quando la coda viene consegnata; le API (`pending`, `list`, `enqueue`) espongono sempre `image_urls` come lista (anche con una sola immagine o vuota).

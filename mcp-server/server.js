@@ -533,7 +533,7 @@ function buildMcpServer() {
 
     server.registerTool('get_social_queue', {
         title: 'Leggi la coda di pubblicazione automatica Metricool',
-        description: 'Restituisce fino a 10 elementi "pending" della coda social del profilo (contenuti pronti da pubblicare su Metricool) e li marca come "processing". Ogni elemento include content_type, title, body, image_url, public_url, metricool_blog_id e metricool_networks. Da chiamare all\'inizio della Routine di auto-pubblicazione.',
+        description: 'Restituisce fino a 10 elementi "pending" della coda social del profilo (contenuti pronti da pubblicare su Metricool) e li marca come "processing". Ogni elemento include content_type, title, body, image_url, image_urls (elenco di 1-10 immagini in ordine, la prima uguale a image_url: usale tutte per caroselli/gallerie, rispettando i limiti di ogni social), public_url, metricool_blog_id e metricool_networks. Da chiamare all\'inizio della Routine di auto-pubblicazione.',
         inputSchema: { ...profileField },
     }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/social-queue/pending')));
 
@@ -946,6 +946,7 @@ function buildMcpServer() {
             content_id: z.number().int().describe('ID del contenuto'),
             title: z.string().describe('Titolo del contenuto'),
             image_url: z.string().optional().describe('URL immagine di copertina (opzionale)'),
+            image_urls: z.array(z.string()).max(10).optional().describe('Elenco di al massimo 10 URL di immagini (carosello/galleria), nell\'ordine di pubblicazione; la prima vale anche come image_url'),
             public_url: z.string().describe('URL pubblico del contenuto'),
             media_url: z.string().optional().describe('URL del file video da pubblicare (per content_type "video": è il campo video_url del video)'),
             scheduled_for: z.string().optional().describe('Data/ora di pubblicazione programmata (formato: "YYYY-MM-DD HH:MM" oppure ISO 8601 con fuso). Se omesso, viene processato alla prima run disponibile.'),
@@ -957,10 +958,10 @@ function buildMcpServer() {
             author: z.string().max(100).optional().describe('Chi sta accodando l\'elemento (nome dell\'IA o della routine): firma "Accodato da" visibile in dashboard. Consigliato.'),
             status: z.enum(['pending', 'scheduled', 'done', 'failed', 'skipped']).optional().describe('Default "pending" (coda da lavorare). Con scheduled/done/failed/skipped l\'uscita viene REGISTRATA a cose fatte e la routine non la riprende'),
         },
-    }, async ({ profile, content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }) =>
+    }, async ({ profile, content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }) =>
         toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
             method: 'POST',
-            body: { content_type, content_id, title, image_url, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }
+            body: { content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }
         }))
     );
 

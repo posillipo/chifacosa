@@ -29,4 +29,6 @@ if ($rows) {
     getDB()->exec("UPDATE social_queue SET status='processing' WHERE id IN ($ids)");
 }
 
+require_once __DIR__ . '/../src/metricool_queue.php';
+$rows = socialQueueAttachImageUrls($rows);
 apiRespond(200, ['success' => true, 'items' => $rows], $auth['token_id'], $auth['user_id']);

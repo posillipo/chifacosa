@@ -122,6 +122,99 @@ function socialRegistryValidate(array $body): array {
     return ['error' => null, 'values' => $v];
 }
 
+/** Numero massimo di immagini che una uscita social può portare (carosello/galleria). */
+const SOCIAL_QUEUE_MAX_IMAGES = 10;
+
+/**
+ * Normalizza un elenco di immagini: solo URL http(s) o percorsi del sito (resi assoluti), senza
+ * duplicati, nell'ordine dato, al massimo SOCIAL_QUEUE_MAX_IMAGES.
+ */
+function socialQueueCleanImageUrls(array $urls): array {
+    $out = [];
+    foreach ($urls as $u) {
+        if (!is_string($u)) {
+            continue;
+        }
+        $u = trim($u);
+        if ($u === '' || strlen($u) > 500) {
+            continue;
+        }
+        if ($u[0] === '/' && !str_starts_with($u, '//')) {
+            $u = siteUrl($u);
+        } elseif (!preg_match('#^https?://#i', $u)) {
+            continue;
+        }
+        if (!in_array($u, $out, true)) {
+            $out[] = $u;
+        }
+        if (count($out) >= SOCIAL_QUEUE_MAX_IMAGES) {
+            break;
+        }
+    }
+    return $out;
+}
+
+/** True se la tabella ha la colonna image_urls (migrazione 2026_11_35): senza, la coda funziona come prima. */
+function socialQueueHasImageUrlsColumn(): bool {
+    static $has = null;
+    if ($has === null) {
+        try {
+            $has = (bool) getDB()->query("SHOW COLUMNS FROM social_queue LIKE 'image_urls'")->fetch();
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
+/** Foto di un post Timeline (la principale + le altre, nell'ordine), come URL assoluti, al massimo 10. */
+function socialQueueTimelineImageUrls(int $userId, int $postId): array {
+    try {
+        $st = getDB()->prepare('SELECT image_path FROM timeline_posts WHERE id = ? AND user_id = ?');
+        $st->execute([$postId, $userId]);
+        $paths = [];
+        if ($main = $st->fetchColumn()) {
+            $paths[] = $main;
+        }
+        foreach (getTimelinePostPhotos($postId) as $extra) {
+            $paths[] = $extra;
+        }
+        return socialQueueCleanImageUrls(array_map(fn($p) => '/' . ltrim((string) $p, '/'), $paths));
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Elenco delle immagini di una riga della coda (sempre una lista, anche con una sola immagine):
+ * quello salvato esplicitamente, altrimenti — per i post Timeline — le foto lette dal post al
+ * momento (così riflette aggiunte e rimozioni fatte dopo l'accodamento), altrimenti image_url.
+ */
+function socialQueueImageUrls(array $row): array {
+    if (!empty($row['image_urls'])) {
+        $dec = json_decode((string) $row['image_urls'], true);
+        if (is_array($dec) && $dec) {
+            return socialQueueCleanImageUrls($dec);
+        }
+    }
+    if (($row['content_type'] ?? '') === 'timeline' && (int) ($row['content_id'] ?? 0) > 0) {
+        $live = socialQueueTimelineImageUrls((int) $row['user_id'], (int) $row['content_id']);
+        if ($live) {
+            return $live;
+        }
+    }
+    return !empty($row['image_url']) ? [(string) $row['image_url']] : [];
+}
+
+/** Aggiunge 'image_urls' (lista, max 10) a ogni riga della coda. */
+function socialQueueAttachImageUrls(array $rows): array {
+    foreach ($rows as &$r) {
+        $r['image_urls'] = socialQueueImageUrls($r);
+    }
+    unset($r);
+    return $rows;
+}
+
 /** Riga di social_queue nella forma esposta dalle API del registro. */
 function socialRegistrySerialize(array $r): array {
     $channels = null;
@@ -138,6 +231,7 @@ function socialRegistrySerialize(array $r): array {
         'title'           => $r['title'] ?? null,
         'public_url'      => $r['public_url'] ?? null,
         'image_url'       => $r['image_url'] ?? null,
+        'image_urls'      => socialQueueImageUrls($r),
         'image_story_url' => $r['image_story_url'] ?? null,
         'video_url'       => $r['media_url'] ?? null,
         'channels'        => $channels,
@@ -194,6 +288,11 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
             error_log('socialQueueEnqueue(blog): ' . $e->getMessage());
         }
     }
+    // Più immagini (fino a 10): la prima resta anche in image_url, così chi legge solo quel campo continua a funzionare.
+    $imageList = isset($data['image_urls']) && is_array($data['image_urls']) ? socialQueueCleanImageUrls($data['image_urls']) : [];
+    if ($imageList && empty($data['image_url'])) {
+        $data['image_url'] = $imageList[0];
+    }
     $cols = ['user_id', 'content_type', 'content_id', 'title', 'body', 'image_url', 'public_url', 'scheduled_for'];
     $vals = [
         $userId,
@@ -205,6 +304,11 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
         $data['public_url'] ?? '',
         $scheduledFor ?: null,
     ];
+    // L'elenco si salva solo con più di un'immagine e se la colonna esiste (migrazione 2026_11_35).
+    if (count($imageList) > 1 && socialQueueHasImageUrlsColumn()) {
+        $cols[] = 'image_urls';
+        $vals[] = json_encode($imageList, JSON_UNESCAPED_SLASHES);
+    }
     // media_url (file video) solo per i contenuti che ce l'hanno: gli altri non dipendono dalla colonna.
     if (!empty($data['media_url'])) {
         $cols[] = 'media_url';

@@ -36,7 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         getDB()->exec("UPDATE social_queue SET status='processing' WHERE id IN ($ids)");
     }
 
-    echo json_encode(['items' => $rows]);
+    require_once __DIR__ . '/../src/metricool_queue.php';
+    echo json_encode(['items' => socialQueueAttachImageUrls($rows)]);
     exit;
 }
 

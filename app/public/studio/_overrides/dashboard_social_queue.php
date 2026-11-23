@@ -128,9 +128,10 @@ $sqLink = fn($st, $tp) => '?status=' . urlencode($st) . ($tp !== '' ? '&tipo=' .
           if (!empty($qi['channels'])) { $dec = json_decode((string) $qi['channels'], true); if (is_array($dec)) $chs = $dec; }
           $au = isset($authorTables[$qi['content_type']]) ? ($authorsByItem[$qi['content_type']][(int) $qi['content_id']] ?? null) : null;
           $storyImg = $okUrl($qi['image_story_url'] ?? ''); $videoUrl = $okUrl($qi['media_url'] ?? ''); $mainImg = $okUrl($qi['image_url'] ?? '');
-          $prev = ['title' => $label, 'text' => str_replace('**', '', trim(strip_tags((string) ($qi['body'] ?? '')))), 'image' => $mainImg, 'story' => $storyImg, 'video' => $videoUrl,
+          $imgList = socialQueueImageUrls($qi);
+          $prev = ['title' => $label, 'images' => $imgList, 'text' => str_replace('**', '', trim(strip_tags((string) ($qi['body'] ?? '')))), 'image' => $mainImg, 'story' => $storyImg, 'video' => $videoUrl,
               'meta' => array_values(array_filter([$typeLabel . ' #' . (int) $qi['content_id'], $chs ? 'Canali: ' . implode(', ', $chs) : '', !empty($qi['format']) ? 'Formato: ' . ($formatNames[$qi['format']] ?? $qi['format']) : '', $qi['scheduled_for'] ? 'Uscita: ' . date('d/m/Y H:i', strtotime($qi['scheduled_for'])) : 'Uscita: appena possibile', 'Stato: ' . ($statusNames[$shownStatus] ?? $shownStatus)]))];
-          $hasPrev = $mainImg || $storyImg || $videoUrl || $prev['text'] !== '';
+          $hasPrev = $mainImg || $imgList || $storyImg || $videoUrl || $prev['text'] !== '';
         ?>
           <div class="sqx-item" id="sq-row-<?= (int) $qi['id'] ?>">
             <div class="sqx-top">
@@ -145,6 +146,7 @@ $sqLink = fn($st, $tp) => '?status=' . urlencode($st) . ($tp !== '' ? '&tipo=' .
                   <?php foreach ($chs as $ch): ?><span class="sqx-tag ch"><?= e($ch) ?></span><?php endforeach; ?>
                   <?php if (!empty($qi['format'])): ?><span class="sqx-tag"><?= e($formatNames[$qi['format']] ?? $qi['format']) ?></span><?php endif; ?>
                   <?php if (!empty($qi['scope'])): ?><span class="sqx-tag"><?= e($scopeNames[$qi['scope']] ?? $qi['scope']) ?></span><?php endif; ?>
+                  <?php if (count($imgList) > 1): ?><span class="sqx-tag"><?= count($imgList) ?> foto</span><?php endif; ?>
                   <?php if ($storyImg): ?><span class="sqx-tag">Story</span><?php endif; ?>
                   <?php if ($videoUrl): ?><span class="sqx-tag">Video</span><?php endif; ?>
                 </div>

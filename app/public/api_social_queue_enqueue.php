@@ -8,6 +8,7 @@
  *   content_id    int
  *   title         string
  *   image_url     string|null
+ *   image_urls    string[]|null  fino a 10 immagini (carosello/galleria); la prima vale anche come image_url
  *   public_url    string
  *   media_url     string|null  file video/audio da pubblicare (es. content_type "video")
  *   scheduled_for string|null  "YYYY-MM-DD HH:MM" or "YYYY-MM-DDTHH:MM" (alias: publication_date)
@@ -45,6 +46,12 @@ $contentType = trim($body['content_type'] ?? '');
 $contentId   = (int) ($body['content_id'] ?? 0);
 $title       = mb_substr(trim($body['title'] ?? ''), 0, 250);
 $imageUrl    = $body['image_url'] ?? null;
+$imageUrls   = $body['image_urls'] ?? null;
+if ($imageUrls !== null) {
+    if (!is_array($imageUrls) || count($imageUrls) > SOCIAL_QUEUE_MAX_IMAGES) {
+        apiError(422, 'image_urls deve essere una lista di al massimo ' . SOCIAL_QUEUE_MAX_IMAGES . ' URL.');
+    }
+}
 $publicUrl   = trim($body['public_url'] ?? '');
 $mediaUrl    = trim($body['media_url'] ?? '');
 $scheduledFor = $body['scheduled_for'] ?? ($body['publication_date'] ?? null);
@@ -131,6 +138,7 @@ try {
         'content_id' => $contentId,
         'title'      => $title,
         'image_url'  => $imageUrl,
+        'image_urls' => $imageUrls,
         'public_url' => $publicUrl,
         'media_url'  => $mediaUrl,
     ], $scheduledFor, $registry, $status);

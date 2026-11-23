@@ -1288,6 +1288,9 @@ Aggiunge `profiles.is_private TINYINT(1) NOT NULL DEFAULT 0` (tutti i profili es
 ### Guida Profilo aggiornata (`2026_11_34_page_help_profile_private.sql`)
 Aggiorna il testo di guida di `dashboard_profile.php` con l'opzione «Profilo privato» (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
 
+### Coda social: fino a 10 immagini (`2026_11_35_social_queue_image_urls.sql`)
+Aggiunge `social_queue.image_urls TEXT NULL` (JSON con gli URL delle immagini, al massimo 10; la prima resta anche in `image_url`). Idempotente. Serve solo per elenchi passati esplicitamente (`image_urls` di `enqueue_social_queue`): per i post Timeline le foto si leggono dal post al momento della consegna e la colonna non serve. Senza la migrazione la coda funziona come prima (una sola immagine per gli elenchi espliciti).
+
 ---
 
 ## Come aggiungere una nuova voce
