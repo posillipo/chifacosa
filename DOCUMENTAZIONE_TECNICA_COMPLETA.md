@@ -350,3 +350,12 @@ panoramica), `LOCAL_TESTING.md`, `GITHUB.md`, `DEPLOY.md`, `ADMIN_SETUP.md`, `SM
 Profilo, Spotify, YouTube, Telegram, Metricool, Log, API e Coda Social hanno una vista Studio dedicata in `app/public/studio/_overrides/` (logica PHP identica all'originale; solo la parte visiva cambia). La Coda Social usa `studio/assets/studio-queue.js` (anteprima, sospendi/riattiva, rimuovi, riprogramma, stessa API `api_social_queue_action.php`). Il ritaglio dell'avatar nel profilo usa gli stessi id e lo stesso `assets/js/avatar-crop.js`.
 
 Nelle pagine Studio Spotify, Podcast e YouTube sotto il collegamento si vedono i contenuti del profilo agganciato (dischi e brani più ascoltati; ultimi 10 episodi; ultimi 12 video), letti con le stesse funzioni e la stessa cache delle pagine pubbliche (`spotifyGetArtistAlbums`, `spotifyGetArtistTopTracks`, `spotifyGetShowEpisodes`, `youtubeGetChannelVideos`).
+
+## Coda social: fino a 10 immagini per uscita
+
+- `socialQueueImageUrls($riga)` (in `app/src/metricool_queue.php`) restituisce sempre una lista (max `SOCIAL_QUEUE_MAX_IMAGES` = 10): l'elenco salvato in `social_queue.image_urls` se c'è; per i post Timeline le foto lette dal post (principale + `timeline_post_photos`, quindi aggiornate se le foto cambiano dopo l'accodamento); altrimenti `image_url`.
+- Le API `social-queue/pending`, `/list` e `/enqueue` espongono `image_urls`; `enqueue` accetta `image_urls` (max 10, altrimenti 422). La prima immagine resta anche in `image_url`.
+- MCP: `get_social_queue` restituisce `image_urls`; `enqueue_social_queue` ha il parametro `image_urls` (modificato in entrambi i repo: `mcp-server/server.js` di chifacosa e di myband).
+- Il taglio per social (X e Bluesky 4, Pinterest 1, ecc.) NON è nel codice: è una regola della routine che passa i dati a Metricool.
+- Studio, Coda Social: etichetta «N foto» e anteprima con tutte le immagini. La coda della dashboard classica mostra ancora solo la prima.
+- Migrazione `2026_11_35_social_queue_image_urls.sql` (opzionale: serve solo per gli elenchi passati a mano).
