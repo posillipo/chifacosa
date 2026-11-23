@@ -135,3 +135,6 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
 
 ### social_queue.image_urls (migrazione 2026_11_35)
 `TEXT NULL` — JSON con fino a 10 URL di immagini (carosello/galleria) passati esplicitamente a `enqueue_social_queue`; la prima è anche in `image_url`. Per i post Timeline l'elenco è letto dal post (foto principale + `timeline_post_photos`) quando la coda viene consegnata; le API (`pending`, `list`, `enqueue`) espongono sempre `image_urls` come lista (anche con una sola immagine o vuota).
+
+### profiles.geo_lat / geo_lng / geo_query / indice provincia (migrazione 2026_11_37)
+`geo_lat`, `geo_lng` DECIMAL(9,6) NULL: centro del comune del profilo, ricavato da `citta` + `provincia` (sigla). `geo_query` VARCHAR(255) NULL: testo cercato l'ultima volta («Portici, Napoli, NA»), per non ripetere la ricerca finché città/provincia non cambiano. `profiles.provincia` contiene ora la sigla maiuscola (NA, MI, RM…). Indice `idx_profiles_provincia`.

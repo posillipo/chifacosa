@@ -189,6 +189,7 @@ $dashAccountGroups = [
     'Il mio profilo' => [
         ['url' => '/dashboard_profile.php',  'tab' => 'profile',  'icon' => 'fa-id-card',     'label' => 'Profilo e anagrafica', 'show' => true],
         ['url' => '/dashboard_profiles.php', 'tab' => 'profiles', 'icon' => 'fa-layer-group', 'label' => 'I tuoi profili',        'show' => true],
+        ['url' => '/dashboard_directory.php', 'tab' => 'directory', 'icon' => 'fa-map-location-dot', 'label' => 'Directory',        'show' => true],
         ['url' => '/dashboard_theme.php',    'tab' => 'theme',    'icon' => 'fa-palette',     'label' => 'Tema grafico',         'show' => true],
         ['url' => '/dashboard_password.php', 'tab' => 'password', 'icon' => 'fa-lock',        'label' => 'Cambia password',      'show' => true],
     ],

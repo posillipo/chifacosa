@@ -1294,6 +1294,12 @@ Aggiunge `social_queue.image_urls TEXT NULL` (JSON con gli URL delle immagini, a
 ### Guide Profilo e Messaggi per gli admin (`2026_11_36_page_help_admin_messages.sql`)
 Aggiorna i testi di guida di `dashboard_profile_view.php` e `dashboard_chat.php`: gli amministratori del sito possono scrivere anche a chi non li segue (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
 
+### Coordinate dei profili per la Directory (`2026_11_37_profile_geo.sql`)
+Aggiunge `profiles.geo_lat`, `geo_lng` (DECIMAL 9,6) e `geo_query` (VARCHAR 255) e l'indice `idx_profiles_provincia`. Idempotente. Le coordinate sono quelle del COMUNE (calcolate da città + provincia, mai dall'indirizzo). Senza la migrazione la Directory elenca i profili ma senza mappa.
+
+### Guide Directory e Profilo (`2026_11_38_page_help_directory.sql`)
+Nuovo testo di guida per `dashboard_directory.php` e aggiornamento di `dashboard_profile.php` (città e provincia obbligatorie). `ON DUPLICATE KEY UPDATE`: si può rieseguire. Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce

@@ -308,18 +308,16 @@ function renderDashCommunity(int $profileId): string {
           . '<a href="/dashboard_followers.php" class="dash-comm-tile"><i class="fa-solid fa-users"></i><b>' . (int) $c['followers_n'] . '</b><span>Follower</span></a>'
           . '<a href="/dashboard_following.php" class="dash-comm-tile"><i class="fa-solid fa-user-check"></i><b>' . (int) $c['following_n'] . '</b><span>Seguiti</span></a>'
           . '<a href="/dashboard_invite.php" class="dash-comm-tile dash-comm-invite"><i class="fa-solid fa-user-plus"></i><b>+</b><span>Invita</span></a>'
+          . '<a href="/dashboard_directory.php" class="dash-comm-tile"><i class="fa-solid fa-map-location-dot"></i><b><i class="fa-solid fa-magnifying-glass"></i></b><span>Directory</span></a>'
           . '</div>'
           . '<div class="dash-comm-tabs" role="tablist">'
           . '<button type="button" class="active" role="tab" aria-selected="true" data-comm-tab="followers">Ultimi follower</button>'
-          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button>'
-          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="discover">Scopri</button></div>'
+          . '<button type="button" role="tab" aria-selected="false" data-comm-tab="following">Ultimi seguiti</button></div>'
           . '<div class="dash-comm-body" data-comm-body>'
           . '<div class="dash-comm-panel" data-comm-panel="followers">' . dashCommunityList($c['followers'], 'Ancora nessun follower: condividi il tuo link con Invita.', true)
           . '<a class="dash-right-link" href="/dashboard_followers.php">Vedi tutti i follower</a></div>'
           . '<div class="dash-comm-panel" data-comm-panel="following" hidden>' . dashCommunityList($c['following'], 'Non segui ancora nessun profilo: usa la ricerca in alto.', false)
           . '<a class="dash-right-link" href="/dashboard_following.php">Vedi tutti i seguiti</a></div>'
-          . '<div class="dash-comm-panel" data-comm-panel="discover" hidden>' . dashCommunityList(dashNewProfiles($profileId), 'Nessun nuovo profilo da scoprire per ora.', true)
-          . '<div class="dash-right-empty">I profili più recenti, in ordine di arrivo.</div></div>'
           . '</div>'
           . '<div class="dash-comm-grip" data-comm-grip role="separator" aria-orientation="horizontal" tabindex="0" '
           . 'title="Trascina per alzare o abbassare l\'elenco (doppio clic: altezza iniziale)" aria-label="Cambia l\'altezza dell\'elenco"><span></span></div>'
@@ -350,7 +348,7 @@ function renderDashCommunity(int $profileId): string {
   document.querySelectorAll('.dash-comm[data-comm-box]').forEach(function (box) {
     // La scheda scelta (Follower / Seguiti) resta attiva anche dopo aver aperto un profilo e tornato indietro.
     var saved = get(TAB_KEY);
-    if (saved === 'followers' || saved === 'following' || saved === 'discover') showTab(box, saved);
+    if (saved === 'followers' || saved === 'following') showTab(box, saved);
     var body = box.querySelector('[data-comm-body]'), grip = box.querySelector('[data-comm-grip]');
     if (!body || !grip) return;
     var h0 = parseInt(get(H_KEY), 10);
@@ -383,24 +381,4 @@ function renderDashCommunity(int $profileId): string {
 JS;
     }
     return $html;
-}
-
-
-/** Ultimi profili iscritti e attivi (in ordine di arrivo), escluso il profilo attivo: per il blocco "Nuovi profili". */
-function dashNewProfiles(int $selfId, int $limit = 10): array {
-    $out = [];
-    try {
-        $st = getDB()->prepare("SELECT u.id, u.slug, p.display_name, p.avatar_path, u.created_at d,
-                (SELECT COUNT(*) FROM account_follows b WHERE b.follower_user_id = ? AND b.followed_user_id = u.id) AS i_follow
-            FROM users u JOIN profiles p ON p.user_id = u.id
-            WHERE u.is_active = 1" . privateProfileExcludeSql('p') . " AND u.account_type_chosen = 1 AND u.id <> ? AND u.email NOT LIKE '%@profili.chifacosa.local'
-            ORDER BY u.created_at DESC, u.id DESC LIMIT " . (int) $limit);
-        $st->execute([$selfId, $selfId]);
-        foreach ($st->fetchAll() as $r) {
-            $out[] = ['kind' => 'profile', 'id' => (int) $r['id'], 'slug' => $r['slug'], 'name' => $r['display_name'] ?: $r['slug'],
-                'avatar' => $r['avatar_path'], 'd' => $r['d'], 'i_follow' => (int) $r['i_follow'] > 0];
-        }
-    } catch (Throwable $e) {
-    }
-    return $out;
 }
