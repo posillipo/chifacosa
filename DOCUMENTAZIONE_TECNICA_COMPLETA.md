@@ -359,3 +359,7 @@ Nelle pagine Studio Spotify, Podcast e YouTube sotto il collegamento si vedono i
 - Il taglio per social (X e Bluesky 4, Pinterest 1, ecc.) NON è nel codice: è una regola della routine che passa i dati a Metricool.
 - Studio, Coda Social: etichetta «N foto» e anteprima con tutte le immagini. La coda della dashboard classica mostra ancora solo la prima.
 - Migrazione `2026_11_35_social_queue_image_urls.sql` (opzionale: serve solo per gli elenchi passati a mano).
+
+## Messaggi: eccezione per gli amministratori
+
+In `dashboard_chat.php` si può scrivere solo se i due profili si seguono a vicenda (`areMutualFollowers`); gli amministratori del sito (`users.is_admin` dell'utente loggato) possono scrivere a chiunque, anche più messaggi di seguito. Il controllo è lato server (`$canWrite`). Nella scheda `dashboard_profile_view.php` il pulsante «Scrivi un messaggio» compare ai follower reciproci e sempre agli admin. Il destinatario vede la conversazione e i messaggi ma può rispondere solo se vi seguite a vicenda (regola invariata).

@@ -31,6 +31,8 @@ $isSelf = $target && (int) $target['id'] === $actingId;
 $following = $target && !$isSelf && isFollowingAccount($actingId, (int) $target['id']);
 $followedBack = $target && !$isSelf && isFollowingAccount((int) $target['id'], $actingId);
 $mutual = $following && $followedBack;
+// Il pulsante Messaggi: a chi si segue a vicenda, e sempre agli amministratori del sito.
+$canMessage = $mutual || !empty($user['is_admin']);
 $followers = $target ? getAccountFollowerCount((int) $target['id']) : 0;
 
 $latest = [];
@@ -88,7 +90,7 @@ include __DIR__ . '/_dash_header.php';
               <button type="submit" class="btn"><i class="fa-solid fa-user-plus"></i> Segui</button>
             <?php endif; ?>
           </form>
-          <?php if ($mutual): ?>
+          <?php if ($canMessage): ?>
             <a class="btn secondary" href="/dashboard_chat.php?with=<?= e(rawurlencode($target['slug'])) ?>"><i class="fa-solid fa-comment-dots"></i> Scrivi un messaggio</a>
           <?php endif; ?>
         <?php endif; ?>

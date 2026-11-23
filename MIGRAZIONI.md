@@ -1291,6 +1291,9 @@ Aggiorna il testo di guida di `dashboard_profile.php` con l'opzione «Profilo pr
 ### Coda social: fino a 10 immagini (`2026_11_35_social_queue_image_urls.sql`)
 Aggiunge `social_queue.image_urls TEXT NULL` (JSON con gli URL delle immagini, al massimo 10; la prima resta anche in `image_url`). Idempotente. Serve solo per elenchi passati esplicitamente (`image_urls` di `enqueue_social_queue`): per i post Timeline le foto si leggono dal post al momento della consegna e la colonna non serve. Senza la migrazione la coda funziona come prima (una sola immagine per gli elenchi espliciti).
 
+### Guide Profilo e Messaggi per gli admin (`2026_11_36_page_help_admin_messages.sql`)
+Aggiorna i testi di guida di `dashboard_profile_view.php` e `dashboard_chat.php`: gli amministratori del sito possono scrivere anche a chi non li segue (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce
