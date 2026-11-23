@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -86,100 +86,77 @@ if (profilesHavePrivateColumn()) {
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+  <div class="tlx tlx-narrow">
+    <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
-  <form method="post" enctype="multipart/form-data" class="card">
-    <?= csrfField() ?>
-    <label>Nome / Nome d'arte</label>
-    <input type="text" name="display_name" value="<?= e($profile['display_name']) ?>" required>
+    <form method="post" enctype="multipart/form-data" class="box">
+      <?= csrfField() ?>
+      <h3><i class="fa-regular fa-id-card"></i> Il tuo profilo</h3>
 
-    <label>Bio</label>
-    <textarea name="bio" rows="4"><?= e($profile['bio']) ?></textarea>
-
-    <label>Genere musicale</label>
-    <input type="text" name="genere" value="<?= e($profile['genere'] ?? '') ?>" placeholder="es. Rock, Pop, Cantautore...">
-
-    <label>Città</label>
-    <input type="text" name="citta" value="<?= e($profile['citta'] ?? '') ?>">
-
-    <label>Provincia</label>
-    <input type="text" name="provincia" value="<?= e($profile['provincia'] ?? '') ?>" placeholder="es. Na, Mi, Rm...">
-
-    <label>Telefono</label>
-    <input type="text" name="telefono" value="<?= e($profile['telefono'] ?? '') ?>">
-
-    <label>Fuso orario</label>
-    <select name="timezone">
-      <?php foreach (TIMEZONE_OPTIONS as $tzKey => $tz): ?>
-        <option value="<?= e($tzKey) ?>" <?= profileTimezoneKey($profile) === $tzKey ? 'selected' : '' ?>><?= e($tz['label']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">
-      Usato per mostrare le date e gli orari dei tuoi contenuti (Timeline, Che Amo, Blog, Eventi...)
-      nel fuso orario giusto, indipendentemente da dove si trova il server.
-    </p>
-
-    <label>Colore tema (pagina pubblica)</label>
-    <input type="color" name="theme_color" value="<?= e($profile['theme_color'] ?? '#6C5CE7') ?>" style="width:80px;height:44px;padding:4px;">
-
-    <label>Foto profilo</label>
-    <img id="avatar-preview" src="<?= $profile['avatar_path'] ? e('/' . $profile['avatar_path']) : '' ?>"
-         style="width:70px;height:70px;border-radius:50%;object-fit:cover;margin-bottom:10px;<?= $profile['avatar_path'] ? '' : 'display:none;' ?>">
-    <input type="file" id="avatar-input" name="avatar" accept="image/*">
-    <input type="hidden" name="avatar_cropped_data" id="avatar-cropped-data">
-    <p style="color:var(--text-muted);font-size:12.5px;margin-top:6px;">Dopo aver scelto una foto potrai ritagliarla prima di salvarla.</p>
-
-    <?php if (profilesHavePrivateColumn()): ?>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin:14px 0 4px;">
-      <input type="checkbox" name="is_private" value="1" <?= $isPrivateNow ? 'checked' : '' ?> style="width:auto;margin-bottom:0;">
-      <strong>Profilo privato</strong>
-    </label>
-    <p style="color:var(--text-muted);font-size:12.5px;margin:0 0 14px;">
-      Il profilo non compare nelle ricerche, nelle liste di nuovi profili né nei motori di ricerca, e la tua pagina pubblica si apre
-      solo a te, a chi la gestisce e ai tuoi follower collegati (per tutti gli altri è «pagina non trovata»). Le tue automazioni e i server MCP continuano a funzionare.
-    </p>
-    <?php endif; ?>
-
-    <button type="submit" class="btn">Salva profilo</button>
-  </form>
-
-  <!-- Finestra di ritaglio della foto profilo: appare solo dopo aver scelto un file, si chiude
-       da sola alla conferma. Il ritaglio avviene per intero nel browser (canvas), il server
-       riceve già l'immagine quadrata pronta in base64 — vedi commento nel gestore POST sopra. -->
-  <div id="avatar-crop-modal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:12px;padding:18px;max-width:420px;width:100%;">
-      <strong>Ritaglia la foto profilo</strong>
-      <p style="color:var(--text-muted);font-size:12.5px;margin:4px 0 12px;">Trascina per spostare, usa la rotellina o pizzica per ingrandire.</p>
-      <div style="max-height:60vh;overflow:hidden;">
-        <img id="avatar-crop-image" src="" style="max-width:100%;display:block;">
+      <div class="pfx-avatar">
+        <img id="avatar-preview" src="<?= $profile['avatar_path'] ? e('/' . $profile['avatar_path']) : '' ?>" alt="">
+        <div>
+          <label for="avatar-input">Foto profilo</label>
+          <input type="file" id="avatar-input" name="avatar" accept="image/*">
+          <input type="hidden" name="avatar_cropped_data" id="avatar-cropped-data">
+          <p class="tlx-hint">Dopo aver scelto una foto potrai ritagliarla prima di salvarla.</p>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-        <button type="button" id="avatar-crop-cancel" class="btn secondary small">Annulla</button>
-        <button type="button" id="avatar-crop-confirm" class="btn small">Ritaglia e usa</button>
+
+      <label for="pf-dn">Nome / Nome d'arte</label>
+      <input type="text" id="pf-dn" name="display_name" value="<?= e($profile['display_name']) ?>" required>
+      <label for="pf-bio">Bio</label>
+      <textarea id="pf-bio" name="bio" rows="4"><?= e($profile['bio']) ?></textarea>
+      <label for="pf-gen">Genere musicale</label>
+      <input type="text" id="pf-gen" name="genere" value="<?= e($profile['genere'] ?? '') ?>" placeholder="es. Rock, Pop, Cantautore...">
+      <div class="pfx-row">
+        <div><label for="pf-city">Città</label><input type="text" id="pf-city" name="citta" value="<?= e($profile['citta'] ?? '') ?>"></div>
+        <div><label for="pf-prov">Provincia</label><input type="text" id="pf-prov" name="provincia" value="<?= e($profile['provincia'] ?? '') ?>" placeholder="es. Na, Mi, Rm..."></div>
       </div>
+      <label for="pf-tel">Telefono</label>
+      <input type="text" id="pf-tel" name="telefono" value="<?= e($profile['telefono'] ?? '') ?>">
+      <label for="pf-tz">Fuso orario</label>
+      <select id="pf-tz" name="timezone">
+        <?php foreach (TIMEZONE_OPTIONS as $tzKey => $tz): ?>
+          <option value="<?= e($tzKey) ?>" <?= profileTimezoneKey($profile) === $tzKey ? 'selected' : '' ?>><?= e($tz['label']) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <p class="tlx-hint">Serve a mostrare date e orari dei tuoi contenuti nel fuso giusto, ovunque sia il server.</p>
+      <label for="pf-col">Colore tema (pagina pubblica)</label>
+      <input type="color" id="pf-col" name="theme_color" value="<?= e($profile['theme_color'] ?? '#6C5CE7') ?>" class="pfx-color">
+
+      <?php if (profilesHavePrivateColumn()): ?>
+        <?php studioSwitch('is_private', 'Profilo privato: non compare nelle ricerche, nelle liste né nei motori di ricerca, e la tua pagina pubblica si apre solo a te, a chi la gestisce e ai tuoi follower. Automazioni e MCP continuano a funzionare.', $isPrivateNow); ?>
+      <?php endif; ?>
+
+      <button type="submit" class="tlx-submit cmp-done">Salva profilo</button>
+    </form>
+
+    <div class="box">
+      <h3><i class="fa-solid fa-link"></i> Il tuo link pubblico</h3>
+      <p><a href="/<?= e($profile['slug']) ?>" target="_blank" rel="noopener"><?= e(siteName()) ?>/<?= e($profile['slug']) ?></a></p>
+    </div>
+    <div class="box box-danger">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Elimina il mio account</h3>
+      <p>Cancella il tuo account e tutti i tuoi contenuti dal portale. L'operazione è definitiva.</p>
+      <a href="/dashboard_delete_account.php" class="stc-act danger"><i class="fa-solid fa-trash"></i> <span>Elimina il mio account…</span></a>
     </div>
   </div>
 
+  <div id="avatar-crop-modal" class="pfx-crop">
+    <div class="pfx-crop-in">
+      <b>Ritaglia la foto profilo</b>
+      <p class="tlx-hint">Trascina per spostare, usa la rotellina o pizzica per ingrandire.</p>
+      <div class="pfx-crop-img"><img id="avatar-crop-image" src="" alt=""></div>
+      <div class="box-row pfx-crop-act">
+        <button type="button" id="avatar-crop-cancel" class="stc-act">Annulla</button>
+        <button type="button" id="avatar-crop-confirm" class="stc-act primary">Ritaglia e usa</button>
+      </div>
+    </div>
+  </div>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
-  <style>
-    /* L'avatar è sempre mostrato come cerchio: la selezione di ritaglio lo mostra allo stesso
-       modo (solo l'inquadratura visiva — il ritaglio salvato resta un quadrato, i cerchi CSS
-       normalmente partono comunque da un'immagine quadrata). */
-    #avatar-crop-modal .cropper-view-box,
-    #avatar-crop-modal .cropper-face { border-radius: 50%; }
-    #avatar-crop-modal .cropper-view-box { outline: 0; box-shadow: 0 0 0 1px var(--accent); }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script src="<?= assetUrl('/assets/js/avatar-crop.js') ?>" defer></script>
-
-  <div class="card">
-    <strong>Il tuo link pubblico:</strong><br>
-    <a href="/<?= e($profile['slug']) ?>" target="_blank"><?= e(siteName()) ?>/<?= e($profile['slug']) ?></a>
-  </div>
-  <div class="card" style="margin-top:14px;border:1px solid #e74c3c33;">
-    <div class="section-title" style="margin-top:0;color:#e74c3c;">Elimina il mio account</div>
-    <p style="color:var(--text-muted);font-size:13px;">Cancella il tuo account e tutti i tuoi contenuti dal portale. L'operazione è definitiva.</p>
-    <a href="/dashboard_delete_account.php" class="btn small danger"><i class="fa-solid fa-trash"></i> Elimina il mio account…</a>
-  </div>
+<script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>

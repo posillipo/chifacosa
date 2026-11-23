@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/_studio_boot.php'; /* GENERATO da scripts/make-studio.py: non modificare a mano */ ?>
+<?php require_once __DIR__ . '/_studio_boot.php'; /* Override di Studio: logica identica alla pagina originale, cambia solo la parte visiva */ ?>
 <?php
 session_start();
 require_once __DIR__ . '/../../src/functions.php';
@@ -95,103 +95,54 @@ $queueItems = $stmtQ->fetchAll();
 
 include __DIR__ . '/../_dash_header.php';
 ?>
-  <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
-  <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
-
-
-  <div class="section-title">Profili e ID Metricool</div>
-  <?php foreach ($rows as $r): ?>
-    <?php
-      $rid = (int) $r['id'];
-      $rBlog = (int) ($r['metricool_blog_id'] ?? 0);
+  <div class="tlx">
+    <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+    <?php if ($success): ?><div class="alert success"><?= e($success) ?></div><?php endif; ?>
+    <div class="tlx-listhead"><h2>Profili e ID Metricool</h2></div>
+    <?php foreach ($rows as $r):
+      $rid = (int) $r['id']; $rBlog = (int) ($r['metricool_blog_id'] ?? 0);
       $rNets = $r['metricool_networks'] ? (json_decode($r['metricool_networks'], true) ?: []) : [];
-      $rAuto = !empty($r['metricool_auto_social']);
-    ?>
-    <form method="post" class="card" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;align-items:start;">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="save">
-      <input type="hidden" name="target_id" value="<?= $rid ?>">
-      <div>
-        <strong><?= e($r['display_name']) ?></strong>
-        <div style="color:var(--text-muted);font-size:12.5px;">/<?= e($r['slug']) ?><?= $rid === (int) $user['id'] ? ' · il tuo profilo' : '' ?></div>
-        <div style="font-size:12.5px;margin-top:6px;color:<?= $rAuto ? '#27ae60' : '#e74c3c' ?>;">
-          <?= $rAuto ? '✅ Pubblicazione automatica attiva' : '⏸ Non attiva' ?>
-        </div>
-      </div>
-      <div>
+      $rAuto = !empty($r['metricool_auto_social']); ?>
+      <form method="post" class="box">
+        <?= csrfField() ?><input type="hidden" name="action" value="save"><input type="hidden" name="target_id" value="<?= $rid ?>">
+        <h3><?= e($r['display_name']) ?> <small>/<?= e($r['slug']) ?><?= $rid === (int) $user['id'] ? ' · il tuo profilo' : '' ?></small></h3>
+        <p><span class="sqx-b" data-s="<?= $rAuto ? 'done' : 'pending' ?>"><?= $rAuto ? 'Pubblicazione automatica attiva' : 'Non attiva' ?></span></p>
         <label>ID Metricool</label>
         <?php if ($canEditBlogId): ?>
           <input type="text" name="metricool_blog_id" inputmode="numeric" pattern="[0-9]*" value="<?= $rBlog ?: '' ?>" placeholder="es. 1234567">
         <?php else: ?>
-          <p style="margin:0 0 12px;"><?= $rBlog ? '<strong>' . $rBlog . '</strong>' : '<span style="color:var(--text-muted);">Non assegnato: contatta l\'amministratore.</span>' ?></p>
+          <p><?= $rBlog ? '<b>' . $rBlog . '</b>' : 'Non assegnato: contatta l\'amministratore.' ?></p>
         <?php endif; ?>
-
         <label>Social network da pubblicare</label>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div class="sqx-nets">
           <?php foreach ($allNetworks as $net => $netlabel): ?>
-            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
-              <input type="checkbox" name="networks[]" value="<?= $net ?>" <?= in_array($net, $rNets, true) ? 'checked' : '' ?>>
-              <?= e($netlabel) ?>
-            </label>
+            <label class="sqx-net"><input type="checkbox" name="networks[]" value="<?= $net ?>" <?= in_array($net, $rNets, true) ? 'checked' : '' ?>> <span><?= e($netlabel) ?></span></label>
           <?php endforeach; ?>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="submit" class="btn small">Salva</button>
-          <?php if ($rAuto): ?>
-            <button type="submit" name="action" value="disable" class="btn small danger"
-                    onclick="return confirm('Disattivare la pubblicazione automatica?');">Disattiva</button>
-          <?php endif; ?>
-        </div>
-      </div>
-    </form>
-  <?php endforeach; ?>
+        <button type="submit" class="tlx-submit cmp-done">Salva</button>
+      </form>
+      <?php if ($rAuto): ?>
+        <form method="post" class="sqx-off" data-confirm="Disattivare la pubblicazione automatica?"><?= csrfField() ?><input type="hidden" name="action" value="disable"><input type="hidden" name="target_id" value="<?= $rid ?>"><button class="stc-act danger" type="submit"><i class="fa-solid fa-pause"></i> <span>Disattiva per <?= e($r['display_name']) ?></span></button></form>
+      <?php endif; ?>
+    <?php endforeach; ?>
 
-  <!-- Statistiche coda -->
-  <?php if ($stats): ?>
-    <div class="section-title" style="margin-top:24px;">📊 Coda pubblicazioni</div>
-    <div class="card">
-      <div style="display:flex;gap:24px;flex-wrap:wrap;">
-        <?php
-        $labels = ['pending' => '⏳ In attesa', 'processing' => '⚙️ In lavorazione', 'done' => '✅ Completati', 'failed' => '❌ Errori'];
-        foreach ($labels as $s => $l): ?>
-          <div style="text-align:center;">
-            <div style="font-size:1.6em;font-weight:700;"><?= $stats[$s] ?? 0 ?></div>
-            <div style="font-size:12.5px;color:var(--text-muted);"><?= $l ?></div>
-          </div>
+    <?php if ($stats): ?>
+      <div class="tlx-kpis">
+        <?php foreach (['pending' => 'In attesa', 'processing' => 'In lavorazione', 'done' => 'Completati', 'failed' => 'Errori'] as $s => $l): ?>
+          <div class="tlx-kpi"><b><?= $stats[$s] ?? 0 ?></b><span><?= $l ?></span></div>
         <?php endforeach; ?>
       </div>
-    </div>
-  <?php endif; ?>
+    <?php endif; ?>
 
-  <?php if ($queueItems): ?>
-    <div class="section-title" style="margin-top:24px;">📋 Ultime pubblicazioni in coda</div>
-    <div class="card" style="padding:0;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-        <thead>
-          <tr style="background:var(--bg-alt,#f5f5f5);">
-            <th style="padding:10px 14px;text-align:left;">Tipo</th>
-            <th style="padding:10px 14px;text-align:left;">Contenuto</th>
-            <th style="padding:10px 14px;text-align:left;">Stato</th>
-            <th style="padding:10px 14px;text-align:left;">Data</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($queueItems as $qi): ?>
-            <?php
-            $statusColors = ['pending' => '#e67e22', 'processing' => '#2980b9', 'done' => '#27ae60', 'failed' => '#e74c3c'];
-            $color = $statusColors[$qi['status']] ?? '#666';
-            $label = $qi['title'] ?: textExcerpt($qi['body'] ?? '', 60) ?: '—';
-            ?>
-            <tr style="border-top:1px solid var(--border-color,#e0e0e0);">
-              <td style="padding:9px 14px;"><?= $qi['content_type'] === 'blog' ? '📝 Blog' : '📱 Timeline' ?></td>
-              <td style="padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($label) ?></td>
-              <td style="padding:9px 14px;"><span style="color:<?= $color ?>;font-weight:600;"><?= e($qi['status']) ?></span><?php if ($qi['error_msg']): ?><br><small style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 80)) ?></small><?php endif; ?></td>
-              <td style="padding:9px 14px;color:var(--text-muted);"><?= date('d/m H:i', strtotime($qi['created_at'])) ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  <?php endif; ?>
-
+    <?php if ($queueItems): ?>
+      <div class="tlx-listhead"><h2>Ultime pubblicazioni in coda</h2></div>
+      <?php foreach ($queueItems as $qi): $label = $qi['title'] ?: textExcerpt($qi['body'] ?? '', 60) ?: '—'; ?>
+        <div class="pnx">
+          <div class="pnx-b"><span class="pnx-t"><?= $qi['content_type'] === 'blog' ? 'Blog' : 'Timeline' ?> · <?= date('d/m H:i', strtotime($qi['created_at'])) ?></span><b><?= e($label) ?></b><?php if ($qi['error_msg']): ?><small class="sqx-err"><?= e(mb_substr($qi['error_msg'], 0, 80)) ?></small><?php endif; ?></div>
+          <span class="sqx-b" data-s="<?= e($qi['status']) ?>"><?= e($qi['status']) ?></span>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+<script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
