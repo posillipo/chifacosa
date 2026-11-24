@@ -138,6 +138,3 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
 
 ### profiles.geo_lat / geo_lng / geo_query / indice provincia (migrazione 2026_11_37)
 `geo_lat`, `geo_lng` DECIMAL(9,6) NULL: centro del comune del profilo, ricavato da `citta` + `provincia` (sigla). `geo_query` VARCHAR(255) NULL: testo cercato l'ultima volta («Portici, Napoli, NA»), per non ripetere la ricerca finché città/provincia non cambiano. `profiles.provincia` contiene ora la sigla maiuscola (NA, MI, RM…). Indice `idx_profiles_provincia`.
-
-### social_queue.source (migrazione 2026_11_39)
-`VARCHAR(60) NULL` — origine dei file usati dall'uscita: `site`, `external`, `mixed` (ricavati dagli indirizzi di `image_url`, `image_urls`, `image_story_url`, `media_url` rispetto al dominio del sito) oppure l'etichetta passata a `enqueue_social_queue` (parametro `source`). NULL per le righe precedenti alla migrazione o senza file.

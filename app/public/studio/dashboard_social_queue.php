@@ -146,7 +146,6 @@ $sqLink = fn($st, $tp) => '?status=' . urlencode($st) . ($tp !== '' ? '&tipo=' .
                   <?php foreach ($chs as $ch): ?><span class="sqx-tag ch"><?= e($ch) ?></span><?php endforeach; ?>
                   <?php if (!empty($qi['format'])): ?><span class="sqx-tag"><?= e($formatNames[$qi['format']] ?? $qi['format']) ?></span><?php endif; ?>
                   <?php if (!empty($qi['scope'])): ?><span class="sqx-tag"><?= e($scopeNames[$qi['scope']] ?? $qi['scope']) ?></span><?php endif; ?>
-                  <?php if (!empty($qi['source'])): ?><span class="sqx-tag" title="Origine dei file usati"><?= e(['site' => 'File del sito', 'external' => 'File esterni', 'mixed' => 'Sito + esterni'][$qi['source']] ?? 'Fonte: ' . $qi['source']) ?></span><?php endif; ?>
                   <?php if (count($imgList) > 1): ?><span class="sqx-tag"><?= count($imgList) ?> foto</span><?php endif; ?>
                   <?php if ($storyImg): ?><span class="sqx-tag">Story</span><?php endif; ?>
                   <?php if ($videoUrl): ?><span class="sqx-tag">Video</span><?php endif; ?>
