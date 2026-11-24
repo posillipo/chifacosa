@@ -3252,6 +3252,14 @@ body.backstage-page::before {
   .dash-icons-nav { flex-wrap: nowrap; gap: 14px; }
   .navbar.navbar-dash-sticky { padding-top: 10px; padding-bottom: 10px; }
 }
+/* Schermi stretti: con l'icona del profilo in più, spazi e avatar un po' più piccoli per restare su una riga. */
+@media (max-width: 400px) {
+  .dash-icons-nav { gap: 9px; }
+  .dash-icons-nav .dash-preview { width: 28px; height: 28px; }
+}
+@media (max-width: 340px) {
+  .dash-icons-nav { gap: 6px; }
+}
 
 /* Integrazioni nella colonna destra: icona + nome, pallino verde se collegata. */
 .dash-right-int { display: flex; align-items: center; gap: 9px; }
