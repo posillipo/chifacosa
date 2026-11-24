@@ -43,7 +43,8 @@ function studioRenderFeedCard(array $item, ?string $viewer, bool $metricool, str
     $when = !empty($item['data']) ? italianLongDateTime($item['data'], ['dashboard_theme' => $item['owner_tz'] ?? null]) : '';
     $thumb = $coverSrc ? '<img src="' . e($coverSrc) . '" alt="" loading="lazy">' : '<span class="stc-ph">' . e(mb_strtoupper(mb_substr($tlabel, 0, 1))) . '</span>';
     $h = '<article class="stc stc-' . e($mode) . ($mine ? ' stc-mine' : '') . '">';
-    $h .= '<a class="stc-thumb" href="' . e($href) . '"' . $fp . '>' . $thumb . '</a>';
+    // --tb: la stessa immagine sfocata fa da sfondo, così l'immagine intera (mai tagliata) non lascia bande vuote.
+    $h .= '<a class="stc-thumb" href="' . e($href) . '"' . ($coverSrc ? ' style="--tb:url(&quot;' . e($coverSrc) . '&quot;)"' : '') . $fp . '>' . $thumb . '</a>';
     $h .= '<div class="stc-body"><div class="stc-meta1"><span class="stc-type stc-' . $tone . '">' . e($tlabel) . '</span>'
         . '<span class="stc-status stc-s-' . $stone . '"><i class="fa-solid ' . $sicon . '"></i> ' . e($slabel) . '</span>';
     if ($mine && isset($item['in_feed']) && (int) $item['in_feed'] === 0) {
@@ -72,6 +73,10 @@ function studioRenderFeedCard(array $item, ?string $viewer, bool $metricool, str
             $h .= '<button type="button" class="stc-act" onclick=\'window.sqSuggest(' . htmlspecialchars($payload, ENT_QUOTES) . ')\' title="Condividi sui social"><i class="fa-solid fa-paper-plane"></i><span>Coda social</span></button>';
         }
     }
+    // Ogni pulsante d'azione riceve come suggerimento il suo nome (nella lista compatta restano solo le icone).
+    $h = preg_replace_callback('~<(a|button) class="stc-act([^"]*)"([^>]*)>(<i [^>]*></i>)<span>([^<]*)</span>~u', function ($m) {
+        return strpos($m[3], ' title=') !== false ? $m[0] : '<' . $m[1] . ' class="stc-act' . $m[2] . '"' . $m[3] . ' title="' . $m[5] . '" aria-label="' . $m[5] . '">' . $m[4] . '<span>' . $m[5] . '</span>';
+    }, $h);
     return $h . '</div></div></article>';
 }
 
