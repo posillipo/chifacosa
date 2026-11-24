@@ -276,19 +276,19 @@ if ($actingAsId) {
         </span>
       <?php endif; ?>
     </a>
+    <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-preview" title="Vedi il sito di <?= e($barAvatarName) ?>" aria-label="Vedi il sito">
+      <?php if ($barAvatarPath): ?>
+        <img src="/<?= e(ltrim($barAvatarPath, '/')) ?>" alt="">
+      <?php else: ?>
+        <span class="dash-preview-ph"><?= e(mb_strtoupper(mb_substr((string) $barAvatarName, 0, 1))) ?></span>
+      <?php endif; ?>
+    </a>
     <a href="/dashboard_messages.php" title="Messaggi" style="position:relative;font-size:17px;">
       <i class="fa-solid fa-comment-dots"></i>
       <?php if ($unreadDirectMessages > 0): ?>
         <span style="position:absolute;top:-7px;right:-9px;background:#e74c3c;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:1px 5px;line-height:1.3;min-width:16px;text-align:center;">
           <?= $unreadDirectMessages > 9 ? '9+' : $unreadDirectMessages ?>
         </span>
-      <?php endif; ?>
-    </a>
-    <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-hide-sm dash-preview" title="Vedi il sito di <?= e($barAvatarName) ?>" aria-label="Vedi il sito">
-      <?php if ($barAvatarPath): ?>
-        <img src="/<?= e(ltrim($barAvatarPath, '/')) ?>" alt="">
-      <?php else: ?>
-        <span class="dash-preview-ph"><?= e(mb_strtoupper(mb_substr((string) $barAvatarName, 0, 1))) ?></span>
       <?php endif; ?>
     </a>
     <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
