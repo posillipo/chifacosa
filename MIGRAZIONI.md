@@ -1300,6 +1300,9 @@ Aggiunge `profiles.geo_lat`, `geo_lng` (DECIMAL 9,6) e `geo_query` (VARCHAR 255)
 ### Guide Directory e Profilo (`2026_11_38_page_help_directory.sql`)
 Nuovo testo di guida per `dashboard_directory.php` e aggiornamento di `dashboard_profile.php` (città e provincia obbligatorie). `ON DUPLICATE KEY UPDATE`: si può rieseguire. Richiede la `2026_11_29`.
 
+### Coda social: sorgente dei file (`2026_11_39_social_queue_source.sql`)
+Aggiunge `social_queue.source VARCHAR(60) NULL`: origine dei file usati da un'uscita. Valori: `site` (tutti sul nostro dominio), `external` (altrove), `mixed`, oppure un'etichetta breve data da chi accoda (es. `claude`, `canva`). Si compila da sola se non indicata. Idempotente. Senza la migrazione la coda funziona come prima. Le righe già esistenti restano senza sorgente.
+
 ---
 
 ## Come aggiungere una nuova voce
