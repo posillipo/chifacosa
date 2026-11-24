@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <?php if ($error): ?><div class="ob-error"><?= e($error) ?></div><?php endif; ?>
 
-  <form method="post" enctype="multipart/form-data" autocomplete="off">
+  <form method="post" enctype="multipart/form-data" autocomplete="off"<?= uploadProgressAttrs() ?>>
     <?= csrfField() ?>
 
     <div class="ob-card">
@@ -326,6 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </style>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script src="<?= assetUrl('/assets/js/avatar-crop.js') ?>" defer></script>
+  <script src="<?= assetUrl('/assets/js/upload-progress.js') ?>" defer></script>
   <script>
   // Username: l'indirizzo tra parentesi si aggiorna mentre scrivi e si controlla subito se è libero.
   (function () {

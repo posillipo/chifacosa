@@ -374,3 +374,12 @@ In `dashboard_chat.php` si può scrivere solo se i due profili si seguono a vice
 ## Studio, Feed: miniature intere
 
 Le miniature delle schede del Feed (`.stc-thumb`) non tagliano più l'immagine: `object-fit: contain` con la stessa immagine sfocata come sfondo (variabile CSS `--tb`, impostata in `_studio_feed.php`). Nella lista le miniature sono larghe 150 px (104 px su telefono) e le azioni sono icone sempre visibili in alto a destra, con il nome come suggerimento (`title`); su telefono vanno sotto il testo.
+
+## Barra di avanzamento per tutti i caricamenti
+
+`app/public/assets/js/upload-progress.js` (caricato dal piè di pagina della dashboard, classica e Studio, e dalla pagina di onboarding):
+- **Moduli normali:** ogni `<form method="post">` con almeno un file scelto viene inviato con XMLHttpRequest e mostra la barra («Caricamento in corso», percentuale e MB, poi «Elaborazione sul server…»), con pulsante Annulla. Un solo ascoltatore sul documento: vale anche per i moduli creati dopo (popup di Studio inclusi). Moduli senza file: invio normale. Per escluderne uno: `data-no-upload-progress`.
+- **Caricamenti da JavaScript:** `window.uploadWithProgress(url, formData)` mostra la stessa barra e restituisce una promessa con il JSON del server (`{ok:false, error}` in caso di errore o annullamento). Usata dalle pagine «Che amo» e Brani per la foto degli elementi.
+- **Limiti del server** (`post_max_size`, `max_file_uploads`): elemento nascosto `[data-upload-limits]` nel piè di pagina; se superati si mostra un messaggio chiaro prima di inviare.
+- La barra è un `<dialog>` modale, così sta davanti anche ai popup di Studio (anch'essi `<dialog>`).
+- Il compositore del Feed ha una barra propria per il video (`studio-composer.js`); le foto passano dal meccanismo comune.

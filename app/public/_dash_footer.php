@@ -2,6 +2,7 @@
 <button type="button" id="back-to-top-btn" class="floating-btn" title="Torna su" aria-label="Torna su">
   <i class="fa-solid fa-arrow-up"></i>
 </button>
+<span hidden data-upload-limits data-max-bytes="<?= (int) iniSizeToBytes((string) ini_get('post_max_size')) ?>" data-max-files="<?= (int) ini_get('max_file_uploads') ?>"></span>
 <script src="<?= assetUrl('/assets/js/upload-progress.js') ?>" defer></script>
 <script>
 // Torna su: stesso pulsante/comportamento già usato nelle pagine pubbliche (renderFloatingButtons()
