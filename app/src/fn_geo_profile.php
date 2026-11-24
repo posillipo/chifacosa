@@ -221,8 +221,10 @@ function directoryProfiles(?string $provSigla, string $city = ''): array {
             FROM users u JOIN profiles p ON p.user_id = u.id WHERE " . directoryBaseWhere();
     $params = [];
     if ($provSigla) {
-        $sql .= ' AND p.provincia = ?';
-        $params[] = $provSigla;
+        // I profili più vecchi hanno la provincia scritta come capita («na», «Napoli»): si cerca sia la sigla sia il nome.
+        $sql .= ' AND LOWER(p.provincia) IN (?, ?)';
+        $params[] = mb_strtolower($provSigla);
+        $params[] = mb_strtolower(provinceList()[$provSigla] ?? $provSigla);
     }
     $city = trim($city);
     if ($city !== '') {
