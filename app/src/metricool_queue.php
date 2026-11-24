@@ -112,14 +112,6 @@ function socialRegistryValidate(array $body): array {
         }
         $v['channels'] = json_encode(array_values(array_unique($clean)), JSON_UNESCAPED_UNICODE);
     }
-    if (!empty($body['source'])) {
-        // Origine dei file usati: etichetta libera e breve (es. "claude", "canva", "catalogo"), oppure site/external/mixed.
-        $src = trim((string) $body['source']);
-        if (mb_strlen($src) > 60 || !preg_match('/^[\p{L}\p{N} _.\-]+$/u', $src)) {
-            return ['error' => 'source deve essere un\'etichetta breve (max 60 caratteri: lettere, numeri, spazio, - _ .).', 'values' => []];
-        }
-        $v['source'] = $src;
-    }
     if (!empty($body['scheduler_ref'])) {
         $r = trim((string) $body['scheduler_ref']);
         if (mb_strlen($r) > 120) {
@@ -162,45 +154,17 @@ function socialQueueCleanImageUrls(array $urls): array {
     return $out;
 }
 
-/** True se social_queue ha la colonna indicata (migrazioni opzionali): senza, la coda funziona come prima. */
-function socialQueueHasColumn(string $col): bool {
-    static $cache = [];
-    if (!array_key_exists($col, $cache)) {
-        try {
-            $st = getDB()->prepare('SHOW COLUMNS FROM social_queue LIKE ?');
-            $st->execute([$col]);
-            $cache[$col] = (bool) $st->fetch();
-        } catch (Throwable $e) {
-            $cache[$col] = false;
-        }
-    }
-    return $cache[$col];
-}
-
-/** Colonna image_urls (migrazione 2026_11_35). */
+/** True se la tabella ha la colonna image_urls (migrazione 2026_11_35): senza, la coda funziona come prima. */
 function socialQueueHasImageUrlsColumn(): bool {
-    return socialQueueHasColumn('image_urls');
-}
-
-/**
- * Origine dei file di un'uscita, ricavata dagli indirizzi: 'site' (tutti sul nostro dominio), 'external'
- * (tutti altrove) o 'mixed'. Null se l'uscita non ha file.
- */
-function socialQueueDeriveSource(array $data, array $imageList = []): ?string {
-    $urls = array_merge($imageList, array_filter([$data['image_url'] ?? null, $data['image_story_url'] ?? null, $data['media_url'] ?? null]));
-    $urls = array_values(array_unique(array_filter($urls, 'is_string')));
-    if (!$urls) {
-        return null;
-    }
-    $myHost = strtolower((string) parse_url(siteUrl('/'), PHP_URL_HOST));
-    $site = 0;
-    foreach ($urls as $u) {
-        $h = strtolower((string) parse_url($u, PHP_URL_HOST));
-        if ($h === '' || $h === $myHost) {
-            $site++;
+    static $has = null;
+    if ($has === null) {
+        try {
+            $has = (bool) getDB()->query("SHOW COLUMNS FROM social_queue LIKE 'image_urls'")->fetch();
+        } catch (Throwable $e) {
+            $has = false;
         }
     }
-    return $site === count($urls) ? 'site' : ($site === 0 ? 'external' : 'mixed');
+    return $has;
 }
 
 /** Foto di un post Timeline (la principale + le altre, nell'ordine), come URL assoluti, al massimo 10. */
@@ -268,7 +232,6 @@ function socialRegistrySerialize(array $r): array {
         'public_url'      => $r['public_url'] ?? null,
         'image_url'       => $r['image_url'] ?? null,
         'image_urls'      => socialQueueImageUrls($r),
-        'source'          => $r['source'] ?? null,
         'image_story_url' => $r['image_story_url'] ?? null,
         'video_url'       => $r['media_url'] ?? null,
         'channels'        => $channels,
@@ -353,18 +316,7 @@ function socialQueueEnqueue(int $userId, string $type, array $data, ?string $sch
     }
     // Campi del registro (colonne create dalla migrazione 2026_10_31): aggiunti all'INSERT solo se
     // forniti, così la coda funziona come prima anche prima che la migrazione sia stata applicata.
-    // Origine dei file: quella indicata da chi accoda, altrimenti ricavata dagli indirizzi. Solo con la colonna (migrazione 2026_11_39).
-    if (socialQueueHasColumn('source')) {
-        if (empty($registry['source'])) {
-            $derived = socialQueueDeriveSource($data + ['image_story_url' => $registry['image_story_url'] ?? null], $imageList);
-            if ($derived !== null) {
-                $registry['source'] = $derived;
-            }
-        }
-    } else {
-        unset($registry['source']);
-    }
-    foreach (['scope', 'format', 'image_story_url', 'channels', 'scheduler_ref', 'source'] as $k) {
+    foreach (['scope', 'format', 'image_story_url', 'channels', 'scheduler_ref'] as $k) {
         if (isset($registry[$k])) {
             $cols[] = ($k === 'format') ? '`format`' : $k;
             $vals[] = $registry[$k];

@@ -533,7 +533,7 @@ function buildMcpServer() {
 
     server.registerTool('get_social_queue', {
         title: 'Leggi la coda di pubblicazione automatica Metricool',
-        description: 'Restituisce fino a 10 elementi "pending" della coda social del profilo (contenuti pronti da pubblicare su Metricool) e li marca come "processing". Ogni elemento include content_type, source (origine dei file: site, external, mixed o un\'etichetta), title, body, image_url, image_urls (elenco di 1-10 immagini in ordine, la prima uguale a image_url: usale tutte per caroselli/gallerie, rispettando i limiti di ogni social), public_url, metricool_blog_id e metricool_networks. Da chiamare all\'inizio della Routine di auto-pubblicazione.',
+        description: 'Restituisce fino a 10 elementi "pending" della coda social del profilo (contenuti pronti da pubblicare su Metricool) e li marca come "processing". Ogni elemento include content_type, title, body, image_url, image_urls (elenco di 1-10 immagini in ordine, la prima uguale a image_url: usale tutte per caroselli/gallerie, rispettando i limiti di ogni social), public_url, metricool_blog_id e metricool_networks. Da chiamare all\'inizio della Routine di auto-pubblicazione.',
         inputSchema: { ...profileField },
     }, async ({ profile }) => toolResult(await chifacosaApi(profile, '/social-queue/pending')));
 
@@ -955,14 +955,13 @@ function buildMcpServer() {
             image_story_url: z.string().optional().describe('URL immagine in formato storia'),
             channels: z.array(z.string()).optional().describe('Canali, es. ["FB","IG","Threads"]'),
             scheduler_ref: z.string().optional().describe('Riferimento esterno opaco dello scheduler (es. id del post su Metricool)'),
-            source: z.string().max(60).optional().describe('Origine dei file usati (sorgente), etichetta breve: es. "claude", "canva", "catalogo". Se omesso viene ricavata: site (file sul sito), external (file esterni) o mixed'),
             author: z.string().max(100).optional().describe('Chi sta accodando l\'elemento (nome dell\'IA o della routine): firma "Accodato da" visibile in dashboard. Consigliato.'),
             status: z.enum(['pending', 'scheduled', 'done', 'failed', 'skipped']).optional().describe('Default "pending" (coda da lavorare). Con scheduled/done/failed/skipped l\'uscita viene REGISTRATA a cose fatte e la routine non la riprende'),
         },
-    }, async ({ profile, content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, source, status, author }) =>
+    }, async ({ profile, content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }) =>
         toolResult(await chifacosaApi(profile, '/social-queue/enqueue', {
             method: 'POST',
-            body: { content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, source, status, author }
+            body: { content_type, content_id, title, image_url, image_urls, public_url, media_url, scheduled_for, scope, format, image_story_url, channels, scheduler_ref, status, author }
         }))
     );
 
