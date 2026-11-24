@@ -1,11 +1,14 @@
 /*
- * Barra di avanzamento per i moduli di caricamento file (dashboard).
- * Si attiva SOLO sui <form data-upload-progress> (vedi uploadProgressAttrs() in functions.php),
- * quindi gli altri moduli non vengono toccati. Il server non cambia: riceve lo stesso invio di
- * sempre (stessi campi, stesso token CSRF), ma fatto con XMLHttpRequest per poter mostrare
- * l'avanzamento. Senza JavaScript, o su browser molto vecchi, il modulo funziona come prima.
- *   data-max-bytes  dimensione massima totale per invio (post_max_size del server)
- *   data-max-files  numero massimo di file per invio (max_file_uploads del server)
+ * Barra di avanzamento per TUTTI i caricamenti di file della dashboard (classica e Studio).
+ *  - Moduli normali: ogni <form method="post"> che ha almeno un file scelto viene inviato con
+ *    XMLHttpRequest, così si vede l'avanzamento. Il server riceve lo stesso invio di sempre (stessi campi,
+ *    stesso token CSRF). Senza JavaScript, o senza file scelti, il modulo funziona come prima.
+ *    Per escluderne uno: data-no-upload-progress.
+ *  - Caricamenti fatti da JavaScript (FormData con un file): window.uploadWithProgress(url, formData)
+ *    mostra la stessa barra e restituisce una promessa con la risposta JSON del server
+ *    ({ ok: false, error } in caso di errore o annullamento, come si aspettano già i chiamanti).
+ * Limiti del server (post_max_size, max_file_uploads): letti da [data-upload-limits] (messo nel piè di
+ * pagina) oppure da data-max-bytes / data-max-files del modulo.
  */
 (function () {
   'use strict';
@@ -24,6 +27,9 @@
     var st = document.createElement('style');
     st.textContent =
       '.up-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px}' +
+      'dialog.up-ov{border:0;margin:0;max-width:none;max-height:none;width:100%;height:100%;box-sizing:border-box;display:none}' +
+      'dialog.up-ov[open]{display:flex}' +
+      'dialog.up-ov::backdrop{background:transparent}' +
       '.up-box{background:#fff;border-radius:14px;padding:22px 22px 18px;width:min(440px,100%);box-shadow:0 8px 40px rgba(0,0,0,.25);color:#22223b}' +
       '.up-title{font-weight:700;font-size:16px;margin:0 0 4px}' +
       '.up-sub{font-size:13px;color:#6b6b7a;margin:0 0 14px}' +
@@ -40,10 +46,12 @@
 
   function buildOverlay() {
     addStyle();
-    var ov = document.createElement('div');
+    // Un <dialog> modale sta nello strato più alto della pagina: la barra resta DAVANTI anche ai popup (Studio)
+    // che sono a loro volta <dialog> e che nessun z-index potrebbe superare.
+    var useDialog = typeof HTMLDialogElement === 'function';
+    var ov = document.createElement(useDialog ? 'dialog' : 'div');
     ov.className = 'up-ov';
-    ov.setAttribute('role', 'dialog');
-    ov.setAttribute('aria-modal', 'true');
+    if (!useDialog) { ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); }
     ov.setAttribute('aria-live', 'polite');
     ov.innerHTML =
       '<div class="up-box">' +
@@ -53,6 +61,10 @@
       '<div class="up-actions"><button type="button" class="up-btn"></button></div>' +
       '</div>';
     document.body.appendChild(ov);
+    if (useDialog) {
+      ov.addEventListener('cancel', function (e) { e.preventDefault(); }); // Esc non deve nascondere un caricamento in corso
+      try { ov.showModal(); } catch (err) { ov.setAttribute('open', ''); }
+    }
     return {
       ov: ov,
       title: ov.querySelector('.up-title'),
@@ -69,18 +81,19 @@
 
   function showError(ui, message) {
     ui.title.textContent = 'Caricamento non riuscito';
-    ui.sub.remove();
+    if (ui.sub.parentNode) ui.sub.remove();
     ui.bar.style.display = 'none';
     ui.pct.style.display = 'none';
     var p = document.createElement('p');
     p.className = 'up-err';
     p.textContent = message; // textContent: nessun HTML dal server finisce nella pagina
     ui.box.insertBefore(p, ui.box.querySelector('.up-actions'));
+    ui.btn.style.display = '';
     ui.btn.textContent = 'Chiudi';
     ui.btn.onclick = function () { ui.ov.remove(); };
   }
 
-  function countFiles(form) {
+  function countFilesInForm(form) {
     var n = 0, total = 0;
     form.querySelectorAll('input[type=file]').forEach(function (inp) {
       Array.prototype.forEach.call(inp.files || [], function (f) { n++; total += f.size; });
@@ -88,87 +101,133 @@
     return { n: n, total: total };
   }
 
-  function attach(form) {
-    form.addEventListener('submit', function (e) {
-      // Un modulo con una conferma (onsubmit="return confirm(...)") l'ha già gestita prima di arrivare qui.
-      if (e.defaultPrevented) return;
-      var info = countFiles(form);
-      if (info.n === 0) return; // niente file: invio normale, senza barra
+  function countFilesInData(data) {
+    var n = 0, total = 0;
+    data.forEach(function (v) { if (typeof File !== 'undefined' && v instanceof File && v.size > 0) { n++; total += v.size; } });
+    return { n: n, total: total };
+  }
 
-      var maxBytes = parseInt(form.getAttribute('data-max-bytes') || '0', 10);
-      var maxFiles = parseInt(form.getAttribute('data-max-files') || '0', 10);
-      e.preventDefault();
+  // Limiti del server: prima quelli del modulo, poi quelli globali del piè di pagina.
+  function limits(form) {
+    var g = document.querySelector('[data-upload-limits]');
+    function pick(attr) {
+      var v = form ? parseInt(form.getAttribute(attr) || '0', 10) : 0;
+      if (!v && g) v = parseInt(g.getAttribute(attr) || '0', 10);
+      return v || 0;
+    }
+    return { maxBytes: pick('data-max-bytes'), maxFiles: pick('data-max-files') };
+  }
 
-      var ui = buildOverlay();
-      if (maxBytes > 0 && info.total > maxBytes * 0.98) {
-        showError(ui, 'Hai scelto ' + info.n + ' file per ' + fmtBytes(info.total) + ': il massimo per ogni invio è ' + fmtBytes(maxBytes) + '. Carica meno foto per volta.');
-        return;
+  /**
+   * Esegue l'invio con la barra. opts: { url, method, data, info, limits, mode: 'page' | 'json', done(result) }
+   * mode 'page': alla fine mostra la pagina di risposta (o va alla pagina di destinazione).
+   * mode 'json': alla fine chiama done(oggetto JSON).
+   */
+  function start(opts) {
+    var ui = buildOverlay();
+    var info = opts.info, lim = opts.limits || {};
+    var json = opts.mode === 'json';
+    var settled = false;
+    function fail(message) {
+      showError(ui, message);
+      if (json && !settled) { settled = true; opts.done({ ok: false, error: message }); }
+    }
+    if (lim.maxBytes > 0 && info.total > lim.maxBytes * 0.98) {
+      return fail('Hai scelto ' + info.n + ' file per ' + fmtBytes(info.total) + ': il massimo per ogni invio è ' + fmtBytes(lim.maxBytes) + '. Carica meno file per volta.');
+    }
+    if (lim.maxFiles > 0 && info.n > lim.maxFiles) {
+      return fail('Hai scelto ' + info.n + ' file: il massimo per ogni invio è ' + lim.maxFiles + '. Carica meno file per volta.');
+    }
+
+    var xhr = new XMLHttpRequest();
+    var finished = false;
+    ui.title.textContent = 'Caricamento in corso…';
+    ui.sub.textContent = info.n + (info.n === 1 ? ' file' : ' file') + ' · ' + fmtBytes(info.total) + '. Non chiudere la pagina.';
+    ui.btn.textContent = 'Annulla';
+    ui.btn.onclick = function () { if (!finished) { xhr.abort(); } };
+
+    xhr.upload.onprogress = function (ev) {
+      if (!ev.lengthComputable) return;
+      var pct = Math.min(100, Math.round((ev.loaded / ev.total) * 100));
+      ui.fill.style.width = pct + '%';
+      ui.pctN.textContent = pct + '%';
+      ui.pctB.textContent = fmtBytes(ev.loaded) + ' di ' + fmtBytes(ev.total);
+      if (pct >= 100) {
+        // Il file è arrivato: ora il server lo controlla, lo ridimensiona e lo salva.
+        ui.title.textContent = 'Elaborazione sul server…';
+        ui.fill.classList.add('busy');
+        ui.pctN.textContent = '';
+        ui.pctB.textContent = 'Salvataggio in corso, può richiedere qualche istante';
+        ui.btn.style.display = 'none';
       }
-      if (maxFiles > 0 && info.n > maxFiles) {
-        showError(ui, 'Hai scelto ' + info.n + ' file: il massimo per ogni invio è ' + maxFiles + '. Carica meno foto per volta.');
-        return;
+    };
+    xhr.onload = function () {
+      finished = true;
+      if (xhr.status === 413) {
+        return fail('Il caricamento supera il limite del server. Riprova con meno file per volta.');
       }
-
-      var data;
-      try { data = new FormData(form, e.submitter || undefined); } catch (err) { data = new FormData(form); }
-      var xhr = new XMLHttpRequest();
-      var finished = false;
-      ui.title.textContent = 'Caricamento in corso…';
-      ui.sub.textContent = info.n + (info.n === 1 ? ' file' : ' file') + ' · ' + fmtBytes(info.total) + '. Non chiudere la pagina.';
-      ui.btn.textContent = 'Annulla';
-      ui.btn.onclick = function () { if (!finished) { xhr.abort(); } };
-
-      xhr.upload.onprogress = function (ev) {
-        if (!ev.lengthComputable) return;
-        var pct = Math.min(100, Math.round((ev.loaded / ev.total) * 100));
-        ui.fill.style.width = pct + '%';
-        ui.pctN.textContent = pct + '%';
-        ui.pctB.textContent = fmtBytes(ev.loaded) + ' di ' + fmtBytes(ev.total);
-        if (pct >= 100) {
-          // Il file è arrivato: ora il server ridimensiona e salva le foto.
-          ui.title.textContent = 'Elaborazione sul server…';
-          ui.fill.classList.add('busy');
-          ui.pctN.textContent = '';
-          ui.pctB.textContent = 'Salvataggio delle foto, può richiedere qualche istante';
-          ui.btn.style.display = 'none';
-        }
-      };
-      xhr.onload = function () {
-        finished = true;
-        if (xhr.status === 413) {
-          showError(ui, 'Il caricamento supera il limite del server. Riprova con meno foto per volta.');
-          return;
-        }
-        if (xhr.status >= 500 || xhr.status === 0) {
-          showError(ui, 'Il server non ha completato l\'operazione (errore ' + xhr.status + '). Controlla l\'elenco prima di riprovare: alcune foto potrebbero essere già state salvate.');
-          return;
-        }
-        // Il server risponde con un reindirizzamento alla pagina di destinazione (o con la pagina stessa).
-        var target = xhr.responseURL || '';
-        if (target && target !== window.location.href) {
-          window.location.href = target;
-        } else {
-          document.open();
-          document.write(xhr.responseText);
-          document.close();
-        }
-      };
-      xhr.onerror = function () {
-        finished = true;
-        showError(ui, 'Errore di connessione durante il caricamento. Controlla la rete e riprova.');
-      };
-      xhr.onabort = function () {
-        finished = true;
+      if (xhr.status >= 500 || xhr.status === 0) {
+        return fail('Il server non ha completato l\'operazione (errore ' + xhr.status + '). Controlla l\'elenco prima di riprovare: alcuni file potrebbero essere già stati salvati.');
+      }
+      if (json) {
+        var d = null;
+        try { d = JSON.parse(xhr.responseText); } catch (err) { d = null; }
         ui.ov.remove();
-      };
-      xhr.open((form.getAttribute('method') || 'post').toUpperCase(), form.getAttribute('action') || window.location.href);
-      xhr.send(data);
-    });
+        settled = true;
+        opts.done(d || { ok: false, error: 'Risposta non valida dal server: ricarica la pagina e controlla.' });
+        return;
+      }
+      // Il server risponde con un reindirizzamento alla pagina di destinazione (o con la pagina stessa).
+      var target = xhr.responseURL || '';
+      if (target && target !== window.location.href) {
+        window.location.href = target;
+      } else {
+        document.open();
+        document.write(xhr.responseText);
+        document.close();
+      }
+    };
+    xhr.onerror = function () {
+      finished = true;
+      fail('Errore di connessione durante il caricamento. Controlla la rete e riprova.');
+    };
+    xhr.onabort = function () {
+      finished = true;
+      ui.ov.remove();
+      if (json && !settled) { settled = true; opts.done({ ok: false, error: 'Caricamento annullato.' }); }
+    };
+    xhr.open(opts.method, opts.url);
+    xhr.send(opts.data);
   }
 
-  function init() {
-    document.querySelectorAll('form[data-upload-progress]').forEach(attach);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  // Caricamenti fatti da JavaScript (es. la foto di un elemento «Che amo»): stessa barra, risposta JSON.
+  window.uploadWithProgress = function (url, formData) {
+    return new Promise(function (resolve) {
+      start({ url: url, method: 'POST', data: formData, info: countFilesInData(formData), limits: limits(null), mode: 'json', done: resolve });
+    });
+  };
+
+  // Tutti i moduli: un solo ascoltatore sul documento, così vale anche per i moduli creati dopo.
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || form.tagName !== 'FORM' || form.hasAttribute('data-no-upload-progress')) return;
+    // Un modulo con una conferma (onsubmit="return confirm(...)") l'ha già gestita prima di arrivare qui.
+    if (e.defaultPrevented) return;
+    var method = (form.getAttribute('method') || 'get').toUpperCase();
+    var target = form.getAttribute('target');
+    if (method !== 'POST' || (target && target !== '_self')) return;
+    var info = countFilesInForm(form);
+    if (info.n === 0) return; // niente file: invio normale, senza barra
+    e.preventDefault();
+    var data;
+    try { data = new FormData(form, e.submitter || undefined); } catch (err) { data = new FormData(form); }
+    start({
+      url: form.getAttribute('action') || window.location.href,
+      method: 'POST',
+      data: data,
+      info: info,
+      limits: limits(form),
+      mode: 'page'
+    });
+  });
 })();

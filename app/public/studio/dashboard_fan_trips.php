@@ -432,6 +432,10 @@ include __DIR__ . '/../_dash_header.php';
     function postForm(formData) {
       formData.set('csrf', csrfInput.value);
       formData.set('ajax', '1');
+      // Con una foto allegata: stessa barra di avanzamento degli altri moduli di caricamento.
+      if (window.uploadWithProgress && formData.get('image') instanceof File) {
+        return window.uploadWithProgress('/dashboard_fan_trips.php', formData);
+      }
       return fetch('/dashboard_fan_trips.php', { method: 'POST', body: formData }).then(r => r.json());
     }
 
