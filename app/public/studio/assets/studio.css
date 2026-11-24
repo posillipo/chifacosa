@@ -794,3 +794,20 @@ body.studio-mode .dirx-map { height: 340px; border-radius: 16px; overflow: hidde
 body.studio-mode .dirx-prov h3 a { color: inherit; text-decoration: none; }
 body.studio-mode .dirx-cities { display: flex; flex-wrap: wrap; gap: 6px; }
 body.studio-mode .pnx-b b a { color: inherit; text-decoration: none; }
+
+/* ===== Feed: miniature intere (mai tagliate) e righe senza spazio vuoto ===== */
+body.studio-mode .stc-thumb::before { content: ''; position: absolute; inset: 0; background: var(--tb) center / cover no-repeat; filter: blur(14px) saturate(1.15); transform: scale(1.25); }
+body.studio-mode .stc-thumb img { position: relative; object-fit: contain; }
+body.studio-mode .stc-thumb .stc-ph { position: relative; }
+body.studio-mode .stc-list { grid-template-columns: 150px 1fr; }
+@media (max-width: 639px) { body.studio-mode .stc-list { grid-template-columns: 104px 1fr; } }
+/* Lista compatta: azioni sempre visibili, solo icone, in alto a destra; il testo lascia loro lo spazio */
+body.studio-mode .stc-list { position: relative; }
+body.studio-mode .stc-list .stc-actions { position: absolute; top: 10px; right: 10px; margin: 0; width: 132px; justify-content: flex-end; gap: 6px; opacity: 1 !important; background: transparent; padding: 0; }
+body.studio-mode .stc-list .stc-body { padding-right: 140px; }
+body.studio-mode .stc-list .stc-act { width: 36px; height: 36px; padding: 0; justify-content: center; }
+body.studio-mode .stc-list .stc-act span { display: none; }
+@media (max-width: 639px) {
+  body.studio-mode .stc-list .stc-actions { position: static; width: auto; justify-content: flex-start; margin-top: 8px; }
+  body.studio-mode .stc-list .stc-body { padding-right: 0; }
+}
