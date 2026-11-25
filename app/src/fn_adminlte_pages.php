@@ -377,7 +377,8 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
     // sempre stata, dentro la card dell'articolo: le due colonne laterali lì sono impilate sotto
     // il contenuto, quindi spostarla lì avrebbe solo allungato la pagina senza risolvere nulla.
     $blogCoverSidebarHtml = '';
-    if ($post['cover_path'] || !empty($post['cover_video_path'])) {
+    // Con Academic la copertina sta già sopra il testo: niente seconda copia sotto la pagina.
+    if (!academicSkinActive() && ($post['cover_path'] || !empty($post['cover_video_path']))) {
         ob_start();
         ?>
         <div class="card mb-3 d-none d-md-block">
