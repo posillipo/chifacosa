@@ -3191,7 +3191,8 @@ body.backstage-page::before {
 /* ===== Colonna destra della dashboard "Attività" (src/dash_right.php) =====
    >= 1200px: fissa a destra, il contenuto resta centrato tra le due colonne.
    < 1200px: pannello a scomparsa dal lato destro, aperto dal pulsante nella barra in alto. */
-:root { --dash-right-w: 272px; }
+:root { --dash-right-w: 320px; }
+@media (min-width: 1600px) { :root { --dash-right-w: 360px; } }
 .dash-right-toggle { background: none; border: none; cursor: pointer; color: inherit; font-size: 17px; padding: 0; display: none; }
 .dash-right {
   position: fixed; top: var(--dash-nav-h); right: 0; bottom: 0; width: var(--dash-right-w);
@@ -3229,7 +3230,7 @@ body.backstage-page::before {
 @media (max-width: 1199px) {
   .dash-right-toggle { display: inline-flex; }
   .dash-right {
-    top: 0; z-index: 650; width: min(300px, 86vw); transform: translateX(102%); transition: transform 0.2s ease;
+    top: 0; z-index: 650; width: min(340px, 90vw); transform: translateX(102%); transition: transform 0.2s ease;
     box-shadow: -2px 0 20px rgba(0, 0, 0, 0.2); visibility: hidden;
   }
   .dash-right.open { transform: none; visibility: visible; }
@@ -3419,6 +3420,7 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .dash-comm-tile i { color: var(--accent); font-size: 13px; }
 .dash-comm-tile b { font-size: 18px; line-height: 1.2; }
 .dash-comm-tile span { font-size: 11px; color: var(--text-muted); }
+.dash-comm-tile b, .dash-comm-tile span { white-space: nowrap; }
 .dash-comm-invite { background: var(--accent); }
 .dash-comm-invite i, .dash-comm-invite b, .dash-comm-invite span { color: #fff; }
 .dash-comm-invite:hover { background: var(--accent); filter: brightness(1.08); }

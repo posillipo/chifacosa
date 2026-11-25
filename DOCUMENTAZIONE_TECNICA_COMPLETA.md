@@ -383,3 +383,9 @@ Le miniature delle schede del Feed (`.stc-thumb`) non tagliano più l'immagine: 
 - **Limiti del server** (`post_max_size`, `max_file_uploads`): elemento nascosto `[data-upload-limits]` nel piè di pagina; se superati si mostra un messaggio chiaro prima di inviare.
 - La barra è un `<dialog>` modale, così sta davanti anche ai popup di Studio (anch'essi `<dialog>`).
 - Il compositore del Feed ha una barra propria per il video (`studio-composer.js`); le foto passano dal meccanismo comune.
+
+## Messaggi: cancella conversazione; colonne laterali e AdminLTE
+
+- **Cancella conversazione:** pulsante in alto nella chat (`dashboard_chat.php`, classica e Studio). Azione `delete_conversation` → `dmDeleteConversation()` (`fn_social.php`): segna i messaggi come cancellati solo per chi lo fa (colonne della migrazione `2026_11_40`); l'altra persona li vede ancora; un messaggio nuovo fa ricomparire la conversazione con i soli messaggi nuovi. Elenco conversazioni, chat e contatore dei non letti nascondono i messaggi cancellati. Il pulsante compare solo se la migrazione è applicata.
+- **Colonna destra della dashboard:** `--dash-right-w` = 320px (360px da 1600px in su; il cassetto sotto i 1200px è largo fino a 340px). A 1280px la colonna centrale scende a circa 750px, da 1366px è a 800px.
+- **Tema AdminLTE (pagine pubbliche):** su desktop (≥992px) la colonna centrale `.adminlte-main-col` è larga 800px (come la dashboard; meno se lo schermo è stretto) e le laterali si dividono il resto (220-360px ciascuna), con il gruppo centrato. Sotto i 992px le colonne restano impilate come prima. Regola nello stile in `fn_adminlte_layout.php`, vale per tutte le pagine del tema.

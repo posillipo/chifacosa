@@ -138,3 +138,6 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
 
 ### profiles.geo_lat / geo_lng / geo_query / indice provincia (migrazione 2026_11_37)
 `geo_lat`, `geo_lng` DECIMAL(9,6) NULL: centro del comune del profilo, ricavato da `citta` + `provincia` (sigla). `geo_query` VARCHAR(255) NULL: testo cercato l'ultima volta («Portici, Napoli, NA»), per non ripetere la ricerca finché città/provincia non cambiano. `profiles.provincia` contiene ora la sigla maiuscola (NA, MI, RM…). Indice `idx_profiles_provincia`.
+
+### direct_messages.deleted_by_sender / deleted_by_recipient (migrazione 2026_11_40)
+`TINYINT(1) NOT NULL DEFAULT 0` — il messaggio è stato cancellato (nascosto) da chi l'ha scritto / da chi l'ha ricevuto. Le letture usano `dmHideDeletedSql()` (`fn_social.php`); il messaggio resta nel database e l'altra persona lo vede ancora.
