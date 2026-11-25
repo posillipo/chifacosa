@@ -28,7 +28,7 @@ $stmt = getDB()->prepare('SELECT COUNT(*) c FROM contact_requests WHERE user_id 
 $stmt->execute([$countsForId]);
 $unreadMessages = (int) $stmt->fetch()['c'];
 
-$stmt = getDB()->prepare('SELECT COUNT(*) c FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL');
+$stmt = getDB()->prepare('SELECT COUNT(*) c FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL' . (directMessagesHaveDeleteColumns() ? ' AND deleted_by_recipient = 0' : ''));
 $stmt->execute([$countsForId]);
 $unreadDirectMessages = (int) $stmt->fetch()['c'];
 

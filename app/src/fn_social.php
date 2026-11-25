@@ -113,3 +113,41 @@ function getFollowerCount(int $artistUserId): int {
     $stmt->execute([$artistUserId]);
     return (int) $stmt->fetch()['c'];
 }
+
+
+// ===== Messaggi diretti: cancellare una conversazione solo per sé =====
+// Ogni messaggio ha due segni (migrazione 2026_11_40): cancellato da chi l'ha scritto / da chi l'ha ricevuto.
+// Cancellare una conversazione la nasconde solo a chi la cancella: l'altra persona continua a vederla.
+// Senza la migrazione tutto funziona come prima e la cancellazione non è disponibile.
+
+/** True se direct_messages ha le colonne deleted_by_sender / deleted_by_recipient. */
+function directMessagesHaveDeleteColumns(): bool {
+    static $has = null;
+    if ($has === null) {
+        try {
+            $has = (bool) getDB()->query("SHOW COLUMNS FROM direct_messages LIKE 'deleted_by_recipient'")->fetch();
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
+/** Condizione da aggiungere a una WHERE su direct_messages: esclude i messaggi che $meId ha cancellato per sé. */
+function dmHideDeletedSql(int $meId): string {
+    if (!directMessagesHaveDeleteColumns()) {
+        return '';
+    }
+    return " AND ((sender_id = {$meId} AND deleted_by_sender = 0) OR (recipient_id = {$meId} AND deleted_by_recipient = 0))";
+}
+
+/** Cancella per $meId tutta la conversazione con $otherId (solo per lui). Ritorna false se la funzione non è attiva. */
+function dmDeleteConversation(int $meId, int $otherId): bool {
+    if (!directMessagesHaveDeleteColumns()) {
+        return false;
+    }
+    $db = getDB();
+    $db->prepare('UPDATE direct_messages SET deleted_by_sender = 1 WHERE sender_id = ? AND recipient_id = ?')->execute([$meId, $otherId]);
+    $db->prepare('UPDATE direct_messages SET deleted_by_recipient = 1, read_at = COALESCE(read_at, NOW()) WHERE sender_id = ? AND recipient_id = ?')->execute([$otherId, $meId]);
+    return true;
+}

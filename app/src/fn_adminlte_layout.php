@@ -96,6 +96,12 @@ function adminLteAssetLinks(): string {
          // dell'immagine originale ai margini del riquadro.
          . '.admlte-pinned-cover-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.9);transform:scale(1.15);}'
          . '@media (min-width:992px){.adminlte-sidebar-col,.adminlte-extras-col{position:sticky;top:60px;align-self:flex-start;}}'
+         // Desktop: la colonna centrale è larga come quella della dashboard (800px, o meno se lo schermo è stretto);
+         // le due laterali si dividono lo spazio che resta (da 220px a 360px ciascuna) e il gruppo sta al centro.
+         // Sotto i 992px le colonne restano impilate come prima.
+         . '@media (min-width:992px){.app-content .row:has(>.adminlte-main-col){flex-wrap:nowrap;justify-content:center;}'
+         . '.app-content .row>.adminlte-main-col{flex:0 1 800px;width:800px;max-width:800px;min-width:0;}'
+         . '.app-content .row>.adminlte-sidebar-col,.app-content .row>.adminlte-extras-col{flex:1 1 0;width:auto;min-width:220px;max-width:360px;}}'
          . '</style>';
 }
 

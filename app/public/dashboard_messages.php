@@ -8,21 +8,25 @@ $pageTitle = 'Messaggi';
 
 // Elenco delle "altre persone" con cui esiste almeno un messaggio scambiato, con l'ultimo
 // messaggio e il conteggio dei non letti, ordinato per messaggio più recente.
+// Conversazioni cancellate dall'utente (solo per lui) restano nascoste, finché non arriva un messaggio nuovo.
+$dmVis = dmHideDeletedSql((int) $profile['id']);
+$dmS = directMessagesHaveDeleteColumns() ? ' AND deleted_by_sender = 0' : '';
+$dmR = directMessagesHaveDeleteColumns() ? ' AND deleted_by_recipient = 0' : '';
 $stmt = getDB()->prepare("SELECT
         other.id AS other_id, other.slug AS other_slug, p.display_name, p.avatar_path,
         (SELECT message FROM direct_messages
-            WHERE (sender_id = ? AND recipient_id = other.id) OR (sender_id = other.id AND recipient_id = ?)
+            WHERE ((sender_id = ? AND recipient_id = other.id) OR (sender_id = other.id AND recipient_id = ?)){$dmVis}
             ORDER BY created_at DESC LIMIT 1) AS last_message,
         (SELECT created_at FROM direct_messages
-            WHERE (sender_id = ? AND recipient_id = other.id) OR (sender_id = other.id AND recipient_id = ?)
+            WHERE ((sender_id = ? AND recipient_id = other.id) OR (sender_id = other.id AND recipient_id = ?)){$dmVis}
             ORDER BY created_at DESC LIMIT 1) AS last_at,
-        (SELECT COUNT(*) FROM direct_messages WHERE sender_id = other.id AND recipient_id = ? AND read_at IS NULL) AS unread
+        (SELECT COUNT(*) FROM direct_messages WHERE sender_id = other.id AND recipient_id = ? AND read_at IS NULL{$dmR}) AS unread
     FROM users other
     JOIN profiles p ON p.user_id = other.id
     WHERE other.id IN (
-        SELECT recipient_id FROM direct_messages WHERE sender_id = ?
+        SELECT recipient_id FROM direct_messages WHERE sender_id = ?{$dmS}
         UNION
-        SELECT sender_id FROM direct_messages WHERE recipient_id = ?
+        SELECT sender_id FROM direct_messages WHERE recipient_id = ?{$dmR}
     )
     ORDER BY last_at DESC");
 $stmt->execute([$profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id'], $profile['id']]);

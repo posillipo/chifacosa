@@ -811,3 +811,8 @@ body.studio-mode .stc-list .stc-act span { display: none; }
   body.studio-mode .stc-list .stc-actions { position: static; width: auto; justify-content: flex-start; margin-top: 8px; }
   body.studio-mode .stc-list .stc-body { padding-right: 0; }
 }
+
+/* ===== Chat: Cancella conversazione in alto ===== */
+body.studio-mode .chx-h .chx-del { margin: 0 0 0 auto; flex: none; }
+body.studio-mode .chx-h .chx-del .stc-act { width: auto; padding: 0 12px; white-space: nowrap; }
+@media (max-width: 639px) { body.studio-mode .chx-h .chx-del .stc-act span { display: none; } body.studio-mode .chx-h .chx-del .stc-act { width: 40px; padding: 0; justify-content: center; } }

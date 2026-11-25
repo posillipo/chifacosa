@@ -1300,6 +1300,12 @@ Aggiunge `profiles.geo_lat`, `geo_lng` (DECIMAL 9,6) e `geo_query` (VARCHAR 255)
 ### Guide Directory e Profilo (`2026_11_38_page_help_directory.sql`)
 Nuovo testo di guida per `dashboard_directory.php` e aggiornamento di `dashboard_profile.php` (città e provincia obbligatorie). `ON DUPLICATE KEY UPDATE`: si può rieseguire. Richiede la `2026_11_29`.
 
+### Messaggi: cancella conversazione solo per sé (`2026_11_40_direct_messages_delete.sql`)
+Aggiunge `direct_messages.deleted_by_sender` e `deleted_by_recipient` (TINYINT, default 0). Idempotente. Senza la migrazione la chat funziona come prima e il pulsante «Cancella conversazione» non compare. I messaggi non vengono mai eliminati dal database: la cancellazione li nasconde solo a chi la fa.
+
+### Guida Messaggi con «Cancella conversazione» (`2026_11_41_page_help_chat_delete.sql`)
+Aggiorna il testo di guida di `dashboard_chat.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
+
 ---
 
 ## Come aggiungere una nuova voce

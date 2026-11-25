@@ -24,6 +24,12 @@ $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
+    // «Cancella conversazione»: la nasconde solo a chi la cancella, l'altra persona continua a vederla.
+    if (($_POST['action'] ?? '') === 'delete_conversation') {
+        dmDeleteConversation((int) $profile['id'], (int) $other['id']);
+        header('Location: /dashboard_messages.php');
+        exit;
+    }
     if (!$canWrite) {
         $error = 'Potete scrivervi solo se vi seguite a vicenda.';
     } else {
@@ -54,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = getDB()->prepare('UPDATE direct_messages SET read_at = NOW() WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL');
 $stmt->execute([$other['id'], $profile['id']]);
 
-$stmt = getDB()->prepare('SELECT * FROM direct_messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC LIMIT 300');
+$stmt = getDB()->prepare("SELECT * FROM direct_messages WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))" . dmHideDeletedSql((int) $profile['id']) . " ORDER BY created_at ASC LIMIT 300");
 $stmt->execute([$profile['id'], $other['id'], $other['id'], $profile['id']]);
 $messages = $stmt->fetchAll();
 
@@ -65,6 +71,7 @@ include __DIR__ . '/../_dash_header.php';
       <a href="/dashboard_messages.php" class="lkx-btn" aria-label="Tutte le conversazioni"><i class="fa-solid fa-arrow-left"></i></a>
       <?php if ($other['avatar_path']): ?><img class="pnx-img rnd" src="/<?= e($other['avatar_path']) ?>" alt=""><?php else: ?><span class="pnx-img rnd stc-ph"><?= e(mb_strtoupper(mb_substr($other['display_name'], 0, 1))) ?></span><?php endif; ?>
       <div class="pnx-b"><b><?= e($other['display_name']) ?></b><small><a href="/dashboard_profile_view.php?slug=<?= e($other['slug']) ?>">@<?= e($other['slug']) ?></a></small></div>
+      <?php if ($messages && directMessagesHaveDeleteColumns()): ?><form method="post" class="chx-del" data-confirm="Cancellare questa conversazione? Sparisce solo da te: l'altra persona continua a vederla."><?= csrfField() ?><input type="hidden" name="action" value="delete_conversation"><button type="submit" class="stc-act danger" title="Cancella conversazione"><i class="fa-solid fa-trash"></i> <span>Cancella conversazione</span></button></form><?php endif; ?>
     </header>
     <?php if (!$canWrite): ?><div class="alert error">Potete leggere questa conversazione, ma per scrivere ancora dovete seguirvi a vicenda.</div><?php endif; ?>
     <?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
