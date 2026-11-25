@@ -111,9 +111,7 @@ function academicNavItems(array $artist, string $slug): array {
     if ($isBandOrLabel && !in_array('eventi', $hidden, true)) {
         $items['eventi'] = ['Eventi', '/' . $slug . '/eventi'];
     }
-    if (!in_array('link', $hidden, true) && profileHasActiveLinks($uid)) {
-        $items['link'] = ['Link', '/' . $slug . '/link'];
-    }
+    // «Link» non è più una voce del menu: i collegamenti stanno nella colonna sinistra, sotto la foto.
     $items['contatti'] = ['Contatti', '/' . $slug . '/contatti'];
     return $items;
 }
@@ -156,20 +154,25 @@ function academicMastheadHtml(array $artist, string $slug, string $activeKey = '
     return ob_get_clean();
 }
 
-/** Link attivi del profilo (solo collegamenti veri), i primi $limit. */
-function academicProfileLinks(int $uid, int $limit = 12): array {
+/**
+ * Collegamenti del profilo per la colonna sinistra (stessa logica della pagina «Link»: link e separatori di sezione,
+ * nell'ordine scelto; i clic passano da /link.php che li conta). Niente mappe né film. Con $onlyLinks=false
+ * restituisce anche i separatori (link_type 'divider').
+ */
+function academicProfileLinks(int $uid, int $limit = 12, bool $onlyLinks = true): array {
     $out = [];
     try {
-        $ls = getDB()->prepare('SELECT label, url, type FROM links WHERE user_id = ? AND is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT ' . (int) $limit);
+        $ls = getDB()->prepare('SELECT id, label, url, link_type FROM links WHERE user_id = ? AND is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT 60');
         $ls->execute([$uid]);
         foreach ($ls->fetchAll() as $l) {
-            if (($l['type'] ?? 'link') === 'link' && preg_match('#^(https?://|mailto:)#i', (string) $l['url'])) {
+            $t = $l['link_type'] ?? 'link';
+            if ($t === 'link' || (!$onlyLinks && $t === 'divider')) {
                 $out[] = $l;
             }
         }
     } catch (Throwable $e) {
     }
-    return $out;
+    return $onlyLinks ? array_slice($out, 0, $limit) : $out;
 }
 
 /** Profilo dell'autore (foto, nome, bio, luogo, genere, link, Segui): il contenuto della colonna sinistra. */
@@ -188,7 +191,7 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
         }
     } catch (Throwable $e) {
     }
-    $links = academicProfileLinks($uid);
+    $links = academicProfileLinks($uid, 60, false);
     $viewerId = publicActingUserId();
     $isOwn = $viewerId && (int) $viewerId === $uid;
     $isFollowing = ($viewerId && !$isOwn) ? isFollowingAccount((int) $viewerId, $uid) : false;
@@ -208,7 +211,11 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
       <?php if ($place !== ''): ?><li><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <?= e($place) ?></li><?php endif; ?>
       <?php if ($genre !== ''): ?><li><i class="fa-solid fa-music" aria-hidden="true"></i> <?= e($genre) ?></li><?php endif; ?>
       <?php foreach ($links as $l): ?>
-        <li><a href="<?= e($l['url']) ?>" target="_blank" rel="noopener nofollow"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> <?= e($l['label'] ?: $l['url']) ?></a></li>
+        <?php if (($l['link_type'] ?? 'link') === 'divider'): ?>
+          <li class="author__divider"><?= e($l['label']) ?></li>
+        <?php else: ?>
+          <li><a href="/link.php?id=<?= (int) $l['id'] ?>" target="_blank" rel="noopener nofollow"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> <?= e($l['label'] ?: $l['url']) ?></a></li>
+        <?php endif; ?>
       <?php endforeach; ?>
     </ul>
     <div class="author__follow">
@@ -331,7 +338,7 @@ function academicFooterHtml(array $artist, string $slug): string {
     <ul class="social-icons">
       <li><strong>Segui:</strong></li>
       <?php foreach ($links as $l): ?>
-        <li><a href="<?= e($l['url']) ?>" target="_blank" rel="noopener nofollow"><i class="fa-solid fa-link" aria-hidden="true"></i> <?= e($l['label'] ?: $l['url']) ?></a></li>
+        <li><a href="/link.php?id=<?= (int) $l['id'] ?>" target="_blank" rel="noopener nofollow"><i class="fa-solid fa-link" aria-hidden="true"></i> <?= e($l['label'] ?: $l['url']) ?></a></li>
       <?php endforeach; ?>
       <li><a href="/<?= e($slug) ?>/contatti"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contatti</a></li>
     </ul>

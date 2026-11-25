@@ -192,3 +192,13 @@ html.acad-skin .grid__wrapper{display:grid;grid-template-columns:repeat(auto-fil
 html.acad-skin .acad-card{display:block;margin:0}
 html.acad-skin .acad-card .page__meta{margin:.2em 0}
 html.acad-skin .archive__item-excerpt{font-size:.85rem;color:var(--acad-text-light);margin:.4em 0 0}
+
+/* Video: elenco con anteprima 16:9 piccola a sinistra */
+html.acad-skin .acad-video{display:flex;gap:1em;align-items:flex-start;padding:1em 0;margin:0;border-bottom:1px solid var(--acad-border)}
+html.acad-skin .acad-video__thumb{position:relative;flex:0 0 220px;aspect-ratio:16/9;background:#111;border-radius:4px;overflow:hidden;display:block}
+html.acad-skin .acad-video__thumb img{width:100%;height:100%;object-fit:cover;display:block}
+html.acad-skin .acad-video__thumb i{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:2rem;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+html.acad-skin .acad-video .archive__item-title{font-size:1.1rem}
+@media(max-width:599px){html.acad-skin .acad-video{flex-direction:column}html.acad-skin .acad-video__thumb{flex-basis:auto;width:100%}}
+/* Link nella colonna sinistra: separatori di sezione come titoletti */
+.author__urls .author__divider{margin-top:.9em;padding-top:.5em;border-top:1px solid var(--acad-border);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--acad-text-light)}

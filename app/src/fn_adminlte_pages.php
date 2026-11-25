@@ -1778,7 +1778,22 @@ function renderAdminLteVideosPage(array $artist, string $slug, array $videos): s
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?= renderAdminLteProfileExtras($artist, $slug) ?>
           <div class="col-lg-6 order-1 order-lg-2 adminlte-main-col">
-            <?php if ($videos): ?>
+            <?php if ($videos && academicSkinActive()): ?>
+              <h1 class="page__title">Video</h1>
+              <?php foreach ($videos as $v): ?>
+                <div class="archive__item acad-video">
+                  <a class="acad-video__thumb" href="/<?= e($slug) ?>/video/<?= (int) $v['id'] ?>">
+                    <?php if (!empty($v['thumb_path'])): ?><img src="/<?= e($v['thumb_path']) ?>" alt="" loading="lazy"><?php endif; ?>
+                    <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+                  </a>
+                  <div class="archive__item-body">
+                    <h3 class="archive__item-title"><a href="/<?= e($slug) ?>/video/<?= (int) $v['id'] ?>"><?= e($v['title']) ?></a></h3>
+                    <?php if ($dl = videoDurationLabel($v['duration_seconds'] !== null ? (int) $v['duration_seconds'] : null)): ?><p class="page__meta"><i class="fa-regular fa-clock" aria-hidden="true"></i> <?= e($dl) ?></p><?php endif; ?>
+                    <?php if (!empty($v['description'])): ?><p class="archive__item-excerpt"><?= e(textExcerpt($v['description'], 160)) ?></p><?php endif; ?>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php elseif ($videos): ?>
               <?php foreach ($videos as $v): ?>
                 <a href="/<?= e($slug) ?>/video/<?= (int) $v['id'] ?>" class="card mb-3 text-decoration-none text-reset" style="overflow:hidden;">
                   <div class="ratio ratio-16x9 bg-dark position-relative">
