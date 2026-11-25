@@ -1079,6 +1079,16 @@ function renderAdminLteBlogFilterCard(int $userId, string $slug, array $filter, 
 // l'artista non ha ancora categorie. $activeCategoryId evidenzia la categoria corrente quando la
 // card compare sulla sua stessa pagina, invece di lasciarla indistinguibile dalle altre.
 function renderAdminLteBlogCategoriesNavCard(int $userId, string $slug, ?int $activeCategoryId = null): string {
+    $html = renderAdminLteBlogCategoriesNavCardRaw($userId, $slug, $activeCategoryId);
+    // Veste Academic: le categorie stanno nella colonna sinistra, sotto il profilo, non sotto il contenuto.
+    if (academicSkinActive()) {
+        academicSidebarSlot($html);
+        return '';
+    }
+    return $html;
+}
+
+function renderAdminLteBlogCategoriesNavCardRaw(int $userId, string $slug, ?int $activeCategoryId = null): string {
     $stmt = getDB()->prepare('SELECT id, name, slug FROM blog_categories WHERE user_id=? ORDER BY name ASC');
     $stmt->execute([$userId]);
     $categories = $stmt->fetchAll();

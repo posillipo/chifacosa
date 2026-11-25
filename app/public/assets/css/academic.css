@@ -137,3 +137,7 @@ html.acad-skin .app-footer { display: none; }
 
 .acad-more { text-align: center; margin: 1.5em 0; }
 .acad-more .btn[disabled] { opacity: .6; cursor: default; }
+
+/* Schede nella colonna sinistra (es. categorie del blog), sotto il profilo */
+html.acad-skin .author__slot .card { border: 1px solid var(--acad-border); border-radius: 4px; padding: 0 1em; margin-top: 1.2em; }
+html.acad-skin .author__slot:empty { display: none; }
