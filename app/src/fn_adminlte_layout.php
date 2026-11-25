@@ -1095,6 +1095,14 @@ function renderAdminLteBlogCategoriesNavCardRaw(int $userId, string $slug, ?int 
     if (!$categories) {
         return '';
     }
+    if (academicSkinActive()) {
+        $items = [];
+        foreach ($categories as $cat) {
+            $items[] = ['url' => blogCategoryUrl($slug, $cat), 'title' => $cat['name'], 'date' => '',
+                'active' => $activeCategoryId !== null && (int) $cat['id'] === $activeCategoryId];
+        }
+        return academicSideListCard('Categorie del blog', $items);
+    }
     ob_start();
     ?>
             <div class="card">
