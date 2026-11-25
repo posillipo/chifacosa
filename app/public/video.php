@@ -23,7 +23,7 @@ $stmt = getDB()->prepare("SELECT * FROM videos WHERE user_id=? AND is_public = 1
 $stmt->execute([$artist['id']]);
 $videos = $stmt->fetchAll();
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteVideosPage($artist, $slug, $videos);
     exit;
 }

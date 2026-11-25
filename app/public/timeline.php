@@ -19,7 +19,7 @@ if (!$artist) {
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — sostituisce l'intera
 // pagina con lo scroll infinito reale in stile AdminLTE.
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteTimelinePage($artist, $slug);
     exit;
 }

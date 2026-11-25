@@ -14,7 +14,7 @@ $slug = $artist['slug'];
 $viewer = currentUser();
 $contests = contestListForProfile((int) $artist['id'], !contestCanSeeDrafts($viewer, (int) $artist['id']));
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteContestListPage($artist, $contests);
     exit;
 }

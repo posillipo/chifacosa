@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteContattiPage($artist, $userSlug, $formSent, $formError, $conversionEventId ?? null);
     exit;
 }

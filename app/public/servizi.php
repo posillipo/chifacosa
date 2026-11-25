@@ -17,7 +17,7 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$isAdminLte = adminLteFamilyTheme($artist);
 $services = getDB()->prepare("SELECT sv.*, (SELECT COUNT(*) FROM service_photos WHERE service_id = sv.id) AS extra_photos
     FROM services sv WHERE sv.user_id=? AND sv.is_public = 1
     AND (sv.publish_at IS NULL OR sv.publish_at <= NOW()) ORDER BY sv.sort_order DESC" . ($isAdminLte ? ' LIMIT 20' : ''));

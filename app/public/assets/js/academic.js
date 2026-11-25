@@ -7,7 +7,7 @@
   if (themeBtn) {
     themeBtn.addEventListener('click', function () {
       var dark = root.getAttribute('data-theme') !== 'dark';
-      if (dark) root.setAttribute('data-theme', 'dark'); else root.removeAttribute('data-theme');
+      if (dark) { root.setAttribute('data-theme', 'dark'); root.setAttribute('data-bs-theme', 'dark'); } else { root.removeAttribute('data-theme'); root.setAttribute('data-bs-theme', 'light'); }
       try { localStorage.setItem('acadTheme', dark ? 'dark' : 'light'); } catch (e) {}
     });
   }

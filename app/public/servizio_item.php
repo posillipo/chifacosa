@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (int) $service['accepts_inquiries']
     }
 }
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteServizioDetailPage($artist, $slug, $service, $photos, $isOwner, $isScheduledFuture, $formSent, $formError, $conversionEventId, $isPreview);
     exit;
 }

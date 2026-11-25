@@ -45,7 +45,7 @@ $artist = [
     'dashboard_theme' => $offer['dashboard_theme'] ?? null,
 ];
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteOffertaDetailPage($artist, $slug, $offer, $isOwner, $isCurrentlyValid, $isPreview);
     exit;
 }

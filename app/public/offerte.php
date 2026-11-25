@@ -17,7 +17,7 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$isAdminLte = adminLteFamilyTheme($artist);
 $offers = getDB()->prepare("SELECT * FROM special_offers WHERE user_id=? AND is_active = 1
     AND (valid_from IS NULL OR valid_from <= NOW()) AND (valid_until IS NULL OR valid_until >= NOW())
     ORDER BY sort_order DESC" . ($isAdminLte ? ' LIMIT 20' : ''));

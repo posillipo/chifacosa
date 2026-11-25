@@ -22,7 +22,7 @@ $albums = spotifyGetArtistAlbums($artist['spotify_artist_id']);
 $topTracks = spotifyGetArtistTopTracks($artist['spotify_artist_id']);
 $artistDetails = spotifyGetArtist($artist['spotify_artist_id']);
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteSpotifyPage($artist, $slug, $albums, $topTracks, $artistDetails);
     exit;
 }

@@ -53,7 +53,7 @@ $videoUrl = siteUrl('/' . $video['video_path']);
 $ogImage = !empty($video['thumb_path']) ? siteUrl('/' . $video['thumb_path']) : ($video['avatar_path'] ? siteUrl($video['avatar_path']) : null);
 $ogDescription = $video['description'] ? textExcerpt($video['description'], 160) : ($video['display_name'] . ' — guarda il video su ' . siteName());
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteVideoDetailPage($artist, $slug, $video, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }

@@ -32,7 +32,7 @@ foreach ($allItems as $it) {
 // Le categorie senza piatti attivi non hanno senso da mostrare pubblicamente
 $categories = array_values(array_filter($categories, fn($c) => !empty($itemsByCategory[(int) $c['id']])));
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteMenuPage($artist, $slug, $categories, $itemsByCategory);
     exit;
 }

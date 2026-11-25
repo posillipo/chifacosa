@@ -19,7 +19,7 @@ if (!$artist) {
 
 // Un evento "perpetuo" (nessuna data di fine, es. ricorrente ogni settimana) resta sempre tra i
 // prossimi eventi, indipendentemente da event_date — vedi eventScheduleLabel() in functions.php.
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$isAdminLte = adminLteFamilyTheme($artist);
 
 // provincia (opzionale): filtro cliccabile dal widget "Eventi per provincia" della colonna destra
 // (renderAdminLteEventiByProvinciaCard()) — stesso valore esatto salvato in dashboard_events.php,
