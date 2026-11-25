@@ -394,14 +394,15 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
     // Ultimi articoli sopra la copertina, riferimento alla categoria (evidenziata nell'elenco
     // esistente) subito sotto — ordine richiesto esplicitamente da un utente per la colonna
     // laterale destra di questa pagina.
-    $blogLatestPostsHtml = renderAdminLteBlogLatestPostsCard((int) $post['user_id'], $slug, (int) $post['id']);
+    $acadPost = academicSkinActive();
+    $blogLatestPostsHtml = $acadPost ? '' : renderAdminLteBlogLatestPostsCard((int) $post['user_id'], $slug, (int) $post['id']);
     $activeCategoryId = $postCategories ? (int) $postCategories[0]['id'] : null;
 
     // Articoli correlati: gli ultimi articoli già pubblicati che condividono almeno una categoria
     // con questo (escluso lui stesso), con la stessa griglia di miniature di "Ultimi articoli".
     // Senza categorie, o senza altri articoli nella stessa categoria, la card non compare.
     $relatedPostsHtml = '';
-    if ($postCategories) {
+    if ($postCategories && !$acadPost) {
         $catIds = array_map(fn($c) => (int) $c['id'], $postCategories);
         $ph = implode(',', array_fill(0, count($catIds), '?'));
         $stmt = getDB()->prepare("SELECT b.id, b.title, b.slug, b.cover_path, b.published_at FROM blog_posts b
@@ -492,6 +493,9 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                   <div class="alert alert-warning mb-3">Questo articolo non è ancora pubblico (programmato per il futuro) — <?= e(previewNoticeSuffix($isOwner)) ?></div>
                 <?php endif; ?>
 
+                <?php if ($acadPost): ?>
+                <?= academicBlogPostHtml($post, $artist, $slug, $permalink, $postCategories) ?>
+                <?php else: ?>
                 <article class="card mb-3">
                   <div class="card-header d-flex align-items-center">
                     <div class="user-block mb-0">
@@ -526,6 +530,7 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                     <strong>Condividi</strong> · <span class="user-select-all"><?= e($permalink) ?></span>
                   </div>
                 </article>
+                <?php endif; ?>
 
                 <?php if ($linkedAlbum): ?>
                 <a href="/<?= e($slug) ?>/album/<?= (int) $linkedAlbum['id'] ?>" class="card mb-3 text-decoration-none text-body">

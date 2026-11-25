@@ -174,3 +174,21 @@ html.acad-skin .adminlte-sidebar-col fieldset{border:0;padding:0;margin-left:0}
 html.acad-skin .adminlte-sidebar-col fieldset legend{padding:0;float:none;width:auto}
 html.acad-skin .acad-bloglist + .acad-bloglist li:first-child{border-top:1px solid var(--acad-border)}
 html.acad-skin .acad-bloglist:has(+ .acad-bloglist) li:last-child{border-bottom:0}
+
+/* Pagina articolo (struttura del template: posts/…/blog-post) */
+html.acad-skin .acad-post .page__title{margin-bottom:.2em}
+html.acad-skin .acad-post__cover{max-width:100%;height:auto;display:block;margin:1em 0}
+html.acad-skin .acad-post .page__content{margin:1.2em 0}
+html.acad-skin .page__taxonomy-item{display:inline-block;margin-right:.4em;padding:.1em .6em;border:1px solid var(--acad-border);border-radius:4px;font-size:.85rem;color:var(--acad-text-light)}
+html.acad-skin .page__share{margin:1.5em 0}
+html.acad-skin .page__share-title{margin:0 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--acad-border);font-size:1rem}
+html.acad-skin .page__share .btn{margin:0 .3em .4em 0}
+html.acad-skin .pagination{display:flex;gap:.6em;margin:1.5em 0}
+html.acad-skin .pagination--pager{flex:1;text-align:center;padding:.6em 1em;border:1px solid var(--acad-border);border-radius:4px;font-weight:600;color:var(--acad-link)}
+html.acad-skin .pagination--pager.disabled{color:var(--acad-text-light);opacity:.5}
+html.acad-skin .pagination--pager:hover{text-decoration:none;background:var(--acad-footer-bg)}
+html.acad-skin .page__related-title{padding-bottom:.3em;border-bottom:1px solid var(--acad-border);font-size:1.15rem}
+html.acad-skin .grid__wrapper{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1.2em}
+html.acad-skin .acad-card{display:block;margin:0}
+html.acad-skin .acad-card .page__meta{margin:.2em 0}
+html.acad-skin .archive__item-excerpt{font-size:.85rem;color:var(--acad-text-light);margin:.4em 0 0}
