@@ -814,6 +814,11 @@ function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFol
 // dopo la sidebar in ogni pagina, invece di dover trovare il punto esatto di chiusura della
 // colonna centrale in ciascuna delle funzioni che la usano.
 function renderAdminLteProfileExtras(array $artist, string $slug, string $extraCardsHtml = '', bool $extraCardsFirst = false, ?string $activeProvincia = null): string {
+    // Veste Academic: niente colonna destra (Primo Piano, Eventi per provincia, Che Amo). Le sole schede specifiche della
+    // pagina (categorie del blog, ultimi articoli, copertina...) restano, sotto il contenuto.
+    if (academicSkinActive()) {
+        return $extraCardsHtml === '' ? '' : '<div class="col-12 order-3 adminlte-extras-col">' . $extraCardsHtml . '</div>';
+    }
     $uid = (int) $artist['id'];
     $db = getDB();
 

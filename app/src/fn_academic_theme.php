@@ -39,7 +39,8 @@ function academicNavItems(array $artist, string $slug): array {
     $uid = (int) $artist['id'];
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
     $hidden = getHiddenNavKeys($uid);
-    $items = ['timeline' => ['Timeline', '/' . $slug . '/timeline']];
+    // La Home è la timeline: niente voce «Timeline» a parte.
+    $items = [];
     if (!in_array('cheamo', $hidden, true) && hasAnyVisibleCheAmo($uid, $hidden)) {
         $items['cheamo'] = ['Che Amo', '/' . $slug . '/che-amo'];
     }
@@ -101,7 +102,7 @@ function academicMastheadHtml(array $artist, string $slug, string $activeKey = '
   <div class="masthead__inner-wrap">
     <nav class="masthead__menu" id="acad-nav" aria-label="Navigazione principale">
       <ul class="visible-links">
-        <li class="masthead__menu-item masthead__menu-item--lg<?= $activeKey === 'home' ? ' selected' : '' ?>"><a href="/<?= e($slug) ?>"><?= e($name) ?></a></li>
+        <li class="masthead__menu-item masthead__menu-item--lg<?= in_array($activeKey, ['home', 'timeline'], true) ? ' selected' : '' ?>"><a href="/<?= e($slug) ?>"><?= e($name) ?></a></li>
         <?php foreach ($nav as $key => [$label, $url]): ?>
           <li class="masthead__menu-item<?= $activeKey === $key ? ' selected' : '' ?>"><a href="<?= e($url) ?>"><?= e($label) ?></a></li>
         <?php endforeach; ?>
@@ -162,7 +163,7 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
     <div class="author__avatar"><a href="/<?= e($slug) ?>"><img src="<?= e($avatarUrl) ?>" alt="<?= e($name) ?>"></a></div>
     <div class="author__content">
       <h3 class="author__name"><a href="/<?= e($slug) ?>"><?= e($name) ?></a></h3>
-      <?php if (!empty($artist['bio'])): ?><p class="author__bio"><?= e(textExcerpt($artist['bio'], 140)) ?></p><?php endif; ?>
+      <?php if (!empty($artist['bio'])): ?><p class="author__bio"><?= nl2br(e($artist['bio'])) ?></p><?php endif; ?>
     </div>
     <ul class="author__urls">
       <?php if ($place !== ''): ?><li><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <?= e($place) ?></li><?php endif; ?>
@@ -218,6 +219,28 @@ function academicFooterHtml(array $artist, string $slug): string {
     return ob_get_clean();
 }
 
+/** Voci della timeline come elenco Academic (usata dalla Home e da «Carica altri» in timeline_more.php). */
+function academicTimelineItemsHtml(array $items, array $artist): string {
+    ob_start();
+    foreach ($items as $it):
+        $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['label' => 'Aggiornamento'];
+        ?>
+        <div class="archive__item">
+          <?php if (!empty($it['cover'])): ?>
+            <a class="archive__item-teaser" href="<?= e($it['url']) ?>"><img src="/<?= e(ltrim((string) $it['cover'], '/')) ?>" alt="" loading="lazy"></a>
+          <?php else: ?>
+            <a class="archive__item-teaser archive__item-teaser--ph" href="<?= e($it['url']) ?>" tabindex="-1" aria-hidden="true"><i class="fa-regular fa-file-lines"></i></a>
+          <?php endif; ?>
+          <div class="archive__item-body">
+            <h3 class="archive__item-title"><a href="<?= e($it['url']) ?>"><?= e(textExcerpt((string) $it['titolo'], 140)) ?></a></h3>
+            <p class="page__meta"><i class="fa-regular fa-calendar" aria-hidden="true"></i> <?= e(formatLocalDateTime($it['data'], $artist)) ?> · <?= e($meta['label']) ?></p>
+          </div>
+        </div>
+        <?php
+    endforeach;
+    return ob_get_clean();
+}
+
 /** Home del profilo nel tema Academic. */
 function renderAcademicProfileTheme(array $artist, string $slug): string {
     $uid = (int) $artist['id'];
@@ -259,35 +282,17 @@ function renderAcademicProfileTheme(array $artist, string $slug): string {
     <?php if (!empty($_GET['follow_msg'])): ?>
       <div class="notice<?= !empty($_GET['follow_err']) ? ' notice--danger' : '' ?>"><?= e($_GET['follow_msg']) ?></div>
     <?php endif; ?>
-    <h1 class="page__title"><?= e($name) ?></h1>
+    <h1 class="page__title">Timeline</h1>
     <section class="page__content">
-      <h2>Chi sono</h2>
-      <?php if (!empty($artist['bio'])): ?>
-        <p><?= nl2br(e($artist['bio'])) ?></p>
-      <?php else: ?>
-        <p class="muted">Nessuna presentazione ancora.</p>
+      <div id="acad-feed">
+        <?php if (!$feed): ?>
+          <p class="muted">Nessun aggiornamento ancora.</p>
+        <?php endif; ?>
+        <?= academicTimelineItemsHtml($feed, $artist) ?>
+      </div>
+      <?php if (count($feed) >= 10): ?>
+        <p class="acad-more"><button type="button" class="btn btn--primary" id="acad-more" data-slug="<?= e($slug) ?>" data-offset="<?= count($feed) ?>">Carica altri</button></p>
       <?php endif; ?>
-
-      <h2>Ultimi aggiornamenti</h2>
-      <?php if (!$feed): ?>
-        <p class="muted">Nessun aggiornamento ancora.</p>
-      <?php endif; ?>
-      <?php foreach ($feed as $it):
-          $meta = ADMINLTE_TIMELINE_TYPE_META[$it['tipo']] ?? ['label' => 'Aggiornamento'];
-      ?>
-        <div class="archive__item">
-          <?php if (!empty($it['cover'])): ?>
-            <a class="archive__item-teaser" href="<?= e($it['url']) ?>"><img src="/<?= e(ltrim((string) $it['cover'], '/')) ?>" alt="" loading="lazy"></a>
-          <?php else: ?>
-            <a class="archive__item-teaser archive__item-teaser--ph" href="<?= e($it['url']) ?>" tabindex="-1" aria-hidden="true"><i class="fa-regular fa-file-lines"></i></a>
-          <?php endif; ?>
-          <div class="archive__item-body">
-            <h3 class="archive__item-title"><a href="<?= e($it['url']) ?>"><?= e(textExcerpt((string) $it['titolo'], 140)) ?></a></h3>
-            <p class="page__meta"><i class="fa-regular fa-calendar" aria-hidden="true"></i> <?= e(formatLocalDateTime($it['data'], $artist)) ?> · <?= e($meta['label']) ?></p>
-          </div>
-        </div>
-      <?php endforeach; ?>
-      <p><a href="/<?= e($slug) ?>/timeline">Vedi tutta la Timeline →</a></p>
     </section>
   </article>
 </div>
