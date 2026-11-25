@@ -20,6 +20,11 @@ if (!$artist) {
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php) — sostituisce l'intera
 // pagina con lo scroll infinito reale in stile AdminLTE.
 if (adminLteFamilyTheme($artist)) {
+    // Tema Academic: la Home è già la timeline, niente pagina a parte.
+    if (academicSkinActive()) {
+        header('Location: /' . $slug, true, 302);
+        exit;
+    }
     echo renderAdminLteTimelinePage($artist, $slug);
     exit;
 }

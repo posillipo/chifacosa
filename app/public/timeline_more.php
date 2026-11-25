@@ -7,7 +7,7 @@ $slug = $_GET['slug'] ?? '';
 $offset = max(0, (int) ($_GET['offset'] ?? 0));
 $pageSize = 20;
 
-$stmt = getDB()->prepare('SELECT u.id, p.page_theme, p.display_name, p.avatar_path FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.slug = ? AND u.is_active = 1');
+$stmt = getDB()->prepare('SELECT u.id, p.page_theme, p.display_name, p.avatar_path, p.dashboard_theme FROM users u JOIN profiles p ON p.user_id = u.id WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
 $user = $stmt->fetch();
 
@@ -20,7 +20,7 @@ if (!$user) {
 $items = getTimelineFeedForUsers([$user['id']], $pageSize, $offset);
 
 if (adminLteFamilyTheme($user)) {
-    $html = renderAdminLteTimelineRows($items, $user);
+    $html = academicSkinActive() ? academicTimelineItemsHtml($items, $user) : renderAdminLteTimelineRows($items, $user);
     echo json_encode(['html' => $html, 'count' => count($items)]);
     exit;
 }
