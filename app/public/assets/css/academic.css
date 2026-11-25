@@ -156,3 +156,10 @@ html.acad-skin .author__list li{padding:.45em 0;border-bottom:1px solid var(--ac
 html.acad-skin .author__list li:last-child{border-bottom:0}
 html.acad-skin .author__list li small{display:block;opacity:.7}
 html.acad-skin .author__list-more{display:block;margin-top:.5em}
+html.acad-skin .author__list a.is-active{font-weight:700;text-decoration:underline}
+/* Filtro del blog: senza riquadri, come le altre voci della colonna */
+html.acad-skin .adminlte-sidebar-col .card{border:0;background:transparent;box-shadow:none}
+html.acad-skin .adminlte-sidebar-col .card .card-body{padding-left:0;padding-right:0}
+html.acad-skin .adminlte-sidebar-col fieldset>.border{border:0!important;padding-left:0!important}
+html.acad-skin .adminlte-sidebar-col fieldset{border:0;padding:0;margin-left:0}
+html.acad-skin .adminlte-sidebar-col fieldset legend{padding:0;float:none;width:auto}

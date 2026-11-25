@@ -42,7 +42,7 @@ function academicSideListCard(string $title, array $items, string $moreUrl = '',
     }
     $h = '<div class="author__list"><h3 class="author__list-title">' . e($title) . '</h3><ul>';
     foreach ($items as $it) {
-        $h .= '<li><a href="' . e($it['url']) . '">' . e(textExcerpt((string) $it['title'], 70)) . '</a>'
+        $h .= '<li><a href="' . e($it['url']) . '"' . (!empty($it['active']) ? ' class="is-active" aria-current="page"' : '') . '>' . e(textExcerpt((string) $it['title'], 70)) . '</a>'
             . (!empty($it['date']) ? '<small>' . e($it['date']) . '</small>' : '') . '</li>';
     }
     $h .= '</ul>';
