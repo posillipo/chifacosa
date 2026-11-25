@@ -15,10 +15,29 @@
 /** Flag di richiesta: la pagina in costruzione usa la veste Academic. */
 function academicSkinActive(?bool $set = null): bool {
     static $on = false;
+    if ($set === true && !$on) {
+        // Il filtro di fine pagina inserisce nel «segnaposto» della colonna sinistra le schede che le pagine
+        // costruiscono più avanti (es. le categorie del blog): vedi academicSidebarSlot().
+        ob_start('academicSlotFilter');
+    }
     if ($set !== null) {
         $on = $set;
     }
     return $on;
+}
+
+/** Schede da mostrare nella colonna sinistra, sotto il profilo (riempita dalle pagine mentre si costruiscono). */
+function academicSidebarSlot(?string $add = null): string {
+    static $html = '';
+    if ($add !== null) {
+        $html .= $add;
+    }
+    return $html;
+}
+
+/** Filtro di uscita: sostituisce il segnaposto della colonna sinistra con le schede raccolte. */
+function academicSlotFilter(string $buffer): string {
+    return str_replace('<!--ACAD-SLOT-->', academicSidebarSlot(), $buffer);
 }
 
 /**
@@ -187,6 +206,7 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
         <a href="/login.php" class="btn btn--primary"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Segui</a>
       <?php endif; ?>
     </div>
+    <div class="author__slot"><!--ACAD-SLOT--></div>
     <?php if ($extraTopHtml !== ''): ?><div class="author__extra"><?= $extraTopHtml ?></div><?php endif; ?>
   </aside>
 <?php
