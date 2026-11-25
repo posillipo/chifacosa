@@ -14,7 +14,7 @@ $slug = $_GET['slug'] ?? '';
 $offset = max(0, (int) ($_GET['offset'] ?? 0));
 $pageSize = 20;
 
-$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.dashboard_theme
+$stmt = getDB()->prepare('SELECT u.id, u.slug, u.account_type, p.display_name, p.avatar_path, p.dashboard_theme, p.page_theme
                           FROM users u JOIN profiles p ON p.user_id = u.id
                           WHERE u.slug = ? AND u.is_active = 1');
 $stmt->execute([$slug]);
@@ -25,6 +25,9 @@ if (!$artist) {
     echo json_encode(['html' => '', 'count' => 0]);
     exit;
 }
+
+// Con il tema Academic le voci successive devono avere la stessa veste (testo, senza miniature) della prima pagina.
+adminLteFamilyTheme($artist);
 
 $uid = (int) $artist['id'];
 $db = getDB();
