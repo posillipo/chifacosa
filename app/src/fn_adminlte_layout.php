@@ -101,6 +101,9 @@ function adminLteAssetLinks(): string {
          // (schermi medi) il centro occupa tutta la colonna come sempre; sotto i 992px le colonne sono impilate.
          . '@media (min-width:992px){.adminlte-main-col{align-items:center;}'
          . '.adminlte-main-col>*{width:100%;max-width:800px;}}'
+         // Colonne laterali un po' più strette (un quinto della larghezza, da 240px a 300px): lo spazio in più va al centro.
+         . '@media (min-width:992px){.app-content .row>.adminlte-sidebar-col,.app-content .row>.adminlte-extras-col{flex:0 0 auto;width:clamp(240px,20%,300px);}'
+         . '.app-content .row>.adminlte-main-col{flex:1 1 0;width:auto;min-width:0;}}'
          . '</style>';
 }
 
