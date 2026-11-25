@@ -1128,6 +1128,14 @@ function renderAdminLteBlogLatestPostsCard(int $userId, string $slug, int $exclu
     if (!$posts) {
         return '';
     }
+    if (academicSkinActive()) {
+        $items = [];
+        foreach ($posts as $p) {
+            $items[] = ['url' => blogPostUrl($slug, $p), 'title' => $p['title'], 'date' => ''];
+        }
+        academicSidebarSlot(academicSideListCard('Ultimi articoli', $items));
+        return '';
+    }
     ob_start();
     ?>
             <div class="card mb-3">
@@ -1793,6 +1801,16 @@ function adminLteInfiniteScrollScript(string $type, string $slug, int $initialCo
 // adminlte_list_more.php per le pagine successive dello scroll infinito.
 
 function renderAdminLteBlogRows(array $posts, string $slug, array $artist): string {
+    if (academicSkinActive()) {
+        // Veste Academic: voci di testo come le righe del profilo (niente miniature), con un filetto in mezzo.
+        $html = '<ul class="acad-bloglist">';
+        foreach ($posts as $p) {
+            $html .= '<li><a class="acad-bloglist__t" href="' . e(blogPostUrl($slug, $p)) . '">' . e($p['title']) . '</a>'
+                . '<small>' . e(formatLocalDateTime($p['published_at'], $artist)) . '</small>'
+                . (!empty($p['excerpt']) ? '<p>' . e(textExcerpt($p['excerpt'], 140)) . '</p>' : '') . '</li>';
+        }
+        return $html . '</ul>';
+    }
     $html = '';
     foreach ($posts as $p) {
         ob_start();
