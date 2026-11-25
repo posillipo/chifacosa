@@ -172,3 +172,5 @@ html.acad-skin .adminlte-sidebar-col .card .card-body{padding-left:0;padding-rig
 html.acad-skin .adminlte-sidebar-col fieldset>.border{border:0!important;padding-left:0!important}
 html.acad-skin .adminlte-sidebar-col fieldset{border:0;padding:0;margin-left:0}
 html.acad-skin .adminlte-sidebar-col fieldset legend{padding:0;float:none;width:auto}
+html.acad-skin .acad-bloglist + .acad-bloglist li:first-child{border-top:1px solid var(--acad-border)}
+html.acad-skin .acad-bloglist:has(+ .acad-bloglist) li:last-child{border-bottom:0}
