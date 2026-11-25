@@ -117,7 +117,7 @@ $cover = function (array $en): string {
 $og = '<meta property="og:title" content="' . e($c['name']) . '"><meta property="og:url" content="' . e(siteUrl($base)) . '">'
     . ($c['description'] ? '<meta property="og:description" content="' . e(textExcerpt($c['description'], 160)) . '">' : '')
     . (!empty($c['logo_path']) ? '<meta property="og:image" content="' . e(siteUrl('/' . $c['logo_path'])) . '">' : '');
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteContestPage($artist, $c, [
         'message' => $message, 'error' => $error, 'voteMessage' => $voteMessage, 'voteError' => $voteError,
         'myProfile' => $myProfile, 'myEntry' => $myEntry, 'entries' => $entries, 'sponsors' => $sponsors,

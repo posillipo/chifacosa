@@ -101,7 +101,9 @@ function adminLteAssetLinks(): string {
          // (schermi medi) il centro occupa tutta la colonna come sempre; sotto i 992px le colonne sono impilate.
          . '@media (min-width:992px){.adminlte-main-col{align-items:center;}'
          . '.adminlte-main-col>*{width:100%;max-width:800px;}}'
-         . '</style>';
+         . '</style>'
+         // Veste «Academic» (stesse pagine, altra grafica): stile, script e tema chiaro/scuro (vedi fn_academic_theme.php).
+         . (academicSkinActive() ? "\n" . academicHeadAssets(false) : '');
 }
 
 
@@ -350,6 +352,9 @@ function adminLteBreadcrumbHeader(string $slug, string $displayName, string $cur
 
 
 function adminLteFooterBlock(array $artist): string {
+    if (academicSkinActive()) {
+        return academicFooterHtml($artist, (string) ($artist['slug'] ?? ($_GET['slug'] ?? '')));
+    }
     $footerPrivacyUrl = trim(getProfileTracking($artist)['privacy_policy_url'] ?? '') ?: (getSiteSetting('privacy_policy_url') ?: '');
     ob_start();
     ?>
@@ -406,6 +411,9 @@ function adminLteFooterBlock(array $artist): string {
 // contenuto specifico. "Segui" e Accedi/Registrati, prima sotto la card profilo, sono spostati
 // qui per lo stesso motivo: azioni, non contenuto, restano più utili sempre a portata di mano.
 function adminLteTopNav(array $artist, string $slug, string $activeKey): string {
+    if (academicSkinActive()) {
+        return academicMastheadHtml($artist, $slug, $activeKey);
+    }
     $uid = (int) $artist['id'];
     $isBandOrLabel = in_array($artist['account_type'] ?? 'band', ['band', 'label'], true);
     $hiddenKeys = getHiddenNavKeys($uid);
@@ -582,6 +590,9 @@ function adminLteTopNav(array $artist, string $slug, string $activeKey): string 
 // statistiche: sono passati alla barra in cima alla pagina (adminLteTopNav()) — qui resta solo
 // l'identità.
 function renderAdminLteProfileSidebar(array $artist, string $slug, bool $showFollowWidget = false, string $extraTopHtml = ''): string {
+    if (academicSkinActive()) {
+        return '<div class="col-lg-3 order-2 order-lg-1 adminlte-sidebar-col">' . academicSidebarHtml($artist, $slug, $extraTopHtml) . '</div>';
+    }
     $uid = (int) $artist['id'];
     $db = getDB();
 
@@ -819,7 +830,7 @@ function renderAdminLteProfileExtras(array $artist, string $slug, string $extraC
     // Ogni voce visibile porta anche il conteggio dei suoi elementi (es. "Attori che amo").
     $hiddenKeys = getHiddenNavKeys($uid);
     $cheAmoItems = [];
-    if (!in_array('cheamo', $hiddenKeys, true)) {
+    if (!in_array('cheamo', $hiddenKeys, true) && !academicSkinActive()) {
         foreach (CHE_AMO_MODULES as $key => $m) {
             if (in_array($key, $hiddenKeys, true)) {
                 continue;

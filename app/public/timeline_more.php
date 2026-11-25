@@ -19,7 +19,7 @@ if (!$user) {
 
 $items = getTimelineFeedForUsers([$user['id']], $pageSize, $offset);
 
-if (($user['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($user)) {
     $html = renderAdminLteTimelineRows($items, $user);
     echo json_encode(['html' => $html, 'count' => count($items)]);
     exit;

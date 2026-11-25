@@ -33,7 +33,7 @@ $stmt = getDB()->prepare('SELECT b.* FROM blog_posts b JOIN blog_post_categories
 $stmt->execute([$category['id']]);
 $posts = $stmt->fetchAll();
 
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$isAdminLte = adminLteFamilyTheme($artist);
 if ($isAdminLte) {
     echo renderAdminLteBlogCategoryPage($artist, $userSlug, $category, $posts);
     exit;

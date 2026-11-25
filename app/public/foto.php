@@ -27,7 +27,7 @@ $albums = getDB()->prepare("SELECT * FROM photo_albums WHERE user_id=? AND is_pu
 $albums->execute([$artist['id']]);
 $albums = $albums->fetchAll();
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteFotoPage($artist, $slug, $albums, $timelinePhotos);
     exit;
 }

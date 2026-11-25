@@ -30,7 +30,7 @@ if (!$en) {
     contestPageClose($artist);
     exit;
 }
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteContestEntryPage($artist, $c, $en);
     exit;
 }

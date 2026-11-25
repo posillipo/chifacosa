@@ -55,7 +55,7 @@ $photos = array_values(array_filter(array_merge([$post['image_path']], getTimeli
 $sameDayPosts = getSameDayTimelinePosts((int) $post['user_id'], $post['publish_at'], $post['created_at'], $postId);
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteTimelinePostPage($post, $artist, $slug, $photos, $sameDayPosts, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }

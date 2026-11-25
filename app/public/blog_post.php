@@ -55,7 +55,7 @@ $artist = [
 ];
 
 // Tema "AdminLTE": stesso principio "a scena" della Home (vedi u.php).
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteBlogPostPage($post, $artist, $userSlug, $isOwner, $isScheduledFuture, $isPreview);
     exit;
 }

@@ -17,7 +17,7 @@ if (!$artist) {
     exit('Pagina non trovata.');
 }
 
-$isAdminLte = ($artist['page_theme'] ?? 'colorful') === 'adminlte-profile';
+$isAdminLte = adminLteFamilyTheme($artist);
 // Filtro di ricerca (parola chiave + categorie): solo tema AdminLTE, validato su questo artista.
 $filter = $isAdminLte ? blogFilterFromRequest((int) $artist['id'], $_GET) : ['q' => '', 'cats' => []];
 [$filterSql, $filterParams] = blogFilterSql($filter);

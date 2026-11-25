@@ -53,9 +53,8 @@ const PAGE_THEMES = [
     // solo la Home ha la veste "PA Italia" (bootstrap-italia, il design system open source della
     // Pubblica Amministrazione italiana), le altre pagine pubbliche restano nel tema Colorful.
     'pa-italia' => ['label' => 'PA Italia', 'description' => 'Ispirato al design system ufficiale della Pubblica Amministrazione italiana (bootstrap-italia): intestazione con logo/nome, tipografia Titillium Web, card istituzionali per Timeline e Chi sono. Vale solo per la Home: le altre pagine restano nel tema Colorful.', 'body_class' => 'colorful-page'],
-    // body_class = 'colorful-page' come per AdminLTE e PA Italia: solo la Home ha la veste «Academic»; le altre pagine
-    // pubbliche restano nello scheletro condiviso.
-    'academic' => ['label' => 'Academic', 'description' => 'Pagina bianca e sobria ispirata ad Academic Pages (portfolio accademico): barra in alto con il tuo nome e le sezioni, profilo con foto, luogo e link a sinistra, «Chi sono» e ultimi aggiornamenti a destra, tema chiaro/scuro. Vale solo per la Home: le altre pagine restano nel tema Colorful.', 'body_class' => 'colorful-page'],
+    // body_class = 'colorful-page' per le pagine che non hanno la veste «Academic» (le pagine «Che Amo»), come per AdminLTE e PA Italia.
+    'academic' => ['label' => 'Academic', 'description' => 'Pagina bianca e sobria ispirata ad Academic Pages (portfolio accademico): barra in alto con il tuo nome e le sezioni, profilo con foto, luogo e link a sinistra, «Chi sono» e ultimi aggiornamenti a destra, tema chiaro/scuro. Vale per la Home e per tutte le pagine del sito (Timeline, Blog, Eventi, Foto, Video, Servizi, Offerte, Menù, Contatti, Contest, Spotify, Podcast, YouTube); le pagine «Che Amo» restano nel tema Colorful.', 'body_class' => 'colorful-page'],
 ];
 
 

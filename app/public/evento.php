@@ -40,7 +40,7 @@ $resMsg = $_GET['res_msg'] ?? '';
 $resErr = ($_GET['res_err'] ?? '0') === '1';
 $scheduleLabel = eventScheduleLabel($event['recurrence'] ?? 'none', (bool) ($event['is_perpetual'] ?? false));
 
-if (($artist['page_theme'] ?? 'colorful') === 'adminlte-profile') {
+if (adminLteFamilyTheme($artist)) {
     echo renderAdminLteEventoDetailPage($artist, $slug, $event, $scheduleLabel, $resMsg, $resErr);
     exit;
 }
