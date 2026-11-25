@@ -71,6 +71,7 @@ $themePickerBackgrounds = [
     'adminlte-profile' => 'linear-gradient(160deg, #f4f6f9 0%, #e9ecef 100%)',
     'backstage' => 'linear-gradient(160deg, #fdf7ea 0%, #f0e2c4 100%)',
     'pa-italia' => 'linear-gradient(160deg, #0059b3 0%, #0066cc 100%)',
+    'academic' => 'linear-gradient(160deg, #ffffff 0%, #eef3f4 100%)',
 ];
 
 // Temi che questo utente può scegliere (più quello già in uso, anche se nel frattempo è stato limitato).
@@ -317,6 +318,18 @@ include __DIR__ . '/_dash_header.php';
                 <div style="padding:10px 8px;">
                   <div style="background:#e9ecef;border-radius:4px;height:6px;width:80%;margin-bottom:4px;"></div>
                   <div style="background:#e9ecef;border-radius:4px;height:6px;width:55%;"></div>
+                </div>
+              </div>
+            <?php elseif ($key === 'academic'): ?>
+              <div style="background:#fff;border:1px solid #dee2e6;border-radius:6px;padding:0;margin-bottom:10px;overflow:hidden;">
+                <div style="border-bottom:1px solid #e4e6e7;padding:6px 8px;display:flex;gap:6px;align-items:center;">
+                  <div style="background:#494e52;border-radius:2px;height:5px;width:28%;"></div>
+                  <div style="background:#c9cdd0;border-radius:2px;height:5px;width:14%;"></div>
+                  <div style="background:#c9cdd0;border-radius:2px;height:5px;width:14%;"></div>
+                </div>
+                <div style="display:flex;gap:8px;padding:8px;">
+                  <div style="width:30%;"><div style="width:26px;height:26px;border-radius:50%;background:#2f7f93;margin-bottom:4px;"></div><div style="background:#e4e6e7;border-radius:2px;height:4px;margin-bottom:3px;"></div><div style="background:#e4e6e7;border-radius:2px;height:4px;width:70%;"></div></div>
+                  <div style="flex:1;"><div style="background:#494e52;border-radius:2px;height:6px;width:50%;margin-bottom:5px;border-bottom:1px solid #e4e6e7;"></div><div style="background:#e4e6e7;border-radius:2px;height:4px;margin-bottom:3px;"></div><div style="background:#e4e6e7;border-radius:2px;height:4px;width:80%;"></div></div>
                 </div>
               </div>
             <?php elseif ($key === 'backstage'): ?>

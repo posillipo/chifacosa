@@ -1306,6 +1306,9 @@ Aggiunge `direct_messages.deleted_by_sender` e `deleted_by_recipient` (TINYINT, 
 ### Guida Messaggi con «Cancella conversazione» (`2026_11_41_page_help_chat_delete.sql`)
 Aggiorna il testo di guida di `dashboard_chat.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`.
 
+### Tema «Academic» solo per gli amministratori (`2026_11_42_theme_academic_visibility.sql`)
+Inserisce in `theme_visibility` la regola `academic` = `admins`: il nuovo tema grafico è scegliibile solo dagli amministratori finché non lo apri a tutti (Area Admin → Temi grafici). `INSERT IGNORE`: rieseguirla non rimette la restrizione se l'hai già cambiata. Richiede la `2026_11_23`. Senza questa migrazione il tema è visibile a tutti.
+
 ---
 
 ## Come aggiungere una nuova voce

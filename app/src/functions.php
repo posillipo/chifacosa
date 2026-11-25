@@ -12,6 +12,7 @@ require_once __DIR__ . '/fn_themes.php';
 require_once __DIR__ . '/fn_navigation.php';
 require_once __DIR__ . '/fn_adminlte_layout.php';
 require_once __DIR__ . '/fn_adminlte_pages.php';
+require_once __DIR__ . '/fn_academic_theme.php';
 require_once __DIR__ . '/fn_social.php';
 require_once __DIR__ . '/fn_media.php';
 require_once __DIR__ . '/fn_dates.php';

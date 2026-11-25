@@ -75,6 +75,12 @@ if (($artist['page_theme'] ?? 'colorful') === 'pa-italia') {
     exit;
 }
 
+// Tema "Academic" (ispirato ad Academic Pages): stesso principio "a scena", solo per la Home.
+if (($artist['page_theme'] ?? 'colorful') === 'academic') {
+    echo renderAcademicProfileTheme($artist, $slug);
+    exit;
+}
+
 $hiddenNavKeys = getHiddenNavKeys((int) $uid);
 
 $links = getDB()->prepare('SELECT * FROM links WHERE user_id=? AND is_active=1 ORDER BY sort_order ASC, id ASC');

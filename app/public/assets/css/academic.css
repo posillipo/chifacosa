@@ -1,0 +1,79 @@
+/* Tema "Academic" — ispirato ad Academic Pages (MIT, © 2016 Michael Rose; vedi academic-LICENSE.txt). */
+:root {
+  --acad-base: #2f7f93; --acad-bg: #fff; --acad-footer-bg: #f2f3f3; --acad-border: #e4e6e7; --acad-text: #494e52;
+  --acad-text-light: #7a8288; --acad-link: #2f7f93; --acad-link-hover: #1f5a69; --acad-masthead-h: 64px;
+  --acad-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+html[data-theme="dark"] {
+  --acad-base: #2f7f93; --acad-bg: #252a34; --acad-footer-bg: #1d2129; --acad-border: #3b4350; --acad-text: #eaeaea;
+  --acad-text-light: #a9b0ba; --acad-link: #08d9d6; --acad-link-hover: #7af3f0;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { margin: 0; background: var(--acad-bg); color: var(--acad-text); font-family: var(--acad-font); line-height: 1.5; padding-top: var(--acad-masthead-h); }
+a { color: var(--acad-link); text-decoration: none; }
+a:hover { color: var(--acad-link-hover); text-decoration: underline; }
+img { max-width: 100%; height: auto; }
+h1, h2, h3 { line-height: 1.2; margin: 1.6em 0 .5em; font-weight: 700; }
+h1 { font-size: 2rem; margin-top: 0; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
+.muted { color: var(--acad-text-light); }
+
+/* Barra in alto: testo, filetto in basso, voce selezionata sottolineata */
+.masthead { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: var(--acad-bg); border-bottom: 1px solid var(--acad-border); }
+.masthead__inner-wrap { max-width: 1280px; margin: 0 auto; padding: .5em 1em; display: flex; align-items: center; min-height: var(--acad-masthead-h); }
+.masthead__menu { flex: 1; min-width: 0; }
+.masthead__menu ul { display: flex; flex-wrap: wrap; align-items: center; list-style: none; margin: 0; padding: 0; row-gap: .25em; }
+.masthead__menu-item { padding-right: 1.4em; white-space: nowrap; }
+.masthead__menu-item a { color: var(--acad-text-light); font-weight: 500; padding-bottom: 2px; }
+.masthead__menu-item a:hover { color: var(--acad-text); text-decoration: none; border-bottom: 2px solid var(--acad-border); }
+.masthead__menu-item--lg { font-weight: 700; padding-right: 2em; }
+.masthead__menu-item--lg a, .masthead__menu-item.selected a { color: var(--acad-text); font-weight: 700; }
+.masthead__menu-item--tail { margin-left: auto; padding-right: 0; } .masthead__menu-item--tail + .masthead__menu-item--tail { margin-left: .8em; }
+.masthead__menu-item button, .acad-burger { background: none; border: 0; color: var(--acad-text); font-size: 1.05rem; cursor: pointer; padding: .2em .4em; }
+.acad-burger { display: none; margin-left: auto; font-size: 1.3rem; }
+
+/* Pagina: profilo dell'autore a sinistra, contenuto a destra */
+#main { max-width: 1280px; margin: 0 auto; padding: 2em 1em; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5em; align-items: start; }
+.sidebar { position: sticky; top: calc(var(--acad-masthead-h) + 1.5em); }
+.author__avatar img { width: 100%; max-width: 175px; aspect-ratio: 1; object-fit: cover; border-radius: 50%; display: block; margin-bottom: .6em; }
+.author__name { margin: 0 0 .1em; font-size: 1.25rem; }
+.author__bio { margin: 0 0 .8em; font-size: .9rem; color: var(--acad-text-light); }
+.author__urls { list-style: none; margin: 0 0 1em; padding: 0; font-size: .9rem; }
+.author__urls li { margin: .35em 0; overflow-wrap: anywhere; } .author__urls i { width: 1.2em; text-align: center; color: var(--acad-text-light); }
+.btn { display: inline-block; padding: .5em 1em; border-radius: 4px; border: 0; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.btn--primary { background: var(--acad-base); color: #fff !important; } .btn--primary:hover { background: var(--acad-link-hover); text-decoration: none; }
+.page__title { margin-bottom: .2em; }
+.page__content h2 { padding-bottom: .4em; border-bottom: 1px solid var(--acad-border); }
+.page__content p { margin: 0 0 1.2em; }
+.page__meta { margin: .1em 0 0; font-size: .85rem; color: var(--acad-text-light); }
+.notice { padding: .8em 1em; border-radius: 4px; background: var(--acad-footer-bg); border-left: 4px solid var(--acad-base); margin-bottom: 1em; }
+.notice--danger { border-left-color: #ee5f5b; }
+
+/* Voci dell'elenco */
+.archive__item { display: flex; gap: 1em; align-items: flex-start; margin: 0 0 1.4em; }
+.archive__item-teaser { flex: 0 0 120px; } .archive__item-teaser img { width: 120px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 4px; display: block; }
+.archive__item-teaser--ph { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; border-radius: 4px; background: var(--acad-footer-bg); color: var(--acad-text-light); font-size: 1.6rem; }
+.archive__item-teaser--ph:hover { text-decoration: none; }
+.archive__item-body { min-width: 0; }
+.acad-brand { display: none; font-weight: 700; color: var(--acad-text); }
+.archive__item-title { margin: 0; font-size: 1.1rem; } .archive__item-title a { color: var(--acad-text); } .archive__item-title a:hover { color: var(--acad-link); }
+
+/* Piè di pagina */
+.page__footer { background: var(--acad-footer-bg); padding: 1.6em 1em; margin-top: 2em; font-size: .85rem; color: var(--acad-text-light); text-align: center; }
+.page__footer ul { list-style: none; margin: 0 0 .8em; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: .4em 1.2em; }
+.page__footer a { color: var(--acad-text-light); text-decoration: underline; }
+
+@media (max-width: 1023px) {
+  #main { grid-template-columns: 1fr; gap: 1em; }
+  .sidebar { position: static; display: grid; grid-template-columns: 96px 1fr; column-gap: 1em; align-items: center; }
+  .author__avatar img { max-width: 96px; margin: 0; }
+  .author__urls, .author__follow { grid-column: 1 / -1; }
+  .acad-burger { display: block; }
+  .acad-brand { display: block; }
+  .masthead__menu-item--lg { display: none; }
+  .masthead__menu { position: absolute; top: var(--acad-masthead-h); left: 0; right: 0; background: var(--acad-bg); border-bottom: 1px solid var(--acad-border); padding: .5em 1em 1em; display: none; }
+  .masthead__menu.open { display: block; }
+  .masthead__menu ul { flex-direction: column; align-items: flex-start; } .masthead__menu-item { padding: .35em 0; }
+  .masthead__menu-item--tail, .masthead__menu-item--tail + .masthead__menu-item--tail { margin-left: 0; }
+}
+@media (max-width: 599px) { .archive__item-teaser { flex-basis: 88px; } .archive__item-teaser img { width: 88px; } h1 { font-size: 1.6rem; } }
