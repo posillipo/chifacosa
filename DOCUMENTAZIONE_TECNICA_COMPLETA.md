@@ -399,6 +399,8 @@ Le miniature delle schede del Feed (`.stc-thumb`) non tagliano più l'immagine: 
 
 ### Tema Academic: Home = Timeline, niente colonna destra
 
+- **Pagina articolo = schema del template (`posts/…/blog-post`):** con Academic `renderAdminLteBlogPostPage()` usa `academicBlogPostHtml()` (`fn_academic_theme.php`): titolo, riga «N minuti di lettura · Pubblicato: data» (200 parole/minuto, `academicReadMinutes()`), copertina, testo, riga «Tag» (categorie + tag), «Condividi su» (Bluesky, Facebook, LinkedIn, Mastodon, X), «Precedente / Successivo» (articoli adiacenti per data) e «Ti potrebbe interessare» (ultimi 4 altri articoli con titolo, tempo di lettura, data, estratto). Nella colonna sinistra restano solo profilo e Categorie del blog (niente «Ultimi articoli»/correlati).
+
 - **Comportamento da telefono/tablet (come nel tema originale):** la barra ha il titolo fisso, le voci che entrano nello spazio (JS «greedy nav» in `academic.js`: le altre passano nel menu a tre righe, mostrato solo se serve), il tasto tema sempre visibile. Il profilo diventa una riga compatta (foto piccola, nome, bio di 2 righe) con il tasto «Info» che apre un pannello con città, genere, link e il tasto Segui/Dashboard. Da 1024px in su il pannello è sempre aperto sotto la foto.
 
 - **La Home è la timeline:** titolo «Timeline», ultime 10 voci e pulsante «Carica altri» (20 alla volta da `timeline_more.php`, che con Academic restituisce `academicTimelineItemsHtml()`). `/slug/timeline` rimanda alla Home (302); nel menu non c'è una voce «Timeline» a parte, e le pagine del singolo post tengono selezionata la voce col nome del profilo. Niente «Chi sono» nella Home: la bio completa sta sotto la foto, nella colonna sinistra.
