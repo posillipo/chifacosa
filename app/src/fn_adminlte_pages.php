@@ -419,7 +419,15 @@ function renderAdminLteBlogPostPage(array $post, array $artist, string $slug, bo
                 'date' => formatItalianDate($rp['published_at'], $artist),
             ];
         }
-        if ($relatedTiles) {
+        if ($relatedTiles && academicSkinActive()) {
+            $single = count($postCategories) === 1;
+            academicSidebarSlot(academicSideListCard(
+                $single ? 'Altri articoli in ' . $postCategories[0]['name'] : 'Articoli correlati',
+                $relatedTiles,
+                $single ? blogCategoryUrl($slug, $postCategories[0]) : '/' . $slug . '/blog',
+                $single ? 'Tutti gli articoli in ' . $postCategories[0]['name'] : 'Leggi il Blog'
+            ));
+        } elseif ($relatedTiles) {
             $single = count($postCategories) === 1;
             $relatedPostsHtml = renderAdminLteGridCarousel(
                 $single ? 'Altri articoli in ' . $postCategories[0]['name'] : 'Articoli correlati',

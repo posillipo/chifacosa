@@ -35,6 +35,23 @@ function academicSidebarSlot(?string $add = null): string {
     return $html;
 }
 
+/** Scheda testuale (senza immagini) per la colonna sinistra: elenco di voci [url, titolo, data] con filetti sottili. */
+function academicSideListCard(string $title, array $items, string $moreUrl = '', string $moreLabel = ''): string {
+    if (!$items) {
+        return '';
+    }
+    $h = '<div class="author__list"><h3 class="author__list-title">' . e($title) . '</h3><ul>';
+    foreach ($items as $it) {
+        $h .= '<li><a href="' . e($it['url']) . '">' . e(textExcerpt((string) $it['title'], 70)) . '</a>'
+            . (!empty($it['date']) ? '<small>' . e($it['date']) . '</small>' : '') . '</li>';
+    }
+    $h .= '</ul>';
+    if ($moreUrl !== '') {
+        $h .= '<a class="author__list-more" href="' . e($moreUrl) . '">' . e($moreLabel) . '</a>';
+    }
+    return $h . '</div>';
+}
+
 /** Filtro di uscita: sostituisce il segnaposto della colonna sinistra con le schede raccolte. */
 function academicSlotFilter(string $buffer): string {
     return str_replace('<!--ACAD-SLOT-->', academicSidebarSlot(), $buffer);
