@@ -136,20 +136,20 @@ function academicMastheadHtml(array $artist, string $slug, string $activeKey = '
     ?>
 <div class="masthead">
   <div class="masthead__inner-wrap">
+    <a class="masthead__title<?= in_array($activeKey, ['home', 'timeline'], true) ? ' selected' : '' ?>" href="/<?= e($slug) ?>"><?= e($name) ?></a>
     <nav class="masthead__menu" id="acad-nav" aria-label="Navigazione principale">
       <ul class="visible-links">
-        <li class="masthead__menu-item masthead__menu-item--lg<?= in_array($activeKey, ['home', 'timeline'], true) ? ' selected' : '' ?>"><a href="/<?= e($slug) ?>"><?= e($name) ?></a></li>
         <?php foreach ($nav as $key => [$label, $url]): ?>
           <li class="masthead__menu-item<?= $activeKey === $key ? ' selected' : '' ?>"><a href="<?= e($url) ?>"><?= e($label) ?></a></li>
         <?php endforeach; ?>
-        <li class="masthead__menu-item masthead__menu-item--tail">
+        <li class="masthead__menu-item">
           <?php if (empty($_SESSION['user_id'])): ?><a href="/login.php">Accedi</a><?php else: ?><a href="/dashboard.php">Dashboard</a><?php endif; ?>
         </li>
-        <li class="masthead__menu-item masthead__menu-item--tail"><button type="button" id="acad-theme" aria-label="Cambia tema chiaro/scuro" title="Tema chiaro/scuro"><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i></button></li>
       </ul>
+      <ul class="hidden-links" hidden></ul>
     </nav>
-    <a class="acad-brand" href="/<?= e($slug) ?>"><?= e($name) ?></a>
-    <button type="button" class="acad-burger" id="acad-burger" aria-label="Apri il menu" aria-controls="acad-nav" aria-expanded="false"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+    <button type="button" id="acad-theme" class="acad-btn-icon" aria-label="Cambia tema chiaro/scuro" title="Tema chiaro/scuro"><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i></button>
+    <button type="button" class="acad-burger" id="acad-burger" aria-label="Altre voci del menu" aria-controls="acad-nav" aria-expanded="false" hidden><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
   </div>
 </div>
 <?php
@@ -201,6 +201,9 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
       <h3 class="author__name"><a href="/<?= e($slug) ?>"><?= e($name) ?></a></h3>
       <?php if (!empty($artist['bio'])): ?><p class="author__bio"><?= nl2br(e($artist['bio'])) ?></p><?php endif; ?>
     </div>
+    <div class="author__urls-wrapper">
+    <button type="button" class="btn btn--inverse" id="acad-info" aria-expanded="false" aria-controls="acad-urls">Info</button>
+    <div class="author__panel" id="acad-urls">
     <ul class="author__urls">
       <?php if ($place !== ''): ?><li><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <?= e($place) ?></li><?php endif; ?>
       <?php if ($genre !== ''): ?><li><i class="fa-solid fa-music" aria-hidden="true"></i> <?= e($genre) ?></li><?php endif; ?>
@@ -222,6 +225,8 @@ function academicSidebarHtml(array $artist, string $slug, string $extraTopHtml =
       <?php elseif ($showFollow): ?>
         <a href="/login.php" class="btn btn--primary"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Segui</a>
       <?php endif; ?>
+    </div>
+    </div>
     </div>
     <div class="author__slot"><!--ACAD-SLOT--></div>
     <?php if ($extraTopHtml !== ''): ?><div class="author__extra"><?= $extraTopHtml ?></div><?php endif; ?>

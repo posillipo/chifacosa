@@ -11,11 +11,32 @@
       try { localStorage.setItem('acadTheme', dark ? 'dark' : 'light'); } catch (e) {}
     });
   }
+  // Barra «greedy»: le voci che non entrano passano nel menu a scomparsa (icona a tre righe), come nel tema originale.
   var burger = document.getElementById('acad-burger'), nav = document.getElementById('acad-nav');
   if (burger && nav) {
+    var vis = nav.querySelector('.visible-links'), hid = nav.querySelector('.hidden-links');
+    var items = Array.prototype.slice.call(vis.children);
+    var fit = function () {
+      items.forEach(function (li) { vis.appendChild(li); });
+      var n = 0;
+      while (vis.scrollWidth > vis.clientWidth + 1 && vis.children.length > 0) {
+        hid.insertBefore(vis.lastElementChild, hid.firstChild); n++;
+      }
+      burger.hidden = n === 0;
+      if (n === 0) { hid.hidden = true; burger.setAttribute('aria-expanded', 'false'); }
+    };
     burger.addEventListener('click', function () {
-      var open = nav.classList.toggle('open');
-      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      hid.hidden = !hid.hidden;
+      burger.setAttribute('aria-expanded', hid.hidden ? 'false' : 'true');
+    });
+    window.addEventListener('resize', fit);
+    fit();
+  }
+  var info = document.getElementById('acad-info'), panel = document.getElementById('acad-urls');
+  if (info && panel) {
+    info.addEventListener('click', function () {
+      var open = panel.classList.toggle('open');
+      info.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   }
   // «Carica altri» nella timeline della Home: voci successive da /timeline_more.php (20 alla volta).
