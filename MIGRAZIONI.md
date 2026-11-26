@@ -1312,6 +1312,9 @@ Inserisce in `theme_visibility` la regola `academic` = `admins`: il nuovo tema g
 ### Guida «Coda Social»: Apri sistema Esterno (`2026_11_43_page_help_social_queue_external.sql`)
 Aggiorna il testo di guida di `dashboard_social_queue.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_30`. Nessuna modifica allo schema.
 
+### Guida «Coda Social»: Apri sistema Esterno su ogni stato (`2026_11_44_page_help_social_queue_external_all.sql`)
+Aggiorna ancora il testo di guida di `dashboard_social_queue.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire): il pulsante è su ogni elemento, non solo sui programmati. Sostituisce il testo della `2026_11_43`. Nessuna modifica allo schema.
+
 ---
 
 ## Come aggiungere una nuova voce

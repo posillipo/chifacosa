@@ -291,10 +291,9 @@ $activeCount = ($statusFilter !== 'active' ? 1 : 0) + ($typeFilter !== '' ? 1 : 
             <?php if ($qi['error_msg']): ?><span class="sq-meta" style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 140)) ?></span><?php endif; ?>
           </div>
           <div class="sq-actions">
-            <?php if ($qi['status'] === 'scheduled'): $extUrl = trim((string) ($qi['scheduler_ref'] ?? '')); $extOk = (bool) preg_match('#^https?://\S+$#i', $extUrl); ?>
+            <?php $extUrl = trim((string) ($qi['scheduler_ref'] ?? '')); $extOk = (bool) preg_match('#^https?://\S+$#i', $extUrl); ?>
               <?php if ($extOk): ?><a class="btn-xs sq-ext" href="<?= e($extUrl) ?>" target="_blank" rel="noopener noreferrer">↗ Apri sistema Esterno</a>
               <?php else: ?><span class="btn-xs sq-ext is-off" aria-disabled="true" title="Nessun collegamento al sistema esterno">↗ Apri sistema Esterno</span><?php endif; ?>
-            <?php endif; ?>
             <?php if ($isEditable): ?>
               <button type="button" class="btn-xs sq-suspend-btn" data-id="<?= $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>">
                 <?= $isSuspended ? '▶ Riattiva' : '⏸ Sospendi' ?>
