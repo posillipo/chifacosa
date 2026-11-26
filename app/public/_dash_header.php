@@ -162,7 +162,6 @@ $dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
         // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
         ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
         ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
-        ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
     ]);
 
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
@@ -220,6 +219,18 @@ if ($actingAsId) {
         }
     }
 }
+// Tasti della barra in alto per gli admin (Social / Automazioni / Marketing): vedi dashTopGroups() in src/dash_right.php.
+require_once __DIR__ . '/../src/dash_right.php';
+$dashTopGroups = dashTopGroups([
+    'profile_id'       => (int) $countsForId,
+    'is_band_or_label' => $isBandOrLabel,
+    'queue_on'         => !empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social']),
+    'is_admin'         => !empty($user['is_admin']),
+]);
+$dashOpenGroup = '';
+foreach ($dashTopGroups as $gKey => $g) {
+    if (in_array($activeTab ?? '', $g['tabs'], true)) { $dashOpenGroup = $gKey; break; }
+}
 ?>
 <!doctype html>
 <html lang="it">
@@ -236,7 +247,7 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right<?= $dashOpenGroup !== '' ? ' has-subbar' : '' ?>">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -247,6 +258,13 @@ if ($actingAsId) {
       <i class="fa-solid fa-bars"></i>
     </button>
     <div class="brand brand-dash"><a href="/"><?= siteBrandHtml() ?></a></div>
+    <?php if ($dashTopGroups): ?>
+    <nav class="dash-topgroups" aria-label="Sezioni amministratore">
+      <?php foreach ($dashTopGroups as $gKey => $g): ?>
+        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span></button>
+      <?php endforeach; ?>
+    </nav>
+    <?php endif; ?>
   </div>
   <div class="dash-psearch" id="dash-psearch">
     <button type="button" class="dash-psearch-btn" id="dash-psearch-btn" title="Cerca profili" aria-label="Cerca profili" aria-expanded="false"><i class="fa-solid fa-magnifying-glass"></i></button>
@@ -294,6 +312,22 @@ if ($actingAsId) {
     <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </nav>
 </div>
+<?php if ($dashTopGroups): ?>
+<div class="dash-subbar" id="dash-subbar"<?= $dashOpenGroup === '' ? ' hidden' : '' ?>>
+  <?php foreach ($dashTopGroups as $gKey => $g): ?>
+    <nav class="dash-subnav" id="dash-sub-<?= e($gKey) ?>" data-group="<?= e($gKey) ?>" aria-label="<?= e($g['label']) ?>"<?= $dashOpenGroup === $gKey ? '' : ' hidden' ?>>
+      <?php foreach ($g['items'] as $it): ?>
+        <?php if ($it['text'] !== null): ?>
+          <span class="dash-subnav-text"><?= e($it['text']) ?></span>
+        <?php else: ?>
+          <a href="<?= e($it['url']) ?>" class="dash-subnav-link"><i class="<?= e($it['icon']) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span><?php if ($it['value'] !== null): ?><b class="dash-subnav-val<?= $it['value'] === 0 ? ' zero' : '' ?><?= $it['tone'] !== '' ? ' ' . e($it['tone']) : '' ?>"><?= (int) $it['value'] ?></b><?php endif; ?></a>
+        <?php endif; ?>
+      <?php endforeach; ?>
+    </nav>
+  <?php endforeach; ?>
+</div>
+<script src="<?= assetUrl('/assets/js/dash-groups.js') ?>" defer></script>
+<?php endif; ?>
 <script>
 // Ricerca profili nella barra in alto: campo sempre visibile su desktop, lente + campo compatto su telefono.
 (function () {
