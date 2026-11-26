@@ -142,7 +142,6 @@ if (!siteToolEnabled('cinema')) unset($dashSideExtra['cinema']);
 if (!siteToolEnabled('prodotti')) unset($dashSideExtra['products']);
 require_once __DIR__ . '/../src/dash_right.php';
 $dashSideAll = $dashTabs + $dashSideExtra;
-if (!empty($user['is_admin'])) { unset($dashSideAll['schedule_admin']); } // ora nel menu admin in alto (Social → Calendario)
 // Contatori "da gestire" accanto alle voci del menu (prima stavano nella colonna destra).
 $sideBadges = [];
 if (isset($dashSideAll['service_inquiries'])) {
@@ -160,6 +159,11 @@ $dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
         ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
+    ], empty($user['is_admin']) ? [] : [
+        // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
+        ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
+        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
+        ['label' => 'Marketing', 'url' => '/dashboard_marketing.php', 'tab' => 'marketing', 'icon' => 'fa-solid fa-bullhorn', 'on' => marketingActiveCount((int) $countsForId) > 0],
     ]);
 
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
@@ -217,23 +221,6 @@ if ($actingAsId) {
         }
     }
 }
-// Tasti della barra in alto per gli admin (Social / Automazioni / Marketing): vedi dashTopGroups() in src/dash_right.php.
-require_once __DIR__ . '/../src/dash_right.php';
-$dashTopGroups = dashTopGroups([
-    'profile_id'       => (int) $countsForId,
-    'is_band_or_label' => $isBandOrLabel,
-    'queue_on'         => !empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social']),
-    'is_admin'         => !empty($user['is_admin']),
-]);
-$dashOpenGroup = '';   // gruppo con barra secondaria da aprire
-$dashActiveGroup = ''; // gruppo evidenziato (anche Marketing, che è un link diretto senza barra secondaria)
-foreach ($dashTopGroups as $gKey => $g) {
-    if (in_array($activeTab ?? '', $g['tabs'], true)) {
-        $dashActiveGroup = $gKey;
-        if (!empty($g['items'])) { $dashOpenGroup = $gKey; }
-        break;
-    }
-}
 ?>
 <!doctype html>
 <html lang="it">
@@ -250,7 +237,7 @@ foreach ($dashTopGroups as $gKey => $g) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right<?= $dashTopGroups ? ' has-adminrow' : '' ?><?= $dashOpenGroup !== '' ? ' has-subbar' : '' ?>">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -281,6 +268,9 @@ foreach ($dashTopGroups as $gKey => $g) {
         <span class="dash-preview-ph"><?= e(mb_strtoupper(mb_substr((string) $barAvatarName, 0, 1))) ?></span>
       <?php endif; ?>
     </a>
+    <?php if (!empty($user['is_admin'])): ?>
+      <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
+    <?php endif; ?>
     <?php
       // Un solo punto per tutta la messaggistica: messaggi, contatti dal sito, richieste di servizio, prenotazioni.
       require_once __DIR__ . '/../src/dash_right.php';
@@ -298,38 +288,6 @@ foreach ($dashTopGroups as $gKey => $g) {
     <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </nav>
 </div>
-<?php if ($dashTopGroups): ?>
-<div class="dash-adminrow" id="dash-adminrow">
-  <nav class="dash-topgroups" aria-label="Sezioni amministratore">
-    <?php foreach ($dashTopGroups as $gKey => $g): ?>
-      <?php if (!empty($g['href'])): ?>
-        <a class="dash-topgroup<?= $dashActiveGroup === $gKey ? ' on' : '' ?>" href="<?= e($g['href']) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val"><?= (int) $g['badge'] ?></b><?php endif; ?></a>
-      <?php else: ?>
-        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val<?= !empty($g['tone']) ? ' ' . e($g['tone']) : '' ?>" title="<?= !empty($g['tone']) ? 'Da controllare' : 'In corso o in attesa' ?>"><?= (int) $g['badge'] ?></b><?php endif; ?><i class="fa-solid fa-chevron-down dash-topgroup-caret" aria-hidden="true"></i></button>
-      <?php endif; ?>
-    <?php endforeach; ?>
-  </nav>
-  <nav class="dash-adminlinks" aria-label="Strumenti amministratore">
-    <a href="/admin_dashboard.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Area Admin</span></a>
-    <a href="/classic_entry.php"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span>Dashboard classica</span></a>
-  </nav>
-</div>
-<div class="dash-subbar" id="dash-subbar"<?= $dashOpenGroup === '' ? ' hidden' : '' ?>>
-  <?php foreach ($dashTopGroups as $gKey => $g): ?>
-    <?php if (empty($g['items'])) continue; ?>
-    <nav class="dash-subnav" id="dash-sub-<?= e($gKey) ?>" data-group="<?= e($gKey) ?>" aria-label="<?= e($g['label']) ?>"<?= $dashOpenGroup === $gKey ? '' : ' hidden' ?>>
-      <?php foreach ($g['items'] as $it): ?>
-        <?php if ($it['text'] !== null): ?>
-          <span class="dash-subnav-text"><?= e($it['text']) ?></span>
-        <?php else: ?>
-          <a href="<?= e($it['url']) ?>" class="dash-subnav-link"><i class="<?= e($it['icon']) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span><?php if ($it['value'] !== null): ?><b class="dash-subnav-val<?= $it['value'] === 0 ? ' zero' : '' ?><?= $it['tone'] !== '' ? ' ' . e($it['tone']) : '' ?>"><?= (int) $it['value'] ?></b><?php endif; ?></a>
-        <?php endif; ?>
-      <?php endforeach; ?>
-    </nav>
-  <?php endforeach; ?>
-</div>
-<script src="<?= assetUrl('/assets/js/dash-groups.js') ?>" defer></script>
-<?php endif; ?>
 <script>
 // Ricerca profili nella barra in alto: campo sempre visibile su desktop, lente + campo compatto su telefono.
 (function () {
@@ -422,6 +380,11 @@ document.addEventListener('click', function (e) {
     <button type="button" id="dash-side-close" class="dash-side-close" aria-label="Chiudi il menu">&times;</button>
   </div>
   <nav>
+  <?php if (!empty($user['is_admin'])): ?>
+    <a href="/dashboard_cruscotto.php" class="dash-side-link dash-side-cruscotto<?= ($activeTab ?? '') === 'cruscotto' ? ' active' : '' ?>" title="Cruscotto"<?= ($activeTab ?? '') === 'cruscotto' ? ' aria-current="page"' : '' ?>>
+      <i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Cruscotto</span>
+    </a>
+  <?php endif; ?>
   <?php foreach ($dashSideGroups as $groupTitle => $groupItems): ?>
     <?php if ($groupTitle === '__integrations'): ?>
       <?php if ($dashIntegrations): ?>
