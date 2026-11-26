@@ -166,10 +166,9 @@ $sqLink = fn($st, $tp) => '?status=' . urlencode($st) . ($tp !== '' ? '&tipo=' .
               <span class="sqx-meta">Aggiunto il <?= date('d/m/Y H:i', strtotime($qi['created_at'])) ?><?= !empty($qi['processed_at']) ? ' · elaborato il ' . date('d/m H:i', strtotime($qi['processed_at'])) : '' ?><?= !empty($qi['scheduler_ref']) ? ' · Metricool: ' . e($qi['scheduler_ref']) : '' ?></span>
               <?php if ($qi['error_msg']): ?><span class="sqx-err"><?= e(mb_substr($qi['error_msg'], 0, 140)) ?></span><?php endif; ?>
               <span class="sqx-actions">
-                <?php if ($qi['status'] === 'scheduled'): $extUrl = trim((string) ($qi['scheduler_ref'] ?? '')); $extOk = (bool) preg_match('#^https?://\S+$#i', $extUrl); ?>
+                <?php $extUrl = trim((string) ($qi['scheduler_ref'] ?? '')); $extOk = (bool) preg_match('#^https?://\S+$#i', $extUrl); ?>
                   <?php if ($extOk): ?><a class="stc-act ext" href="<?= e($extUrl) ?>" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Apri sistema Esterno</span></a>
                   <?php else: ?><span class="stc-act ext is-off" aria-disabled="true" title="Nessun collegamento al sistema esterno"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Apri sistema Esterno</span></span><?php endif; ?>
-                <?php endif; ?>
                 <?php if ($isEditable): ?><button type="button" class="stc-act sq-suspend-btn" data-id="<?= (int) $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>"><i class="fa-solid <?= $isSuspended ? 'fa-play' : 'fa-pause' ?>"></i> <span><?= $isSuspended ? 'Riattiva' : 'Sospendi' ?></span></button><?php endif; ?>
                 <button type="button" class="stc-act danger sq-delete-btn" data-id="<?= (int) $qi['id'] ?>"><i class="fa-solid fa-xmark"></i> <span>Rimuovi</span></button>
               </span>
