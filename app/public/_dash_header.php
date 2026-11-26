@@ -182,62 +182,6 @@ $dashSideGroups = [
     ],
 ];
 
-// ===== Barra superiore per gli amministratori: tasti Social / Automazioni / Marketing =====
-// Le voci operative che stavano nella barra laterale (e le integrazioni) passano in una barra secondaria
-// orizzontale sotto la barra principale, una per tasto. Gli utenti non admin vedono la barra laterale di sempre.
-$dashTopGroups = [];
-if (!empty($user['is_admin'])) {
-    $sideIcons = [];
-    foreach ($dashSideGroups as $gItems) {
-        foreach ($gItems as $k => $ic) { if (is_string($k)) $sideIcons[$k] = $ic; }
-    }
-    $pickSide = function (array $keys) use ($dashSideAll, $sideIcons, $sideBadges) {
-        $out = [];
-        foreach ($keys as $k) {
-            if (!isset($dashSideAll[$k])) continue;
-            $it = $dashSideAll[$k];
-            $out[] = ['label' => $it['label'], 'url' => $it['url'], 'tab' => $it['active'], 'icon' => 'fa-solid ' . ($sideIcons[$k] ?? 'fa-circle'), 'badge' => (int) ($sideBadges[$k] ?? 0)];
-        }
-        return $out;
-    };
-    $pickInt = function (array $tabs) use ($dashIntegrations) {
-        $out = [];
-        foreach ($tabs as $t) {
-            foreach ($dashIntegrations as $int) {
-                if ($int['tab'] === $t) $out[] = ['label' => $int['label'], 'url' => $int['url'], 'tab' => $int['tab'], 'icon' => $int['icon'], 'badge' => 0, 'on' => !empty($int['on'])];
-            }
-        }
-        return $out;
-    };
-    $socialExtra = [];
-    if (!empty($dashProfile['metricool_auto_social'])) {
-        $socialExtra[] = ['label' => 'Coda Social', 'url' => '/dashboard_social_queue.php', 'tab' => 'social_queue', 'icon' => 'fa-solid fa-share-nodes', 'badge' => 0];
-    }
-    $dashTopGroups = [
-        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-hashtag', 'items' => array_merge(
-            $pickSide(['feed', 'timeline', 'blog', 'video', 'foto', 'link', 'featured', 'cheamo', 'schedule', 'schedule_admin', 'board']),
-            $socialExtra, $pickInt(['metricool']))],
-        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'items' => array_merge(
-            $pickInt(['telegram', 'spotify', 'podcast', 'youtube']),
-            [['label' => 'API', 'url' => '/dashboard_api_tokens.php', 'tab' => 'api_tokens', 'icon' => 'fa-solid fa-code', 'badge' => 0],
-             ['label' => 'Server MCP', 'url' => '/admin_mcp.php', 'tab' => 'mcp', 'icon' => 'fa-solid fa-server', 'badge' => 0]])],
-        'marketing' => ['label' => 'Marketing', 'icon' => 'fa-solid fa-bullhorn', 'items' => array_merge(
-            $pickInt(['marketing']),
-            $pickSide(['products', 'offerte', 'menu', 'servizi', 'contest', 'contest_list']))],
-    ];
-    // Tolgo dalla barra laterale ciò che è passato nella barra superiore.
-    $movedKeys = ['feed','timeline','blog','video','foto','link','featured','cheamo','schedule','schedule_admin','board','products','offerte','menu','servizi','contest','contest_list'];
-    foreach ($dashSideGroups as $gName => $gItems) {
-        if ($gName === '__integrations') { continue; }
-        $dashSideGroups[$gName] = array_diff_key($gItems, array_flip($movedKeys));
-    }
-    $dashIntegrations = [];
-    $dashOpenGroup = '';
-    foreach ($dashTopGroups as $gKey => $g) {
-        foreach ($g['items'] as $it) { if (($activeTab ?? '') === $it['tab']) { $dashOpenGroup = $gKey; break 2; } }
-    }
-}
-
 // Voci "Il mio profilo" e "Impostazioni": un solo elenco, usato sia dal pannello laterale
 // (hamburger) sia dalla tendina dei tre puntini accanto al profilo. Stesse regole di visibilità
 // di prima (Team e Log solo per band/etichette).
@@ -292,7 +236,7 @@ if ($actingAsId) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right<?= !empty($dashOpenGroup) ? ' has-subbar' : '' ?>">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -312,13 +256,6 @@ if ($actingAsId) {
       <div class="dash-psearch-list" id="dash-psearch-list" role="listbox" hidden></div>
     </div>
   </div>
-  <?php if ($dashTopGroups): ?>
-  <nav class="dash-topgroups" aria-label="Sezioni amministratore">
-    <?php foreach ($dashTopGroups as $gKey => $g): ?>
-      <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span></button>
-    <?php endforeach; ?>
-  </nav>
-  <?php endif; ?>
   <nav class="dash-icons-nav">
     <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="<?= !empty($user['is_admin']) ? 'Attività' : 'Community' ?>" aria-label="Apri <?= !empty($user['is_admin']) ? 'le attività' : 'la community' ?>" aria-controls="dash-right" aria-expanded="false">
       <i class="fa-solid <?= !empty($user['is_admin']) ? 'fa-chart-simple' : 'fa-users' ?>"></i>
@@ -357,18 +294,6 @@ if ($actingAsId) {
     <a href="/logout.php" class="dash-hide-sm dash-logout" title="Esci dal tuo account"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Esci</span></a>
   </nav>
 </div>
-<?php if ($dashTopGroups): ?>
-<div class="dash-subbar" id="dash-subbar"<?= $dashOpenGroup === '' ? ' hidden' : '' ?>>
-  <?php foreach ($dashTopGroups as $gKey => $g): ?>
-    <nav class="dash-subnav" id="dash-sub-<?= e($gKey) ?>" data-group="<?= e($gKey) ?>" aria-label="<?= e($g['label']) ?>"<?= $dashOpenGroup === $gKey ? '' : ' hidden' ?>>
-      <?php foreach ($g['items'] as $it): ?>
-        <a href="<?= e($it['url']) ?>" class="dash-subnav-link<?= ($activeTab ?? '') === $it['tab'] ? ' active' : '' ?>"<?= ($activeTab ?? '') === $it['tab'] ? ' aria-current="page"' : '' ?>><i class="<?= e($it['icon']) ?>" aria-hidden="true"></i><span><?= e($it['label']) ?></span><?php if (!empty($it['badge'])): ?><b class="dash-side-badge"><?= (int) $it['badge'] ?></b><?php endif; ?><?php if (!empty($it['on'])): ?><span class="dash-side-dot" title="Collegato" aria-label="Collegato"></span><?php endif; ?></a>
-      <?php endforeach; ?>
-    </nav>
-  <?php endforeach; ?>
-</div>
-<script src="<?= assetUrl('/assets/js/dash-groups.js') ?>" defer></script>
-<?php endif; ?>
 <script>
 // Ricerca profili nella barra in alto: campo sempre visibile su desktop, lente + campo compatto su telefono.
 (function () {
