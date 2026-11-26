@@ -1309,6 +1309,9 @@ Aggiorna il testo di guida di `dashboard_chat.php` (`ON DUPLICATE KEY UPDATE`: s
 ### Tema «Academic» solo per gli amministratori (`2026_11_42_theme_academic_visibility.sql`)
 Inserisce in `theme_visibility` la regola `academic` = `admins`: il nuovo tema grafico è scegliibile solo dagli amministratori finché non lo apri a tutti (Area Admin → Temi grafici). `INSERT IGNORE`: rieseguirla non rimette la restrizione se l'hai già cambiata. Richiede la `2026_11_23`. Senza questa migrazione il tema è visibile a tutti.
 
+### Guida «Coda Social»: Apri sistema Esterno (`2026_11_43_page_help_social_queue_external.sql`)
+Aggiorna il testo di guida di `dashboard_social_queue.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_30`. Nessuna modifica allo schema.
+
 ---
 
 ## Come aggiungere una nuova voce
