@@ -51,6 +51,9 @@ $sql .= ' ORDER BY ev.event_date DESC, tr.created_at DESC';
 $stmt = getDB()->prepare($sql);
 $stmt->execute($params);
 $reservations = $stmt->fetchAll();
+// Quelle mai aperte prima sono «nuove»: le evidenzio in questa visita e poi le segno come viste (azzera il contatore).
+require_once __DIR__ . '/../../src/dash_right.php';
+reservationsMarkSeen((int) $profile['id']);
 
 $stmt = getDB()->prepare('SELECT COUNT(*) FROM table_reservations WHERE user_id = ?');
 $stmt->execute([$profile['id']]);
@@ -125,7 +128,7 @@ $stTone = ['pending' => 'warn', 'confirmed' => 'ok', 'declined' => 'danger', 'ca
         <article class="ibx kit-item" data-state="<?= e($r['status']) ?>">
           <header class="ibx-h">
             <span class="ibx-av"><?= e(mb_strtoupper(mb_substr($r['guest_name'], 0, 1))) ?></span>
-            <div class="ibx-who"><b><?= e($r['guest_name']) ?> <small class="lkx-hint">· <?= (int) $r['party_size'] ?> person<?= (int) $r['party_size'] === 1 ? 'a' : 'e' ?></small></b><a href="mailto:<?= e($r['guest_email']) ?>"><?= e($r['guest_email']) ?></a></div>
+            <div class="ibx-who"><b><?= e($r['guest_name']) ?><?php if (array_key_exists('seen_at', $r) && $r['seen_at'] === null): ?> <span class="rsv-new">Nuova</span><?php endif; ?> <small class="lkx-hint">· <?= (int) $r['party_size'] ?> person<?= (int) $r['party_size'] === 1 ? 'a' : 'e' ?></small></b><a href="mailto:<?= e($r['guest_email']) ?>"><?= e($r['guest_email']) ?></a></div>
             <div class="ibx-meta"><span class="stc-status stc-s-<?= e($stTone[$r['status']] ?? 'grey') ?>"><?= e($statusLabels[$r['status']] ?? $r['status']) ?></span></div>
           </header>
           <div class="ibx-svc"><i class="fa-regular fa-calendar"></i> <b><?= e($r['event_title'] ?? 'Evento eliminato') ?></b><?= $r['event_date'] ? ' · ' . e(formatLocalDateTime($r['event_date'], $profile)) : '' ?></div>

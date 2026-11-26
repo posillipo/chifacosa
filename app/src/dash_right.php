@@ -104,6 +104,38 @@ function dashRightHeavyData(int $profileId, bool $isBandOrLabel, bool $queueOn):
     return $data;
 }
 
+/** True se table_reservations ha la colonna seen_at (migrazione 2026_11_46); senza, tutto resta come prima. */
+function reservationsHaveSeenColumn(): bool {
+    static $has = null;
+    if ($has === null) {
+        try {
+            $has = (bool) getDB()->query("SHOW COLUMNS FROM table_reservations LIKE 'seen_at'")->fetch();
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
+/** Prenotazioni «da leggere»: nuove (mai aperte nella pagina Prenotazioni) oppure ancora in attesa di conferma. */
+function reservationsUnreadCount(int $profileId): int {
+    if (reservationsHaveSeenColumn()) {
+        return dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND (seen_at IS NULL OR status = 'pending')", [$profileId]);
+    }
+    return dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [$profileId]);
+}
+
+/** Segna come viste tutte le prenotazioni del profilo (si apre la pagina Prenotazioni). */
+function reservationsMarkSeen(int $profileId): void {
+    if (!reservationsHaveSeenColumn()) {
+        return;
+    }
+    try {
+        getDB()->prepare('UPDATE table_reservations SET seen_at = NOW() WHERE user_id = ? AND seen_at IS NULL')->execute([$profileId]);
+    } catch (Throwable $e) {
+    }
+}
+
 /** Riga "etichetta … valore" con collegamento. */
 function dashRightRow(string $label, int $value, string $url, string $tone = ''): string {
     $cls = 'dash-right-val' . ($tone !== '' ? ' ' . $tone : '') . ($value === 0 ? ' zero' : '');
@@ -127,7 +159,7 @@ function dashInboxCards(int $profileId, bool $isBandOrLabel, array $nav): array 
     }
     if ($isBandOrLabel && ($nav['Eventi'] ?? 1)) {
         $cards['reservations'] = ['Prenotazioni', 'fa-solid fa-calendar-check', '/dashboard_reservations.php',
-            dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [$profileId]), 'Prenotazioni in attesa di conferma.'];
+            reservationsUnreadCount($profileId), 'Nuove prenotazioni e richieste in attesa di conferma.'];
     }
     return $cards;
 }

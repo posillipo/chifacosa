@@ -148,7 +148,8 @@ if (isset($dashSideAll['service_inquiries'])) {
     $sideBadges['service_inquiries'] = dashRightCount('SELECT COUNT(*) FROM service_inquiries WHERE user_id = ? AND is_read = 0', [(int) $countsForId]);
 }
 if (isset($dashSideAll['reservations'])) {
-    $sideBadges['reservations'] = dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [(int) $countsForId]);
+    require_once __DIR__ . '/../src/dash_right.php';
+    $sideBadges['reservations'] = reservationsUnreadCount((int) $countsForId);
 }
 // Integrazioni (prima nel menu account, poi colonna destra, ora nel menu di sinistra): solo band/etichette per Spotify, Podcast e
 // YouTube; strumenti per amministratori per gli altri. Il pallino verde = collegata.

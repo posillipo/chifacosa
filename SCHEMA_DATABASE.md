@@ -141,3 +141,6 @@ Impostazioni globali chiave/valore (non legate a un utente specifico).
 
 ### direct_messages.deleted_by_sender / deleted_by_recipient (migrazione 2026_11_40)
 `TINYINT(1) NOT NULL DEFAULT 0` — il messaggio è stato cancellato (nascosto) da chi l'ha scritto / da chi l'ha ricevuto. Le letture usano `dmHideDeletedSql()` (`fn_social.php`); il messaggio resta nel database e l'altra persona lo vede ancora.
+
+### table_reservations.seen_at (migrazione 2026_11_46)
+`seen_at DATETIME NULL`: quando il gestore ha aperto la pagina Prenotazioni dopo l'arrivo della richiesta (NULL = nuova, mai vista). Usato per il contatore «da leggere» (`reservationsUnreadCount()` in `src/dash_right.php`: `seen_at IS NULL OR status = 'pending'`).
