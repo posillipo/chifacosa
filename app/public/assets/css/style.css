@@ -3468,16 +3468,16 @@ body.light-theme .dash-side-title, body.light-theme .dash-right-title { font-wei
 .dash-topgroup { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: inherit; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .dash-topgroup:hover { background: rgba(108, 92, 231, .08); }
 .dash-topgroup.on { background: var(--accent, #6c5ce7); color: #fff; }
-.dash-subbar { position: fixed; top: 64px; left: 0; right: 0; z-index: 650; height: 44px; background: #fff; border-bottom: 1px solid var(--border, #e5e7eb); padding: 0 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.dash-subbar { position: fixed; top: 104px; left: 0; right: 0; z-index: 650; height: 44px; background: #fff; border-bottom: 1px solid var(--border, #e5e7eb); padding: 0 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .dash-subbar[hidden], .dash-subnav[hidden] { display: none; }
 .dash-subnav { display: flex; gap: 4px; align-items: center; min-height: 44px; white-space: nowrap; }
 .dash-subnav-link { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 8px; color: inherit; text-decoration: none; font-size: 14px; font-weight: 500; }
 .dash-subnav-link:hover { background: rgba(108, 92, 231, .08); }
 .dash-subnav-link.active { color: var(--accent, #6c5ce7); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent, #6c5ce7); border-radius: 8px 8px 0 0; }
-body.has-subbar { --dash-nav-h: 108px; }
-body.has-subbar.has-dash-side { padding-top: 108px !important; }
-@media (max-width: 900px) { .dash-topgroup span { display: none; } .dash-topgroup { padding: 0 11px; } }
-@media (max-width: 600px) { body:has(.dash-topgroups) .brand-dash { display: none; } .dash-topgroups { margin: 0 2px; gap: 2px; } .dash-topgroup { padding: 0 9px; } }
+body.has-adminrow { --dash-nav-h: 104px; }
+body.has-adminrow.has-dash-side { padding-top: 104px !important; }
+body.has-adminrow.has-subbar { --dash-nav-h: 148px; }
+body.has-adminrow.has-subbar.has-dash-side { padding-top: 148px !important; }
 
 /* Barra secondaria: contatori e testi */
 .dash-subnav-val { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: rgba(108, 92, 231, .12); color: var(--accent, #6c5ce7); font-size: 12px; text-align: center; }
@@ -3485,3 +3485,14 @@ body.has-subbar.has-dash-side { padding-top: 108px !important; }
 .dash-subnav-val.bad:not(.zero) { background: rgba(231, 76, 60, .14); color: #e74c3c; }
 .dash-subnav-text { padding: 0 10px; font-size: 12.5px; color: #6b7280; }
 .dash-topgroups { margin: 0 4px 0 6px; }
+
+/* Menu admin stile Lenovo: riga sotto la barra in alto (sezioni a sinistra, strumenti a destra) */
+.dash-adminrow { position: fixed; top: 64px; left: 0; right: 0; z-index: 660; height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--border, #e5e7eb); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.dash-adminrow .dash-topgroups { margin: 0; flex: none; }
+.dash-adminrow .dash-topgroup { height: 32px; text-decoration: none; white-space: nowrap; }
+.dash-topgroup-caret { font-size: 10px; opacity: .6; transition: transform .15s; }
+.dash-topgroup.on .dash-topgroup-caret { transform: rotate(180deg); }
+.dash-adminlinks { display: flex; gap: 4px; flex: none; }
+.dash-adminlinks a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; color: inherit; text-decoration: none; font-size: 13px; opacity: .8; white-space: nowrap; }
+.dash-adminlinks a:hover { background: rgba(108, 92, 231, .08); opacity: 1; }
+@media (max-width: 700px) { .dash-adminlinks span { display: none; } }

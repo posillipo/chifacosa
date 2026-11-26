@@ -142,6 +142,7 @@ if (!siteToolEnabled('cinema')) unset($dashSideExtra['cinema']);
 if (!siteToolEnabled('prodotti')) unset($dashSideExtra['products']);
 require_once __DIR__ . '/../src/dash_right.php';
 $dashSideAll = $dashTabs + $dashSideExtra;
+if (!empty($user['is_admin'])) { unset($dashSideAll['schedule_admin']); } // ora nel menu admin in alto (Social → Calendario)
 // Contatori "da gestire" accanto alle voci del menu (prima stavano nella colonna destra).
 $sideBadges = [];
 if (isset($dashSideAll['service_inquiries'])) {
@@ -159,10 +160,6 @@ $dashIntegrations = array_merge(!$isBandOrLabel ? [] : [
         ['label' => 'Account Spotify',  'url' => '/dashboard_spotify.php',  'tab' => 'spotify',  'icon' => 'fa-brands fa-spotify',   'on' => !empty($user['spotify_artist_id'])],
         ['label' => 'Account Podcast',  'url' => '/dashboard_podcast.php',  'tab' => 'podcast',  'icon' => 'fa-solid fa-microphone', 'on' => !empty($user['spotify_show_id'])],
         ['label' => 'Account YouTube',  'url' => '/dashboard_youtube.php',  'tab' => 'youtube',  'icon' => 'fa-brands fa-youtube',   'on' => !empty($user['youtube_channel_id'])],
-    ], empty($user['is_admin']) ? [] : [
-        // Strumenti riservati agli amministratori del sito (pagine protette anche lato server da requireAdmin()).
-        ['label' => 'Canale Telegram',  'url' => '/dashboard_telegram.php', 'tab' => 'telegram', 'icon' => 'fa-brands fa-telegram',  'on' => !empty($user['telegram_chat_id'])],
-        ['label' => 'Social Automatico', 'url' => '/dashboard_metricool.php', 'tab' => 'metricool', 'icon' => 'fa-solid fa-share-nodes', 'on' => !empty($dashProfile['metricool_auto_social'])],
     ]);
 
 // [chiave voce => icona Font Awesome]: valori fissi nel codice, mai da input dell'utente.
@@ -248,7 +245,7 @@ foreach ($dashTopGroups as $gKey => $g) {
 <link rel="stylesheet" href="<?= assetUrl('/assets/css/style.css') ?>">
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }</script>
 </head>
-<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right<?= $dashOpenGroup !== '' ? ' has-subbar' : '' ?>">
+<body class="<?= e($dashTheme) ?> has-dash-side has-dash-right<?= $dashTopGroups ? ' has-adminrow' : '' ?><?= $dashOpenGroup !== '' ? ' has-subbar' : '' ?>">
 <div class="navbar navbar-dash-sticky">
   <div style="display:flex;align-items:center;gap:14px;">
     <button type="button" id="dash-side-toggle" class="dash-side-toggle" title="Menu" aria-label="Apri il menu" aria-controls="dash-side" aria-expanded="false">
@@ -259,13 +256,6 @@ foreach ($dashTopGroups as $gKey => $g) {
       <i class="fa-solid fa-bars"></i>
     </button>
     <div class="brand brand-dash"><a href="/"><?= siteBrandHtml() ?></a></div>
-    <?php if ($dashTopGroups): ?>
-    <nav class="dash-topgroups" aria-label="Sezioni amministratore">
-      <?php foreach ($dashTopGroups as $gKey => $g): ?>
-        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span></button>
-      <?php endforeach; ?>
-    </nav>
-    <?php endif; ?>
   </div>
   <div class="dash-psearch" id="dash-psearch">
     <button type="button" class="dash-psearch-btn" id="dash-psearch-btn" title="Cerca profili" aria-label="Cerca profili" aria-expanded="false"><i class="fa-solid fa-magnifying-glass"></i></button>
@@ -279,14 +269,6 @@ foreach ($dashTopGroups as $gKey => $g) {
     <button type="button" id="dash-right-toggle" class="dash-right-toggle" title="<?= !empty($user['is_admin']) ? 'Attività' : 'Community' ?>" aria-label="Apri <?= !empty($user['is_admin']) ? 'le attività' : 'la community' ?>" aria-controls="dash-right" aria-expanded="false">
       <i class="fa-solid <?= !empty($user['is_admin']) ? 'fa-chart-simple' : 'fa-users' ?>"></i>
     </button>
-    <?php if (!empty($user['is_admin'])): ?>
-      <a href="/admin_dashboard.php" class="dash-hide-sm" title="Area Admin" style="font-size:17px;"><i class="fa-solid fa-shield-halved"></i></a>
-    <?php endif; ?>
-    <?php if (!empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social'])): ?>
-      <a href="/dashboard_social_queue.php" class="dash-hide-sm" title="Coda Social" style="font-size:17px;<?= ($activeTab ?? '') === 'social_queue' ? 'color:var(--accent)' : '' ?>">
-        <i class="fa-solid fa-share-nodes"></i>
-      </a>
-    <?php endif; ?>
     <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-preview" title="Vedi il sito di <?= e($barAvatarName) ?>" aria-label="Vedi il sito">
       <?php if ($barAvatarPath): ?>
         <img src="/<?= e(ltrim($barAvatarPath, '/')) ?>" alt="">
@@ -312,8 +294,24 @@ foreach ($dashTopGroups as $gKey => $g) {
   </nav>
 </div>
 <?php if ($dashTopGroups): ?>
+<div class="dash-adminrow" id="dash-adminrow">
+  <nav class="dash-topgroups" aria-label="Sezioni amministratore">
+    <?php foreach ($dashTopGroups as $gKey => $g): ?>
+      <?php if (!empty($g['href'])): ?>
+        <a class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" href="<?= e($g['href']) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val"><?= (int) $g['badge'] ?></b><?php endif; ?></a>
+      <?php else: ?>
+        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><i class="fa-solid fa-chevron-down dash-topgroup-caret" aria-hidden="true"></i></button>
+      <?php endif; ?>
+    <?php endforeach; ?>
+  </nav>
+  <nav class="dash-adminlinks" aria-label="Strumenti amministratore">
+    <a href="/admin_dashboard.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Area Admin</span></a>
+    <a href="/classic_entry.php"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span>Dashboard classica</span></a>
+  </nav>
+</div>
 <div class="dash-subbar" id="dash-subbar"<?= $dashOpenGroup === '' ? ' hidden' : '' ?>>
   <?php foreach ($dashTopGroups as $gKey => $g): ?>
+    <?php if (empty($g['items'])) continue; ?>
     <nav class="dash-subnav" id="dash-sub-<?= e($gKey) ?>" data-group="<?= e($gKey) ?>" aria-label="<?= e($g['label']) ?>"<?= $dashOpenGroup === $gKey ? '' : ' hidden' ?>>
       <?php foreach ($g['items'] as $it): ?>
         <?php if ($it['text'] !== null): ?>

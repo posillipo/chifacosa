@@ -178,6 +178,7 @@ function dashTopGroups(array $ctx): array {
     $heavy = dashRightHeavyData($profileId, !empty($ctx['is_band_or_label']), $queueOn);
     $it = fn (string $label, string $url, string $icon, ?int $value = null, string $tone = '') => ['label' => $label, 'url' => $url, 'icon' => $icon, 'value' => $value, 'tone' => $tone, 'text' => null];
 
+    $isBand = !empty($ctx['is_band_or_label']);
     $social = [];
     if ($queueOn && $heavy['queue'] !== null) {
         $q = $heavy['queue'];
@@ -194,27 +195,35 @@ function dashTopGroups(array $ctx): array {
     } else {
         $social[] = $it('Coda Social', '/dashboard_social_queue.php?status=all', 'fa-solid fa-share-nodes');
     }
+    if (siteToolEnabled('programmati')) {
+        $social[] = $it('Calendario', '/dashboard_schedule_admin.php', 'fa-solid fa-calendar-days');
+    }
+    if ($isBand) {
+        $social[] = $it('Social Automatico', '/dashboard_metricool.php', 'fa-solid fa-share-nodes');
+    }
 
     $auto = [];
-    if ($heavy['api'] !== null) {
-        $auto[] = $it('Chiamate (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-arrow-right-arrow-left', $heavy['api']['calls']);
-        $auto[] = $it('Errori (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-circle-xmark', $heavy['api']['errors'], 'bad');
+    if ($isBand) {
+        $auto[] = $it('Canale Telegram', '/dashboard_telegram.php', 'fa-brands fa-telegram');
     }
     $auto[] = $it('Token e richieste', '/dashboard_api_tokens.php', 'fa-solid fa-code');
     $auto[] = $it('Server MCP', '/admin_mcp.php', 'fa-solid fa-server');
     if ($heavy['api'] !== null) {
+        $auto[] = $it('Chiamate (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-arrow-right-arrow-left', $heavy['api']['calls']);
+        $auto[] = $it('Errori (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-circle-xmark', $heavy['api']['errors'], 'bad');
         foreach ($heavy['api']['tokens'] as $tk) {
             $auto[] = ['label' => '', 'url' => '', 'icon' => '', 'value' => null, 'tone' => '', 'text' => ($tk['mcp_name'] ?: $tk['label']) . ' · ' . dashRelTime($tk['last_used_at'])];
         }
     }
 
     require_once __DIR__ . '/marketing.php';
-    $marketing = [$it('Marketing', '/dashboard_marketing.php', 'fa-solid fa-bullhorn', marketingActiveCount($profileId))];
+    $mk = marketingActiveCount($profileId);
 
     return [
-        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-share-nodes', 'tabs' => ['social_queue'], 'items' => $social],
-        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'tabs' => ['api_tokens', 'mcp'], 'items' => $auto],
-        'marketing' => ['label' => 'Marketing', 'icon' => 'fa-solid fa-bullhorn', 'tabs' => ['marketing'], 'items' => $marketing],
+        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-share-nodes', 'tabs' => ['social_queue', 'schedule_admin', 'metricool'], 'items' => $social],
+        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'tabs' => ['telegram', 'api_tokens', 'mcp'], 'items' => $auto],
+        // Una sola voce: link diretto, senza barra secondaria.
+        'marketing' => ['label' => 'Marketing', 'icon' => 'fa-solid fa-bullhorn', 'tabs' => ['marketing'], 'items' => [], 'href' => '/dashboard_marketing.php', 'badge' => $mk],
     ];
 }
 
