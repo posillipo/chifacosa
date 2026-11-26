@@ -3,7 +3,7 @@
   'use strict';
   var bar = document.getElementById('dash-subbar');
   if (!bar) return;
-  var buttons = document.querySelectorAll('.dash-topgroup');
+  var buttons = document.querySelectorAll('button.dash-topgroup');
   var navs = bar.querySelectorAll('.dash-subnav');
   function show(group) {
     buttons.forEach(function (b) {
@@ -14,6 +14,8 @@
     navs.forEach(function (n) { n.hidden = n.getAttribute('data-group') !== group; });
     bar.hidden = !group;
     document.body.classList.toggle('has-subbar', !!group);
+    var row = document.getElementById('dash-adminrow');
+    if (row) { row.classList.toggle('has-open', !!group); }
   }
   buttons.forEach(function (b) {
     b.addEventListener('click', function () {

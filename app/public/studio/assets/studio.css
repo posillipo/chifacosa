@@ -838,3 +838,6 @@ body.studio-mode .dash-inbox.has-new i { color: var(--accent); }
 
 /* Prenotazioni: etichetta «Nuova» sulle richieste mai aperte */
 body.studio-mode .rsv-new { background: #e74c3c; color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 8px; }
+
+body.studio-mode .dash-adminrow { border-bottom: 1px solid var(--st-border); }
+body.studio-mode a.dash-topgroup.on { background: var(--accent); color: #fff; }
