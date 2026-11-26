@@ -223,7 +223,7 @@ $months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott',
     <label for="ev-title">Nome dell'evento</label>
     <input type="text" name="title" id="ev-title" required>
     <div class="kit-row2">
-      <div><label for="ev-venue">Locale</label><input type="text" name="venue" id="ev-venue"></div>
+      <div><label for="ev-venue">Location</label><input type="text" name="venue" id="ev-venue"></div>
       <div><label for="ev-city">Città</label><input type="text" name="city" id="ev-city"></div>
     </div>
     <label for="ev-prov">Provincia <small>(opzionale)</small></label>

@@ -177,7 +177,7 @@ include __DIR__ . '/_dash_header.php';
     <input type="hidden" name="tz_offset_minutes" value="">
     <label>Nome evento</label>
     <input type="text" name="title" required>
-    <label>Locale</label>
+    <label>Location</label>
     <input type="text" name="venue">
     <label>Città</label>
     <input type="text" name="city">
@@ -280,7 +280,7 @@ include __DIR__ . '/_dash_header.php';
             <input type="hidden" name="tz_offset_minutes" value="">
             <label>Nome evento</label>
             <input type="text" name="title" value="<?= e($ev['title']) ?>" required>
-            <label>Locale</label>
+            <label>Location</label>
             <input type="text" name="venue" value="<?= e($ev['venue'] ?? '') ?>">
             <label>Città</label>
             <input type="text" name="city" value="<?= e($ev['city'] ?? '') ?>">
