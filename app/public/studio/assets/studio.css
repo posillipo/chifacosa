@@ -824,3 +824,8 @@ body.studio-mode .stc-act.ext.is-off { background: #e5e7eb; color: #9ca3af; bord
 
 /* Modifica aggiornamento: «Elimina aggiornamento» in fondo alla scheda Pubblicazione */
 body.studio-mode .tlx-del { margin-top: 14px; width: 100%; justify-content: center; }
+
+/* Barra secondaria admin in Studio */
+body.studio-mode .dash-subbar { border-bottom: 1px solid var(--st-border); }
+body.studio-mode .dash-topgroup.on { background: var(--accent); }
+body.studio-mode .dash-subnav-link.active { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
