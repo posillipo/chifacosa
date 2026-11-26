@@ -111,6 +111,60 @@ function dashRightRow(string $label, int $value, string $url, string $tone = '')
 }
 
 /**
+ * Tasti della barra in alto per gli amministratori (Social, Automazioni, Marketing) con le voci della barra secondaria.
+ * Sono i blocchi «Coda Social», «Automazioni e MCP» e «Marketing» che prima stavano nella colonna destra / nel menu.
+ * Ogni voce: ['label', 'url', 'icon', 'value' => int|null, 'tone' => '', 'text' => string|null (voce solo testo)].
+ */
+function dashTopGroups(array $ctx): array {
+    if (empty($ctx['is_admin'])) {
+        return [];
+    }
+    $profileId = (int) $ctx['profile_id'];
+    $queueOn = !empty($ctx['queue_on']);
+    $heavy = dashRightHeavyData($profileId, !empty($ctx['is_band_or_label']), $queueOn);
+    $it = fn (string $label, string $url, string $icon, ?int $value = null, string $tone = '') => ['label' => $label, 'url' => $url, 'icon' => $icon, 'value' => $value, 'tone' => $tone, 'text' => null];
+
+    $social = [];
+    if ($queueOn && $heavy['queue'] !== null) {
+        $q = $heavy['queue'];
+        $social[] = $it('Coda Social', '/dashboard_social_queue.php?status=all', 'fa-solid fa-share-nodes');
+        $social[] = $it('In attesa', '/dashboard_social_queue.php?status=pending', 'fa-regular fa-hourglass-half', $q['pending']);
+        $social[] = $it('In elaborazione', '/dashboard_social_queue.php?status=active', 'fa-solid fa-gear', $q['processing']);
+        if ($q['stuck'] > 0) {
+            $social[] = $it('Ferme da oltre 2 ore', '/dashboard_social_queue.php?status=active', 'fa-solid fa-triangle-exclamation', $q['stuck'], 'bad');
+        }
+        if ($q['suspended'] > 0) {
+            $social[] = $it('Sospese', '/dashboard_social_queue.php?status=suspended', 'fa-solid fa-pause', $q['suspended']);
+        }
+        $social[] = $it('In errore (30 giorni)', '/dashboard_social_queue.php?status=failed', 'fa-solid fa-circle-xmark', $q['failed'], 'bad');
+    } else {
+        $social[] = $it('Coda Social', '/dashboard_social_queue.php?status=all', 'fa-solid fa-share-nodes');
+    }
+
+    $auto = [];
+    if ($heavy['api'] !== null) {
+        $auto[] = $it('Chiamate (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-arrow-right-arrow-left', $heavy['api']['calls']);
+        $auto[] = $it('Errori (24 ore)', '/dashboard_api_tokens.php', 'fa-solid fa-circle-xmark', $heavy['api']['errors'], 'bad');
+    }
+    $auto[] = $it('Token e richieste', '/dashboard_api_tokens.php', 'fa-solid fa-code');
+    $auto[] = $it('Server MCP', '/admin_mcp.php', 'fa-solid fa-server');
+    if ($heavy['api'] !== null) {
+        foreach ($heavy['api']['tokens'] as $tk) {
+            $auto[] = ['label' => '', 'url' => '', 'icon' => '', 'value' => null, 'tone' => '', 'text' => ($tk['mcp_name'] ?: $tk['label']) . ' · ' . dashRelTime($tk['last_used_at'])];
+        }
+    }
+
+    require_once __DIR__ . '/marketing.php';
+    $marketing = [$it('Marketing', '/dashboard_marketing.php', 'fa-solid fa-bullhorn', marketingActiveCount($profileId))];
+
+    return [
+        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-share-nodes', 'tabs' => ['social_queue'], 'items' => $social],
+        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'tabs' => ['api_tokens', 'mcp'], 'items' => $auto],
+        'marketing' => ['label' => 'Marketing', 'icon' => 'fa-solid fa-bullhorn', 'tabs' => ['marketing'], 'items' => $marketing],
+    ];
+}
+
+/**
  * HTML completo della colonna destra (+ pannello per telefono/tablet).
  * $unread: contatori già calcolati dall'intestazione ['contacts'=>n, 'messages'=>n].
  */
@@ -142,8 +196,8 @@ function renderDashRight(array $ctx): string {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
     }
 
-    // --- Coda Social ---
-    if ($isAdmin && $queueOn && $heavy['queue'] !== null) {
+    // --- Coda Social: ora è il tasto «Social» della barra in alto (vedi dashTopGroups()) ---
+    if (false && $isAdmin && $queueOn && $heavy['queue'] !== null) {
         $q = $heavy['queue'];
         $b = dashRightRow('In attesa', $q['pending'], '/dashboard_social_queue.php?status=pending');
         $b .= dashRightRow('In elaborazione', $q['processing'], '/dashboard_social_queue.php?status=active');
@@ -157,8 +211,8 @@ function renderDashRight(array $ctx): string {
         $html .= '<div class="dash-right-block"><div class="dash-right-title">Coda Social</div>' . $b . '</div>';
     }
 
-    // --- Automazioni e MCP: solo amministratori ---
-    if ($isAdmin) {
+    // --- Automazioni e MCP: ora è il tasto «Automazioni» della barra in alto (vedi dashTopGroups()) ---
+    if (false && $isAdmin) {
         $a = '';
         if ($heavy['api'] !== null) {
             $api = $heavy['api'];

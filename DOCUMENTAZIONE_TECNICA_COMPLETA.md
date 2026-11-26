@@ -414,3 +414,10 @@ Su ogni elemento, qualunque sia lo stato (anche completato: serve a ritrovare il
 
 ### Studio «Modifica aggiornamento»: Elimina nella scheda Pubblicazione
 In `studio/dashboard_timeline_edit.php` il pulsante «Elimina aggiornamento» sta in fondo alla scheda «Pubblicazione» (colonna destra), non più in un riquadro sotto la pagina. Essendo dentro il form principale usa l'attributo `form="tl-del-post"`: un form nascosto separato (con `data-confirm`) invia `action=delete`. La scheda «Pubblicazione» non cambia comportamento, quindi il testo di guida resta valido.
+
+### Barra superiore admin: Social / Automazioni / Marketing (blocchi spostati dalla colonna destra)
+Solo per gli amministratori, la barra in alto (`_dash_header.php`, dopo il logo e a sinistra della ricerca) ha tre tasti; ognuno apre sotto di essa una barra secondaria orizzontale (`.dash-subbar`, JS `assets/js/dash-groups.js`: un clic apre, un secondo clic chiude; la pagina si apre già col gruppo della voce attiva). Le voci arrivano da `dashTopGroups()` (`src/dash_right.php`) e sono i blocchi che prima stavano nella colonna destra:
+- **Social** (ex «Coda Social»): Coda Social, In attesa, In elaborazione, Ferme da oltre 2 ore, Sospese, In errore (30 giorni), con contatori.
+- **Automazioni** (ex «Automazioni e MCP»): Chiamate e Errori delle ultime 24 ore, Token e richieste, Server MCP, ultimo utilizzo dei token.
+- **Marketing** (era in «Integrazioni» a sinistra): Marketing, con il numero di esecuzioni attive.
+Nella colonna destra restano Community e Da gestire; `renderDashRight()` non stampa più i blocchi «Coda Social» e «Automazioni e MCP» (disattivati con `if (false && …)`). La barra laterale sinistra non cambia (tranne l'uscita di «Marketing» da «Integrazioni»). Con la barra secondaria aperta `body.has-subbar` sposta di 44px contenuto e colonne laterali.
