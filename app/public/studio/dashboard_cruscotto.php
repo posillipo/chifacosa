@@ -41,6 +41,22 @@ foreach ($data['links'] as $l) { $groups[$l['group']][] = $l; }
 include __DIR__ . '/../_dash_header.php';
 ?>
   <div class="tlx crx">
+    <nav class="crx-menu" aria-label="Sezioni admin">
+      <?php foreach ($groups as $gname => $items): ?>
+        <div class="crx-mgroup"><span class="crx-mtitle"><?= e($gname) ?></span>
+          <div class="crx-mitems">
+          <?php foreach ($items as $l): ?>
+            <a class="crx-mitem" href="<?= e($l['url']) ?>">
+              <i class="<?= e($l['icon']) ?>"></i><span><?= e($l['label']) ?></span>
+              <?php if ($l['badge'] > 0): ?><b class="crx-badge <?= e($l['tone']) ?>"><?= (int) $l['badge'] ?></b><?php endif; ?>
+              <?php if ($l['on'] !== null): ?><i class="crx-dot <?= $l['on'] ? 'on' : 'off' ?>" title="<?= $l['on'] ? 'Attivo' : 'Non attivo' ?>"></i><?php endif; ?>
+            </a>
+          <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </nav>
+
     <div class="crx-gauges">
       <section class="crx-card">
         <header><i class="fa-solid fa-inbox"></i><h3>Messaggistica</h3><a href="/dashboard_inbox.php">Apri <i class="fa-solid fa-arrow-right"></i></a></header>
@@ -88,23 +104,6 @@ include __DIR__ . '/../_dash_header.php';
       </section>
     </div>
 
-    <div class="tlx-listhead"><h2>Tutte le sezioni</h2></div>
-    <div class="crx-links">
-      <?php foreach ($groups as $gname => $items): ?>
-        <div class="crx-group"><h4><?= e($gname) ?></h4>
-          <div class="crx-tiles">
-          <?php foreach ($items as $l): ?>
-            <a class="crx-tile" href="<?= e($l['url']) ?>">
-              <span class="ic"><i class="<?= e($l['icon']) ?>"></i></span>
-              <b><?= e($l['label']) ?></b>
-              <?php if ($l['badge'] > 0): ?><span class="crx-badge <?= e($l['tone']) ?>"><?= (int) $l['badge'] ?></span><?php endif; ?>
-              <?php if ($l['on'] !== null): ?><span class="crx-dot <?= $l['on'] ? 'on' : 'off' ?>" title="<?= $l['on'] ? 'Attivo' : 'Non attivo' ?>"></span><?php endif; ?>
-            </a>
-          <?php endforeach; ?>
-          </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
   </div>
   <script src="/studio/assets/studio-cruscotto.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-cruscotto.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
