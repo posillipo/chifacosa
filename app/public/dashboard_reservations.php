@@ -50,6 +50,9 @@ $sql .= ' ORDER BY ev.event_date DESC, tr.created_at DESC';
 $stmt = getDB()->prepare($sql);
 $stmt->execute($params);
 $reservations = $stmt->fetchAll();
+// Quelle mai aperte prima sono «nuove»: le evidenzio in questa visita e poi le segno come viste (azzera il contatore).
+require_once __DIR__ . '/../src/dash_right.php';
+reservationsMarkSeen((int) $profile['id']);
 
 $stmt = getDB()->prepare('SELECT COUNT(*) FROM table_reservations WHERE user_id = ?');
 $stmt->execute([$profile['id']]);
@@ -116,7 +119,7 @@ include __DIR__ . '/_dash_header.php';
     <?php foreach ($reservations as $r): ?>
       <div class="link-item" style="align-items:flex-start;">
         <div>
-          <strong><?= e($r['guest_name']) ?></strong>
+          <strong><?= e($r['guest_name']) ?></strong><?php if (array_key_exists('seen_at', $r) && $r['seen_at'] === null): ?> <span style="background:#e74c3c;color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:1px 8px;">Nuova</span><?php endif; ?>
           <span style="color:var(--text-muted);"> · <?= (int) $r['party_size'] ?> person<?= (int) $r['party_size'] === 1 ? 'a' : 'e' ?></span>
           <span style="color:<?= $statusColors[$r['status']] ?? 'var(--text-muted)' ?>;font-weight:700;font-size:12px;"> · <?= e($statusLabels[$r['status']] ?? $r['status']) ?></span>
           <br><small style="color:var(--text-muted)">

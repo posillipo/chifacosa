@@ -251,6 +251,7 @@ CREATE TABLE IF NOT EXISTS table_reservations (
     notes VARCHAR(300) DEFAULT NULL,
     status ENUM('pending','confirmed','declined','cancelled','no_show','completed') NOT NULL DEFAULT 'confirmed',
     marketing_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+    seen_at DATETIME NULL DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
