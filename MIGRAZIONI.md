@@ -1324,6 +1324,9 @@ Aggiunge `table_reservations.seen_at DATETIME NULL` (quando il gestore ha visto 
 ### Guida «Marketing» (`2026_11_47_page_help_marketing.sql`)
 Aggiorna il testo di guida di `dashboard_marketing.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire): la spiegazione «Come funziona» ora sta nel popup «?» e non più in una finestra separata. Richiede la `2026_11_29`. Nessuna modifica allo schema.
 
+### Guida «Cruscotto» (`2026_11_48_page_help_cruscotto.sql`)
+Aggiunge il testo di guida della nuova pagina `dashboard_cruscotto.php` (`ON DUPLICATE KEY UPDATE`: si può rieseguire). Richiede la `2026_11_29`. Nessuna modifica allo schema.
+
 ---
 
 ## Come aggiungere una nuova voce

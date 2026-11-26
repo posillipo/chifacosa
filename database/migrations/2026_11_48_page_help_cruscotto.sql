@@ -1,0 +1,5 @@
+SET NAMES utf8mb4;
+-- Guida della nuova pagina «Cruscotto» (dashboard_cruscotto.php, solo admin). Si può rieseguire (ON DUPLICATE KEY UPDATE). Richiede la 2026_11_29.
+INSERT INTO page_help (page_key, title, body, more, sort_order) VALUES
+('dashboard_cruscotto', 'Cruscotto', 'Il quadro d''insieme per gli amministratori: messaggistica, Coda Social, API/MCP e Marketing in grafici.', 'In alto quattro anelli riassumono la situazione: **Messaggistica** (cosa c''è da leggere), **Coda Social** e **Marketing** (ultimi 30 giorni), **API e MCP** (ultime 24 ore). Sotto, i grafici degli ultimi 14 giorni (coda social, messaggi in arrivo, chiamate API con errori) e le esecuzioni per progetto Marketing. «Tutte le sezioni» raccoglie i collegamenti ai moduli admin, con un numero quando c''è qualcosa da guardare e un pallino verde se il modulo è attivo. Passa il mouse su un grafico per vedere i valori; «Apri» porta alla pagina di dettaglio. I dati si riferiscono al profilo attivo.', 1195)
+ON DUPLICATE KEY UPDATE title = VALUES(title), body = VALUES(body), more = VALUES(more);
