@@ -816,3 +816,8 @@ body.studio-mode .stc-list .stc-act span { display: none; }
 body.studio-mode .chx-h .chx-del { margin: 0 0 0 auto; flex: none; }
 body.studio-mode .chx-h .chx-del .stc-act { width: auto; padding: 0 12px; white-space: nowrap; }
 @media (max-width: 639px) { body.studio-mode .chx-h .chx-del .stc-act span { display: none; } body.studio-mode .chx-h .chx-del .stc-act { width: 40px; padding: 0; justify-content: center; } }
+
+/* Coda social: «Apri sistema Esterno» (attivo solo con un URL in scheduler_ref) */
+body.studio-mode a.stc-act.ext { text-decoration: none; background: var(--accent); border-color: var(--accent); color: #fff !important; }
+body.studio-mode a.stc-act.ext:hover { background: var(--accent-h); }
+body.studio-mode .stc-act.ext.is-off { background: #e5e7eb; color: #9ca3af; border-color: transparent; cursor: not-allowed; pointer-events: none; }

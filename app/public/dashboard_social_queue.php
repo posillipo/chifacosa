@@ -127,6 +127,7 @@ a.sq-title:hover { text-decoration:underline; }
 .btn-xs { font-size:12px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid #ccc; background:#fff; white-space:nowrap; }
 .btn-xs.danger { color:#e74c3c; border-color:#e74c3c; }
 .btn-xs.primary { color:#fff; background:var(--accent,#6c5ce7); border-color:var(--accent,#6c5ce7); }
+.sq-ext { text-decoration:none; background:#8e44ad; color:#fff; border-color:#8e44ad; } .sq-ext.is-off { background:#ccc; border-color:#ccc; color:#777; cursor:not-allowed; }
 .sq-scheduled-input { font-size:12.5px; padding:3px 6px; border:1px solid #ccc; border-radius:6px; max-width:100%; }
 /* Le etichette autore non vanno a capo a metà: restano intere e, se serve, si accorciano. */
 .sq-item .sq-main span[title^="Autore"] { white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:middle; }
@@ -290,6 +291,10 @@ $activeCount = ($statusFilter !== 'active' ? 1 : 0) + ($typeFilter !== '' ? 1 : 
             <?php if ($qi['error_msg']): ?><span class="sq-meta" style="color:#e74c3c;"><?= e(mb_substr($qi['error_msg'], 0, 140)) ?></span><?php endif; ?>
           </div>
           <div class="sq-actions">
+            <?php if ($qi['status'] === 'scheduled'): $extUrl = trim((string) ($qi['scheduler_ref'] ?? '')); $extOk = (bool) preg_match('#^https?://\S+$#i', $extUrl); ?>
+              <?php if ($extOk): ?><a class="btn-xs sq-ext" href="<?= e($extUrl) ?>" target="_blank" rel="noopener noreferrer">↗ Apri sistema Esterno</a>
+              <?php else: ?><span class="btn-xs sq-ext is-off" aria-disabled="true" title="Nessun collegamento al sistema esterno">↗ Apri sistema Esterno</span><?php endif; ?>
+            <?php endif; ?>
             <?php if ($isEditable): ?>
               <button type="button" class="btn-xs sq-suspend-btn" data-id="<?= $qi['id'] ?>" data-suspended="<?= $isSuspended ? '1' : '0' ?>">
                 <?= $isSuspended ? '▶ Riattiva' : '⏸ Sospendi' ?>
