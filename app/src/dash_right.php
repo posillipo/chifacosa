@@ -179,22 +179,9 @@ function renderDashRight(array $ctx): string {
     // I dati "pesanti" (coda, API) servono solo agli amministratori.
     $heavy = $isAdmin ? dashRightHeavyData($profileId, $isBandOrLabel, $queueOn) : ['queue' => null, 'api' => null, 'events' => []];
 
-    // --- Da gestire ---
-    $todo = '';
-    $todo .= dashRightRow('Contatti non letti', (int) ($ctx['unread_contacts'] ?? 0), '/dashboard_contacts.php');
-    $todo .= dashRightRow('Messaggi non letti', (int) ($ctx['unread_messages'] ?? 0), '/dashboard_messages.php');
-    if ($nav['Servizi'] ?? 1) {
-        $todo .= dashRightRow('Richieste di servizio', dashRightCount('SELECT COUNT(*) FROM service_inquiries WHERE user_id = ? AND is_read = 0', [$profileId]), '/dashboard_service_inquiries.php');
-    }
-    if ($isBandOrLabel && ($nav['Eventi'] ?? 1)) {
-        $todo .= dashRightRow('Prenotazioni da confermare', dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [$profileId]), '/dashboard_reservations.php', 'warn');
-    }
-
-    // Community per tutti; "Da gestire" (i contatori sono anche nel menu di sinistra e nella barra in alto) e gli strumenti solo per gli amministratori.
+    // Solo Community: i contatori «da gestire» (contatti, messaggi, richieste di servizio, prenotazioni) sono i pallini
+    // sulle icone della barra in alto (campanella, messaggi) e sulle voci del menu di sinistra (Richieste, Prenotazioni).
     $html = renderDashCommunity($profileId);
-    if ($isAdmin) {
-        $html .= '<div class="dash-right-block"><div class="dash-right-title">Da gestire</div>' . $todo . '</div>';
-    }
 
     // --- Coda Social: ora è il tasto «Social» della barra in alto (vedi dashTopGroups()) ---
     if (false && $isAdmin && $queueOn && $heavy['queue'] !== null) {
