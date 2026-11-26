@@ -411,3 +411,6 @@ Le miniature delle schede del Feed (`.stc-thumb`) non tagliano più l'immagine: 
 
 ### Coda social: «Apri sistema Esterno»
 Su ogni elemento, qualunque sia lo stato (anche completato: serve a ritrovare il post su Metricool), in Studio e nella dashboard classica compare il pulsante «Apri sistema Esterno»: un link `target="_blank" rel="noopener noreferrer"` verso `scheduler_ref` (es. `https://app.metricool.com/planner/calendar?blogId=…&openWithPostUuid=…`). È attivo (colorato) solo se `scheduler_ref` corrisponde a `^https?://\S+$`; con campo vuoto o in altro formato è un elemento grigio, non cliccabile (`aria-disabled`). Guida aggiornata dalle migrazioni `2026_11_43` e `2026_11_44`.
+
+### Studio «Modifica aggiornamento»: Elimina nella scheda Pubblicazione
+In `studio/dashboard_timeline_edit.php` il pulsante «Elimina aggiornamento» sta in fondo alla scheda «Pubblicazione» (colonna destra), non più in un riquadro sotto la pagina. Essendo dentro il form principale usa l'attributo `form="tl-del-post"`: un form nascosto separato (con `data-confirm`) invia `action=delete`. La scheda «Pubblicazione» non cambia comportamento, quindi il testo di guida resta valido.

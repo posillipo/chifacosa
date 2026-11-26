@@ -821,3 +821,6 @@ body.studio-mode .chx-h .chx-del .stc-act { width: auto; padding: 0 12px; white-
 body.studio-mode a.stc-act.ext { text-decoration: none; background: var(--accent); border-color: var(--accent); color: #fff !important; }
 body.studio-mode a.stc-act.ext:hover { background: var(--accent-h); }
 body.studio-mode .stc-act.ext.is-off { background: #e5e7eb; color: #9ca3af; border-color: transparent; cursor: not-allowed; pointer-events: none; }
+
+/* Modifica aggiornamento: «Elimina aggiornamento» in fondo alla scheda Pubblicazione */
+body.studio-mode .tlx-del { margin-top: 14px; width: 100%; justify-content: center; }

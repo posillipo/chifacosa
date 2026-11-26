@@ -138,6 +138,7 @@ $photoCount = ($post['image_path'] ? 1 : 0) + count($extraPhotos);
         <label for="tl-when">Pubblica sui social dal</label>
         <input type="datetime-local" name="publish_at" id="tl-when" value="<?= e(localDateTimeInputValue($post['publish_at'], $profile)) ?>">
         <p class="tlx-hint">Lascia vuoto per pubblicarlo subito (se Pubblico).</p>
+        <button type="submit" form="tl-del-post" class="stc-act danger tlx-del"><i class="fa-solid fa-trash"></i> <span>Elimina aggiornamento</span></button>
       </section>
 
       <section class="blx-box">
@@ -178,8 +179,7 @@ $photoCount = ($post['image_path'] ? 1 : 0) + count($extraPhotos);
     <div class="blx-danger blx-tg-box"><div><b>Telegram</b><p>Invia questo post al canale <strong><?= e($profile['telegram_chat_title'] ?: $profile['telegram_chat_id']) ?></strong>.</p></div>
       <form method="post" data-confirm="Inviare questo post su Telegram?"><?= csrfField() ?><input type="hidden" name="action" value="send_telegram"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><button class="stc-act" type="submit"><i class="fa-brands fa-telegram"></i> <span>Invia su Telegram</span></button></form></div>
   <?php endif; ?>
-  <div class="blx-danger"><div><b>Elimina aggiornamento</b><p>Elimina definitivamente questo aggiornamento. L'operazione non si può annullare.</p></div>
-    <form method="post" data-confirm="Eliminare definitivamente questo aggiornamento? L'operazione non si può annullare."><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"><button class="stc-act danger" type="submit"><i class="fa-solid fa-trash"></i> <span>Elimina aggiornamento</span></button></form></div>
+  <form method="post" id="tl-del-post" data-confirm="Eliminare definitivamente questo aggiornamento? L'operazione non si può annullare."><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int) $post['id'] ?>"></form>
 
   <script src="/studio/assets/studio-kit.js?v=<?= (int) @filemtime(__DIR__ . '/assets/studio-kit.js') ?>" defer></script>
 <?php include __DIR__ . '/../_dash_footer.php'; ?>
