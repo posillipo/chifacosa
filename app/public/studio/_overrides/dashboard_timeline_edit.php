@@ -141,13 +141,6 @@ $photoCount = ($post['image_path'] ? 1 : 0) + count($extraPhotos);
         <button type="submit" form="tl-del-post" class="stc-act danger tlx-del"><i class="fa-solid fa-trash"></i> <span>Elimina aggiornamento</span></button>
       </section>
 
-      <section class="blx-box">
-        <h3>Reindirizzamento</h3>
-        <label for="tl-redir">Link per questo post</label>
-        <input type="url" name="redirect_link" id="tl-redir" value="<?= e($post['redirect_link'] ?? '') ?>" placeholder="https://...">
-        <p class="tlx-hint">Vale solo per <b>questo post</b>, per sempre: chi apre la pagina viene portato subito lì. Diverso dal «Link personalizzato per il feed» del profilo. Vuoto = pagina normale.</p>
-      </section>
-
       <?php if ($photoCount > 0): ?>
       <section class="blx-box">
         <h3>Foto (<?= $photoCount ?>)</h3>
@@ -160,6 +153,13 @@ $photoCount = ($post['image_path'] ? 1 : 0) + count($extraPhotos);
         <p class="tlx-hint">Tocca una foto per vederla a schermo intero, la × per toglierla.</p>
       </section>
       <?php endif; ?>
+
+      <section class="blx-box">
+        <h3>Reindirizzamento</h3>
+        <label for="tl-redir">Link per questo post</label>
+        <input type="url" name="redirect_link" id="tl-redir" value="<?= e($post['redirect_link'] ?? '') ?>" placeholder="https://...">
+        <p class="tlx-hint">Vale solo per <b>questo post</b>, per sempre: chi apre la pagina viene portato subito lì. Diverso dal «Link personalizzato per il feed» del profilo. Vuoto = pagina normale.</p>
+      </section>
     </aside>
 
     <div class="blx-bar">
