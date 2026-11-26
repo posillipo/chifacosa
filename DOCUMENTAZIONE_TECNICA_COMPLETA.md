@@ -414,3 +414,10 @@ Su ogni elemento, qualunque sia lo stato (anche completato: serve a ritrovare il
 
 ### Studio «Modifica aggiornamento»: Elimina nella scheda Pubblicazione
 In `studio/dashboard_timeline_edit.php` il pulsante «Elimina aggiornamento» sta in fondo alla scheda «Pubblicazione» (colonna destra), non più in un riquadro sotto la pagina. Essendo dentro il form principale usa l'attributo `form="tl-del-post"`: un form nascosto separato (con `data-confirm`) invia `action=delete`. La scheda «Pubblicazione» non cambia comportamento, quindi il testo di guida resta valido.
+
+### Barra superiore admin: Social / Automazioni / Marketing
+Solo per gli amministratori, `_dash_header.php` (usata da Studio e dashboard classica) mostra nella barra principale tre tasti; ognuno apre sotto di essa una barra secondaria orizzontale (`.dash-subbar`, JS in `assets/js/dash-groups.js`: un clic apre il gruppo, un secondo clic lo chiude; all'apertura della pagina è già aperto il gruppo che contiene la voce attiva).
+- **Social:** Feed, Timeline, Blog, Video, Album, Link in Bio, Primo Piano, Che Amo, Programmati, Calendario, Bacheca, Coda Social e Social Automatico (se attivo).
+- **Automazioni:** Canale Telegram, Account Spotify/Podcast/YouTube, API, Server MCP.
+- **Marketing:** Marketing, Catalogo prodotti, Offerte, Menù, Servizi, Contest.
+Per gli admin queste voci (e il gruppo «Integrazioni») spariscono dalla barra laterale, che conserva Eventi, Prenotazioni, Cinema, Richieste e Contatti; per gli utenti non admin la barra laterale è invariata. Le voci seguono le stesse regole di visibilità di prima (tipo profilo, funzioni del sito, Menu di Navigazione). Con la barra secondaria aperta `body.has-subbar` sposta di 44px il contenuto e le colonne laterali (`--dash-nav-h`).
