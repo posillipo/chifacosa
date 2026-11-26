@@ -29,8 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         $publishAtRaw = trim($_POST['publish_at'] ?? '');
         $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
+        // Città e provincia obbligatorie: la provincia si sceglie dall'elenco delle province italiane (salvata col nome, es. «Napoli»).
+        $provNorm = provinceNormalize($provincia);
+        if ($provNorm !== null) { $provincia = provinceList()[$provNorm]; }
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
+        } elseif (mb_strlen($city) < 2 || $provNorm === null) {
+            $error = 'Città e provincia sono obbligatorie: scrivi la città e scegli la provincia dall\'elenco.';
         } else {
             $coverPath = handleCoverUpload($profile['slug']);
             $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -80,8 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         $publishAtRaw = trim($_POST['publish_at'] ?? '');
         $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
+        // Città e provincia obbligatorie: la provincia si sceglie dall'elenco delle province italiane (salvata col nome, es. «Napoli»).
+        $provNorm = provinceNormalize($provincia);
+        if ($provNorm !== null) { $provincia = provinceList()[$provNorm]; }
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
+        } elseif (mb_strlen($city) < 2 || $provNorm === null) {
+            $error = 'Città e provincia sono obbligatorie: scrivi la città e scegli la provincia dall\'elenco.';
         } else {
             $newCoverPath = handleCoverUpload($profile['slug']);
             if ($newCoverPath) {
@@ -179,10 +189,10 @@ include __DIR__ . '/_dash_header.php';
     <input type="text" name="title" required>
     <label>Location</label>
     <input type="text" name="venue">
-    <label>Città</label>
-    <input type="text" name="city">
-    <label>Provincia (opzionale)</label>
-    <input type="text" name="provincia" placeholder="es. Napoli">
+    <label>Città *</label>
+    <input type="text" name="city" required minlength="2">
+    <label>Provincia *</label>
+    <select name="provincia" required><?= provinceNameOptionsHtml(null) ?></select>
     <p style="color:var(--text-muted);font-size:12.5px;margin-top:-8px;">Usata per raggruppare i tuoi eventi nel riquadro "Eventi per provincia" e, con locale e città, per mostrare l'evento sulla mappa.</p>
     <label>Data e ora</label>
     <input type="datetime-local" name="event_date" required>
@@ -282,10 +292,10 @@ include __DIR__ . '/_dash_header.php';
             <input type="text" name="title" value="<?= e($ev['title']) ?>" required>
             <label>Location</label>
             <input type="text" name="venue" value="<?= e($ev['venue'] ?? '') ?>">
-            <label>Città</label>
-            <input type="text" name="city" value="<?= e($ev['city'] ?? '') ?>">
-            <label>Provincia (opzionale)</label>
-            <input type="text" name="provincia" value="<?= e($ev['provincia'] ?? '') ?>" placeholder="es. Napoli">
+            <label>Città *</label>
+            <input type="text" name="city" value="<?= e($ev['city'] ?? '') ?>" required minlength="2">
+            <label>Provincia *</label>
+            <select name="provincia" required><?= provinceNameOptionsHtml($ev['provincia'] ?? '') ?></select>
             <label>Data e ora</label>
             <input type="datetime-local" name="event_date" value="<?= e(date('Y-m-d\TH:i', strtotime($ev['event_date']))) ?>" required>
             <label>Link biglietti (opzionale)</label>

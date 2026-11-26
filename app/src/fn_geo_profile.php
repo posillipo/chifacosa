@@ -51,6 +51,16 @@ function provinceNormalize(?string $value): ?string {
     return null;
 }
 
+/** <option> delle province per un menu a tendina; il valore è il NOME (es. Napoli), come già salvato in events.provincia. */
+function provinceNameOptionsHtml(?string $selected = null): string {
+    $sel = provinceNormalize($selected);
+    $h = '<option value="">Scegli…</option>';
+    foreach (provinceList() as $sg => $pn) {
+        $h .= '<option value="' . e($pn) . '"' . ($sel === $sg ? ' selected' : '') . '>' . e($pn) . ' (' . e($sg) . ')</option>';
+    }
+    return $h;
+}
+
 /** Città e provincia compilate (provincia valida)? */
 function locationComplete(?string $city, ?string $province): bool {
     return mb_strlen(trim((string) $city)) >= 2 && provinceNormalize($province) !== null;
