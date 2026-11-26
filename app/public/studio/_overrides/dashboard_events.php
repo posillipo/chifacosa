@@ -30,8 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         $publishAtRaw = trim($_POST['publish_at'] ?? '');
         $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
+        // Città e provincia obbligatorie: la provincia si sceglie dall'elenco delle province italiane (salvata col nome, es. «Napoli»).
+        $provNorm = provinceNormalize($provincia);
+        if ($provNorm !== null) { $provincia = provinceList()[$provNorm]; }
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
+        } elseif (mb_strlen($city) < 2 || $provNorm === null) {
+            $error = 'Città e provincia sono obbligatorie: scrivi la città e scegli la provincia dall\'elenco.';
         } else {
             $coverPath = handleCoverUpload($profile['slug']);
             $stmt = getDB()->prepare('INSERT INTO events (user_id, title, venue, city, provincia, event_date, ticket_url, description, is_perpetual, recurrence, cover_path, accepts_reservations, publish_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -81,8 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acceptsReservations = isset($_POST['accepts_reservations']) ? 1 : 0;
         $publishAtRaw = trim($_POST['publish_at'] ?? '');
         $publishAt = $publishAtRaw !== '' ? (parseLocalDateTime($publishAtRaw, $profile, browserTzOffsetFromRequest()) ?? null) : null;
+        // Città e provincia obbligatorie: la provincia si sceglie dall'elenco delle province italiane (salvata col nome, es. «Napoli»).
+        $provNorm = provinceNormalize($provincia);
+        if ($provNorm !== null) { $provincia = provinceList()[$provNorm]; }
         if ($title === '' || $date === '') {
             $error = 'Titolo e data sono obbligatori.';
+        } elseif (mb_strlen($city) < 2 || $provNorm === null) {
+            $error = 'Città e provincia sono obbligatorie: scrivi la città e scegli la provincia dall\'elenco.';
         } else {
             $newCoverPath = handleCoverUpload($profile['slug']);
             if ($newCoverPath) {
@@ -187,7 +197,7 @@ $months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott',
       $scheduleLabel = eventScheduleLabel($ev['recurrence'] ?? 'none', (bool) ($ev['is_perpetual'] ?? false));
       $pub = siteUrl('/' . $profile['slug'] . '/eventi/' . (int) $ev['id']);
       $share = json_encode(['t' => $ev['title'], 'u' => $pub], JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT);
-      $fill = json_encode(['id' => (int) $ev['id'], 'title' => $ev['title'], 'venue' => $ev['venue'] ?? '', 'city' => $ev['city'] ?? '', 'provincia' => $ev['provincia'] ?? '',
+      $fill = json_encode(['id' => (int) $ev['id'], 'title' => $ev['title'], 'venue' => $ev['venue'] ?? '', 'city' => $ev['city'] ?? '', 'provincia' => (($pn0 = provinceNormalize($ev['provincia'] ?? '')) !== null ? provinceList()[$pn0] : ''),
         'event_date' => date('Y-m-d\TH:i', $ts), 'ticket_url' => $ev['ticket_url'] ?? '', 'description' => $ev['description'] ?? '',
         'publish_at' => !empty($ev['publish_at']) ? date('Y-m-d\TH:i', strtotime($ev['publish_at'])) : '', 'recurrence' => $ev['recurrence'] ?? 'none',
         'is_perpetual' => (int) ($ev['is_perpetual'] ?? 0), 'accepts_reservations' => (int) $ev['accepts_reservations']], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
@@ -224,11 +234,11 @@ $months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott',
     <input type="text" name="title" id="ev-title" required>
     <div class="kit-row2">
       <div><label for="ev-venue">Location</label><input type="text" name="venue" id="ev-venue"></div>
-      <div><label for="ev-city">Città</label><input type="text" name="city" id="ev-city"></div>
+      <div><label for="ev-city">Città <span class="pfx-req">*</span></label><input type="text" name="city" id="ev-city" required minlength="2"></div>
     </div>
-    <label for="ev-prov">Provincia <small>(opzionale)</small></label>
-    <input type="text" name="provincia" id="ev-prov" placeholder="es. Napoli">
-    <p class="tlx-hint">Serve per raggruppare gli eventi per provincia e, con locale e città, per mostrarli sulla mappa.</p>
+    <label for="ev-prov">Provincia <span class="pfx-req">*</span></label>
+    <select name="provincia" id="ev-prov" required><?= provinceNameOptionsHtml(null) ?></select>
+    <p class="tlx-hint">Città e provincia servono per raggruppare gli eventi per provincia e, con la location, per mostrarli sulla mappa.</p>
     <label for="ev-date">Data e ora</label>
     <input type="datetime-local" name="event_date" id="ev-date" required>
     <label for="ev-ticket">Link biglietti <small>(opzionale)</small></label>
