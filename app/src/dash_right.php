@@ -111,6 +111,28 @@ function dashRightRow(string $label, int $value, string $url, string $tone = '')
 }
 
 /**
+ * Contatori «da leggere» della messaggistica del profilo attivo, uniti in un solo riepilogo (icona messaggi in alto e
+ * pagina dashboard_inbox.php). Ogni voce: key => [label, icon, url, count|null (null = sezione non disponibile), descrizione].
+ */
+function dashInboxCards(int $profileId, bool $isBandOrLabel, array $nav): array {
+    $direct = dashRightCount('SELECT COUNT(*) FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL' . (directMessagesHaveDeleteColumns() ? ' AND deleted_by_recipient = 0' : ''), [$profileId]);
+    $contacts = dashRightCount('SELECT COUNT(*) FROM contact_requests WHERE user_id = ? AND is_read = 0', [$profileId]);
+    $cards = [
+        'messages' => ['Messaggi', 'fa-solid fa-comment-dots', '/dashboard_messages.php', $direct, 'Conversazioni private con gli altri profili.'],
+        'contacts' => ['Contatti dal sito', 'fa-solid fa-envelope', '/dashboard_contacts.php', $contacts, 'Richieste arrivate dal modulo Contatti del tuo sito.'],
+    ];
+    if ($nav['Servizi'] ?? 1) {
+        $cards['inquiries'] = ['Richieste di servizio', 'fa-solid fa-inbox', '/dashboard_service_inquiries.php',
+            dashRightCount('SELECT COUNT(*) FROM service_inquiries WHERE user_id = ? AND is_read = 0', [$profileId]), 'Richieste inviate dalle schede dei tuoi servizi.'];
+    }
+    if ($isBandOrLabel && ($nav['Eventi'] ?? 1)) {
+        $cards['reservations'] = ['Prenotazioni', 'fa-solid fa-calendar-check', '/dashboard_reservations.php',
+            dashRightCount("SELECT COUNT(*) FROM table_reservations WHERE user_id = ? AND status = 'pending'", [$profileId]), 'Prenotazioni in attesa di conferma.'];
+    }
+    return $cards;
+}
+
+/**
  * Tasti della barra in alto per gli amministratori (Social, Automazioni, Marketing) con le voci della barra secondaria.
  * Sono i blocchi «Coda Social», «Automazioni e MCP» e «Marketing» che prima stavano nella colonna destra / nel menu.
  * Ogni voce: ['label', 'url', 'icon', 'value' => int|null, 'tone' => '', 'text' => string|null (voce solo testo)].

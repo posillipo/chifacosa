@@ -286,14 +286,6 @@ foreach ($dashTopGroups as $gKey => $g) {
         <i class="fa-solid fa-share-nodes"></i>
       </a>
     <?php endif; ?>
-    <a href="/dashboard_contacts.php" title="Contatti" style="position:relative;font-size:17px;">
-      <i class="fa-solid fa-bell"></i>
-      <?php if ($unreadMessages > 0): ?>
-        <span style="position:absolute;top:-7px;right:-9px;background:#e74c3c;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:1px 5px;line-height:1.3;min-width:16px;text-align:center;">
-          <?= $unreadMessages > 9 ? '9+' : $unreadMessages ?>
-        </span>
-      <?php endif; ?>
-    </a>
     <a href="/<?= e($barSlug) ?>" target="_blank" rel="noopener" class="dash-preview" title="Vedi il sito di <?= e($barAvatarName) ?>" aria-label="Vedi il sito">
       <?php if ($barAvatarPath): ?>
         <img src="/<?= e(ltrim($barAvatarPath, '/')) ?>" alt="">
@@ -301,11 +293,17 @@ foreach ($dashTopGroups as $gKey => $g) {
         <span class="dash-preview-ph"><?= e(mb_strtoupper(mb_substr((string) $barAvatarName, 0, 1))) ?></span>
       <?php endif; ?>
     </a>
-    <a href="/dashboard_messages.php" title="Messaggi" style="position:relative;font-size:17px;">
-      <i class="fa-solid fa-comment-dots"></i>
-      <?php if ($unreadDirectMessages > 0): ?>
+    <?php
+      // Un solo punto per tutta la messaggistica: messaggi, contatti dal sito, richieste di servizio, prenotazioni.
+      require_once __DIR__ . '/../src/dash_right.php';
+      $inboxTotal = 0;
+      foreach (dashInboxCards((int) $countsForId, $isBandOrLabel, $navVisibility) as $ic) { $inboxTotal += (int) $ic[3]; }
+    ?>
+    <a href="/dashboard_inbox.php" class="dash-inbox<?= $inboxTotal > 0 ? ' has-new' : '' ?>" title="<?= $inboxTotal > 0 ? 'Messaggistica: ' . $inboxTotal . ' da leggere' : 'Messaggistica' ?>" aria-label="Messaggistica<?= $inboxTotal > 0 ? ', ' . $inboxTotal . ' da leggere' : '' ?>" style="position:relative;font-size:17px;">
+      <i class="fa-solid <?= $inboxTotal > 0 ? 'fa-comment-dots' : 'fa-comment' ?>"></i>
+      <?php if ($inboxTotal > 0): ?>
         <span style="position:absolute;top:-7px;right:-9px;background:#e74c3c;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:1px 5px;line-height:1.3;min-width:16px;text-align:center;">
-          <?= $unreadDirectMessages > 9 ? '9+' : $unreadDirectMessages ?>
+          <?= $inboxTotal > 9 ? '9+' : $inboxTotal ?>
         </span>
       <?php endif; ?>
     </a>
