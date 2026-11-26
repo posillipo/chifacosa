@@ -305,7 +305,7 @@ foreach ($dashTopGroups as $gKey => $g) {
       <?php if (!empty($g['href'])): ?>
         <a class="dash-topgroup<?= $dashActiveGroup === $gKey ? ' on' : '' ?>" href="<?= e($g['href']) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val"><?= (int) $g['badge'] ?></b><?php endif; ?></a>
       <?php else: ?>
-        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><i class="fa-solid fa-chevron-down dash-topgroup-caret" aria-hidden="true"></i></button>
+        <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val<?= !empty($g['tone']) ? ' ' . e($g['tone']) : '' ?>" title="<?= !empty($g['tone']) ? 'Da controllare' : 'In corso o in attesa' ?>"><?= (int) $g['badge'] ?></b><?php endif; ?><i class="fa-solid fa-chevron-down dash-topgroup-caret" aria-hidden="true"></i></button>
       <?php endif; ?>
     <?php endforeach; ?>
   </nav>

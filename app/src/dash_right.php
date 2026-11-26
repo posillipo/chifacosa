@@ -216,12 +216,23 @@ function dashTopGroups(array $ctx): array {
         }
     }
 
+    // Segnalazioni sui tasti (visibili anche a barra chiusa): rosso = errori/ferme, neutro = lavori in corso o in attesa.
+    $socialBadge = 0; $socialTone = '';
+    if ($queueOn && $heavy['queue'] !== null) {
+        $q = $heavy['queue'];
+        $bad = (int) $q['failed'] + (int) $q['stuck'];
+        if ($bad > 0) { $socialBadge = $bad; $socialTone = 'bad'; }
+        else { $socialBadge = (int) $q['pending'] + (int) $q['processing']; }
+    }
+    $autoBadge = 0; $autoTone = '';
+    if ($heavy['api'] !== null && (int) $heavy['api']['errors'] > 0) { $autoBadge = (int) $heavy['api']['errors']; $autoTone = 'bad'; }
+
     require_once __DIR__ . '/marketing.php';
     $mk = marketingActiveCount($profileId);
 
     return [
-        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-share-nodes', 'tabs' => ['social_queue', 'schedule_admin', 'metricool'], 'items' => $social],
-        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'tabs' => ['telegram', 'api_tokens', 'mcp'], 'items' => $auto],
+        'social' => ['label' => 'Social', 'icon' => 'fa-solid fa-share-nodes', 'tabs' => ['social_queue', 'schedule_admin', 'metricool'], 'items' => $social, 'badge' => $socialBadge, 'tone' => $socialTone],
+        'automazioni' => ['label' => 'Automazioni', 'icon' => 'fa-solid fa-robot', 'tabs' => ['telegram', 'api_tokens', 'mcp'], 'items' => $auto, 'badge' => $autoBadge, 'tone' => $autoTone],
         // Una sola voce: link diretto, senza barra secondaria.
         'marketing' => ['label' => 'Marketing', 'icon' => 'fa-solid fa-bullhorn', 'tabs' => ['marketing'], 'items' => [], 'href' => '/dashboard_marketing.php', 'badge' => $mk],
     ];
