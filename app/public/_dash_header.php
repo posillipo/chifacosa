@@ -225,9 +225,14 @@ $dashTopGroups = dashTopGroups([
     'queue_on'         => !empty($user['is_admin']) && !empty($dashProfile['metricool_auto_social']),
     'is_admin'         => !empty($user['is_admin']),
 ]);
-$dashOpenGroup = '';
+$dashOpenGroup = '';   // gruppo con barra secondaria da aprire
+$dashActiveGroup = ''; // gruppo evidenziato (anche Marketing, che è un link diretto senza barra secondaria)
 foreach ($dashTopGroups as $gKey => $g) {
-    if (in_array($activeTab ?? '', $g['tabs'], true)) { $dashOpenGroup = $gKey; break; }
+    if (in_array($activeTab ?? '', $g['tabs'], true)) {
+        $dashActiveGroup = $gKey;
+        if (!empty($g['items'])) { $dashOpenGroup = $gKey; }
+        break;
+    }
 }
 ?>
 <!doctype html>
@@ -298,7 +303,7 @@ foreach ($dashTopGroups as $gKey => $g) {
   <nav class="dash-topgroups" aria-label="Sezioni amministratore">
     <?php foreach ($dashTopGroups as $gKey => $g): ?>
       <?php if (!empty($g['href'])): ?>
-        <a class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" href="<?= e($g['href']) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val"><?= (int) $g['badge'] ?></b><?php endif; ?></a>
+        <a class="dash-topgroup<?= $dashActiveGroup === $gKey ? ' on' : '' ?>" href="<?= e($g['href']) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><?php if (!empty($g['badge'])): ?><b class="dash-subnav-val"><?= (int) $g['badge'] ?></b><?php endif; ?></a>
       <?php else: ?>
         <button type="button" class="dash-topgroup<?= $dashOpenGroup === $gKey ? ' on' : '' ?>" data-group="<?= e($gKey) ?>" aria-expanded="<?= $dashOpenGroup === $gKey ? 'true' : 'false' ?>" aria-controls="dash-sub-<?= e($gKey) ?>"><i class="<?= e($g['icon']) ?>" aria-hidden="true"></i><span><?= e($g['label']) ?></span><i class="fa-solid fa-chevron-down dash-topgroup-caret" aria-hidden="true"></i></button>
       <?php endif; ?>
