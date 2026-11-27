@@ -65,7 +65,7 @@ function studioRenderFeedCard(array $item, ?string $viewer, bool $metricool, str
         $h .= '<a class="stc-act" href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" title="Verifica il link personalizzato"><i class="fa-solid fa-link"></i><span>Link</span></a>';
     }
     if ($mine && $metricool) {
-        static $map = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_player', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication'];
+        $map = dashboardFeedSqTypeMap();
         $sq = $map[$item['tipo']] ?? null;
         if ($sq) {
             $imgUrl = $cover ? (str_starts_with($cover, 'http') ? $cover : siteUrl('/' . ltrim($cover, '/'))) : null;
