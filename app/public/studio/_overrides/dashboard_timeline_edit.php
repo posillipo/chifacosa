@@ -91,6 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = getDB()->prepare('UPDATE timeline_posts SET title=?, testo=?, hashtags=?, call_to_action=?, redirect_link=?, visibility=?, in_feed=?, publish_at=? WHERE id=? AND user_id=?');
             $stmt->execute([$title !== '' ? $title : null, $testo !== '' ? $testo : null, $hashtags !== '' ? $hashtags : null, $callToAction !== '' ? $callToAction : null, $redirectLink !== '' ? $redirectLink : null, $visibility, $inFeed, $publishAt, $id, $profile['id']]);
             logAdminAction((int) $profile['id'], (int) $user['id'], 'Aggiornamento Timeline modificato');
+            require_once __DIR__ . '/../../src/metricool_queue.php';
+            timelineEnqueueOnEdit($profile, $id, $testo, $visibility, $publishAt);
             header('Location: /dashboard_post.php');
             exit;
         }
