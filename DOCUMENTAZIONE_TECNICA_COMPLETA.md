@@ -448,3 +448,6 @@ Il menù admin a riga con Social / Automazioni / Marketing è stato eliminato (`
 
 ### Cruscotto: menù delle sezioni in alto
 Il blocco «Tutte le sezioni» (prima in fondo alla pagina) è ora un menù in cima al Cruscotto, sotto il titolo: un riquadro con una riga per gruppo (Social, Automazioni, Marketing, Amministrazione), titolo a sinistra e voci a pillola a destra (icona, nome, numero se c'è qualcosa da guardare, pallino verde/grigio se il modulo è attivo o no). Stesse voci e stessi dati di prima (`cruscottoData()['links']`); stili `crx-menu`/`crx-mgroup`/`crx-mitem` in `studio/assets/studio.css`. Su telefono il titolo del gruppo va sopra le voci.
+
+### Pagina pubblica Eventi (AdminLTE e Academic): centro a tutta larghezza
+Il limite di 800px alla colonna centrale (`.adminlte-main-col>*{max-width:800px}`) valeva anche per la pagina Eventi, che dentro il centro ha due colonne (elenco + mappa): la mappa risultava stretta. Il centro della pagina Eventi ha ora la classe `adminlte-main-wide`, che toglie il limite e usa tutto lo spazio tra il profilo e il bordo (`fn_adminlte_layout.php`); con il tema Academic la griglia diventa `250px + 1fr` (`academic.css`, regola `:has(.adminlte-main-wide)`). Tutte le altre pagine restano a 800px.

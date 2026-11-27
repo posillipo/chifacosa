@@ -100,7 +100,9 @@ function adminLteAssetLinks(): string {
          // nel suo spazio. Le colonne laterali non cambiano (25% + 25% come prima). Con spazio minore di 800px
          // (schermi medi) il centro occupa tutta la colonna come sempre; sotto i 992px le colonne sono impilate.
          . '@media (min-width:992px){.adminlte-main-col{align-items:center;}'
-         . '.adminlte-main-col>*{width:100%;max-width:800px;}}'
+         . '.adminlte-main-col>*{width:100%;max-width:800px;}'
+         // Pagine con elenco + mappa (Eventi): il centro usa tutto lo spazio, altrimenti la mappa resta stretta.
+         . '.adminlte-main-col.adminlte-main-wide{align-items:stretch;}.adminlte-main-col.adminlte-main-wide>*{max-width:none;}}'
          . '</style>'
          // Veste «Academic» (stesse pagine, altra grafica): stile, script e tema chiaro/scuro (vedi fn_academic_theme.php).
          . (academicSkinActive() ? "\n" . academicHeadAssets(false) : '');
