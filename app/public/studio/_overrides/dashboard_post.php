@@ -125,6 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // dedicata (dashboard_timeline_edit.php) — vedi il link "✏️ Modifica" nell'elenco qui sotto.
 }
 
+require_once __DIR__ . '/../../src/metricool_queue.php';
+$metricoolActiveList = !empty($user['is_admin']) && metricoolIsEnabled((int) $profile['id']);
 $stmt = getDB()->prepare('SELECT * FROM timeline_posts WHERE user_id=? ORDER BY created_at DESC LIMIT 50');
 $stmt->execute([$profile['id']]);
 $posts = $stmt->fetchAll();
@@ -224,6 +226,10 @@ $tlUrl = siteUrl('/' . $profile['slug'] . '/timeline');
               <?php if (!$isPrivate): ?>
                 <a class="stc-act" href="/<?= e($profile['slug']) ?>/timeline/<?= (int) $p['id'] ?>" target="_blank" title="Pagina pubblica"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Pagina pubblica</span></a>
                 <button type="button" class="stc-act" data-share='<?= e($share) ?>' title="Condividi"><i class="fa-solid fa-share-nodes"></i> <span>Condividi</span></button>
+                <?php if (!empty($metricoolActiveList)): ?>
+                  <?php $sqPost = json_encode(['suggest' => true, 'type' => 'timeline', 'id' => (int) $p['id'], 'title' => $p['title'] ?: textExcerpt((string) $p['testo'], 60), 'img' => !empty($p['image_path']) ? siteUrl('/' . ltrim($p['image_path'], '/')) : null, 'url' => $pub]); ?>
+                  <button type="button" class="stc-act" title="Coda social: ripubblica sui social (con data a scelta)" onclick='window.sqSuggest(<?= htmlspecialchars($sqPost, ENT_QUOTES) ?>)'><i class="fa-solid fa-paper-plane"></i> <span>Coda social</span></button>
+                <?php endif; ?>
               <?php endif; ?>
             </div>
           </div>

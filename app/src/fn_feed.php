@@ -874,6 +874,11 @@ function dashboardFeedPreviewAttr(array $item, string $label): string {
 }
 
 
+/** Tipo del feed => tipo della Coda Social (per il pulsante «Condividi sui social / Coda social»). Unica fonte per Feed classico e Studio. */
+function dashboardFeedSqTypeMap(): array {
+    return ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
+}
+
 function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bool $metricoolActive = false): string {
     // Nel feed si mostra sempre la miniatura leggera quando disponibile (image_thumb_path):
     // l'originale a piena qualità resta comunque intatto ed è quello mostrato aprendo il link.
@@ -912,7 +917,7 @@ function renderDashboardTimelineItem(array $item, ?string $viewerSlug = null, bo
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato">🔗</a>';
     }
     if ($isMine && $metricoolActive) {
-        static $sqTypeMap = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
+        $sqTypeMap = dashboardFeedSqTypeMap();
         $sqType = $sqTypeMap[$item['tipo']] ?? null;
         if ($sqType) {
             $cover = $item['cover_thumb'] ?? $item['cover'];
@@ -976,7 +981,7 @@ function renderDashboardTimelineCard(array $item, ?string $viewerSlug = null, bo
         $html .= '<a href="' . e($item['redirect_link']) . '" target="_blank" rel="noopener" class="dtc-redirect-btn" title="Verifica link personalizzato" style="position:absolute;top:12px;right:12px;">🔗</a>';
     }
     if ($isMine && $metricoolActive) {
-        static $sqTypeMapCard = ['band_favorita' => 'fan_band', 'attore_favorito' => 'fan_actor', 'film_favorito' => 'fan_movie', 'libro_favorito' => 'fan_book', 'viaggio_favorito' => 'fan_trip', 'playlist_favorita' => 'fan_playlist', 'album_favorito' => 'fan_album', 'ricetta_favorita' => 'fan_recipe', 'squadra_favorita' => 'fan_team', 'calciatore_favorito' => 'fan_footballer', 'partita_favorita' => 'fan_match', 'pubblicazione_favorita' => 'fan_publication', 'brano' => 'fan_track', 'blog' => 'blog', 'evento' => 'event', 'pensiero' => 'timeline', 'offerta' => 'offer', 'album_foto' => 'album', 'video' => 'video', 'servizio' => 'service'];
+        $sqTypeMapCard = dashboardFeedSqTypeMap();
         $sqType = $sqTypeMapCard[$item['tipo']] ?? null;
         if ($sqType) {
             $cover = $item['cover'];
