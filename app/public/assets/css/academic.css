@@ -202,3 +202,6 @@ html.acad-skin .acad-video .archive__item-title{font-size:1.1rem}
 @media(max-width:599px){html.acad-skin .acad-video{flex-direction:column}html.acad-skin .acad-video__thumb{flex-basis:auto;width:100%}}
 /* Link nella colonna sinistra: separatori di sezione come titoletti */
 .author__urls .author__divider{margin-top:.9em;padding-top:.5em;border-top:1px solid var(--acad-border);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--acad-text-light)}
+
+/* Pagina Eventi (elenco + mappa): il contenuto occupa tutto lo spazio a destra del profilo */
+@media (min-width: 992px) { html.acad-skin .app-content > .container-fluid > .row:has(.adminlte-main-wide) { grid-template-columns: 250px minmax(0, 1fr); } }

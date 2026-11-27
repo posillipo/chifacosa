@@ -2825,7 +2825,7 @@ function renderAdminLteEventiListPage(array $artist, string $slug, array $events
         <div class="row g-3">
           <?= renderAdminLteProfileSidebar($artist, $slug) ?>
           <?php /* Pagina Eventi: elenco a sinistra (scorre) e mappa a destra (fissa) al posto della terza colonna. */ ?>
-          <div class="col-lg-9 order-1 order-lg-2 adminlte-main-col">
+          <div class="col-lg-9 order-1 order-lg-2 adminlte-main-col adminlte-main-wide">
           <div class="row g-3">
           <div class="col-md-6">
             <?= renderAdminLteEventiFilterCard($slug, (string) $provinciaFilter, $cittaFilter, $filterOptions) ?>
