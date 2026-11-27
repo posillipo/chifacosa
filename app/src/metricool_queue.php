@@ -352,6 +352,41 @@ function socialQueueEnqueueIfEnabled(int $userId, string $type, array $data, ?st
 }
 
 /**
+ * Modifica di un aggiornamento Timeline: se è pubblico, la Coda Social è attiva e c'è una data «Pubblica sui social dal»,
+ * l'uscita si accoda (o, se è già in coda, ne cambia la data) senza duplicati. Senza data non fa nulla: l'uscita
+ * immediata è quella decisa alla creazione, e a ogni salvataggio non deve ripartire una nuova pubblicazione.
+ */
+function timelineEnqueueOnEdit(array $profile, int $postId, string $testo, string $visibility, ?string $publishAt): void {
+    if ($visibility !== 'public' || !$publishAt) {
+        return;
+    }
+    $uid = (int) $profile['id'];
+    if (!metricoolIsEnabled($uid)) {
+        return;
+    }
+    try {
+        $st = getDB()->prepare('SELECT image_path FROM timeline_posts WHERE id = ? AND user_id = ?');
+        $st->execute([$postId, $uid]);
+        $main = (string) ($st->fetchColumn() ?: '');
+        $st = getDB()->prepare('SELECT image_path FROM timeline_post_photos WHERE post_id = ? ORDER BY sort_order ASC, id ASC');
+        $st->execute([$postId]);
+        $imgs = [];
+        if ($main !== '') { $imgs[] = siteUrl('/' . ltrim($main, '/')); }
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $pth) { $imgs[] = siteUrl('/' . ltrim((string) $pth, '/')); }
+        $data = [
+            'content_id' => $postId,
+            'body'       => $testo,
+            'image_url'  => $imgs[0] ?? null,
+            'public_url' => siteUrl('/' . $profile['slug'] . '/timeline'),
+        ];
+        if (count($imgs) > 1) { $data['image_urls'] = array_slice($imgs, 0, 10); }
+        socialQueueEnqueueScheduledOnce($uid, 'timeline', $data, $publishAt);
+    } catch (Throwable $e) {
+        error_log('timelineEnqueueOnEdit: ' . $e->getMessage());
+    }
+}
+
+/**
  * Aggiunge a ogni riga della coda 'source_author' = firma (created_by) del contenuto di origine,
  * letta in blocco per tipo. Tipi senza firma (offerte, sconosciuti) restano null.
  */
